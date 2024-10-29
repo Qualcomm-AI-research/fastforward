@@ -7,39 +7,23 @@ import pathlib
 
 from typing import Any, Callable, Hashable, Iterator, TypeAlias, overload
 
+import torch
 import yaml
 
 from typing_extensions import Self
 
 from fastforward._quantops import spec_parser
-from fastforward._quantops.operator import Operator, OperatorMetadata
+from fastforward._quantops.operator import (
+    Operator,
+    OperatorMetadata,
+    fully_qualified_name,
+)
 
 _PyOp: TypeAlias = Callable[..., Any]
 
 
-@overload
-def _resolve_op(op: str | _PyOp) -> _PyOp: ...
-@overload
-def _resolve_op(op: None) -> None: ...
-
-
-def _resolve_op(op: str | _PyOp | None) -> _PyOp | None:
-    if op is None or callable(op):
-        return op
-    return _QualifiedNameReference(op).import_()  # type: ignore[no-any-return]
-
-
-def _fully_qualified_name(obj: Any) -> str:
-    object_type = type(obj)
-    module: str | None = object_type.__module__
-    name = object_type.__qualname__
-    if module is None or module == "__builtin__":
-        return name
-    return f"{module}.{name}"
-
-
 def _resolve_name(py_op: str | _PyOp) -> str:
-    return py_op if isinstance(py_op, str) else _fully_qualified_name(py_op)
+    return py_op if isinstance(py_op, str) else fully_qualified_name(py_op)
 
 
 def _default_yaml_file() -> pathlib.Path:
@@ -103,6 +87,31 @@ class _QualifiedNameReference:
                 raise ImportError(f"Cannot import '{self.qualified_name}'")
 
 
+def _fallback_alias(op: Operator) -> str | None:
+    if metadata := op.metadata:
+        return metadata.fallback
+    return None
+
+
+def _functional_alias(op: Operator) -> str | None:
+    if not (metadata := op.metadata):
+        return None
+    if not (dispatch_op := metadata.dispatch_op):
+        return None
+
+    if func := getattr(torch.nn.functional, op.identifier, None):
+        try:
+            fallback = _QualifiedNameReference(metadata.fallback).import_()
+        except ImportError:
+            return None
+        if func is fallback:
+            return f"F.{dispatch_op.__name__}"
+    return None
+
+
+STR_ALIASES_EXTENSIONS = (_fallback_alias, _functional_alias)
+
+
 class OperatorTable:
     """Lookup table for quantized operators.
 
@@ -110,11 +119,18 @@ class OperatorTable:
     at runtime.
     """
 
-    def __init__(self, *, _resolve_dispatch: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        alias_extensions: Sequence[Callable[[Operator], str | None]] = (),
+        _resolve_dispatch: bool = True,
+    ) -> None:
         self._operator_specs: list[Operator] = []
         self._py_op_index: dict[_PyOp, int] = {}
         self._py_op_aliases: dict[str, _PyOp] = {}
         self._resolve_dispatch = _resolve_dispatch
+
+        self._alias_extensions = list(alias_extensions)
 
     def append_operator(self, operator: Operator) -> None:
         """Add a new operator to the table.
@@ -148,7 +164,9 @@ class OperatorTable:
             self._operator_specs.append(operator)
 
         assert operator.metadata  # helping mypy and friends
-        self._py_op_aliases[operator.metadata.fallback] = py_op
+        for alias_ext in self._alias_extensions:
+            if alias := alias_ext(operator):
+                self.add_alias(alias, py_op)
 
     def add(
         self,
@@ -187,7 +205,11 @@ class OperatorTable:
 
     @classmethod
     def from_yaml(
-        cls, source: pathlib.Path | None = None, *, _resolve_dispatch: bool = True
+        cls,
+        source: pathlib.Path | None = None,
+        *,
+        alias_extensions: Sequence[Callable[[Operator], str | None]] = (),
+        _resolve_dispatch: bool = True,
     ) -> Self:
         """Create an `OperatorTable` from yaml file at `path`.
 
@@ -203,7 +225,7 @@ class OperatorTable:
         with source.open() as f:
             raw_source = yaml.load(f, Loader=_SafeLoaderWithLines)
 
-        table = cls(_resolve_dispatch=_resolve_dispatch)
+        table = cls(alias_extensions=alias_extensions, _resolve_dispatch=_resolve_dispatch)
         errors: list[tuple[int, str]] = []
 
         for op_info in raw_source:

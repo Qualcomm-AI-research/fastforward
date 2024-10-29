@@ -7,12 +7,12 @@ import pytest
 import torch
 
 from fastforward._quantops import OperatorTable
-from fastforward._quantops.optable import _QualifiedNameReference
+from fastforward._quantops.optable import STR_ALIASES_EXTENSIONS, _QualifiedNameReference
 
 
 @pytest.fixture()
 def op_table() -> OperatorTable:
-    table = OperatorTable()
+    table = OperatorTable(alias_extensions=STR_ALIASES_EXTENSIONS)
     table.add(
         "linear(first: Quantized, second: Quantized) -> Quantized",
         "torch.nn.functional.linear",

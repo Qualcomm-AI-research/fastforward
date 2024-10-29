@@ -8,3 +8,7 @@ class QuantizationError(RuntimeError):
 
 class ExportError(RuntimeError):
     """Export related error."""
+
+
+class AutoquantError(Exception):
+    """Autoquant related error."""
