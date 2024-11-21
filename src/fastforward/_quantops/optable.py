@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
-import importlib
 import pathlib
 
 from typing import Any, Callable, Hashable, Iterator, TypeAlias, overload
@@ -12,12 +11,9 @@ import yaml
 
 from typing_extensions import Self
 
+from fastforward._import import QualifiedNameReference, fully_qualified_name
 from fastforward._quantops import spec_parser
-from fastforward._quantops.operator import (
-    Operator,
-    OperatorMetadata,
-    fully_qualified_name,
-)
+from fastforward._quantops.operator import Operator, OperatorMetadata
 
 _PyOp: TypeAlias = Callable[..., Any]
 
@@ -41,52 +37,6 @@ class _SafeLoaderWithLines(yaml.loader.SafeLoader):
         return mapping
 
 
-class _QualifiedNameReference:
-    def __init__(self, qualified_name: str) -> None:
-        self._parts = tuple(qualified_name.split("."))
-
-    @property
-    def parent(self) -> "_QualifiedNameReference":
-        if len(self._parts) == 0:
-            raise ValueError(f"Empty {type(self).__name__} has no parent")
-        new_reference = _QualifiedNameReference.__new__(_QualifiedNameReference)
-        new_reference._parts = self._parts[:-1]
-        return new_reference
-
-    @property
-    def stem(self) -> str:
-        if len(self._parts) == 0:
-            raise ValueError(f"Empty {type(self).__name__} has no stem")
-        return self._parts[-1]
-
-    @property
-    def qualified_name(self) -> str:
-        return ".".join(self._parts)
-
-    # Use import_ since import is a (non-soft) keyword.
-    def import_(self, *, _remainder: str | None = None) -> Any:
-        _remainder = _remainder or ""
-
-        # If we reach a root reference, the import must have failed
-        if len(self._parts) == 0:
-            raise ImportError(f"Cannot import '{_remainder[:-1]}'")
-
-        # Try to import the full reference as a module. This may fail
-        # if the reference does not refer to a python module. In thas case
-        # obtain a reference to the parent module and retrieve the attribute
-        # we were unable to import from that.
-        try:
-            return importlib.import_module(self.qualified_name)
-        except ModuleNotFoundError:
-            parent_module = self.parent.import_(_remainder=f"{self.stem}.{_remainder}")
-            try:
-                return getattr(parent_module, self.stem)
-            except AttributeError:
-                # On a attribute lookup failure, we can conclude that the
-                # provided reference to not refer to an existing module/object.
-                raise ImportError(f"Cannot import '{self.qualified_name}'")
-
-
 def _fallback_alias(op: Operator) -> str | None:
     if metadata := op.metadata:
         return metadata.fallback
@@ -101,7 +51,7 @@ def _functional_alias(op: Operator) -> str | None:
 
     if func := getattr(torch.nn.functional, op.identifier, None):
         try:
-            fallback = _QualifiedNameReference(metadata.fallback).import_()
+            fallback = QualifiedNameReference(metadata.fallback).import_()
         except ImportError:
             return None
         if func is fallback:
@@ -149,7 +99,7 @@ class OperatorTable:
         if not (metadata := operator.metadata):
             raise ValueError("Cannot add operator without metadata")
 
-        py_op = _QualifiedNameReference(metadata.fallback).import_()
+        py_op = QualifiedNameReference(metadata.fallback).import_()
 
         if not operator.metadata.dispatch_op and self._resolve_dispatch:
             dispatch_op = self._dispatch_op(operator.identifier)
@@ -192,7 +142,7 @@ class OperatorTable:
     def _dispatch_op(self, name: str) -> _PyOp:
         qualified_name = f"fastforward.nn.functional.{name}"
         try:
-            return _QualifiedNameReference(qualified_name).import_()  # type: ignore[no-any-return]
+            return QualifiedNameReference(qualified_name).import_()  # type: ignore[no-any-return]
         except (ImportError, AttributeError):
             raise ValueError(
                 f"No dispatch op was specified for '{name}' and '{qualified_name}' does not exist"

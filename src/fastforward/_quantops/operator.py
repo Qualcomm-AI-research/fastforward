@@ -6,16 +6,9 @@ import pathlib
 
 from typing import Any, Callable
 
+from fastforward._import import fully_qualified_name
 from fastforward._quantops import symtypes
 from fastforward.nn import functional
-
-
-def fully_qualified_name(obj: Any) -> str:
-    module: str | None = obj.__module__
-    name: str = obj.__qualname__
-    if module is None or module == "__builtin__":
-        return name
-    return f"{module}.{name}"
 
 
 @dataclasses.dataclass(frozen=True)
