@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+
 """
 This module implements various CST Nodes. These are used to ease further code
 analysis without destroying any information in the CST.

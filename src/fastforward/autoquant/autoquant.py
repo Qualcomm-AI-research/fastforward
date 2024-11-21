@@ -1,8 +1,10 @@
-import functools
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+
 import inspect
 import textwrap
 
-from typing import Callable, Optional, Sequence, cast
+from typing import Optional, cast
 
 import libcst
 import libcst.display
@@ -11,9 +13,11 @@ import torch
 
 import fastforward as ff
 
+from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
 
-from . import pysource
+from . import pybuilder, pysource
+from .convert import convert_method
 from .cst import passes
 
 # TODO:
@@ -58,25 +62,25 @@ def _validate_correct_module(
         ) from e
 
 
-def _parse_pymodule_for_torch_module(
-    module: torch.nn.Module,
-    validators: Sequence[Callable[[libcst.Module], None]] = (),
-    preprocessors: Sequence[libcst.CSTTransformer] = (),
-) -> pysource.PySourceModule:
-    if not (py_module := inspect.getmodule(type(module))):
-        raise RuntimeError(f"Cannot infer module of {module.__class__}")
-
-    validators = [
-        functools.partial(_validate_correct_module, type(module), py_module.__name__)
-    ] + list(validators)
-
-    preprocessors = [
-        passes.SimpleStatementSuiteToIndentedBlock(),
-        passes.MarkReplacementCandidates(),
-        passes.IsolateReplacementCandidates(),
-    ] + list(preprocessors)
-
-    return pysource.PySourceModule(py_module, validators=validators, preprocessors=preprocessors)
+# def _parse_pymodule_for_torch_module(
+#     module: torch.nn.Module,
+#     validators: Sequence[Callable[[libcst.Module], None]] = (),
+#     preprocessors: Sequence[libcst.CSTTransformer] = (),
+# ) -> pysource.PySourceModule:
+#     if not (py_module := inspect.getmodule(type(module))):
+#         raise RuntimeError(f"Cannot infer module of {module.__class__}")
+#
+#     validators = [
+#         functools.partial(_validate_correct_module, type(module), py_module.__name__)
+#     ] + list(validators)
+#
+#     preprocessors = [
+#         passes.SimpleStatementSuiteToIndentedBlock(),
+#         passes.MarkReplacementCandidates(),
+#         passes.IsolateReplacementCandidates(),
+#     ] + list(preprocessors)
+#
+#     return pysource.PySourceModule(py_module, validators=validators, preprocessors=preprocessors)
 
 
 def autoquant(
@@ -85,20 +89,30 @@ def autoquant(
     operator_table = operator_table or optable.OperatorTable.from_yaml(
         alias_extensions=optable.STR_ALIASES_EXTENSIONS
     )
-    _autoquant(module, operator_table)
+    source_context = pysource.SourceContext(
+        preprocessing_passes=[
+            passes.SimpleStatementSuiteToIndentedBlock(),
+            passes.MarkReplacementCandidates(),
+            passes.IsolateReplacementCandidates(),
+        ]
+    )
+    _autoquant(module, source_context, operator_table)
 
 
-def _autoquant(module: torch.nn.Module, operator_table: optable.OperatorTable) -> None:
-    src_module = _parse_pymodule_for_torch_module(module)
+def _autoquant(
+    module: torch.nn.Module,
+    source_context: pysource.SourceContext,
+    operator_table: optable.OperatorTable,
+) -> None:
+    ModuleType = type(module)
+    src_class = source_context.get(fully_qualified_name(ModuleType))
 
-    src_class = src_module.get_member(type(module).__name__)
-    # TODO: setup imports correctly
-    dst_class = pysource.ClassBuilder(
-        f"Quantized{src_class.name}",
-        bases=("fastforward.nn.QuantizedModule", src_class.name),
+    dst_class = pybuilder.ClassBuilder(
+        f"Quantized{ModuleType.__name__}",
+        bases=("fastforward.nn.QuantizedModule", ModuleType.__name__),
     )
 
-    # TODO: make forward lookup more robust
-    forward_src = src_module.get_member(src_class.name).forward
-    dst_class.add_method(pysource.convert_method(forward_src, dst_class, operator_table))
+    forward_src = src_class.member("forward")
+    dst_class.add_method(convert_method(forward_src, dst_class, operator_table))
+
     print(libcst.Module([dst_class.build()]).code)

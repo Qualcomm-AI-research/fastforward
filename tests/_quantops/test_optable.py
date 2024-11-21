@@ -1,13 +1,12 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-from collections import defaultdict
 
 import pytest
 import torch
 
 from fastforward._quantops import OperatorTable
-from fastforward._quantops.optable import STR_ALIASES_EXTENSIONS, _QualifiedNameReference
+from fastforward._quantops.optable import STR_ALIASES_EXTENSIONS
 
 
 @pytest.fixture()
@@ -50,23 +49,3 @@ def test_optable_alias(op_table: OperatorTable) -> None:
 
     assert op_table["sigmoid"] is op_table[torch.relu]
     assert op_table.get("sigmoid") is op_table.get("torch.relu")
-
-
-def test_qualified_name_reference() -> None:
-    ref = _QualifiedNameReference("collections.defaultdict")
-    assert defaultdict is ref.import_()
-
-    ref = _QualifiedNameReference("collections.defaultdict.copy")
-    assert defaultdict.copy is ref.import_()
-
-    ref = _QualifiedNameReference("collections.defaultdict.does_not_exist")
-    with pytest.raises(ImportError):
-        ref.import_()
-
-    ref = _QualifiedNameReference("collections.does_not_exist")
-    with pytest.raises(ImportError):
-        ref.import_()
-
-    ref = _QualifiedNameReference("does_not_exist.attribute")
-    with pytest.raises(ImportError):
-        ref.import_()

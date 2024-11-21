@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+
 """
 Builders are utility objects for building (compound) CST nodes. They keep
 metadata, collections of members, and implement CST Node construction methods.
