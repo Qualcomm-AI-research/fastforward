@@ -78,7 +78,10 @@ markers = [
 
 [tool.mypy]
 mypy_path = "src:tests:$MYPY_CONFIG_FILE_DIR/build/stubs"
-exclude = ['build/']
+exclude = [
+    'build/',
+    'docs/examples/quick_start'
+]
 python_version = "3.10"
 warn_unused_configs = true
 strict = true
