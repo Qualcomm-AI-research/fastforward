@@ -39,7 +39,7 @@
 
 - op: "embedding(input: Tensor, weight: Quantized, padding_idx: Optional[int] = None, max_norm: Optional[float] = None, norm_type: float = 2.0, scale_grad_by_freq: Bool = False, sparse: Bool = False) -> Quantized"
   fallback: torch.nn.functional.embedding
-  
+
 - op: "layer_norm(input: Quantized, normalized_shape: tuple[int, ...], weight: Optional[Quantized] = None, bias: Optional[MaybeQuantized] = None, eps: float = 1e-5) -> Quantized"
   fallback: torch.nn.functional.layer_norm
 
@@ -84,3 +84,6 @@
 
 - op: "index_add(input: Quantized, dim: int, index: Tensor, source: Quantized, alpha: float = 1) -> Quantized "
   fallback: torch.index_add
+
+- op: "cumsum(input: Quantized, dim: int) -> Quantized"
+  fallback: torch.cumsum

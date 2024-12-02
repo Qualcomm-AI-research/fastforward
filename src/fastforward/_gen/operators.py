@@ -48,6 +48,7 @@ __all__ = [
     "permute",
     "cat",
     "index_add",
+    "cumsum",
 ]
 
 
@@ -999,6 +1000,33 @@ def index_add(
         index=index,
         source=source,
         alpha=alpha,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:88
+def cumsum(
+    input: torch.Tensor,
+    dim: int,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: Optional[bool] = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "cumsum",
+        input=input,
+        dim=dim,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.cumsum
+    return selected_op(
+        input=input,
+        dim=dim,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )

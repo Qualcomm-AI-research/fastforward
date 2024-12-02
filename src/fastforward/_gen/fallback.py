@@ -46,6 +46,7 @@ __all__ = [
     "permute",
     "cat",
     "index_add",
+    "cumsum",
 ]
 
 
@@ -1150,6 +1151,32 @@ def index_add(
         source = source.dequantize()
 
     output = torch.index_add(input=input, dim=dim, index=index, source=source, alpha=alpha)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:88
+def cumsum(
+    input: torch.Tensor,
+    dim: int,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' "
+            "because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.cumsum(input=input, dim=dim)
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output

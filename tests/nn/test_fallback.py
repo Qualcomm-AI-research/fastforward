@@ -315,6 +315,7 @@ def create_per_tensor_linear_quantizer(num_bits: int, scale: float, offset: floa
             (-1, 1),
             {},
         ),
+        ("cumsum", "torch.cumsum", [(1, 10)], [(-1, 1)], (-1, 1), {"dim": 1}),
     ],
 )
 def test_quantized_functionals(
