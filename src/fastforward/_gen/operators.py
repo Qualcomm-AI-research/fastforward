@@ -777,6 +777,7 @@ def div(
 # Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:64
 def sum(
     input: torch.Tensor,
+    dim: Optional[int] = None,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: Optional[bool] = None,
@@ -787,12 +788,16 @@ def sum(
     dispatch_op = dispatch(
         "sum",
         input=input,
+        dim=dim,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )
     selected_op = dispatch_op or fallback.sum
     return selected_op(
-        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+        input=input,
+        dim=dim,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
     )
 
 

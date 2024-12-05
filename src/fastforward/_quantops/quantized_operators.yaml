@@ -61,7 +61,7 @@
 - op: "div(input: Quantized, other: Quantized | float) -> Quantized"
   fallback: torch.div
 
-- op: "sum(input: Quantized) -> Quantized"
+- op: "sum(input: Quantized, dim: Optional[int] = None) -> Quantized"
   fallback: torch.sum
 
 - op: "silu(input: Quantized) -> Quantized"

@@ -905,6 +905,7 @@ def div(
 # Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:64
 def sum(
     input: torch.Tensor,
+    dim: Optional[int] = None,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -921,7 +922,7 @@ def sum(
     if isinstance(input, QuantizedTensor):
         input = input.dequantize()
 
-    output = torch.sum(input=input)
+    output = torch.sum(input=input, dim=dim)
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output
