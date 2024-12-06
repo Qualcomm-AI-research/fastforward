@@ -39,7 +39,7 @@ def combine_indented_blocks(
 
     root_elem: libcst.SimpleStatementLine | libcst.BaseCompoundStatement = body[0]  # type: ignore[assignment]
     root_elem = root_elem.with_changes(
-        leading_lines=midway_lines + tuple(root_elem.leading_lines),
+        leading_lines=(*midway_lines, *root_elem.leading_lines),
     )
     return block1.with_changes(
         body=tuple(block1.body) + tuple(body),
