@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+import sys
+
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent / ".." / "funcgen"))
+from funcgen.generate import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())

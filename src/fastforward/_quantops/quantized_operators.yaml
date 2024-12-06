@@ -1,0 +1,86 @@
+- op: "linear(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None) -> Quantized"
+  fallback: torch.nn.functional.linear
+
+- op: "conv1d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size | str = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv1d
+
+- op: "conv2d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size | str = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv2d
+
+- op: "conv3d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size | str = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv3d
+
+- op: "softmax(input: Quantized, dim: int) -> Quantized"
+  fallback: torch.softmax
+
+- op: "relu(input: Quantized) -> Quantized"
+  fallback: torch.relu
+
+- op: "sigmoid(input: Quantized) -> Quantized"
+  fallback: torch.sigmoid
+
+- op: "conv_transpose1d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv_transpose1d
+
+- op: "conv_transpose2d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv_transpose2d
+
+- op: "conv_transpose3d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+  fallback: torch.nn.functional.conv_transpose3d
+
+- op: "avg_pool1d(input: Quantized, kernel_size: int | Size, stride: int | Size, padding: int | Size = 0, ceil_mode: Bool = False, count_include_pad: Bool = True) -> Quantized"
+  fallback: torch.nn.functional.avg_pool1d
+
+- op: "avg_pool2d(input: Quantized, kernel_size: int | Size, stride: int | Size, padding: int | Size = 0, ceil_mode: Bool = False, count_include_pad: Bool = True) -> Quantized"
+  fallback: torch.nn.functional.avg_pool2d
+
+- op: "avg_pool3d(input: Quantized, kernel_size: int | Size, stride: int | Size, padding: int | Size = 0, ceil_mode: Bool = False, count_include_pad: Bool = True) -> Quantized"
+  fallback: torch.nn.functional.avg_pool3d
+
+- op: "embedding(input: Tensor, weight: Quantized, padding_idx: Optional[int] = None, max_norm: Optional[float] = None, norm_type: float = 2.0, scale_grad_by_freq: Bool = False, sparse: Bool = False) -> Quantized"
+  fallback: torch.nn.functional.embedding
+  
+- op: "layer_norm(input: Quantized, normalized_shape: tuple[int, ...], weight: Optional[Quantized] = None, bias: Optional[MaybeQuantized] = None, eps: float = 1e-5) -> Quantized"
+  fallback: torch.nn.functional.layer_norm
+
+- op: "matmul(input: Quantized, other: Quantized) -> Quantized"
+  fallback: torch.matmul
+
+- op: "mm(input: Quantized, mat2: Quantized) -> Quantized"
+  fallback: torch.mm
+
+- op: "bmm(input: Quantized, mat2: Quantized) -> Quantized"
+  fallback: torch.bmm
+
+- op: "add(input: Quantized, other: Quantized | float, alpha: float = 1.0) -> Quantized"
+  fallback: torch.add
+
+- op: "mul(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.mul
+
+- op: "div(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.div
+
+- op: "sum(input: Quantized) -> Quantized"
+  fallback: torch.sum
+
+- op: "silu(input: Quantized) -> Quantized"
+  fallback: torch.nn.functional.silu
+
+- op: "gelu(input: Quantized) -> Quantized"
+  fallback: torch.nn.functional.gelu
+
+- op: "scaled_dot_product_attention( query: Quantized, key: Quantized, value: Quantized, attn_mask: Optional[Tensor] = None, dropout_p: float = 0.0, is_causal: bool = False, scale: Optional[float] = None) -> Quantized"
+  fallback: torch.nn.functional.scaled_dot_product_attention
+
+- op: "dropout(input: Quantized, p: float = 0.5, training: bool =True, inplace: bool =False) -> Quantized"
+  fallback: torch.nn.functional.dropout
+
+- op: "permute(input: Quantized, dims: tuple[int, ...]) -> Quantized"
+  fallback: torch.permute
+
+- op: "cat(tensors: Sequence[Quantized], dim: int = 0) -> Quantized"
+  fallback: torch.cat
+
+- op: "index_add(input: Quantized, dim: int, index: Tensor, source: Quantized, alpha: float = 1) -> Quantized "
+  fallback: torch.index_add

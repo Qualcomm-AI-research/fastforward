@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+${CONDA_EXE:-$CONDA_PREFIX/bin/conda} run --name "${2:-$CONDA_DEFAULT_ENV}" --live-stream python3 -m pip install -v --no-deps --no-build-isolation -e "${1:-.}/[dev,test]"

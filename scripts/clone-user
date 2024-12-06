@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# This script appends information about the current user (uid & gid) to `/etc/passwd` and `/etc/group`.
+# A Docker image might have different users, so the host's user information will be added to these files,
+# which are copied from the image. Since there is no easy way to get a file from a Docker image,
+# a container will be created (but not started!) and deleted once the copying is done.
+# If the Docker image is not available (e.g., in a VSCode dev container), files from the host will be used.
+# You can have the same uid & gid inside a container as on the host by using the script output as arguments to the `docker run` command.
+set -eu
+
+DOCKER_IMAGE="$1"
+DST_DIR="${2:-/var/tmp/$USER/$DOCKER_IMAGE}"
+mkdir -p "$DST_DIR"
+if docker image inspect --format="ignored" "$DOCKER_IMAGE" > /dev/null ; then
+    CONTAINER_ID=$(docker container create "$DOCKER_IMAGE")
+    # shellcheck disable=SC2064 # CONTAINER_ID should be expanded now and not when script exits.
+    trap "docker container rm -v $CONTAINER_ID > /dev/null ; sleep 0.5" EXIT
+
+    docker cp "$CONTAINER_ID:/etc/group" "$DST_DIR/group"
+    docker cp "$CONTAINER_ID:/etc/passwd" "$DST_DIR/passwd"
+else
+    cp /etc/group "$DST_DIR/group"
+    cp /etc/passwd "$DST_DIR/passwd"
+fi
+
+grep -q "$(id -g)" "$DST_DIR/group" || getent group "$(id -g)" >> "$DST_DIR/group"
+grep -q "$(id -u)" "$DST_DIR/passwd" || getent passwd "$(id -u)" >> "$DST_DIR/passwd"
+
+echo "--mount source=/var/tmp/$USER/$DOCKER_IMAGE/passwd,target=/etc/passwd,type=bind,readonly --mount source=/var/tmp/$USER/$DOCKER_IMAGE/group,target=/etc/group,type=bind,readonly --user=$(id -u):$(id -g)"

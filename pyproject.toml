@@ -1,0 +1,123 @@
+[build-system]
+requires = [
+  "scikit-build-core[wheels]>=0.9",
+  "setuptools_scm[toml]>=6.2",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "fastforward"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24,<2.0",
+  "optree",
+  "setuptools<70",
+  "libcst",
+  "packaging",
+  "importlib-metadata",
+  "torch-onnx==0.1.16",
+]
+
+[project.optional-dependencies]
+dev = [
+  # duplicate build-system.requires for editable mode (non-isolated)
+  "scikit-build-core[wheels]>=0.9",
+  "setuptools_scm[toml]>=6.2",
+  # and the rest
+  "isort",
+  "mypy",
+  "ruff",
+  "notebook",
+]
+test = ["pytest>=6", "pytest-cov>=3", "types-PyYAML", "onnxruntime"]
+docs = [
+  "jupytext",
+  "mike",
+  "mkdocs-material",
+  "mkdocs-gen-files",
+  "mkdocs-jupyter",
+  "mkdocs-literate-nav",
+  "mkdocs-section-index",
+  "mkdocstrings-python",
+]
+
+[tool.scikit-build]
+build-dir = "build"
+logging.level = "INFO"
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+strict-config = false
+wheel.cmake = false
+wheel.license-files = []
+wheel.packages = ["src/fastforward"]
+
+[tool.scikit-build.cmake.define]
+CMAKE_BUILD_TYPE = "RelWithDebInfo"
+CMAKE_CUDA_ARCHITECTURES = "70;75;80"
+CMAKE_CUDA_FLAGS = "--threads=8"
+
+[tool.setuptools_scm]
+fallback_version = "0.1.0.dev0"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+xfail_strict = true
+addopts = [
+  "-ra",
+  "--showlocals",
+  "--strict-markers",
+  "--strict-config",
+  "-m",
+  "not patchedtorch",
+]
+markers = [
+  "benchmark: marks benchmark tests",
+  "patchedtorch: marks tests which are required patched PyTorch version (deselect with '-m \"not patchedtorch\"')",
+]
+
+[tool.mypy]
+mypy_path = "src:tests:$MYPY_CONFIG_FILE_DIR/build/stubs"
+exclude = ['build/']
+python_version = "3.10"
+warn_unused_configs = true
+strict = true
+show_error_codes = true
+namespace_packages = true
+explicit_package_bases = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = "fastforward.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["torch.*"]
+ignore_missing_imports = true
+implicit_reexport = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+fix = false
+
+[tool.ruff.lint]
+extend-select = ["I", "E401", "E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F403"]
+
+[tool.ruff.lint.isort]
+lines-between-types = 1
+known-local-folder = ["funcgen"]

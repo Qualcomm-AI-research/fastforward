@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+####################################################################################################
+# Example of using this script:
+# $ ./scripts/verify --lint
+# Or verify two things in one call:
+# $ ./scripts/verify --format --mypy
+###
+# Feel free to extend current script by adding new functions. If a function starts with
+# underscore(_) it is treated as an internal function and should not be used as a command.
+#
+####################################################################################################
+
+function tests ()
+{
+  python3 -m pytest tests
+}
+
+function lint ()
+{
+  python3 -m ruff check "${COMMAND_ARGS[@]}" .
+}
+
+function format ()
+{
+  python3 -m ruff format "${COMMAND_ARGS[@]}" .
+}
+
+function mypy ()
+{
+  python3 -m mypy --soft-error-limit=-1 "${COMMAND_ARGS[@]}" .
+}
+
+function isort ()
+{
+  python3 -m isort --check-only "${COMMAND_ARGS[@]}" .
+}
+
+function shell-check ()
+{
+  # This bash-/sh-/csh-script linting feature is not ready to be used by default. You need to install `shellcheck` (via `apt`) first.
+  # shellcheck disable=SC2086,SC2038 # DIRS_TO_CHECK should split
+  grep -Elr '^#!(.*/|.*env +)(sh|bash|ksh)' ${DIRS_TO_CHECK} | xargs shellcheck
+}
+
+function markers-check()
+{
+  ! grep -riI --exclude=verify --exclude-dir=.cache --exclude-dir=.git --exclude-dir=.mypy_cache -e fixme -e xxx -e todo
+}
+
+function _help()
+{
+  commands=$(declare -F -p | awk '{print $3}' | grep -v '^_' | sed 's/^/--/')
+  echo "Available commands:"
+  echo "$commands"
+}
+
+function _fail_with_help()
+{
+  echo "$1"
+  _help
+  exit 1
+}
+
+COMMANDS=""
+# For commands that need an explicit list of subdirectories to check; exclude directories with a `.` in the name (e.g., `.pytest_cache`).
+DIRS_TO_CHECK=$(find . -mindepth 1 -maxdepth 1 \( -name '*.*' -o -name 'build' \) -prune -o -type d -print)
+readonly DIRS_TO_CHECK
+
+export COMMAND_ARGS=()
+
+if [ $# -eq 0 ]; then
+  _fail_with_help "No command specified."
+fi
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    -h|--help)
+      COMMANDS="_help"
+      shift $#
+      ;;
+    --)
+      # the remaining args are passed 'as is' to commands
+      shift # skip current arg
+      for arg in "${@}"; do [[ "$arg" ]] && COMMAND_ARGS+=("$arg"); done
+      shift $# # skip the remaining args
+      ;;
+    --*)
+      COMMANDS=("${1:2} ${COMMANDS}")
+      shift
+      ;;
+    *)
+      _fail_with_help "Unrecognized command: ${1}"
+      ;;
+  esac
+done
+
+result=0
+# shellcheck disable=SC2128 # COMMANDS is not an array
+for cmd in $COMMANDS; do
+    set +e
+    echo "Executing $cmd"
+    (set -x ; $cmd) # Print full command for transparency
+    result=$((result + $?))
+    set -e
+done
+
+if [[ $result -eq 0 ]]; then
+  echo "PASSED"
+else
+  echo "FAILED"
+fi
+
+exit $result

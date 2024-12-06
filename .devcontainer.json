@@ -1,0 +1,105 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+        "name": "${localWorkspaceFolderBasename}",
+        "build": {
+                "dockerfile": "${localWorkspaceFolder}/docker/Dockerfile",
+                "context": "${localWorkspaceFolder}",
+                "options": [
+                        "--tag=${localWorkspaceFolderBasename}-${devcontainerId}"
+                ],
+                "args": {}
+        },
+        "runArgs": [
+                "--gpus=all",
+                "--name=${localWorkspaceFolderBasename}-${localEnv:USER}"
+        ],
+        "remoteEnv": {
+                "PATH": "${containerWorkspaceFolder}/scripts:${containerEnv:PATH}"
+        },
+        "containerUser": "${localEnv:DOCKER_UID}:${localEnv:DOCKER_GID}",
+        "initializeCommand": {
+                "user": "${localWorkspaceFolder}/scripts/clone-user ${localWorkspaceFolderBasename}-${devcontainerId}"
+        },
+        "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind,consistency=cached",
+        "workspaceFolder": "${localWorkspaceFolder}",
+        "mounts": [
+                "source=/var/tmp/${localEnv:USER}/${localWorkspaceFolderBasename}-${devcontainerId}/group,target=/etc/group,type=bind,readonly",
+                "source=/var/tmp/${localEnv:USER}/${localWorkspaceFolderBasename}-${devcontainerId}/passwd,target=/etc/passwd,type=bind,readonly",
+                "source=${localEnv:HOME},target=${localEnv:HOME},type=bind,readonly,bind-propagation=rshared",
+                "source=/local/mnt/workspace/${localEnv:USER},target=/local/mnt/workspace/${localEnv:USER},type=bind,bind-propagation=rshared"
+        ],
+        "customizations": {
+                "vscode": {
+                        "extensions": [
+                                "charliermarsh.ruff",
+                                "mhutchie.git-graph",
+                                "ms-python.isort",
+                                "ms-python.mypy-type-checker",
+                                "ms-python.python",
+                                "ms-python.vscode-pylance",
+                                "ms-toolsai.jupyter",
+                                "ms-vscode.cpptools-extension-pack"
+                        ],
+                        "settings": {
+                                "isort.args": [
+                                        "--settings-path",
+                                        "${workspaceFolder}/pyproject.toml"
+                                ],
+                                "ruff.interpreter": [
+                                        "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/bin/python3"
+                                ],
+                                "ruff.format.args": [
+                                        "--config=${workspaceFolder}/pyproject.toml"
+                                ],
+                                "ruff.lint.args": [
+                                        "--config=${workspaceFolder}/pyproject.toml"
+                                ],
+                                "mypy-type-checker.args": [
+                                        "--config-file ${workspaceFolder}/pyproject.toml"
+                                ],
+                                "editor.formatOnSave": true,
+                                "notebook.formatOnCellExecution": true,
+                                "notebook.formatOnSave.enabled": true,
+                                "python.defaultInterpreterPath": "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/bin/python3",
+                                "python.condaPath": "${containerEnv:CONDA_PREFIX}/bin/conda",
+                                "python.testing.unittestEnabled": false,
+                                "python.testing.pytestEnabled": true,
+                                "[python]": {
+                                        "editor.defaultFormatter": "charliermarsh.ruff",
+                                        "editor.codeActionsOnSave": {
+                                                "source.fixAll.ruff": true,
+                                                "source.organizeImports.ruff": true
+                                        }
+                                },
+                                "terminal.integrated.env.linux": {
+                                        "PYTHONPATH": "${workspaceFolder}"
+                                },
+                                "cmake.cmakePath": "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/bin/cmake",
+                                "cmake.generator": "Ninja",
+                                "cmake.configureArgs": [
+                                        "-C${workspaceFolder}/build/CMakeInit.txt"
+                                ],
+                                "cmake.configureSettings": {
+                                        "CMAKE_MAKE_PROGRAM": "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/bin/ninja"
+                                },
+                                "cmake.configureEnvironment": {
+                                        "PATH": "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/bin:${containerEnv:PATH}"
+                                },
+                                "cmake.buildEnvironment": {
+                                        "CMAKE_TOOLS": "1"
+                                },
+                                "C_Cpp.clang_format_fallbackStyle": "Mozilla",
+                                "C_Cpp.clang_format_sortIncludes": true,
+                                "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+                                "C_Cpp.default.cppStandard": "c++17",
+                                "C_Cpp.default.cStandard": "c17",
+                                "C_Cpp.default.includePath": [
+                                        "${workspaceFolder}/**",
+                                        "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/include/**",
+                                        "${containerEnv:CONDA_PREFIX}/envs/${containerEnv:CONDA_DEFAULT_ENV}/lib/python3.10/site-packages/torch/include/**"
+                                ],
+                                "task.allowAutomaticTasks": "on"
+                        }
+                }
+        }
+}

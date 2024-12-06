@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Except few files and directories
+!/docker
+!pyproject.toml
+
+# Ignore unnecessary files inside allowed directories
+**/*.pyc

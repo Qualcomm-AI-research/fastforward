@@ -1,0 +1,90 @@
+site_name: "FastForward"
+site_description: "Yet another quantization library."
+site_url: !ENV DOCS_SITE_URL
+repo_url: !ENV DOCS_REPO_URL
+site_dir: "site"
+watch: [mkdocs.yml, README.md, docs/release_notes/]
+edit_uri: edit/main/docs/
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+
+theme:
+  name: material
+  palette:
+    primary: deep purple
+  features:
+  - content.code.annotate
+  - content.code.copy
+  - content.tooltips
+  - navigation.tabs
+  - toc.follow
+  - toc.integrate
+
+nav:
+  - Home: 
+    - Overview: index.md
+  - Tutorials: examples/index.md
+  - Dev guide:
+    - Overview: design/index.md
+  - API reference: reference/
+  - Release Notes: release_notes/index.md
+
+exclude_docs: |
+  gen_reference.py
+
+not_in_nav: |
+  examples/*.nb.py
+
+# Customization
+extra:
+  version:
+    provider: mike
+
+plugins:
+  # https://github.com/danielfrg/mkdocs-jupyter
+  - mkdocs-jupyter:
+      execute: True
+      include: ["*.nb.py"]
+      include_source: True
+
+  # https://squidfunk.github.io/mkdocs-material/plugins/search/
+  - search
+  # https://github.com/oprypin/mkdocs-gen-files
+  # Generate files for Reference API dynamically
+  - gen-files:
+      scripts:
+        - docs/gen_reference.py
+  # https://github.com/oprypin/mkdocs-literate-nav
+  - literate-nav:
+      nav_file: summary.md
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src/fastforward]
+          options:
+            heading_level: 3
+            show_source: false
+            show_inheritance_diagram: True
+            show_if_no_docstring: True
+            merge_init_into_class: true
+            allow_inspection: false
+            show-root-full-path: true
+            show_root_members_full_path: true
+            show_symbol_type_heading: true
+            show_root_toc_entry: false
+  - section-index
+  # https://github.com/jimporter/mike
+  # Generate doc for each version
+  - mike:
+      version_selector: True
+
+markdown_extensions:
+  - pymdownx.magiclink
+  - pymdownx.snippets:
+      base_path: [!relative $config_dir]
+      check_paths: true
+  - toc:
+      permalink: "#"
