@@ -209,5 +209,7 @@ def unsqueeze(input: QuantizedTensor, dim: int) -> QuantizedTensor:
 
 
 @register("take_along_dim", linear_per_tensor_predicate)
-def take_along_dim(input: QuantizedTensor, indices: torch.LongTensor, dim: int | None = None) -> QuantizedTensor:
+def take_along_dim(
+    input: QuantizedTensor, indices: torch.LongTensor, dim: int | None = None
+) -> QuantizedTensor:
     return apply_and_reattach(lambda x: torch.take_along_dim(x, indices, dim=dim), input)
