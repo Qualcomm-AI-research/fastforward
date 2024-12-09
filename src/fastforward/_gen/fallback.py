@@ -250,6 +250,7 @@ def conv3d(
 def softmax(
     input: torch.Tensor,
     dim: int,
+    dtype: Optional[torch.dtype] = None,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -266,7 +267,7 @@ def softmax(
     if isinstance(input, QuantizedTensor):
         input = input.dequantize()
 
-    output = torch.softmax(input=input, dim=dim)
+    output = torch.softmax(input=input, dim=dim, dtype=dtype)
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output

@@ -10,7 +10,7 @@
 - op: "conv3d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size | str = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
   fallback: torch.nn.functional.conv3d
 
-- op: "softmax(input: Quantized, dim: int) -> Quantized"
+- op: "softmax(input: Quantized, dim: int, dtype: Optional[DType] = None) -> Quantized"
   fallback: torch.softmax
 
 - op: "relu(input: Quantized) -> Quantized"

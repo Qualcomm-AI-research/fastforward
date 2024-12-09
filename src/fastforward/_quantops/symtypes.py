@@ -210,6 +210,7 @@ MaybeQuantized = Tensor | QuantizedTensor
 EllipsisType = Type("EllipsisType", py_repr="...")
 Size = Type("torch.Size") | Tuple[Int, EllipsisType]
 Quantizer = Type("Quantizer")
+DType = Type("DType", py_repr="torch.dtype")
 
 
 def str_to_type(name: str) -> Type:
@@ -238,6 +239,8 @@ def str_to_type(name: str) -> Type:
             return Size
         case "..." | "Ellipsis":
             return EllipsisType
+        case "dtype" | "DType" | "torch.dtype":
+            return DType
     raise ValueError(f"No known type with name '{name}'")
 
 
