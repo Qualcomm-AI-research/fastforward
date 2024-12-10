@@ -19,7 +19,7 @@ class QuantizedEmbedding(torch.nn.Embedding, QuantizedModule):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return functional.embedding(
             input,
-            self.input_quantizer(self.weight),
+            self.weight_quantizer(self.weight),
             self.padding_idx,
             self.max_norm,
             self.norm_type,
