@@ -1849,7 +1849,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8b4e1de0">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f9eb85b9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1902,7 +1902,7 @@ backward pass), and then a custom <code>Quantizer</code> class.</p>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=be103662">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6e07c0cd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2003,7 +2003,7 @@ class MyQuantizationFunction(QuantizationFunction):
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1a03127a">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=95ee5193">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2015,7 +2015,7 @@ a floating point tensor into a <code>QuantizedTensor</code> storing integer data
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c2311ab3">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=330a8a86">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2067,7 +2067,7 @@ print(f"The maximum quantization error found on input data is: {qf_error.max()} 
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>The maximum quantization error found on input data is: 0.0039024949073791504 
+<pre>The maximum quantization error found on input data is: 0.0039054155349731445 
 </pre>
 </div>
 </div>
@@ -2075,7 +2075,7 @@ print(f"The maximum quantization error found on input data is: {qf_error.max()} 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0e70b004">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3c539af7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2101,7 +2101,7 @@ our quantization parameters accordingly.</li>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2273ae44">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=eebef508">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2248,7 +2248,7 @@ def integer_maximum(num_bits: float) -&gt; float:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=036773a7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d06b0081">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2259,7 +2259,7 @@ def integer_maximum(num_bits: float) -&gt; float:
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=13f0568a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=77b66786">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2323,14 +2323,14 @@ print(f"The maximum quantization error found on input tensor is: {q_error.max()}
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>The maximum quantization error found on input tensor is: 0.022903375327587128 
+<pre>The maximum quantization error found on input tensor is: 0.02473825216293335 
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>/tmp/ipykernel_15781/439193663.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+<pre>/tmp/ipykernel_145204/439193663.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
   _offset = torch.round(torch.tensor(offset, device=quant_data.device))
 </pre>
 </div>
@@ -2339,7 +2339,7 @@ print(f"The maximum quantization error found on input tensor is: {q_error.max()}
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c33dc905">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=84652daf">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2351,7 +2351,7 @@ over our custom quantizer:</p>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b5ea2e47">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=7e96e72a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2424,15 +2424,15 @@ print(f"The maximum quantization error found on new data is: {q_error.max()} ")<
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>The maximum quantization error found on calibraiton data is: 0.019555628299713135 
-The maximum quantization error found on new data is: 0.019787967205047607 
+<pre>The maximum quantization error found on calibraiton data is: 0.016443923115730286 
+The maximum quantization error found on new data is: 0.6475285291671753 
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>/tmp/ipykernel_15781/439193663.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+<pre>/tmp/ipykernel_145204/439193663.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
   _offset = torch.round(torch.tensor(offset, device=quant_data.device))
 </pre>
 </div>
@@ -2441,7 +2441,7 @@ The maximum quantization error found on new data is: 0.019787967205047607
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a52c3ff1">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=eea282a0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2454,7 +2454,7 @@ case, we just need to add the following method to <code>MyQuantizer</code>:</p>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=36307a79">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1cf220e7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

@@ -36,7 +36,7 @@ import torch
 from datasets import load_dataset
 from quick_start_utils import tokenize_dataset
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
 
 import fastforward as ff
