@@ -43,25 +43,17 @@ change.
 
 To get started, explore these tutorials:
 
-- [Getting Started: Quantizing a LLM from Scratch](http://url-to-tutorial)
-- [Quick Start: Quantization of Llama-v2](http://url-to-tutorial)
+- [Getting Started: Quantizing a LLM from Scratch](https://qualcomm-ai-research.github.io/fastforward/examples/quantizing_networks.nb/)
+- [Quick Start: Quantization of Llama-v3](https://qualcomm-ai-research.github.io/fastforward/examples/quick_start/quick_start_quantize_llms.nb/)
 
-For more tutorials and the API reference, visit the [general documentation](http://url-to-docs).
+For more tutorials and the API reference, visit the [general documentation](https://qualcomm-ai-research.github.io/fastforward).
 
 ### How to Get It
 
 1. Ensure you have a working installation of PyTorch.
 
-2. Install FastForward using one of the following methods:
+2. Install FastForward :
 
-    - **Directly from the repository**:
-
-        ```shell
-        pip install <url to repository>
         ```
-
-    - **From source**:
-
-        ```shell
-        instructions
+        pip https://github.com/Qualcomm-AI-research/fastforward 
         ```
