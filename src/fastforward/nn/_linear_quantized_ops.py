@@ -213,3 +213,16 @@ def take_along_dim(
     input: QuantizedTensor, indices: torch.LongTensor, dim: int | None = None
 ) -> QuantizedTensor:
     return apply_and_reattach(lambda x: torch.take_along_dim(x, indices, dim=dim), input)
+
+
+@register("topk", linear_per_tensor_predicate)  # type: ignore[arg-type]
+def topk(
+    input: QuantizedTensor,
+    k: int,
+    dim: int = -1,
+    largest: bool = True,
+    sorted: bool = True,
+) -> torch.return_types.topk:
+    values, indices = torch.topk(input, k, dim=dim, largest=largest, sorted=sorted)
+    values = input._quantization_function.attach(values)
+    return torch.return_types.topk((values, indices))
