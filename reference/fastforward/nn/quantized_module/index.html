@@ -1,0 +1,2739 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Yet another quantization library.">
+      
+      
+      
+      
+        <link rel="prev" href="../normalization/">
+      
+      
+        <link rel="next" href="../quantizer/">
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.48">
+    
+    
+      
+        <title>quantized_module - FastForward</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            FastForward
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              quantized_module
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../.." class="md-tabs__link">
+          
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../examples/" class="md-tabs__link">
+        
+  
+    
+  
+  Tutorials
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  API reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    FastForward
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../examples/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    API reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            API reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    fastforward
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            fastforward
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../common/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    common
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flags/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    flags
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../forward_override/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    forward_override
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../mpath/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    mpath
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_6" id="__nav_3_1_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_6">
+            <span class="md-nav__icon md-icon"></span>
+            mpath
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mpath/fragments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    fragments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mpath/selector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    selector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_7" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    nn
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_7" id="__nav_3_1_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_1_7">
+            <span class="md-nav__icon md-icon"></span>
+            nn
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../activations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    activations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../container/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    container
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conv/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    conv
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dynamic_linear_quantizer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dynamic_linear_quantizer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    embedding
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../functional/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    functional
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../linear/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    linear
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../linear_quantizer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    linear_quantizer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../normalization/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    normalization
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    quantized_module
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    quantized_module
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="md-nav__link">
+    <span class="md-ellipsis">
+      ModuleConversionDict
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.ModuleType" class="md-nav__link">
+    <span class="md-ellipsis">
+      ModuleType
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModuleType" class="md-nav__link">
+    <span class="md-ellipsis">
+      QuantizedModuleType
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="md-nav__link">
+    <span class="md-ellipsis">
+      SKIP_QUANTIZATION
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.logger" class="md-nav__link">
+    <span class="md-ellipsis">
+      logger
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule" class="md-nav__link">
+    <span class="md-ellipsis">
+      QuantizedModule
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QuantizedModule">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extending existing (non-quantized) modules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule--quantizedstubs" class="md-nav__link">
+    <span class="md-ellipsis">
+      QuantizedStubs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init_quantization__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init_subclass__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __setattr__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      named_quantizers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantize_children
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.quantizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantizers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      register_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.SkipQuantization" class="md-nav__link">
+    <span class="md-ellipsis">
+      SkipQuantization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SkipQuantization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.SkipQuantization.__repr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __repr__
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.named_quantizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      named_quantizers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.quantize_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantize_model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.quantized_module_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantized_module_map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.surrogate_quantized_modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      surrogate_quantized_modules
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quantizer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    quantizer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overrides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    overrides
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_9" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../quantization/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    quantization
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_9" id="__nav_3_1_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_9">
+            <span class="md-nav__icon md-icon"></span>
+            quantization
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/affine/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    affine
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/dynamic/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dynamic
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/function/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    function
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/granularity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    granularity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/local_error/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    local_error
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/output_mse/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    output_mse
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/quant_init/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    quant_init
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/random/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    random
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/ste/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ste
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/strict_quantization/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    strict_quantization
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/tiled_tensor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    tiled_tensor
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantized_tensor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    quantized_tensor
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_11" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../range_setting/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    range_setting
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_11" id="__nav_3_1_11_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_11">
+            <span class="md-nav__icon md-icon"></span>
+            range_setting
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../range_setting/common/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    common
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../range_setting/min_error/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    min_error
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../range_setting/minmax/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    minmax
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../type_common/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    type_common
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>quantized_module</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.ModuleConversionDict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">ModuleConversionDict</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="n">ModuleType</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">QuantizedModuleType</span><span class="p">,</span> <span class="s1">&#39;SkipQuantization&#39;</span><span class="p">]]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.ModuleType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="nb">type</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.ModuleType" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.QuantizedModuleType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">QuantizedModuleType</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="nb">type</span><span class="p">[</span><span class="s1">&#39;QuantizedModule&#39;</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModuleType" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">SKIP_QUANTIZATION</span> <span class="o">=</span> <span class="n">SkipQuantization</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.logger" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.logger" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="fastforward.nn.quantized_module.QuantizedModule" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.quantized_module.QuantizedModule</code>
+
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+        <p>Base class for quantized neural network models/modules.</p>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules">Extending existing (non-quantized) modules<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules" title="Permanent link">#</a></h4>
+<p>In many cases, a quantized module will be a specialization of a non-quantized module.
+<code>QuantizedModule</code> follows an extension principle, i.e., QuantizedModule extends the
+existing classes by implementing all the quantization related initialization logic in the
+<code>__init_quantization__()</code> method. I.e., no quantization logic should be implemented
+in <code>__init__()</code></p>
+<p>When a quantized module is initialized, first the <code>__init__()</code> of the super classes is called.
+Once these conclude, <code>__init_quantization__()</code> is executed. Alternatively, one can create
+an instance of the super class. Update the <code>__class__</code> attribute to the quantized class
+and call <code>__init_quantization__()</code>. By adhering to this separation of initialization, we can
+easily convert submodules of a non-quantized neural network to their quantized counterparts.</p>
+<p>Quantized classes are automatically detected through the subclass hierarchy. For example,
+a class that subclasses <code>QuantizedModule</code> and <code>torch.nn.Linear</code> is considered a quantized
+implementation of <code>torch.nn.Linear</code> and will be used in <code>quantized_module</code>. To opt-out from this
+automatic discovery mechanism, pass <code>include_in_module_map=False</code> as class argument:</p>
+<pre><code class="language-python">class MyQuantizedModule(torch.nn.QuantizedModule, include_in_module_map=False):
+    ...
+</code></pre>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>Future versions of this library will include support to automatically generate quantized
+counterparts. However, until that feature lands, quantized counterparts need to be
+implemented manually. Quantized implementations for a subset of modules available in
+PyTorch can be found in the <code>fastforward.nn</code> module.</p>
+</details>        <h4 id="fastforward.nn.quantized_module.QuantizedModule--quantizedstubs"><code>QuantizedStub</code>s<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--quantizedstubs" title="Permanent link">#</a></h4>
+<p>A QuantizedModule does not define specific quantizers during initialization. Instead, one
+or more <code>QuantizerStub</code>s are defined. These may be replaced by explicit quantizers at a later
+time. This makes <code>QuantizedModule</code>s general over particular quantizers.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quantization specific initializer.</p>
+<p>This method is automatically called when a <code>QuantizedModule</code> is
+initialized directly, after <code>__init__()</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_subclass__</span><span class="p">(</span><span class="n">include_in_module_map</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Record <code>QuantizedModule</code> subclasses in module map for model conversion.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>include_in_module_map</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, the newly created <code>QuantizedModule</code> is recorded
+in the global module conversion map. This means that the module
+will be automatically discovered and used for module replacements
+in <code>ff.quantize_model</code>. If False, this registration is skipped. This
+can be useful for one-off modules or modules for which you want
+to provide the mapping explicitly.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">named_quantizers</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p><code>Iterator</code> over quantizers and their names.</p>
+<p>Return an iterator over <code>QuantizedModule</code>s in the network, yielding both
+the name of the quantizer as well ass the quantizer itself. Yields only
+direct children if <code>recurse</code> is False.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>prefix</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Str that prefixed to the name of the module.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>recurse</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Only yield direct children if True, yield all quantizers in
+submodules otherwise.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>remove_duplicate</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Flag indicating whether duplicated should be
+yielded once or multiple times.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_stubs</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Do not yield instances of <code>QuantizerStub</code> if True.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Yields:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>(str, QuantizerModule)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>Tuple</code> of name and quantizer</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize_children</span><span class="p">(</span><span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quantize children.</p>
+<p>Converts the children modules to their <code>QuantizedModule</code> counterparts defined in
+<code>fastforward.nn.quantized_module.quantized_module_map</code> and <code>extra_conversion</code>.
+This may be used as part of <code>__init_quantization__</code> to perform recursive quantization
+initialization.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>extra_conversion</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="fastforward.nn.quantized_module.ModuleConversionDict" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A dict that maps <code>torch.nn.Module</code> to <code>QuantizedModule</code> subclasses.
+For any conversion, this dict is first checked. If there is no match, the general
+mapping as given by <code>quantized_module_map</code> is used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="warning" open>
+  <summary>Warning</summary>
+  <p>If this method is used on a module that has submodules for which no
+mapping is available in both <code>extra_conversion</code> and
+<code>quantized_module_map</code>, an error is thrown and the conversions
+fails.</p>
+</details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantizers</span><span class="p">(</span><span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.quantizers" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Iteartor over quantizers.</p>
+<p>Return an iterator over <code>QuantizedModule</code>s in the network. Yields only
+direct children if <code>recurse</code> is False.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>recurse</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Only yield direct children if True, yield all quantizers in
+submodules otherwise.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_stubs</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Do not yield instances of <code>QuantizerStub</code> if True.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">register_quantizer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">_register_module</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Register new quantizer on module.</p>
+<p>Register a quantizer with under <code>name</code> on this module. This method is similar to
+register_module, but specific to quantizers. If an attribute is set to a quantizer
+on a QuantizerModule, this method is called automatically.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The name of the quantizer. It will be exposed under this name as an attribute
+on the QuantizedModule</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>quantizer</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<a class="autorefs autorefs-internal" title="fastforward.nn.Quantizer" href="../quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The quantizer to register.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="fastforward.nn.quantized_module.SkipQuantization" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.quantized_module.SkipQuantization</code>
+
+
+<a href="#fastforward.nn.quantized_module.SkipQuantization" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Marker class to signify that a module must not be quantized.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.SkipQuantization.__repr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.quantized_module.SkipQuantization.__repr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.nn.quantized_module.named_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">named_quantizers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.named_quantizers" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p><code>Iterator</code> over quantizers with names.</p>
+<p>Return an iterator over <code>QuantizedModule</code>s in module, yielding both
+the name of the quantizer as well ass the quantizer itself. Yields only
+direct children if <code>recurse</code> is False.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>prefix</code>
+            </td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Str that prefixed to the name of the module.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>recurse</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Only yield direct children if True, yield all quantizers in
+submodules otherwise.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>remove_duplicate</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Flag indicating whether duplicated should be
+yielded once or multiple times.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_stubs</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Do not yield instances of <code>QuantizerStub</code> if True.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Yields:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>(str, QuantizerModule)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>Tuple</code> of name and quantizer</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.nn.quantized_module.quantize_model" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.quantize_model" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert modules and submodules to quantized counterparts.</p>
+<p>Converts a <code>torch.nn.Module</code> and it's children to their <code>QuantizedModule</code>
+counterparts defined in
+<code>fastforward.nn.quantized_module.quantized_module_map</code> and <code>extra_conversion</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Model to quantize</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>recursive</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, recursively quantize all submodules</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>extra_conversion</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<a class="autorefs autorefs-internal" title="fastforward.nn.quantized_module.ModuleConversionDict" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A mapping from <code>torch.nn.Module</code> subclasses to <code>QuantizedModule</code>
+subclasses that extends the default mapping returned by <code>quantized_module_map</code>.
+All (sub)modules in model will be replaced according to this mapping. A module
+can be marked as <code>do not replace</code> by adding an entry that maps to
+<code>fastforward.nn.quantized_module.SKIP_QUANTIZATION</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_quantized_modules</code>
+            </td>
+            <td>
+                  <code>bool</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, do not attempt to replace already quantized modules. If
+False, quantized modules are treated as any other module and may be replaced if an entry
+is available in the conversion map or an error is thrown otherwise.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.nn.quantized_module.quantized_module_map" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">quantized_module_map</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.quantized_module.quantized_module_map" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Returns a dictionary that maps <code>torch.nn.Module</code>s to their <code>ff.nn.QuantizedModule</code> counterparts.</p>
+
+
+<details class="warning" open>
+  <summary>Warning</summary>
+  <p>This finds all known subclasses of <code>ff.nn.QuantizedModule</code>, hence, in
+order for a particular <code>QuantizedModule</code> subclass to be included it
+needs to be created.</p>
+</details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.nn.quantized_module.surrogate_quantized_modules" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">surrogate_quantized_modules</span><span class="p">(</span><span class="n">model</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.surrogate_quantized_modules" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Create surrogate quantization modules for prototyping.</p>
+<p>Construct a <code>ModuleConversionDict</code> that contains surrogate quantized modules
+of all submodules in <code>model</code> for which no quantized counterpart exists.
+In this context, a surrogate is a <code>QuantizedModule</code> without any changes to
+it's forward pass. For example, a surrogate for <code>MyModule</code> looks like:</p>
+<pre><code>class QuantizedMyModule(QuantizedModule, MyModule, include_in_module_map=False):
+    pass
+</code></pre>
+<p>These surrogates act as quantized implementations, but perform no real
+quantization. This is useful to temporarily create placeholder quantized
+implementations or for quantized implementations of container Modules,
+i.e., modules which only call submodules.</p>
+<p>When the result of this function is used as <code>extra_conversion</code> in
+<code>quantize_model</code> the quantization conversion process will always succeed,
+however, the resulting model may not be correctly quantized. For example,
+given our <code>MyModule</code> example, <code>MyModule.forward</code> may perform an operation
+that should be quantized. Since the forward method is untouched, the
+resulting model may not be correctly quantizable.</p>
+<p>Note that when using this function, the created classes are not
+automatically discovered as with normal <code>QuantizedModule</code> creation.
+Hence, future calls of <code>quantize_model</code> will not incorrectly discover
+classes that where created through this function.</p>
+
+
+<details class="warning" open>
+  <summary>Warning</summary>
+  <p>Caution is advised when using this function. Inspect the result of
+<code>quantize_model</code> and validate if the created model matches your
+expectations. All quantized modules introduces by using this function
+have a type name that ends in 'Surrogate'.</p>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>Model</code> for which to create placeholder <code>QuantizedModule</code> implementations</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="fastforward.nn.quantized_module.ModuleConversionDict" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a <code>ModuleConversionDict</code> that can be used as <code>extra_conversion</code> in <code>quantize_model</code></p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      
+    
+  </body>
+</html>
