@@ -1,5 +1,5 @@
 site_name: "FastForward"
-site_description: "Yet another quantization library."
+site_description: "FastForward: Neural Network Quantization"
 site_url: !ENV DOCS_SITE_URL
 repo_url: !ENV DOCS_REPO_URL
 site_dir: "site"
