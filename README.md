@@ -52,8 +52,8 @@ For more tutorials and the API reference, visit the [general documentation](http
 
 1. Ensure you have a working installation of PyTorch.
 
-2. Install FastForward :
+2. Install FastForward:
 
         ```
-        pip https://github.com/Qualcomm-AI-research/fastforward 
+        pip install git+https://github.com/Qualcomm-AI-research/fastforward@main
         ```
