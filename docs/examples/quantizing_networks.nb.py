@@ -1,6 +1,3 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
-
 # -*- coding: utf-8 -*-
 # ---
 # jupyter:
@@ -575,3 +572,8 @@ my_quantized_layer
 #
 # 6. Running the full benchmark experiments
 #    1. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/33e70bd8c690c7bca9a81f7f0a2e10f8d2a6b583) to see how we conducted this step.
+
+
+# %% [markdown]
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.

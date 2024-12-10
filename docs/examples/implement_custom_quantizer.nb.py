@@ -1,6 +1,3 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
-
 # ---
 # jupyter:
 #   jupytext:
@@ -307,3 +304,8 @@ def operator_for_range(
         min_range, max_range, self.num_bits, self.symmetric, allow_one_sided=False
     )
     return MyQuantizationFunction.bind(num_bits=self.num_bits, scale=scale, offset=offset)
+
+
+# %% [markdown]
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.

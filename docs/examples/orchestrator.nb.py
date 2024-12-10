@@ -1,6 +1,3 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
-
 # -*- coding: utf-8 -*-
 # ---
 # jupyter:
@@ -344,3 +341,7 @@ orchestrator.add_batch(2)
 
 
 orchestrator.start()
+
+# %% [markdown]
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.

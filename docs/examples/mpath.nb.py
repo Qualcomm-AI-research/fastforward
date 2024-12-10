@@ -1,6 +1,3 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
-
 # ---
 # jupyter:
 #   jupytext:
@@ -112,7 +109,7 @@ ff.mpath.search("layer4/*/[cls:torch.nn.Linear]", my_module)
 
 # %%
 ff.mpath.search(
-    "[re:layer[12\]]/sublayer1", my_module
+    r"[re:layer[12\]]/sublayer1", my_module
 )  # we have to escape ']' in the regex because the regex pattern is '[' and ']' delimited
 
 # %% [markdown]
@@ -226,3 +223,7 @@ ff.find_quantizers(my_quantized_module, "**/[quantizer:input]")
 # Lastly, note that there is a difference between the module hierarchy and the tag hierarchy in a query string. We can mix tag and module hierarchy queries.
 #
 # For example, `top_module/sub_module/**/[quantizer:parameter/weight]` will match all quantizers in `top_module.sub_module` that have the `parameter/weight` tag.
+
+# %% [markdown]
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
