@@ -98,3 +98,16 @@ def test_unsqueeze(granularity):
         expected = qx.dequantize().unsqueeze(dim)
         actual = qx.unsqueeze(dim).dequantize()
         torch.testing.assert_close(actual, expected)
+
+
+def test_expand():
+    # Given: A quantized and non-quantized tensor that represent the same values
+    quantized_data = ff.quantization.random.random_quantized((3, 3))
+    data = quantized_data.dequantize()
+
+    # When: Expand the second dimension of both tensors
+    quantized_expanded = quantized_data.expand(3, 3, 3)
+    expanded = data.expand(3, 3, 3)
+
+    # Then: The dequantized and non-quantized tensor should match exactly.
+    torch.testing.assert_close(quantized_expanded.dequantize(), expanded)

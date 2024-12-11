@@ -197,6 +197,11 @@ def getitem(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.__getitem__(*args), input)
 
 
+@register("expand", linear_per_tensor_predicate)
+def expand(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
+    return apply_and_reattach(lambda x: x.expand(*args), input)
+
+
 @register("unsqueeze", linear_or_dynamic_linear_predicate)
 def unsqueeze(input: QuantizedTensor, dim: int) -> QuantizedTensor:
     tile_size = input.quant_args().tile_size
