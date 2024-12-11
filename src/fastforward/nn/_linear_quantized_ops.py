@@ -28,13 +28,17 @@ def _numelof(data: torch.Tensor | float | None) -> int:
 
 def _is_linear_per_tensor(input: QuantizedTensor, *args, **kwargs) -> bool:  # type: ignore[no-untyped-def]
     from fastforward.quantization.affine import TiledAffineQuantizationFunction
+    from fastforward.quantization.dynamic import TiledDynamicAffineQuantizationFunction
 
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
 
     quant_args = input.quant_args()
     return (
-        issubclass(input.quant_func, TiledAffineQuantizationFunction)
+        issubclass(
+            input.quant_func,
+            (TiledAffineQuantizationFunction, TiledDynamicAffineQuantizationFunction),
+        )
         and _numelof(quant_args.scale) == 1
         and _numelof(quant_args.offset) in (0, 1)
         and quant_args.tile_size == "data_shape"
@@ -152,6 +156,7 @@ def cat_predicate(
         return False
 
     from fastforward.quantization.affine import TiledAffineQuantizationFunction
+    from fastforward.quantization.dynamic import TiledDynamicAffineQuantizationFunction
 
     scale: torch.Tensor | float | None = None
     offset: torch.Tensor | float | None = None
@@ -160,7 +165,10 @@ def cat_predicate(
         if not isinstance(tensor, QuantizedTensor):
             return False  # type: ignore[unreachable]
         quant_args = tensor.quant_args()
-        if tensor.quant_func != TiledAffineQuantizationFunction:
+        if not issubclass(
+            tensor.quant_func,
+            (TiledAffineQuantizationFunction, TiledDynamicAffineQuantizationFunction),
+        ):
             return False
         scale_match = scale is None or quant_args.scale == scale
         offset_match = offset is None or quant_args.offset == offset

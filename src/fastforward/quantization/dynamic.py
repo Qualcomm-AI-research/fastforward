@@ -159,8 +159,7 @@ def quantize_per_tensor(
     The tile size is automatically assigned to the data shape, so the function
     applies the provided scale and offset on the entirety of the tensor.
     """
-    tile_size = input.size()
-    return quantize_by_tile(input, tile_size, num_bits, output_dtype)
+    return quantize_by_tile(input, "data_shape", num_bits, output_dtype)
 
 
 def quantize_per_channel(
