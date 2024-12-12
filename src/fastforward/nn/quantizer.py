@@ -234,7 +234,7 @@ class QuantizerMetadata:
         "Use QuantizerStub and pass metadata arguments directly instead"
     )
     def to_stub(self) -> "QuantizerStub":
-        return QuantizerStub(__metadata=self)
+        return QuantizerStub(_metadata=self)
 
 
 class Quantizer(torch.nn.Module):
@@ -350,12 +350,12 @@ class QuantizerStub(Quantizer):
         input_quantizer: bool = False,
         output_quantizer: bool = False,
         shape: Optional[tuple[int, ...] | torch.Size] = None,
-        __metadata: Optional[QuantizerMetadata] = None,
+        _metadata: Optional[QuantizerMetadata] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__()
-        if __metadata is not None:
-            self.quant_metadata = __metadata
+        if _metadata is not None:
+            self.quant_metadata = _metadata
         else:
             self.quant_metadata = QuantizerMetadata(
                 *tags,
