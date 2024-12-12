@@ -1,18 +1,9 @@
 import logging
 
-from typing import Sequence
-
-CRITICAL = logging.CRITICAL
-FATAL = logging.FATAL
-ERROR = logging.ERROR
-WARNING = logging.WARNING
-WARN = logging.WARN
-INFO = logging.INFO
-DEBUG = logging.DEBUG
-NOTSET = logging.NOTSET
+from collections.abc import Sequence
 
 
-class DuplicateLogFilter(logging.Filter):
+class DuplicateLogFilter:
     """
     Filter for duplicated log messages.
 
@@ -27,9 +18,8 @@ class DuplicateLogFilter(logging.Filter):
         levels: Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)
     """
 
-    def __init__(self, name: str = "", levels: Sequence[int] = ()) -> None:
-        super().__init__(name)
-        self._supressed_levels = tuple(levels)
+    def __init__(self, levels: Sequence[int] = ()) -> None:
+        self._supressed_levels: tuple[int, ...] = tuple(levels)
         self._logged_warnings: set[tuple[int, str]] = set()
 
     def filter(self, record: logging.LogRecord) -> bool:

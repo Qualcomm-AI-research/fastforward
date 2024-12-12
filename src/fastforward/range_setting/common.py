@@ -172,9 +172,8 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
         """
         ...
 
-    @classmethod
     @abc.abstractmethod
-    def split_module(cls, module: torch.nn.Module) -> Iterator[_Module]:
+    def split_module(self, module: torch.nn.Module) -> Iterator[_Module]:
         """
         Split the module into one or more submodules.
 

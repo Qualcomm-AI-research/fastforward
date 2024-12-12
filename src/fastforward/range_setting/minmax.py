@@ -20,7 +20,7 @@ T = TypeVar("T")
 
 
 logger = logging.getLogger(__name__)
-logger.addFilter(ff.logging.DuplicateLogFilter())
+logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
 
 
 class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module):
@@ -115,18 +115,21 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
     Attributes:
         gamma: The smoothing factor.
         disable_quantization: Flag to disable quantization.
+        skip_unsupported_quantizers: If True, ignore any quantizer that does
+            not not implement `fastforward.range_setting.RangeSettable`. If
+            False, an error `TypeError` is thrown when an unsupported quantizer
+            is encountered.
     """
 
-    def __init__(self, gamma: float = 1.0, disable_quantization: bool = False) -> None:
-        """
-        Initialize the SmoothedMinMaxRangeEstimator.
-
-        Args:
-            gamma: The smoothing factor.
-            disable_quantization: Flag to disable quantization.
-        """
+    def __init__(
+        self,
+        gamma: float = 1.0,
+        disable_quantization: bool = False,
+        skip_unsupported_quantizers: bool = False,
+    ) -> None:
         self.gamma = gamma
         self.disable_quantization = disable_quantization
+        self.skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
         """
@@ -158,8 +161,7 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         del module
         metadata.remove()
 
-    @classmethod
-    def split_module(cls, module: torch.nn.Module) -> Iterator[Quantizer]:
+    def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
         """
         Split the module into individual quantizers.
 
@@ -170,7 +172,13 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
             Iterator[Quantizer]: An iterator over the quantizers.
         """
         for _, quantizer in named_quantizers(module, recurse=True):
-            yield quantizer
+            if isinstance(quantizer, RangeSettable) or not self.skip_unsupported_quantizers:
+                yield quantizer
+            else:
+                logger.warning(
+                    f"{type(quantizer).__name__} does not implement RangeSettable. Therefore "
+                    f"it is not included in {type(self).__name__} range setting."
+                )
 
 
 smoothed_minmax = SmoothedMinMaxRangeEstimator
@@ -261,16 +269,19 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
 
     Attributes:
         disable_quantization: Flag to disable quantization.
+        skip_unsupported_quantizers: If True, ignore any quantizer that does
+            not not implement `fastforward.range_setting.RangeSettable`. If
+            False, an error `TypeError` is thrown when an unsupported quantizer
+            is encountered.
     """
 
-    def __init__(self, disable_quantization: bool = False) -> None:
-        """
-        Initialize the RunningMinMaxRangeEstimator.
-
-        Args:
-            disable_quantization: Flag to disable quantization.
-        """
+    def __init__(
+        self,
+        disable_quantization: bool = False,
+        skip_unsupported_quantizers: bool = False,
+    ) -> None:
         self.disable_quantization = disable_quantization
+        self.skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
         """
@@ -294,13 +305,18 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         del module
         metadata.remove()
 
-    @classmethod
-    def split_module(cls, module: torch.nn.Module) -> Iterator[Quantizer]:
+    def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
         """
         Split module up into separate quantizers.
         """
         for _, quantizer in named_quantizers(module, recurse=True):
-            yield quantizer
+            if isinstance(quantizer, RangeSettable) or not self.skip_unsupported_quantizers:
+                yield quantizer
+            else:
+                logger.warning(
+                    f"{type(quantizer).__name__} does not implement RangeSettable. Therefore "
+                    f"it is not included in {type(self).__name__} range setting."
+                )
 
 
 running_minmax = RunningMinMaxRangeEstimator

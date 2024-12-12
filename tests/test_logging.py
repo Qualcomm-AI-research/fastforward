@@ -1,20 +1,20 @@
-import logging as pylogging
+import logging as logging
 import textwrap
 
 from io import StringIO
 
-from fastforward import logging
+import fastforward as ff
 
 
 def test_duplicate_log_filter():
     # Given: a logger with a DuplicateLogFilter filter that filters duplicated
     # message at the WARNING level
-    logger = pylogging.Logger("test_logger")
-    logger.addFilter(logging.DuplicateLogFilter(levels=(logging.WARNING,)))
+    logger = logging.Logger("test_logger")
+    logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
 
     log_output = StringIO()
-    handler = pylogging.StreamHandler(log_output)
-    handler.setFormatter(pylogging.Formatter("%(levelname)s: %(message)s"))
+    handler = logging.StreamHandler(log_output)
+    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     logger.addHandler(handler)
 
     # When: duplicated messages are logged at different levels
@@ -24,7 +24,7 @@ def test_duplicate_log_filter():
     logger.warning("warning message")
     logger.critical("critical message")
 
-    # Then: expect that duplicated messages at the WARNING level are only
+    # Then: duplicated messages at the WARNING level are only
     # logged once to the output buffer while duplicated messages at other
     # levels are logged every time.
     expected_logs = textwrap.dedent("""

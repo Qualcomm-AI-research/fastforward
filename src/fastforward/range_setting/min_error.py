@@ -35,7 +35,7 @@ from fastforward.range_setting.common import (
 )
 
 logger = logging.getLogger(__name__)
-logger.addFilter(ff.logging.DuplicateLogFilter())
+logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
 
 
 class _TensorKwargs(TypedDict):
@@ -222,6 +222,11 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         search_grid_generator: Callable that defines search grid
         update_range_policy: Callable that defines whether quantizers
             should be updated per step.
+        skip_unsupported_quantizers: If True, ignore any quantizer that does
+            not not implement
+            `fastforward.range_setting.SupportsRangeBasedOperator`. If False,
+            a `TypeError` is raised when an unsupported quantizer is
+            encountered.
 
     """
 
@@ -231,11 +236,13 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         num_candidates: int = 100,
         search_grid_generator: _SearchGridGenerator = _default_search_grid,
         update_range_policy: Optional[Callable[["_MinAvgErrorGridEstimator", int], bool]] = None,
+        skip_unsupported_quantizers: bool = False,
     ):
         self._error_fn = error_fn
         self._num_candidates = num_candidates
         self._search_grid_generator = search_grid_generator
         self._update_range_policy = update_range_policy
+        self._skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
         """
@@ -263,15 +270,23 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         del module
         metadata.remove()
 
-    @classmethod
-    def split_module(cls, module: torch.nn.Module) -> Iterator[Quantizer]:
+    def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
         """
         Yields all quantizers in `module`.
 
         Each is set up for min error range estimation seperately.
         """
         for _, quantizer in named_quantizers(module, recurse=True):
-            yield quantizer
+            if (
+                isinstance(quantizer, SupportsRangeBasedOperator)
+                or not self._skip_unsupported_quantizers
+            ):
+                yield quantizer
+            else:
+                logger.warning(
+                    f"{type(quantizer).__name__} does not implement SupportsRangeBasedOperator."
+                    f" Therefore it is not included in {type(self).__name__} range setting."
+                )
 
 
 min_error_grid = MinErrorGridRangeEstimator
