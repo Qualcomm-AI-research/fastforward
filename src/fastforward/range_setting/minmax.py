@@ -1,9 +1,13 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+import logging
+
 from typing import Iterator, TypeVar
 
 import torch
+
+import fastforward as ff
 
 from fastforward.forward_override import OverrideHandle
 from fastforward.nn.quantized_module import named_quantizers
@@ -13,6 +17,10 @@ from fastforward.quantization.tiled_tensor import tiles_to_rows
 from .common import RangeEstimator, RangeSettable, SimpleEstimatorStep
 
 T = TypeVar("T")
+
+
+logger = logging.getLogger(__name__)
+logger.addFilter(ff.logging.DuplicateLogFilter())
 
 
 class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module):

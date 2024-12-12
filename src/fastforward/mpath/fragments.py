@@ -1,7 +1,6 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import logging
 import re
 
 from typing import Any, Callable
@@ -9,8 +8,6 @@ from typing import Any, Callable
 import torch
 
 from .selector import Fragment, MPathQueryError, Selector
-
-logger = logging.Logger(__name__)
 
 
 class WildcardFragment(Fragment):

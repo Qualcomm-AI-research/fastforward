@@ -2,7 +2,6 @@
 # All Rights Reserved.
 
 import dataclasses
-import logging
 
 from collections import abc
 from typing import Callable, Iterable, Iterator, Optional, TypeVar, overload
@@ -13,8 +12,6 @@ from typing_extensions import Self
 
 from . import _parser as mpath_parser
 from . import selector
-
-logger = logging.Logger(__name__)
 
 _T = TypeVar("_T")
 

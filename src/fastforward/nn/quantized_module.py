@@ -9,6 +9,8 @@ from typing import Any, Iterator, Optional, TypeAlias, Union, cast
 
 import torch
 
+import fastforward as ff
+
 from fastforward.exceptions import QuantizationError
 from fastforward.nn import Quantizer, QuantizerMetadata, QuantizerStub
 
@@ -17,6 +19,7 @@ QuantizedModuleType: TypeAlias = type["QuantizedModule"]
 ModuleConversionDict: TypeAlias = dict[ModuleType, Union[QuantizedModuleType, "SkipQuantization"]]
 
 logger = logging.getLogger(__name__)
+logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.INFO, logging.WARNING)))
 
 
 class _QuantizedModuleMeta(type):

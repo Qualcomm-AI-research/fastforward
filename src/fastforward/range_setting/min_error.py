@@ -13,12 +13,16 @@ Attributes:
 
 """
 
+import logging
+
 from math import floor, sqrt
 from typing import Callable, Iterator, Optional, Protocol, TypedDict
 
 import torch
 
 from typing_extensions import NotRequired
+
+import fastforward as ff
 
 from fastforward.forward_override import OverrideHandle
 from fastforward.nn.quantized_module import named_quantizers
@@ -29,6 +33,9 @@ from fastforward.range_setting.common import (
     SimpleEstimatorStep,
     SupportsRangeBasedOperator,
 )
+
+logger = logging.getLogger(__name__)
+logger.addFilter(ff.logging.DuplicateLogFilter())
 
 
 class _TensorKwargs(TypedDict):

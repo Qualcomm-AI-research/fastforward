@@ -5,7 +5,6 @@ import abc
 import dataclasses
 import functools
 import itertools
-import logging
 
 from operator import truediv
 from typing import TYPE_CHECKING, Iterator, Optional, TypeAlias, TypeVar, overload
@@ -16,8 +15,6 @@ from typing_extensions import Self
 
 if TYPE_CHECKING:
     from .fragments import InvertedFragment
-
-logger = logging.Logger(__name__)
 
 
 class MPathQueryError(Exception):

@@ -3,6 +3,7 @@
 
 from . import dispatcher as dispatcher
 from . import exceptions as exceptions
+from . import logging as logging
 from . import mpath as mpath
 from . import nn as nn
 from . import quantization as quantization
