@@ -144,8 +144,8 @@ def scalar_multiply(
 ) -> QuantizedTensor:
     quant_args = input.quant_args()
     quant_args.scale = quant_args.scale * other
-    scaled_out = _ScaleGradient.apply(input, other)
-    return input.quant_func.bind(**quant_args).attach(scaled_out)
+    scaled_out = _ScaleGradient.apply(input.raw_data, other)
+    return input._quantization_function.rebind(**quant_args).attach(scaled_out)
 
 
 def cat_predicate(
