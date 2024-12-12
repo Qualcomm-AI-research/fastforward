@@ -26,7 +26,7 @@ def _numelof(data: torch.Tensor | float | None) -> int:
     return data.numel()
 
 
-def _is_linear_per_tensor(input: QuantizedTensor, *args, **kwargs) -> bool:  # type: ignore[no-untyped-def]
+def _is_affine_or_dynamic_per_tensor(input: QuantizedTensor, *args, **kwargs) -> bool:  # type: ignore[no-untyped-def]
     # Lazy import to break circular import
     from fastforward.quantization.affine import TiledAffineQuantizationFunction
     from fastforward.quantization.dynamic import TiledDynamicAffineQuantizationFunction
@@ -46,7 +46,7 @@ def _is_linear_per_tensor(input: QuantizedTensor, *args, **kwargs) -> bool:  # t
     )
 
 
-linear_per_tensor_predicate = Predicate(_is_linear_per_tensor)
+linear_per_tensor_predicate = Predicate(_is_affine_or_dynamic_per_tensor)
 
 
 def _is_linear_or_dynamic_linear(input: QuantizedTensor, *args, **kwargs) -> bool:  # type: ignore[no-untyped-def]
