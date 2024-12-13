@@ -52,7 +52,7 @@ def random_quantized(
 
     tile_size = granularity.tile_size(torch.Size(shape))
     random_tensor = quantize_by_tile(
-        torch.randn(*shape, device=device),
+        torch.randn(shape, device=device),
         scale=scale,
         offset=offset,
         num_bits=num_bits,
@@ -92,7 +92,7 @@ def random_quantized_dynamic(
 
     tile_size = granularity.tile_size(torch.Size(shape))
     random_tensor = dynamic_quantize_by_tile(
-        torch.randn(*shape, device=device),
+        torch.randn(shape, device=device),
         num_bits=num_bits,
         tile_size=tile_size,
         output_dtype=storage_dtype,

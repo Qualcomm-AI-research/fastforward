@@ -30,7 +30,7 @@ def check_tile_compatibility(input_size: SizeT, tile_size: SizeT) -> None:
 
     mismatched = []
     for i, (input_dim, tile_dim) in enumerate(zip(input_size, tile_size)):
-        if input_dim % tile_dim != 0:
+        if tile_dim > 0 and input_dim % tile_dim != 0:
             mismatched.append(i)
 
     if mismatched:
@@ -84,6 +84,9 @@ def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) 
     -------
         Tensor: The reshaped tensor.
     """
+    if data.numel() == 0:
+        return data.reshape(1, 0)
+
     tile_size = data.shape if tile_size == "data_shape" else torch.Size(tile_size)
     check_tile_compatibility(data.size(), tile_size)
     num_dim_blocks = [a // b for a, b in zip(data.size(), tile_size)]
@@ -119,6 +122,9 @@ def rows_to_tiles(
     ------
         ValuEerror: Tiled_data's size does not correspond to data_size and tile_size.
     """
+    if tiled_data.numel() == 0:
+        return tiled_data.reshape(data_size)
+
     tile_size_to_use = torch.Size(data_size) if tile_size == "data_shape" else torch.Size(tile_size)
     data_size = torch.Size(data_size)
     check_tile_compatibility(data_size, tile_size_to_use)

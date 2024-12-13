@@ -7,6 +7,8 @@ from typing import Any, Callable, List, ParamSpec, Sequence, TypeAlias, TypeVar
 
 import torch
 
+import fastforward as ff
+
 from fastforward.flags import get_compiled_quant_funcs
 from fastforward.quantization import tiled_tensor
 from fastforward.quantization.ste import round_ste
@@ -208,8 +210,14 @@ def quantize_dynamic_by_tile_impl(
     max_threshold = -min_threshold - 1
     row_representation = tiled_tensor.tiles_to_rows(data, tile_size)
 
-    min_range = torch.min(row_representation, dim=1).values
-    max_range = torch.max(row_representation, dim=1).values
+    try:
+        min_range = torch.min(row_representation, dim=1).values
+        max_range = torch.max(row_representation, dim=1).values
+    except IndexError as e:
+        raise ff.exceptions.QuantizationError(
+            f"Cannot dynamically quantize an empty tensor of shape {data.shape}"
+        ) from e
+
     scale, offset = affine.parameters_for_range(
         min_range, max_range, num_bits, symmetric=False, allow_one_sided=True
     )
