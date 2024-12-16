@@ -26,6 +26,7 @@ from .nodes import (
     CandidateAssignment,
     CandidateReturn,
     CandidateYield,
+    GeneralAssignment,
     ReplacementCandidate,
 )
 
@@ -74,6 +75,38 @@ class SimpleStatementSuiteToIndentedBlock(libcst.CSTTransformer):
             line = libcst.SimpleStatementLine(body=[statement.with_changes(semicolon=semicolon)])
             new_body.append(line)
         return libcst.IndentedBlock(body=tuple(new_body))
+
+
+class WrapAssignments(libcst.CSTTransformer):
+    def leave_AnnAssign(
+        self, _original_node: libcst.AnnAssign, updated_node: libcst.AnnAssign
+    ) -> GeneralAssignment:
+        return GeneralAssignment(
+            original=_original_node,
+            targets=(updated_node.target,),
+            annotation=updated_node.annotation,
+            value=updated_node.value,
+        )
+
+    def leave_Assign(
+        self, _original_node: libcst.Assign, updated_node: libcst.Assign
+    ) -> GeneralAssignment:
+        return GeneralAssignment(
+            original=_original_node,
+            targets=tuple(x.target for x in updated_node.targets),
+            annotation=None,
+            value=updated_node.value,
+        )
+
+    def leave_AugAssign(
+        self, _original_node: libcst.AugAssign, updated_node: libcst.AugAssign
+    ) -> GeneralAssignment:
+        return GeneralAssignment(
+            original=_original_node,
+            targets=(updated_node.target,),
+            annotation=None,
+            value=updated_node.value,
+        )
 
 
 class MarkReplacementCandidates(libcst.CSTTransformer):

@@ -93,6 +93,7 @@ def autoquant(
         preprocessing_passes=[
             passes.SimpleStatementSuiteToIndentedBlock(),
             passes.MarkReplacementCandidates(),
+            passes.WrapAssignments(),
             passes.IsolateReplacementCandidates(),
         ]
     )
