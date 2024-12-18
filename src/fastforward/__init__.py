@@ -17,6 +17,7 @@ from .flags import strict_quantization as strict_quantization
 from .nn.quantized_module import quantize_model as quantize_model
 from .nn.quantized_module import quantized_module_map as quantized_module_map
 from .nn.quantized_module import surrogate_quantized_modules as surrogate_quantized_modules
+from .overrides import disable_quantization as disable_quantization
 from .quantization import _quantizer_impl as _quantizer_impl
 from .quantization import affine as affine
 from .quantization import granularity
