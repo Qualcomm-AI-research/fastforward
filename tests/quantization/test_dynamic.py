@@ -5,7 +5,7 @@ import pytest
 import torch
 
 import fastforward as ff
-import fastforward.quantization.dynamic as dynamic
+import fastforward.quantization.affine.dynamic as dynamic
 
 DEVICES = ["cpu", "cuda"]
 NUM_BITS = [3, 4, 8]

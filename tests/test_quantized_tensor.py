@@ -2,6 +2,7 @@
 # All Rights Reserved.
 
 import copy
+import dataclasses
 
 from contextlib import contextmanager
 from typing import Any, Callable
@@ -10,13 +11,11 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
-import fastforward
 import fastforward as ff
-import fastforward.nn
 
 from fastforward.quantization import granularity
-from fastforward.quantization.affine import quantize_per_tensor
-from fastforward.quantization.function import QuantizationFunction
+from fastforward.quantization.affine import StaticAffineQuantParams, quantize_per_tensor
+from fastforward.quantization.function import QuantizationContext, QuantizationFunction
 from fastforward.quantization.random import random_quantized
 from fastforward.quantized_tensor import QuantizedTensor
 
@@ -26,14 +25,16 @@ def quantization_parameters(scale, dequant_scale):
     return {"scale": scale, "dequant_scale": dequant_scale}
 
 
-class _MockQuantizationFunction(QuantizationFunction):
-    @staticmethod
-    def quantize(data: torch.Tensor, scale: float = 3.0, _extra=100) -> torch.Tensor:  # type: ignore[override]
-        return data * scale
+class _MockQuantizationFunction(QuantizationFunction[StaticAffineQuantParams]):
+    @classmethod
+    def quantize(cls, data: torch.Tensor, params: StaticAffineQuantParams) -> ff.QuantizedTensor:
+        quantized_data = data * params.scale
+        context = QuantizationContext(cls, params)
+        return ff.QuantizedTensor(quantized_data, context)
 
-    @staticmethod
-    def dequantize(data: torch.Tensor, scale: float = 3.0, _extra=100) -> torch.Tensor:  # type: ignore[override]
-        return data / scale
+    @classmethod
+    def dequantize(cls, data: torch.Tensor, params: StaticAffineQuantParams) -> torch.Tensor:
+        return data / params.scale
 
 
 def test_quantize_dequantize():
@@ -43,7 +44,11 @@ def test_quantize_dequantize():
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
     scale = 4.0
-    quantized_data = _MockQuantizationFunction.apply(data, scale)
+
+    params = StaticAffineQuantParams(
+        scale=scale, offset=None, num_bits=3, granularity=ff.PerTensor()
+    )
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
     dequantized_data = quantized_data.dequantize()
 
     torch.testing.assert_close(data * scale, quantized_data.raw_data)
@@ -57,7 +62,9 @@ def test_quantize_dequantize():
 def test_dtype_methods(dtype: str):
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
-    quantized_data = _MockQuantizationFunction.apply(data)
+
+    params = StaticAffineQuantParams(scale=1.0, offset=None, num_bits=3, granularity=ff.PerTensor())
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
     torch.testing.assert_close(getattr(data, dtype)(), getattr(quantized_data, dtype)())
 
 
@@ -91,7 +98,8 @@ def test_dtype_methods(dtype: str):
 def test_to_dtype(dtype: torch.dtype):
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
-    quantized_data = _MockQuantizationFunction.apply(data)
+    params = StaticAffineQuantParams(scale=1.0, offset=None, num_bits=3, granularity=ff.PerTensor())
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
     torch.testing.assert_close(data.to(dtype), quantized_data.to(dtype))
 
 
@@ -104,34 +112,37 @@ def test_quantized_tensor_cpu_cuda():
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
     scale = torch.tensor(3.0)
-    extra_val = 30
-    quantized_data = _MockQuantizationFunction.apply(data, scale, extra_val)
+    num_bits = 3
+    params = StaticAffineQuantParams(
+        scale=scale, offset=None, num_bits=num_bits, granularity=ff.PerTensor()
+    )
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
 
     cuda_tensor = quantized_data.cuda()
     assert cuda_tensor.is_cuda, "Quantized tensor should move to cuda"
 
-    cuda_tensor_args = cuda_tensor._quantization_function.arguments()
+    cuda_tensor_args = cuda_tensor.quant_args()
+    assert isinstance(cuda_tensor_args, StaticAffineQuantParams)
+
     cuda_tensor_scale = cuda_tensor_args.scale
+    assert isinstance(cuda_tensor_scale, torch.Tensor)
     assert cuda_tensor_scale.is_cuda, "Scale tensor should move to cuda"
-    assert cuda_tensor_args._extra == extra_val, "Non-tensor parameter should not change"
-    assert (
-        cuda_tensor._quantization_function.quant_func
-        == quantized_data._quantization_function.quant_func
-    ), "quant_func should persist"
+    assert cuda_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
+    assert cuda_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
     assert torch.allclose(
         cuda_tensor.dequantize(), quantized_data.dequantize().cuda()
     ), "Cuda transfer should not affect data values"
 
     cpu_tensor = cuda_tensor.cpu()
     assert cpu_tensor.device.type == "cpu", "Quantized tensor should move back to cpu"
-    cpu_tensor_args = cpu_tensor._quantization_function.arguments()
+    cpu_tensor_args = cpu_tensor.quant_args()
+    assert isinstance(cpu_tensor_args, StaticAffineQuantParams)
+
     cpu_scale_tensor = cpu_tensor_args.scale
+    assert isinstance(cpu_scale_tensor, torch.Tensor)
     assert cpu_scale_tensor.device.type == "cpu", "Scale tensor should move back to cpu"
-    assert cpu_tensor_args._extra == extra_val, "Non-tensor parameter should not change"
-    assert (
-        cpu_tensor._quantization_function.quant_func
-        == quantized_data._quantization_function.quant_func
-    ), "quant_func should persist"
+    assert cpu_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
+    assert cpu_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
     assert torch.allclose(
         cpu_tensor.dequantize(), quantized_data.dequantize()
     ), "CPU transfer should not affect data values"
@@ -143,34 +154,50 @@ def test_quantized_tensor_to():
     Test if quantized tensor and associated tensor quantization parameters are moved between
     devices and if quant
     """
-    torch.manual_seed(7480)
     data = torch.randn(10, 10)
     scale = torch.tensor(3.0)
-    extra_val = 30
-    quantized_data = _MockQuantizationFunction.apply(data, scale, extra_val)
+    num_bits = 3
+    params = StaticAffineQuantParams(
+        scale=scale, offset=None, num_bits=num_bits, granularity=ff.PerTensor()
+    )
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
 
     cuda_tensor = quantized_data.to("cuda")
     assert cuda_tensor.is_cuda, "Quantized tensor should move to cuda"
 
-    cuda_tensor_args = cuda_tensor._quantization_function.arguments()
-    cuda_tensor_scale = cuda_tensor_args.scale
-    assert cuda_tensor_scale.is_cuda, "Scale tensor should move to cuda"
-    assert cuda_tensor_args._extra == extra_val, "Non-tensor parameter should not change"
-    assert (
-        cuda_tensor._quantization_function.quant_func
-        == quantized_data._quantization_function.quant_func
-    ), "quant_func should persist"
+    cuda_tensor_args = cuda_tensor.quant_args()
+    assert isinstance(cuda_tensor_args, StaticAffineQuantParams)
 
-    cpu_tensor = cuda_tensor.to("cpu")
+    cuda_tensor_scale = cuda_tensor_args.scale
+    assert isinstance(cuda_tensor_scale, torch.Tensor)
+    assert cuda_tensor_scale.is_cuda, "Scale tensor should move to cuda"
+    assert cuda_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
+    assert cuda_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
+    torch.testing.assert_close(
+        cuda_tensor.dequantize(),
+        quantized_data.dequantize().cuda(),
+        rtol=0,
+        atol=0,
+        msg="Cuda transfer should not affect data values",
+    )
+
+    cpu_tensor = cuda_tensor.cpu()
     assert cpu_tensor.device.type == "cpu", "Quantized tensor should move back to cpu"
-    cpu_tensor_args = cpu_tensor._quantization_function.arguments()
+    cpu_tensor_args = cpu_tensor.quant_args()
+    assert isinstance(cpu_tensor_args, StaticAffineQuantParams)
+
     cpu_scale_tensor = cpu_tensor_args.scale
+    assert isinstance(cpu_scale_tensor, torch.Tensor)
     assert cpu_scale_tensor.device.type == "cpu", "Scale tensor should move back to cpu"
-    assert cpu_tensor_args._extra == extra_val, "Non-tensor parameter should not change"
-    assert (
-        cpu_tensor._quantization_function.quant_func
-        == quantized_data._quantization_function.quant_func
-    ), "quant_func should persist"
+    assert cpu_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
+    assert cpu_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
+    torch.testing.assert_close(
+        cpu_tensor.dequantize(),
+        quantized_data.dequantize(),
+        rtol=0,
+        atol=0,
+        msg="CPU transfer should not affect data values",
+    )
 
 
 def test_quantized_tensor_grad_backward():
@@ -181,7 +208,12 @@ def test_quantized_tensor_grad_backward():
     scale = torch.tensor(3.0, requires_grad=True)
 
     data = torch.randn(10, 10, requires_grad=True)
-    quantized_data = _MockQuantizationFunction.apply(data, scale)
+
+    params = StaticAffineQuantParams(
+        scale=scale, offset=None, num_bits=3, granularity=ff.PerTensor()
+    )
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
+
     (quantized_data.dequantize() * 5.0).sum().backward()
 
     expected_grad = torch.ones(data.shape) * 5
@@ -231,23 +263,23 @@ def test_quantized_tensor_dispatches():
 
     # Use strict quantization context to make sure the dequantization fallback is not called
     with ff.strict_quantization(True):
-        with _assert_ran_with_kernel(fastforward.nn._linear_quantized_ops.scalar_multiply, "mul"):
+        with _assert_ran_with_kernel(ff.quantization._linear_quantized_ops.scalar_multiply, "mul"):
             out = quantized_data * 3
         torch.testing.assert_close(out.dequantize(), dequant_data * 3)
 
-        with _assert_ran_with_kernel(fastforward.nn._linear_quantized_ops.view, "view"):
+        with _assert_ran_with_kernel(ff.quantization._linear_quantized_ops.view, "view"):
             out = quantized_data.view(-1)
         torch.testing.assert_close(out.dequantize(), dequant_data.view(-1))
 
-        with _assert_ran_with_kernel(fastforward.nn._linear_quantized_ops.reshape, "reshape"):
+        with _assert_ran_with_kernel(ff.quantization._linear_quantized_ops.reshape, "reshape"):
             out = quantized_data.reshape(1, dequant_data.numel())
         torch.testing.assert_close(out.dequantize(), dequant_data.reshape(1, dequant_data.numel()))
 
-        with _assert_ran_with_kernel(fastforward.nn._linear_quantized_ops.transpose, "transpose"):
+        with _assert_ran_with_kernel(ff.quantization._linear_quantized_ops.transpose, "transpose"):
             out = quantized_data.transpose(0, 1)
         torch.testing.assert_close(out.dequantize(), dequant_data.transpose(0, 1))
 
-        with _assert_ran_with_kernel(fastforward.nn._linear_quantized_ops.cat, "cat"):
+        with _assert_ran_with_kernel(ff.quantization._linear_quantized_ops.cat, "cat"):
             out = torch.cat([quantized_data, quantized_data])
         torch.testing.assert_close(
             out.dequantize(), torch.cat([dequant_data, dequant_data]).contiguous()
@@ -303,9 +335,9 @@ def test_deepcopy():
     quantized_args = quantized_data.quant_args()
     copied_args = copied_data.quant_args()
 
-    for arg_key in quantized_args.keys():
-        original_arg = quantized_args[arg_key]
-        copied_arg = copied_args[arg_key]
+    for arg_key in dataclasses.asdict(quantized_args).keys():
+        original_arg = getattr(quantized_args, arg_key)
+        copied_arg = getattr(copied_args, arg_key)
         if isinstance(original_arg, torch.Tensor):
             assert (original_arg == copied_arg).all(), f"{arg_key} is not equal"
             assert original_arg is not copied_arg, f"{arg_key} is not deepcopied"
@@ -324,17 +356,16 @@ def test_contiguous():
         (3, 3), scale=scale, offset=offset, granularity=granularity.PerChannel(0)
     )
     quantized_tensor = QuantizedTensor(
-        quantized_tensor.raw_data.T, quantized_tensor._quantization_function
+        quantized_tensor.raw_data.T, quantized_tensor.quantization_context
     )
 
     assert not quantized_tensor.is_contiguous()
-    assert not quantized_tensor.quant_args().scale.is_contiguous()
-    # Offset potentially is made contiguous in TiledAffineQuantizationFunction.bind
+    assert not quantized_tensor.quant_args().scale.is_contiguous()  # type: ignore[attr-defined]
 
     contiguous_tensor = quantized_tensor.contiguous()
     assert contiguous_tensor.is_contiguous()
-    assert contiguous_tensor.quant_args().scale.is_contiguous()
-    assert contiguous_tensor.quant_args().offset.is_contiguous()
+    assert contiguous_tensor.quant_args().scale.is_contiguous()  # type: ignore[attr-defined]
+    assert contiguous_tensor.quant_args().offset.is_contiguous()  # type: ignore[attr-defined]
 
 
 def test_not_implemented_registation():

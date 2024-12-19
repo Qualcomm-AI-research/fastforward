@@ -1,29 +1,30 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-from typing import Optional
 
 import torch
 
 from fastforward.quantization import granularity as granularities
 from fastforward.quantized_tensor import QuantizedTensor
 
-from .affine import quantize_by_tile
-from .dynamic import quantize_by_tile as dynamic_quantize_by_tile
+from .affine import quantize_per_granularity
 
 
 def random_quantized(
     shape: tuple[int, ...],
     scale: float | torch.Tensor = 0.1,
-    offset: Optional[int | torch.Tensor] = None,
+    offset: int | torch.Tensor | None = None,
     num_bits: int = 3,
     requires_grad: bool = False,
-    granularity: granularities.Granularity = granularities.PerTensor(),
-    device: Optional[torch.device | str] = None,
+    granularity: granularities.Granularity | None = None,
+    device: torch.device | str | None = None,
     storage_dtype: torch.dtype = torch.float32,
 ) -> QuantizedTensor:
     """
     Generate a random quantized tensor.
+
+    The tensor is sampled from a zero-centered unit normal distribution and
+    subsequently quantized using the provided quantization parameters.
 
     Args:
         shape: The shape of the tensor.
@@ -41,62 +42,24 @@ def random_quantized(
     Raises:
         ValueError: If the scale and offset tensors do not have the same number of elements.
     """
+    granularity = granularity or granularities.PerTensor()
     if isinstance(scale, torch.Tensor) and scale.numel() > 1:
         if not isinstance(offset, torch.Tensor):
             offset = torch.ones(scale.shape) * (offset if offset else 0)
         elif offset.numel() != scale.numel():
             raise ValueError(
                 "scale and offset must contain the same number of elements. "
-                f"Found {scale.numel()} and {offset.numel()}"
+                + f"Found {scale.numel()} and {offset.numel()}"
             )
 
-    tile_size = granularity.tile_size(torch.Size(shape))
-    random_tensor = quantize_by_tile(
+    random_tensor = quantize_per_granularity(
         torch.randn(shape, device=device),
         scale=scale,
         offset=offset,
+        granularity=granularity,
         num_bits=num_bits,
-        tile_size=tile_size,
         output_dtype=storage_dtype,
     )
     if requires_grad:
-        random_tensor.requires_grad_()
-    return random_tensor
-
-
-def random_quantized_dynamic(
-    shape: tuple[int, ...],
-    num_bits: int = 3,
-    requires_grad: bool = False,
-    granularity: granularities.Granularity = granularities.PerTensor(),
-    device: Optional[torch.device | str] = None,
-    storage_dtype: torch.dtype = torch.float32,
-) -> QuantizedTensor:
-    """
-    Generate a random quantized tensor using dynamic quantization
-
-    Args:
-        shape: The shape of the tensor.
-        num_bits: The number of bits for quantization.
-        requires_grad: If True, the tensor requires gradient.
-        granularity: The granularity of quantization.
-        device: The device for the tensor.
-        storage_dtype: The storage data type for the tensor.
-
-    Returns:
-        QuantizedTensor: The generated random quantized tensor.
-
-    Raises:
-        ValueError: If the scale and offset tensors do not have the same number of elements.
-    """
-
-    tile_size = granularity.tile_size(torch.Size(shape))
-    random_tensor = dynamic_quantize_by_tile(
-        torch.randn(shape, device=device),
-        num_bits=num_bits,
-        tile_size=tile_size,
-        output_dtype=storage_dtype,
-    )
-    if requires_grad:
-        random_tensor.requires_grad_()
+        _ = random_tensor.requires_grad_()
     return random_tensor

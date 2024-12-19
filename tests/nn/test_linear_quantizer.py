@@ -13,7 +13,7 @@ import fastforward
 
 from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.quantization import granularity
-from fastforward.quantization.affine import TiledAffineQuantizationFunction
+from fastforward.quantization.affine import AffineQuantizationFunction, StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
 
@@ -27,18 +27,15 @@ def test_linear_quantizer_function():
         return {
             "scale": scale,
             "offset": offset,
-            "tile_size": data.shape,
+            "granularity": fastforward.PerTensor(),
             "num_bits": num_bits,
-            "output_dtype": None,
+            "quantized_dtype": None,
         }
 
     params = parameter_dictionary()
 
-    with pytest.raises(ValueError):
-        params_ = {**params, "num_bits": -1}
-        TiledAffineQuantizationFunction.apply(data, **params_)
-
-    quant_data = TiledAffineQuantizationFunction.apply(data, **params)
+    quant_params = StaticAffineQuantParams(**params)
+    quant_data = AffineQuantizationFunction.quantize(data, quant_params)
     raw_quant_data = quant_data.raw_data
     expected_raw = torch.tensor(
         [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
@@ -51,7 +48,8 @@ def test_linear_quantizer_function():
 
     # Symmetric case
     params["offset"] = None
-    symmetric_output = TiledAffineQuantizationFunction.apply(data, **params).dequantize()
+    quant_params = StaticAffineQuantParams(**params)
+    symmetric_output = AffineQuantizationFunction.quantize(data, quant_params).dequantize()
     min_int = -(2 ** (num_bits - 1))
     max_int = 2 ** (num_bits - 1) - 1
     expected_symmetric = torch.clamp(torch.round(data / scale), min_int, max_int) * scale
@@ -68,9 +66,10 @@ def test_linear_quantizer_op_gradients():
     scale.requires_grad = True
     offset.requires_grad = True
 
-    quant_data = TiledAffineQuantizationFunction.apply(
-        data, scale=scale, offset=offset, num_bits=num_bits, tile_size=data.shape, output_dtype=None
+    quant_params = StaticAffineQuantParams(
+        scale=scale, offset=offset, num_bits=num_bits, granularity=fastforward.PerTensor()
     )
+    quant_data = AffineQuantizationFunction.quantize(data, quant_params)
     quant_data.backward(torch.ones_like(quant_data))
 
     assert data.grad is not None

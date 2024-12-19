@@ -12,10 +12,7 @@ import torch
 import fastforward as ff
 
 # Functions that produce tensors that should be treated as linearly quantized.
-LINEAR_QUANT_GENERATORS = (
-    ff.random.random_quantized,
-    ff.random.random_quantized_dynamic,
-)
+LINEAR_QUANT_GENERATORS = (ff.random.random_quantized,)
 
 
 def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
@@ -41,12 +38,6 @@ def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.Quanti
     Test QuantizedTensor.__getitem__ implementation of Per-Tensor quantized
     tensors for many different ways of indexing.
     """
-    # Cannot dynamically quantize an empty tensor because there is no data to infer
-    # parameters.
-    # Skip this case.
-    is_empty = torch.Size(data_shape).numel() == 0
-    if quantfunc is ff.random.random_quantized_dynamic and is_empty:
-        return
 
     # Given: a quantized and dequantized tensor
     torch.randn(data_shape)
@@ -80,7 +71,7 @@ def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.Quanti
 def test_scalar_multiply(quantfunc: Callable[..., ff.QuantizedTensor]):
     # Given: a per-tensor quantized tensor and a scalar scale_factor
     qx = quantfunc((3, 3), requires_grad=True)
-    scale = qx.quant_args().scale
+    scale = qx.quant_args().scale  # type: ignore[attr-defined]
     scale_factor = 0.25
 
     # When: a quantized tensor is multiplied by a scalar scale factor
@@ -90,7 +81,7 @@ def test_scalar_multiply(quantfunc: Callable[..., ff.QuantizedTensor]):
     assert isinstance(observed, ff.QuantizedTensor)
 
     # Then: only the scale parameter is affected
-    assert observed.quant_args().scale == scale * scale_factor
+    assert observed.quant_args().scale == scale * scale_factor  # type: ignore[attr-defined]
 
     # Then: the scale_factor has effect on the dequantized tensor
     expected = qx.dequantize() * scale_factor

@@ -47,3 +47,19 @@ def ensure_tensor(
     if isinstance(maybe_tensor, torch.Tensor):
         return maybe_tensor
     return torch.tensor(maybe_tensor, device=device)
+
+
+@overload
+def tensor_or_none(
+    data: float | torch.Tensor, dtype: torch.dtype, device: torch.device
+) -> torch.Tensor: ...
+@overload
+def tensor_or_none(data: None, dtype: torch.dtype, device: torch.device) -> None: ...
+
+
+def tensor_or_none(
+    data: float | torch.Tensor | None, dtype: torch.dtype, device: torch.device
+) -> torch.Tensor | None:
+    if data is None or isinstance(data, torch.Tensor):
+        return data
+    return torch.tensor(data, dtype=dtype, device=device)

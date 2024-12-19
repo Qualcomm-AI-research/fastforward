@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.quantization.tiled_tensor import check_tile_compatibility
 
 
@@ -79,9 +81,21 @@ class Granularity(abc.ABC):
         """
         return {}
 
+    @override
     def __repr__(self) -> str:
         args_str = ", ".join([f"{k}={v}" for k, v in self.repr_args().items()])
         return f"{type(self).__name__}({args_str})"
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        # If the types don't match, there is no equality
+        if type(self) is not type(other):
+            return False
+        args = getattr(type(self), "__match_args__", ())
+        for key in args:
+            if getattr(self, key) != getattr(other, key):
+                return False
+        return True
 
 
 class PerTensor(Granularity):
@@ -92,6 +106,7 @@ class PerTensor(Granularity):
     def __init__(self) -> None:
         super().__init__()
 
+    @override
     def tile_size(self, data_shape: torch.Size) -> Literal["data_shape"]:
         """
         Return the tile size for per-tensor quantization.
@@ -113,12 +128,15 @@ class PerChannel(Granularity):
         channel_dims: The dimensions to apply per-channel quantization.
     """
 
+    __match_args__ = ("channel_dims",)
+
     def __init__(self, channel_dim: int | tuple[int, ...] = 0) -> None:
         if isinstance(channel_dim, int):
             channel_dim = (channel_dim,)
         self.channel_dims = channel_dim
         super().__init__()
 
+    @override
     def tile_size(self, data_shape: torch.Size) -> torch.Size:
         """
         Return the tile size for per-channel quantization.
@@ -135,6 +153,7 @@ class PerChannel(Granularity):
 
         return torch.Size(tile_size)
 
+    @override
     def repr_args(self) -> dict[str, Any]:
         """
         Return a dictionary of arguments for the __repr__ method.
@@ -151,10 +170,13 @@ class PerTile(Granularity):
         tile_shape: The shape of the tile.
     """
 
+    __match_args__ = ("tile_shape",)
+
     def __init__(self, tile_shape: tuple[int, ...]):
         super().__init__()
         self.tile_shape = torch.Size(tile_shape)
 
+    @override
     def tile_size(self, data_shape: torch.Size) -> torch.Size:
         """
         Return the tile size for per-tile quantization.
@@ -174,6 +196,7 @@ class PerTile(Granularity):
         except ValueError as e:
             raise e
 
+    @override
     def repr_args(self) -> dict[str, Any]:
         """
         Return a dictionary of arguments for the __repr__ method.

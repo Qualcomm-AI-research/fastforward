@@ -35,9 +35,9 @@ from fastforward.exceptions import QuantizationError
 
 if TYPE_CHECKING:
     from fastforward.quantization.function import (
-        BaseQuantizationFunction,
-        BoundQuantizationFunction,
-        QuantArgs,
+        QuantizationContext,
+        QuantizationFunction,
+        QuantizationParameters,
     )
 
 _TensorT = TypeVar("_TensorT", bound="QuantizedTensor")
@@ -258,7 +258,7 @@ def apply_and_reattach(
             when called.
     """
     if quantized is not None:
-        return quantized._quantization_function.attach(func(quantized.raw_data))
+        return quantized._quantization_context.attach(func(quantized.raw_data))
 
     @functools.wraps(func)
     def wrapper(quantized: "QuantizedTensor") -> "QuantizedTensor":
@@ -268,9 +268,9 @@ def apply_and_reattach(
 
 
 def _rebuild_quantized_tensor(
-    data: torch.Tensor, quantization_function: "BoundQuantizationFunction"
+    data: torch.Tensor, quantization_context: "QuantizationContext[QuantizationParameters]"
 ) -> "QuantizedTensor":
-    return QuantizedTensor(data, quantization_function)
+    return QuantizedTensor(data, quantization_context)
 
 
 @contextlib.contextmanager
@@ -290,8 +290,8 @@ class QuantizedTensor(torch.Tensor):
 
     Args:
         data: Raw quantized data, e.g., the integer repsentation obtained
-            from quantization_function.
-        quantization_function: The quantization function used to
+            from `quantization_context.quantization_fn.quantize`.
+        quantization_context: The quantization context used to
             produce data.
     """
 
@@ -304,11 +304,11 @@ class QuantizedTensor(torch.Tensor):
     def __init__(
         self,
         data: torch.Tensor,
-        quantization_function: "BoundQuantizationFunction",
+        quantization_context: "QuantizationContext[QuantizationParameters]",
     ):
         del data
         super().__init__()
-        self._quantization_function = quantization_function
+        self._quantization_context = quantization_context
 
     # pylint: disable=invalid-name, line-too-long
     # fmt: off
@@ -352,9 +352,7 @@ class QuantizedTensor(torch.Tensor):
                 device=device, non_blocking=non_blocking, memory_format=memory_format
             )
 
-        return type(self)(
-            moved_qtensor, quantization_function=self._quantization_function.to(device)
-        )
+        return type(self)(moved_qtensor, quantization_context=self._quantization_context.to(device))
 
     def __deepcopy__(self, memo: dict[Any, Any]) -> Self:
         if not self.is_leaf:
@@ -362,12 +360,12 @@ class QuantizedTensor(torch.Tensor):
                 "Only Tensors created explicitly by the user "
                 "(graph leaves) support the deepcopy protocol at the moment"
             )
-        quantization_function = copy.deepcopy(self._quantization_function, memo)
-        return type(self)(copy.deepcopy(self.raw_data.detach(), memo), quantization_function)
+        quantization_context = copy.deepcopy(self._quantization_context, memo)
+        return type(self)(copy.deepcopy(self.raw_data.detach(), memo), quantization_context)
 
     def __reduce_ex__(self, proto: int) -> Any:  # type: ignore[override]
         raw_data = self.raw_data.detach()
-        return _rebuild_quantized_tensor, (raw_data, self._quantization_function)
+        return _rebuild_quantized_tensor, (raw_data, self._quantization_context)
 
     def cuda(  # type: ignore[override]
         self: _TensorT, device: torch.device | int | str | None = None, non_blocking: bool = False
@@ -383,7 +381,9 @@ class QuantizedTensor(torch.Tensor):
         """
         Dequantize and return real-valued torch.Tensor.
         """
-        return self._quantization_function.dequantize(self)
+        return self._quantization_context.quantization_fn.dequantize(
+            self.raw_data, self.quant_args()
+        )
 
     def clone(self) -> "QuantizedTensor":  # type: ignore[override]
         """
@@ -398,10 +398,10 @@ class QuantizedTensor(torch.Tensor):
         Note:
             The non-tensor quantization parameters are **not** copied.
         """
-        quant_func = self._quantization_function.clone()
+        quant_ctx = self._quantization_context.clone_parameters()
         with DisableTorchFunctionSubclass():
             cloned_tensor = super().clone()
-        return quant_func.attach(cloned_tensor)
+        return quant_ctx.attach(cloned_tensor)
 
     def detach(self) -> "QuantizedTensor":  # type: ignore[override]
         """
@@ -410,7 +410,7 @@ class QuantizedTensor(torch.Tensor):
         This returns a ternsor that alliases this tensor, but is
         detached from the autograd graph.
         """
-        quant_func = self._quantization_function.detach_arguments()
+        quant_func = self._quantization_context.detach_parameters()
         with DisableTorchFunctionSubclass():
             detached_tensor = super().detach()
         return quant_func.attach(detached_tensor)
@@ -425,7 +425,7 @@ class QuantizedTensor(torch.Tensor):
         """
         return self.as_subclass(torch.Tensor)
 
-    def quant_args(self) -> "QuantArgs":
+    def quant_args(self) -> "QuantizationParameters":
         """
         Return quantization arguments.
 
@@ -437,10 +437,14 @@ class QuantizedTensor(torch.Tensor):
             all reference types on `QuantArgs` are shared and mutation will
             have side effects.
         """
-        return self._quantization_function.arguments()
+        return self._quantization_context.quantization_params
 
     @property
-    def quant_func(self) -> type["BaseQuantizationFunction"]:
+    def quantization_context(self) -> "QuantizationContext[QuantizationParameters]":
+        return self._quantization_context
+
+    @property
+    def quant_func(self) -> type["QuantizationFunction[QuantizationParameters]"]:
         """
         Return the associated quantization function.
 
@@ -454,7 +458,7 @@ class QuantizedTensor(torch.Tensor):
 
                quantized_tensor.quant_func.bind(**quantized_tensor.quant_args())
         """
-        return self._quantization_function.quant_func
+        return self._quantization_context.quantization_fn
 
     @classmethod
     def __torch_function__(cls, func, types, args=(), kwargs=None):  # type: ignore[no-untyped-def]
@@ -515,10 +519,10 @@ class QuantizedTensor(torch.Tensor):
     def contiguous(self, memory_format: Any = torch.contiguous_format) -> "QuantizedTensor":
         """Return a tensor with contiguous data, this includes quantization parameters."""
         raw_data = self.raw_data.contiguous(memory_format=memory_format)
-        quantization_function = self._quantization_function.contiguous()
-        if raw_data is self.raw_data and quantization_function is self._quantization_function:
+        quantization_context = self._quantization_context.contiguous_parameters()
+        if raw_data is self.raw_data and quantization_context is self._quantization_context:
             return self
-        return type(self)(raw_data, quantization_function)
+        return quantization_context.attach(raw_data)
 
     @property
     def is_quantized(self) -> bool:

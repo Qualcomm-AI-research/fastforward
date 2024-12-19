@@ -1,17 +1,21 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-from typing import Literal
 
 import torch
 
-from fastforward.nn.quantizer import Quantizer
-from fastforward.quantization import granularity
-from fastforward.quantization.dynamic import quantize_by_tile_function
-from fastforward.quantization.function import BoundQuantizationFunction
+import fastforward.quantization.granularity as granularities
+
+from fastforward.nn.linear_quantizer import AbstractAffineQuantizer
+from fastforward.quantization.affine import (
+    AffineQuantizationFunction,
+    DynamicAffineQuantParams,
+    DynamicParamInferenceFn,
+)
+from fastforward.quantization.function import QuantizationFunction
 
 
-class DynamicLinearQuantizer(Quantizer):
+class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
     """
     Dynamic Linear quantizer.
 
@@ -22,19 +26,29 @@ class DynamicLinearQuantizer(Quantizer):
     subclasses and are passed into LinearQuantizer.
 
     Args:
-        num_bits: Bitwidh of quantization output granularity
+        num_bits: Bitwidth of quantization output granularity
         granularity: Granularity object that specifies the
             quantization granularity
+        quantized_dtype: datatype in which the quantized data is stored
+        parameter_inference_fn: function that determines scale and offset
+            dynamically. If omitted, a min/max inference method is used.
     """
 
     def __init__(
         self,
         num_bits: int,
-        granularity: granularity.Granularity = granularity.PerTensor(),
-    ) -> None:
-        super().__init__()
+        *,
+        granularity: granularities.Granularity = granularities.PerTensor(),
+        quantized_dtype: torch.dtype | None = None,
+        parameter_inference_fn: DynamicParamInferenceFn | None = None,
+    ):
+        super().__init__(
+            num_bits=num_bits, granularity=granularity, quantized_dtype=quantized_dtype
+        )
         self.num_bits = num_bits
         self.granularity = granularity
+        self.quantized_dtype = quantized_dtype
+        self.parameter_inference_fn = parameter_inference_fn
 
     @property
     def symmetric(self) -> bool:
@@ -44,41 +58,25 @@ class DynamicLinearQuantizer(Quantizer):
         """
         return False
 
-    @property
-    def per_channel(self) -> bool:
-        """Boolean indicating whether quantizer uses PerChannel quantization."""
-        return granularity.is_per_channel(self.granularity)
-
-    @property
-    def per_tensor(self) -> bool:
-        """Boolean indicating whether quantizer uses PerTensor quantization."""
-        return granularity.is_per_tensor(self.granularity)
-
-    def extra_repr(self) -> str:
+    def quantization_parameters(self) -> DynamicAffineQuantParams:
         """
-        Provide extra repr information on num_bits and granularities.
-        """
-        extra_repr = f"num_bits={self.num_bits}, granularity={self.granularity}"
-        return super().extra_repr() + extra_repr
-
-    def bound_quantization_function(
-        self, tile_size: torch.Size | Literal["data_shape"]
-    ) -> BoundQuantizationFunction:
-        """
-        Creates a `BoundQuantizationFunction` using parameters on this module.
-        """
-        return quantize_by_tile_function(tile_size=tile_size, num_bits=self.num_bits)
-
-    def quantize(self, data: torch.Tensor) -> torch.Tensor:
-        """Quantizer data using dynamic linear quantizer.
-
-        Args:
-            data: Tensor to quantize
+        Quantization parameters of this quantizer.
 
         Returns:
-            torch.Tensor:
-                Quantized data
+            `DynamicAffineQuantParams` specific to this quantizer
         """
-        tile_size = self.granularity.tile_size(data.shape)
-        quant_func = self.bound_quantization_function(tile_size)
-        return quant_func(data)
+        return DynamicAffineQuantParams(
+            granularity=self.granularity,
+            num_bits=self.num_bits,
+            quantized_dtype=self.quantized_dtype,
+            parameter_inference_fn=self.parameter_inference_fn,
+        )
+
+    @property
+    def quantization_function(self) -> type[QuantizationFunction[DynamicAffineQuantParams]]:
+        """
+        Returns:
+            `QuantizationFunction` that implements the quantization operator
+            specific to this quantizer.
+        """
+        return AffineQuantizationFunction

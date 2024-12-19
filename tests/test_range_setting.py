@@ -28,13 +28,13 @@ def test_fit_quantizers():
         QuantizedLinear(32, 64, bias=False),
         QuantizedRelu(),
     )
-    model[0].input_quantizer = LinearQuantizer(8, False)
+    model[0].input_quantizer = LinearQuantizer(8, symmetric=False)
     model[0].weight_quantizer = LinearQuantizer(8, granularity=granularity.PerChannel(-1))
-    model[0].output_quantizer = LinearQuantizer(8, False)
-    model[1].output_quantizer = LinearQuantizer(8, False)
-    model[2].output_quantizer = LinearQuantizer(8, False)
+    model[0].output_quantizer = LinearQuantizer(8, symmetric=False)
+    model[1].output_quantizer = LinearQuantizer(8, symmetric=False)
+    model[2].output_quantizer = LinearQuantizer(8, symmetric=False)
     model[2].weight_quantizer = LinearQuantizer(8, granularity=granularity.PerChannel(-1))
-    model[3].output_quantizer = LinearQuantizer(8, False)
+    model[3].output_quantizer = LinearQuantizer(8, symmetric=False)
 
     print("#1. Model pre-range setting", model, "", sep="\n")
 

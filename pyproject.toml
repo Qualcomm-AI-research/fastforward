@@ -10,13 +10,14 @@ name = "fastforward"
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
+  "importlib-metadata",
+  "libcst",
   "numpy>=1.24,<2.0",
   "optree",
-  "setuptools<70",
-  "libcst",
   "packaging",
-  "importlib-metadata",
+  "setuptools<70",
   "torch-onnx==0.1.16",
+  "typing-extensions",
 ]
 
 [project.optional-dependencies]
@@ -27,17 +28,17 @@ dev = [
   # and the rest
   "isort",
   "mypy",
-  "ruff",
   "notebook",
+  "ruff",
 ]
 test = ["pytest>=6", "pytest-cov>=3", "types-PyYAML", "onnxruntime"]
 docs = [
   "jupytext",
   "mike",
-  "mkdocs-material",
   "mkdocs-gen-files",
   "mkdocs-jupyter",
   "mkdocs-literate-nav",
+  "mkdocs-material",
   "mkdocs-section-index",
   "mkdocstrings-python",
 ]
@@ -78,10 +79,7 @@ markers = [
 
 [tool.mypy]
 mypy_path = "src:tests:$MYPY_CONFIG_FILE_DIR/build/stubs"
-exclude = [
-    'build/',
-    'docs/examples/quick_start'
-]
+exclude = ['build/', 'docs/examples/quick_start']
 python_version = "3.10"
 warn_unused_configs = true
 strict = true
@@ -124,3 +122,8 @@ line-ending = "auto"
 [tool.ruff.lint.isort]
 lines-between-types = 1
 known-local-folder = ["funcgen"]
+
+[tool.basedpyright]
+reportAny = false
+reportExplicitAny = false
+reportUnannotatedClassAttribute = false
