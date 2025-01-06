@@ -20,9 +20,6 @@ from . import pybuilder, pysource
 from .convert import convert_method
 from .cst import passes
 
-# TODO:
-# 1. bases classes
-
 
 def _validate_correct_module(
     torch_module: type[torch.nn.Module], py_module_name: str, module_cst: libcst.Module

@@ -422,7 +422,7 @@ class CandidateRewriter(libcst.CSTTransformer):
     This is used to, for example, rewrite `torch.sigmoid` to an alternative
     activation function.
 
-    Specifically, this pass will replace CandidateXXX nodes and
+    Specifically, this pass will replace Candidate nodes and
     ReplacementCandidate node children with annotated CST nodes. I.e., these
     are 'normal' CST nodes with extra metadata for further analysis.
 
@@ -482,7 +482,6 @@ class CandidateRewriter(libcst.CSTTransformer):
     def leave_CandidateYield(
         self, original_node: CandidateYield, updated_node: CandidateYield
     ) -> libcst.Yield:
-        # TODO: implement yield support
         raise NotImplementedError("Yield support is pending")
 
     def _rewrite_call(self, call: libcst.Call) -> AnnotatedCall:
