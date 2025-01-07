@@ -11,15 +11,26 @@ _STATEMENT_SUITE_TO_BLOCK_IN = """
 x = 10; y = 20; z = x + y
 if z > 25: print(f"z is greater than 25: {z}"); print("!")
 else: print(f"z is not greater than 25: {z}")
+
+def some_function():
+    x = 10; y = 11;
+    return x + y
 """
 
 _STATEMENT_SUITE_TO_BLOCK_OUT = """
-x = 10; y = 20; z = x + y
+x = 10
+y = 20
+z = x + y
 if z > 25:
     print(f"z is greater than 25: {z}")
     print("!")
 else:
     print(f"z is not greater than 25: {z}")
+
+def some_function():
+    x = 10
+    y = 11
+    return x + y
 """
 
 
@@ -28,8 +39,8 @@ def test_statement_suite_to_indented_block() -> None:
     # GIVEN code with non-simple statements, and its reference simplified version
     input, expected = _strip_dedent(_STATEMENT_SUITE_TO_BLOCK_IN, _STATEMENT_SUITE_TO_BLOCK_OUT)
 
-    # WHEN we visit the code with SimpleStatementSuiteToIndentedBlock
-    transformer = passes.SimpleStatementSuiteToIndentedBlock()
+    # WHEN we visit the code with ConvertSemicolonJoinedStatements
+    transformer = passes.ConvertSemicolonJoinedStatements()
 
     # THEN the input code transforms as expected
     assert_input_transforms_as_expected(input, transformer, expected)

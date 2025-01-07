@@ -36,12 +36,14 @@ _BaseStatements: TypeAlias = libcst.SimpleStatementLine | libcst.BaseCompoundSta
 _SuiteT = TypeVar("_SuiteT", libcst.IndentedBlock, libcst.Module)
 
 
-class SimpleStatementSuiteToIndentedBlock(libcst.CSTTransformer):
+class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
     """
-    Convert SimpleStatementSuite to IndentedBlock.
+    Convert multiple statements joined by a semicolon to multiple statements on
+    multiple lines.
 
-    This converts single line if, for, and other statements to
-    statements with an indented block.
+    This includes:
+        - Convert SimpleStatementSuite to IndentedBlock.
+        - Flatten SimpleStatementLine with a body of more than one element.
 
     For example:
 
@@ -71,6 +73,21 @@ class SimpleStatementSuiteToIndentedBlock(libcst.CSTTransformer):
             line = libcst.SimpleStatementLine(body=[statement.with_changes(semicolon=semicolon)])
             new_body.append(line)
         return libcst.IndentedBlock(body=tuple(new_body))
+
+    @override
+    def leave_SimpleStatementLine(
+        self, original_node: libcst.SimpleStatementLine, updated_node: libcst.SimpleStatementLine
+    ) -> libcst.BaseStatement | libcst.FlattenSentinel[libcst.BaseStatement]:
+        if len(updated_node.body) == 1:
+            return updated_node
+        else:
+
+            def _as_statement_line(node: libcst.BaseSmallStatement) -> libcst.SimpleStatementLine:
+                node = node.with_changes(semicolon=libcst.MaybeSentinel.DEFAULT)
+                return libcst.SimpleStatementLine(body=(node,))
+
+            nodes = [_as_statement_line(statement) for statement in updated_node.body]
+            return libcst.FlattenSentinel(nodes)
 
 
 class WrapAssignments(libcst.CSTTransformer):

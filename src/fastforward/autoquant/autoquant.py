@@ -59,27 +59,6 @@ def _validate_correct_module(
         ) from e
 
 
-# def _parse_pymodule_for_torch_module(
-#     module: torch.nn.Module,
-#     validators: Sequence[Callable[[libcst.Module], None]] = (),
-#     preprocessors: Sequence[libcst.CSTTransformer] = (),
-# ) -> pysource.PySourceModule:
-#     if not (py_module := inspect.getmodule(type(module))):
-#         raise RuntimeError(f"Cannot infer module of {module.__class__}")
-#
-#     validators = [
-#         functools.partial(_validate_correct_module, type(module), py_module.__name__)
-#     ] + list(validators)
-#
-#     preprocessors = [
-#         passes.SimpleStatementSuiteToIndentedBlock(),
-#         passes.MarkReplacementCandidates(),
-#         passes.IsolateReplacementCandidates(),
-#     ] + list(preprocessors)
-#
-#     return pysource.PySourceModule(py_module, validators=validators, preprocessors=preprocessors)
-
-
 def autoquant(
     module: torch.nn.Module, operator_table: Optional[optable.OperatorTable] = None
 ) -> None:
@@ -88,7 +67,7 @@ def autoquant(
     )
     source_context = pysource.SourceContext(
         preprocessing_passes=[
-            passes.SimpleStatementSuiteToIndentedBlock(),
+            passes.ConvertSemicolonJoinedStatements(),
             passes.MarkReplacementCandidates(),
             passes.WrapAssignments(),
             passes.IsolateReplacementCandidates(),
