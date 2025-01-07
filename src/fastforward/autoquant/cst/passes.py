@@ -3,19 +3,14 @@
 
 import dataclasses
 
-from typing import (
-    Protocol,
-    Sequence,
-    TypeAlias,
-    TypeVar,
-    Union,
-    cast,
-    runtime_checkable,
-)
+from collections.abc import Sequence
+from typing import Protocol, TypeAlias, TypeVar, cast, runtime_checkable
 
 import libcst
 import libcst.helpers
 import libcst.matchers as m
+
+from typing_extensions import override
 
 import fastforward as ff
 
@@ -63,6 +58,7 @@ class SimpleStatementSuiteToIndentedBlock(libcst.CSTTransformer):
     than strictly required.
     """
 
+    @override
     def leave_SimpleStatementSuite(
         self,
         original_node: libcst.SimpleStatementSuite,
@@ -78,31 +74,34 @@ class SimpleStatementSuiteToIndentedBlock(libcst.CSTTransformer):
 
 
 class WrapAssignments(libcst.CSTTransformer):
+    @override
     def leave_AnnAssign(
-        self, _original_node: libcst.AnnAssign, updated_node: libcst.AnnAssign
+        self, original_node: libcst.AnnAssign, updated_node: libcst.AnnAssign
     ) -> GeneralAssignment:
         return GeneralAssignment(
-            original=_original_node,
+            original=original_node,
             targets=(updated_node.target,),
             annotation=updated_node.annotation,
             value=updated_node.value,
         )
 
+    @override
     def leave_Assign(
-        self, _original_node: libcst.Assign, updated_node: libcst.Assign
+        self, original_node: libcst.Assign, updated_node: libcst.Assign
     ) -> GeneralAssignment:
         return GeneralAssignment(
-            original=_original_node,
+            original=original_node,
             targets=tuple(x.target for x in updated_node.targets),
             annotation=None,
             value=updated_node.value,
         )
 
+    @override
     def leave_AugAssign(
-        self, _original_node: libcst.AugAssign, updated_node: libcst.AugAssign
+        self, original_node: libcst.AugAssign, updated_node: libcst.AugAssign
     ) -> GeneralAssignment:
         return GeneralAssignment(
-            original=_original_node,
+            original=original_node,
             targets=(updated_node.target,),
             annotation=None,
             value=updated_node.value,
@@ -115,6 +114,7 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
     by wrapping the CST node in a ReplacementCandidate node.
     """
 
+    @override
     def leave_Call(
         self, original_node: libcst.Call, updated_node: libcst.Call
     ) -> libcst.BaseExpression:
@@ -122,6 +122,7 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
             return updated_node
         return ReplacementCandidate(updated_node)
 
+    @override
     def leave_BinaryOperation(
         self,
         original_node: libcst.BinaryOperation,
@@ -168,7 +169,7 @@ class _Insertions:
 
     def add_insertion(
         self,
-        target: libcst.BaseSuite,
+        target: libcst.BaseSuite | libcst.Module,
         insertion: libcst.BaseSmallStatement,
         position: _LineStatement,
     ) -> None:
@@ -264,6 +265,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
     _insertions: _Insertions
 
     def __init__(self) -> None:
+        super().__init__()
         self._visit_stack = []
         self._insertions = _Insertions()
         self._count = 1
@@ -277,23 +279,25 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             return self._visit_stack[-1]
         return None
 
+    @override
     def on_visit(self, node: libcst.CSTNode) -> bool:
         visit_children = super().on_visit(node)
         self._visit_stack.append(node)
         return visit_children
 
+    @override
     def on_leave(
         self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
-    ) -> Union[libcst.CSTNodeT, libcst.RemovalSentinel, libcst.FlattenSentinel[libcst.CSTNodeT]]:
-        self._visit_stack.pop()
+    ) -> libcst.CSTNodeT | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
+        _ = self._visit_stack.pop()
         result_node = super().on_leave(original_node, updated_node)
 
         # Don't allow for Removal- or FlattenSentinel as these could remove
         # insertion points.
         if isinstance(result_node, (libcst.RemovalSentinel, libcst.FlattenSentinel)):
             raise RuntimeError(
-                f"RemovalSentinel and FlattenSentinel are not allowed in conjunction "
-                f"with {type(self).__name__}"
+                "RemovalSentinel and FlattenSentinel are not allowed in conjunction "
+                + f"with {type(self).__name__}"
             )
 
         # Cleanup any insertions for orignal/updated node
@@ -339,6 +343,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 
         return suite.with_changes(body=tuple(body))
 
+    @override
     def leave_Assign(
         self, original_node: libcst.Assign, updated_node: libcst.Assign
     ) -> libcst.BaseSmallStatement:
@@ -346,6 +351,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             return CandidateAssignment(updated_node)
         return updated_node
 
+    @override
     def leave_Yield(
         self, original_node: libcst.Yield, updated_node: libcst.Yield
     ) -> libcst.BaseExpression:
@@ -353,6 +359,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             return CandidateYield(updated_node)
         return updated_node
 
+    @override
     def leave_Return(
         self, original_node: libcst.Return, updated_node: libcst.Return
     ) -> libcst.BaseSmallStatement:
@@ -405,11 +412,13 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 
         return assign_name
 
+    @override
     def leave_IndentedBlock(
         self, original_node: libcst.IndentedBlock, updated_node: libcst.IndentedBlock
     ) -> libcst.BaseSuite:
         return self._resolve_insertions(original_node, updated_node)
 
+    @override
     def leave_Module(
         self, original_node: libcst.Module, updated_node: libcst.Module
     ) -> libcst.Module:
@@ -431,6 +440,7 @@ class CandidateRewriter(libcst.CSTTransformer):
     """
 
     def __init__(self, optable: OperatorTable) -> None:
+        super().__init__()
         self.optable = optable
 
     def leave_CandidateAssignment(
@@ -447,8 +457,8 @@ class CandidateRewriter(libcst.CSTTransformer):
             case ReplacementCandidate(node):
                 raise ValueError(
                     f"Found {type(node)} but is not supported. However, it was identified as a "
-                    "candidate for autoquant replacement. Please file an issue if you see "
-                    "this exception."
+                    + "candidate for autoquant replacement. Please file an issue if you see "
+                    + "this exception."
                 )
             case node:
                 raise ValueError(f"Found {type(node)} but is not supported")
@@ -471,8 +481,8 @@ class CandidateRewriter(libcst.CSTTransformer):
             case ReplacementCandidate(node):
                 raise ValueError(
                     f"Found {type(node)} but is not supported. However, it was identified as a "
-                    "candidate for autoquant replacement. Please file an issue if you see "
-                    "this exception."
+                    + "candidate for autoquant replacement. Please file an issue if you see "
+                    + "this exception."
                 )
             case node:
                 raise ValueError(f"Found {type(node)} but is not supported")
