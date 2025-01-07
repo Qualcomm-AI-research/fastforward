@@ -1,6 +1,8 @@
 import difflib
 import textwrap
 
+from collections.abc import Sequence
+
 import libcst as libcst
 
 from fastforward.autoquant.cst import passes
@@ -24,9 +26,7 @@ else:
 def test_statement_suite_to_indented_block() -> None:
     """Verifies simple statement suite is replaced by indented block."""
     # GIVEN code with non-simple statements, and its reference simplified version
-    input, expected = map(
-        textwrap.dedent, (_STATEMENT_SUITE_TO_BLOCK_IN, _STATEMENT_SUITE_TO_BLOCK_OUT)
-    )
+    input, expected = _strip_dedent(_STATEMENT_SUITE_TO_BLOCK_IN, _STATEMENT_SUITE_TO_BLOCK_OUT)
 
     # WHEN we visit the code with SimpleStatementSuiteToIndentedBlock
     transformer = passes.SimpleStatementSuiteToIndentedBlock()
@@ -46,7 +46,7 @@ y = z = x
 def test_mark_assignment() -> None:
     """Verifies GeneralAssignment does not interfere with codegen."""
     # GIVEN different types of assignments
-    input = textwrap.dedent(_ASSIGNMENT_IN)
+    input = _strip_dedent(_ASSIGNMENT_IN)[0]
 
     # WHEN we wrap them into GeneralAssignments
     transformer = passes.WrapAssignments()
@@ -55,14 +55,70 @@ def test_mark_assignment() -> None:
     assert_input_transforms_as_expected(input, transformer, input)
 
 
+_ISOLATE_REPLACEMENT_CANDIDATES_IN = """
+def some_function(a, b, c, d):
+    v = a + b * c
+    return (v + d) / b
+
+# ensure that isolation works at the module level
+r = a + b * c
+"""
+
+_ISOLATE_REPLACEMENT_CANDIDATES_OUT = """
+def some_function(a, b, c, d):
+    _tmp_1 = b * c
+    v = a + _tmp_1
+    _tmp_2 = (v + d)
+    return _tmp_2 / b
+
+# ensure that isolation works at the module level
+_tmp_3 = b * c
+r = a + _tmp_3
+"""
+
+
+def test_isolate_replacement_candidates() -> None:
+    # GIVEN statements with compound expressions
+    input, expected = _strip_dedent(
+        _ISOLATE_REPLACEMENT_CANDIDATES_IN, _ISOLATE_REPLACEMENT_CANDIDATES_OUT
+    )
+
+    # WHEN we isolate candidates after wrapping assignments
+    transformer_mark_candidates = passes.MarkReplacementCandidates()
+    transformer_isolate_candidates = passes.IsolateReplacementCandidates()
+
+    # THEN the input code is transformed such that each statement contains one
+    # expression at most
+    assert_input_transforms_as_expected(
+        input,
+        [
+            transformer_mark_candidates,
+            transformer_isolate_candidates,
+        ],
+        expected,
+    )
+
+
 def assert_input_transforms_as_expected(
-    input_module: str, transformer: libcst.CSTTransformer, output_module: str
+    input_module: str,
+    transformers: libcst.CSTTransformer | Sequence[libcst.CSTTransformer],
+    output_module: str,
 ) -> None:
     """Verifies the module transforms as expected."""
     module = libcst.parse_module(input_module)
-    transformed = module.visit(transformer).code
+
+    if isinstance(transformers, libcst.CSTTransformer):
+        transformers = [transformers]
+    for transformer in transformers:
+        module = module.visit(transformer)
+
+    transformed = module.code
     if not transformed == output_module:
         output = "\n".join(
             difflib.unified_diff(output_module.splitlines(), transformed.splitlines())
         )
-        raise RuntimeError(f"Transformed module does not match expected output:\n{output}.")
+        raise AssertionError(f"Transformed module does not match expected output:\n{output}")
+
+
+def _strip_dedent(*txt: str) -> tuple[str, ...]:
+    return tuple(textwrap.dedent(t.strip()) for t in txt)

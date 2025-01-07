@@ -378,10 +378,17 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             # replacement candidate
             return updated_node
 
-        if m.matches(parent, m.Assign() | m.Return() | m.Expr()):
-            # If the replacement candidate is already in an assign node or
-            # IndentedBlock we don't have to move it
-            return updated_node
+        match parent:
+            case libcst.Assign() | libcst.AugAssign() | libcst.AnnAssign():
+                # If the replacement candidate is already in an assign node we
+                # don't have to move it
+                return updated_node
+            case libcst.Return() | libcst.Yield():
+                # If the replacement candidate is the expression in a return or yield
+                # statement, we don't have to move it.
+                return updated_node
+            case _:
+                pass
 
         assign_name = libcst.Name(f"_tmp_{self._count}")
         self._count += 1
@@ -400,7 +407,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
                     # in the visit stack)
                     continue
                 insert_target = self._visit_stack[i - 1]
-                assert isinstance(insert_target, libcst.BaseSuite)
+                assert isinstance(insert_target, (libcst.BaseSuite, libcst.Module))
                 insert_location = cast(libcst.SimpleStatementLine, node)
                 break
         else:
