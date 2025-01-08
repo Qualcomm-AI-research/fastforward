@@ -54,6 +54,6 @@ For more tutorials and the API reference, visit the [general documentation](http
 
 2. Install FastForward:
 
-        ```
-        pip install git+https://github.com/Qualcomm-AI-research/fastforward@main
-        ```
+```bash
+pip install git+https://github.com/Qualcomm-AI-research/fastforward@main
+```
