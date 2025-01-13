@@ -45,27 +45,27 @@ class GeneralAssignment(libcst.BaseSmallStatement):
         deflated_node._codegen_impl(*args, **kwargs)
 
     def _validate(self) -> None:
-        assert (self.value is None) == (
-            self.original.value is None
-        ), "Should have a value if and only if original had a value."
+        assert (self.value is None) == (self.original.value is None), (
+            "Should have a value if and only if original had a value."
+        )
         match self.original:
             case libcst.AnnAssign():
-                assert bool(self.value) == bool(
-                    self.original.value
-                ), "Should have a value if and only if original had a value."
+                assert bool(self.value) == bool(self.original.value), (
+                    "Should have a value if and only if original had a value."
+                )
                 assert self.annotation is not None, "Expected an annotation."
                 assert len(self.targets) == 1, "Should not have additional augmentation targets."
             case libcst.Assign():
-                assert bool(self.value) == bool(
-                    self.original.value
-                ), "Should have a value if and only if original had a value."
-                assert len(self.targets) == len(
-                    self.original.targets
-                ), "Should not have new assignment targets."
+                assert bool(self.value) == bool(self.original.value), (
+                    "Should have a value if and only if original had a value."
+                )
+                assert len(self.targets) == len(self.original.targets), (
+                    "Should not have new assignment targets."
+                )
             case libcst.AugAssign():
-                assert bool(self.value) == bool(
-                    self.original.value
-                ), "Should have a value if and only if original had a value."
+                assert bool(self.value) == bool(self.original.value), (
+                    "Should have a value if and only if original had a value."
+                )
                 assert len(self.targets) == 1, "Should not have additional augmentation targets."
                 assert self.value is not None, "Expected a value to assign to."
             case _:
