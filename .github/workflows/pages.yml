@@ -1,0 +1,58 @@
+name: Generate docs
+
+on:
+  push:
+    branches:
+      - "docs/**"
+
+jobs:
+  docs:
+    if: github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    env:
+      PAGES_BRANCH: "pages"
+      PAGES_PREFIX: public
+    container:
+      image: python:3.10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "${{ env.PAGES_BRANCH }}"
+      - uses: actions/checkout@v4
+      - run: curl -L https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 -o jq && chmod +x ./jq
+      - name: Generate docs
+        run: |
+          export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          export DOCS_SITE_URL="$(curl -k -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages | ./jq -r '.html_url')"
+          python3 -m pip install ".[docs]"
+          git config --global --add safe.directory '*'
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mike deploy --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH ${{ github.ref_name }} $([ \"${{ github.ref_type }}\" = \"tag\" ] && echo "latest")
+          mike set-default --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH latest
+          git checkout $PAGES_BRANCH
+          find public/ -name "sitemap.xml.gz" -exec git rm {} \;
+          git commit --amend --no-edit
+          git show --stat $PAGES_BRANCH
+          git push origin $PAGES_BRANCH:$PAGES_BRANCH
+      - name: Upload static files as artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: "${{ env.PAGES_PREFIX }}"
+
+  deploy:
+    if: github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    needs: docs
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
