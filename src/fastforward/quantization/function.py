@@ -17,7 +17,7 @@ from fastforward.common import maybe_tensor_apply
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class QuantizationParameters:
     """
     Container for quantization parameters. Each quantization expects a specific
@@ -29,6 +29,10 @@ class QuantizationParameters:
         Replace any provided keyword argument and return a newly created
         `QuantizationParameters`.
         """
+        if ff.get_export_mode():
+            for key, value in changes.items():
+                setattr(self, key, value)
+                return self
         return dataclasses.replace(self, **changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:

@@ -66,6 +66,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
     @staticmethod
     @override
     def forward(  # type: ignore[override]
+        ctx: Any,
         data: torch.Tensor,
         scale: torch.Tensor,
         offset: torch.Tensor | None,
@@ -76,24 +77,13 @@ class QuantizeStaticAffine(torch.autograd.Function):
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         quant_dtype = quantized_dtype or data.dtype
 
-        return torch.ops.fastforward.quantize_by_tile(  # type: ignore[no-any-return]
-            data, scale, tile_size, num_bits, quant_dtype, offset
-        )
-
-    @staticmethod
-    @override
-    def setup_context(ctx: Any, inputs: Any, output: torch.Tensor) -> None:
-        data: torch.Tensor
-        scale: torch.Tensor
-        offset: torch.Tensor | None
-        tile_size: torch.Size | Literal["data_shape"]
-        num_bits: int
-
-        data, scale, offset, tile_size, num_bits, _ = inputs
         ctx.save_for_backward(data, scale, offset)
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
+
+        return torch.ops.fastforward.quantize_by_tile(  # type: ignore[no-any-return]
+            data, scale, tile_size, num_bits, quant_dtype, offset)
 
     @staticmethod
     @override

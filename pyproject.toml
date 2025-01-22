@@ -75,6 +75,7 @@ addopts = [
 markers = [
   "benchmark: marks benchmark tests",
   "patchedtorch: marks tests which are required patched PyTorch version (deselect with '-m \"not patchedtorch\"')",
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
 
 [tool.mypy]

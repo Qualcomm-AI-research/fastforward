@@ -249,6 +249,7 @@ def dequantize_by_tile_meta(
     scale: torch.Tensor,
     tile_size: SizeT,
     offset: torch.Tensor | None = None,
+    output_dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
     return torch.empty(input.shape)
 

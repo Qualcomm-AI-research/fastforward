@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, TypeAlias, TypeVar
 
 import torch
 
+from torch.nn.intrinsic import quantized
 from typing_extensions import override
 
 import fastforward as ff
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from fastforward.quantized_tensor import QuantizedTensor
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class StaticAffineQuantParams(QuantizationParameters):
     """
     Quantization parameters for static affine quantization.
@@ -48,7 +49,7 @@ DynamicParamInferenceFn: TypeAlias = Callable[
 ]
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class DynamicAffineQuantParams(QuantizationParameters):
     """
     Quantization parameters for dynamic affine quantization.
@@ -68,6 +69,9 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
     @classmethod
     @override
     def quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> "QuantizedTensor":
+        if ff.get_export_mode():
+            return cls._static_quantize(data, params)
+
         match params:
             case StaticAffineQuantParams():
                 return cls._static_quantize(data, params)
@@ -89,6 +93,17 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             params.num_bits,
             params.quantized_dtype or data.dtype,
         )
+
+        if ff.get_export_mode():
+            dequantized_data = dequantize_affine(
+                quantized_data,
+                params.scale,
+                params.offset,
+                tile_size,
+                params.quantized_dtype or data.dtype,
+            )
+            return dequantized_data
+
         params = params.with_changes(dequantize_dtype=params.dequantize_dtype or data.dtype)
         context = QuantizationContext(cls, params)
         return ff.QuantizedTensor(quantized_data, context)
