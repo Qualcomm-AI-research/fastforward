@@ -187,7 +187,7 @@ class ConcurrentExecOrchestrator:
         order_stages = sorted(itertools.chain(*execution_order))
         if list(range(num_stages)) != order_stages:
             raise ValueError(
-                f"Each stage 0-{num_stages-1} must appear exactly once in execution_order. "
+                f"Each stage 0-{num_stages - 1} must appear exactly once in execution_order. "
                 f"Got {execution_order}."
             )
 
@@ -282,7 +282,7 @@ class ConcurrentExecOrchestrator:
             if len(exec_block) != 1:
                 raise RuntimeError(
                     "Repeated stages are only allowed for the single stage execution blocks. "
-                    f"The current stage '{stage}' is stage {block_stage_idx+1} of "
+                    f"The current stage '{stage}' is stage {block_stage_idx + 1} of "
                     f"{len(exec_block)} in execution block '{exec_block}' of the provided "
                     f"execution order ({self.execution_order})."
                 )

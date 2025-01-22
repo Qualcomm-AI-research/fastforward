@@ -47,9 +47,9 @@ def test_mse_grid_estimator_decreasing_error_by_num_candidates(
 
     err2 = torch.sum((quantizer(data).dequantize() - data) ** 2)
 
-    assert (
-        err1 >= err2
-    ), "if grid is ^2 times bigger, the selected range must result in lower or equal error"
+    assert err1 >= err2, (
+        "if grid is ^2 times bigger, the selected range must result in lower or equal error"
+    )
 
 
 @pytest.mark.parametrize("symmetric", [True, False])

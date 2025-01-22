@@ -219,8 +219,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         metadata = self.__dict__.get("_quantizer_metadata")
         if metadata is None:
             raise AttributeError(
-                f"Cannot assign quantizer before {type(self).__name__}."
-                "__init_quantization__() call"
+                f"Cannot assign quantizer before {type(self).__name__}.__init_quantization__() call"
             )
 
         if _register_module:

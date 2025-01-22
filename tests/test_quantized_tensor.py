@@ -129,9 +129,9 @@ def test_quantized_tensor_cpu_cuda():
     assert cuda_tensor_scale.is_cuda, "Scale tensor should move to cuda"
     assert cuda_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
     assert cuda_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
-    assert torch.allclose(
-        cuda_tensor.dequantize(), quantized_data.dequantize().cuda()
-    ), "Cuda transfer should not affect data values"
+    assert torch.allclose(cuda_tensor.dequantize(), quantized_data.dequantize().cuda()), (
+        "Cuda transfer should not affect data values"
+    )
 
     cpu_tensor = cuda_tensor.cpu()
     assert cpu_tensor.device.type == "cpu", "Quantized tensor should move back to cpu"
@@ -143,9 +143,9 @@ def test_quantized_tensor_cpu_cuda():
     assert cpu_scale_tensor.device.type == "cpu", "Scale tensor should move back to cpu"
     assert cpu_tensor_args.num_bits == num_bits, "Non-tensor parameter should not change"
     assert cpu_tensor.quant_func == quantized_data.quant_func, "quant_func should persist"
-    assert torch.allclose(
-        cpu_tensor.dequantize(), quantized_data.dequantize()
-    ), "CPU transfer should not affect data values"
+    assert torch.allclose(cpu_tensor.dequantize(), quantized_data.dequantize()), (
+        "CPU transfer should not affect data values"
+    )
 
 
 @ff.flags.context(ff.strict_quantization, False)
@@ -341,9 +341,9 @@ def test_deepcopy():
         if isinstance(original_arg, torch.Tensor):
             assert (original_arg == copied_arg).all(), f"{arg_key} is not equal"
             assert original_arg is not copied_arg, f"{arg_key} is not deepcopied"
-            assert (
-                original_arg.data_ptr is not copied_arg.data_ptr
-            ), f"{arg_key} deepcopy aliases storage"
+            assert original_arg.data_ptr is not copied_arg.data_ptr, (
+                f"{arg_key} deepcopy aliases storage"
+            )
         else:
             assert original_arg == copied_arg, f"{arg_key} is not equal"
 
