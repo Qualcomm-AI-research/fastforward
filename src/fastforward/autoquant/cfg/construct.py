@@ -1,7 +1,10 @@
-import sys
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
 
-from collections.abc import Iterator
-from typing import Callable, cast
+import functools
+
+from collections.abc import Iterator, Sequence
+from typing import cast
 
 import libcst
 
@@ -16,15 +19,15 @@ def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
     return cfg
 
 
+@functools.singledispatch
 def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
-    if block_constructor := _CONSTRUCTION_FUNCS.get(type(node)):
-        return block_constructor(node)
     raise CFGConstructionError(
         f"Cannot convert {type(node).__name__} to CFG. A conversion implementation is missing. "
         + "Please file an issue if you run into this error."
     )
 
 
+@_block_from_CSTNode.register
 def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
     body_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
     body = _block_from_IndentedBlock(body_node)
@@ -35,6 +38,7 @@ def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
     return block
 
 
+@_block_from_CSTNode.register
 def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
     entry: blocks.Block | None = None
     previous: blocks.Block | None = None
@@ -69,6 +73,7 @@ def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
     return entry
 
 
+@_block_from_CSTNode.register
 def _block_from_If(node: libcst.If) -> blocks.IfBlock:
     true_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
     true_block = _block_from_IndentedBlock(true_node)
@@ -80,6 +85,7 @@ def _block_from_If(node: libcst.If) -> blocks.IfBlock:
     return block
 
 
+@_block_from_CSTNode.register
 def _block_from_Else(node: libcst.Else) -> blocks.Block:
     block = _block_from_CSTNode(node.body)
     block.push_wrapper(node)
@@ -136,21 +142,3 @@ def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.Indente
 def _set_tails(block: blocks.Block | None, tail: blocks.Block) -> None:
     if block:
         block.set_tail(tail)
-
-
-def _constrution_functions() -> (
-    dict[type[libcst.CSTNode], Callable[[libcst.CSTNode], blocks.Block]]
-):
-    funcs: dict[type[libcst.CSTNode], Callable[[libcst.CSTNode], blocks.Block]] = {}
-    for member_name in dir(sys.modules[__name__]):
-        if not member_name.startswith("_block_from_"):
-            continue
-        node_name = member_name.rsplit("_", 1)[1]
-        if node := getattr(libcst, node_name, None):
-            if issubclass(node, libcst.CSTNode):
-                funcs[node] = getattr(sys.modules[__name__], member_name)
-
-    return funcs
-
-
-_CONSTRUCTION_FUNCS = _constrution_functions()
