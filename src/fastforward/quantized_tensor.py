@@ -299,8 +299,6 @@ class QuantizedTensor(torch.Tensor):
         """
         Create a new quantized tensor.
         """
-        if fastforward.get_export_mode():
-            return data
         return data.as_subclass(cls)
 
     def __init__(

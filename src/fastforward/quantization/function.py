@@ -29,10 +29,6 @@ class QuantizationParameters:
         Replace any provided keyword argument and return a newly created
         `QuantizationParameters`.
         """
-        if ff.get_export_mode():
-            for key, value in changes.items():
-                setattr(self, key, value)
-                return self
         return dataclasses.replace(self, **changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:

@@ -69,8 +69,13 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
     @classmethod
     @override
     def quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> "QuantizedTensor":
+        # The check is performed here with an if statement instead
+        # of using the `match` function because dynamo does not
+        # support it.
         if ff.get_export_mode():
-            return cls._static_quantize(data, params)
+            if type(params) is DynamicAffineQuantParams:
+                raise TypeError(f"Export does not support dynamic quantization.")
+            return cls._export_quantize(data, params)
 
         match params:
             case StaticAffineQuantParams():
@@ -79,6 +84,37 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
                 return cls._dynamic_quantize(data, params)
 
         raise TypeError(f"Unsupported type for argument 'params': '{type(params)}'")
+
+    @classmethod
+    def _export_quantize(
+        cls, data: torch.Tensor, params: StaticAffineQuantParams
+    ) -> torch.Tensor:
+        """
+        Dedicated quantization function for export.
+
+        Torch dynamo does not currently support custom tensor objects, such
+        as the QuantizedTensor. For this reason this function performs
+        quantization, followed immediately by dequantization.
+        """
+
+        tile_size = params.granularity.tile_size(data.shape)
+        quantized_data = quantize_affine(
+            data,
+            params.scale,
+            params.offset,
+            tile_size,
+            params.num_bits,
+            params.quantized_dtype or data.dtype,
+        )
+
+        dequantized_data = dequantize_affine(
+            quantized_data,
+            params.scale,
+            params.offset,
+            tile_size,
+            params.quantized_dtype or data.dtype,
+        )
+        return dequantized_data
 
     @classmethod
     def _static_quantize(
@@ -93,16 +129,6 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             params.num_bits,
             params.quantized_dtype or data.dtype,
         )
-
-        if ff.get_export_mode():
-            dequantized_data = dequantize_affine(
-                quantized_data,
-                params.scale,
-                params.offset,
-                tile_size,
-                params.quantized_dtype or data.dtype,
-            )
-            return dequantized_data
 
         params = params.with_changes(dequantize_dtype=params.dequantize_dtype or data.dtype)
         context = QuantizationContext(cls, params)
