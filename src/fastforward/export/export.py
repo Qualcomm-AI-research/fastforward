@@ -9,9 +9,7 @@ from operator import attrgetter
 from typing import Any, Generic, Sequence, TypeVar
 
 import onnx
-
 import onnxscript
-
 import torch
 import torch_onnx  # type: ignore[import-untyped]
 
@@ -183,9 +181,7 @@ class RemoveFunction(NodeVisitor[None]):
         print(f"Removing node: {node}")
         graph: Graph = graph_exported_program.graph_module.graph
         input_specs = graph_exported_program.graph_signature.input_specs
-        output_specs = graph_exported_program.graph_signature.output_specs
         input_nodes = node.all_input_nodes
-        output_nodes = node.users.keys()
 
         assert input_nodes, "The node does not have any inputs"
         assert node.users.keys(), "The node does not have any outputs"
@@ -238,7 +234,7 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
         self._target_name = target_name
         self._logs: dict[str, dict[str, Any]] = {}
 
-        #TODO: Better way of storing the model as torch.module for accessing parameters/buffers
+        # TODO: Better way of storing the model as torch.module for accessing parameters/buffers
         self._module_named_parameters = None
         self._module_named_buffers = None
         self._module = None
@@ -291,7 +287,9 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
 
         if not self._module_named_parameters:
             self._module = graph_exported_program.module()
-            self._module_named_parameters = set([name for name, _ in self._module.named_parameters()])
+            self._module_named_parameters = set(
+                [name for name, _ in self._module.named_parameters()]
+            )
             self._module_named_buffers = set([name for name, _ in self._module.named_buffers()])
 
         print(f"Logging parameters for {node}")
@@ -383,7 +381,7 @@ def process_dynamo_program(
     """
     logs: list[Any] = []
 
-    print(f"Wrapping graph")
+    print("Wrapping graph")
     graph_wrapper = GraphWrapper(dynamo_exported_program)
     for operation in graph_operators:
         print(f"Running operation : {operation}")
@@ -469,15 +467,6 @@ def export(
         dynamo_exported_program, graph_operators
     )
 
-    #TODO: Check the below
-    output_node = [node for node in dynamo_exported_program.graph.nodes if node.name == "output"][0]
-    output_node.args = ((output_node.args[0][0],),)
-
-    #TODO: This is for removing additional outputs, mostly for the LLaMA. It might not always be desirable
-    # so double check it.
-    while len(dynamo_exported_program.graph_signature.output_specs) > 1:
-        print(dynamo_exported_program.graph_signature.output_specs.pop())
-
     # We only care about the logs from the first operation (LogQuantizationParameter) in the
     # hardcoded graph operations (which will always take place when exporting for QNN).
     # Given that the users could have defined additional operations that happen before these,
@@ -508,5 +497,5 @@ def export(
         artifact_location.with_suffix(".onnx"),
         save_as_external_data=True,
         all_tensors_to_one_file=False,
-        location="filename"
+        location="filename",
     )

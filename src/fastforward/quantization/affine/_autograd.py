@@ -83,7 +83,8 @@ class QuantizeStaticAffine(torch.autograd.Function):
         ctx.num_bits = num_bits
 
         return torch.ops.fastforward.quantize_by_tile(  # type: ignore[no-any-return]
-            data, scale, tile_size, num_bits, quant_dtype, offset)
+            data, scale, tile_size, num_bits, quant_dtype, offset
+        )
 
     @staticmethod
     @override

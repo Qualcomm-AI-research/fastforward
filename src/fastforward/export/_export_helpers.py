@@ -137,14 +137,13 @@ def generate_qnn_encodings_dictionary(
     parameters: set[str],
     quantization_logs: dict[str, Any],
 ) -> QNNEncoding:
-
     param_encodings: dict[str, list[QNNEncodingEntry]] = {}
     activation_encodings: dict[str, list[QNNEncodingEntry]] = {}
 
     # Inputs are also included in the activation encodings for QNN
     activations_and_inputs = activations | inputs
 
-    #TODO: Test encodings generation format when using per channel quantization.
+    # TODO: Test encodings generation format when using per channel quantization.
     for key, value in quantization_logs.items():
         scale = value["scale"]
         offset = value.get("offset")
@@ -158,7 +157,7 @@ def generate_qnn_encodings_dictionary(
         if isinstance(offset, torch.Tensor):
             offset = torch.round(offset)
 
-        qnn_offset = (offset - 2**(bitwidth-1))
+        qnn_offset = offset - 2 ** (bitwidth - 1)
         if not isinstance(qnn_offset, torch.Tensor):
             qnn_offset = torch.tensor(qnn_offset)
 
@@ -178,7 +177,6 @@ def generate_qnn_encodings_dictionary(
             }
             encoding.append(output_entry)
 
-
         if key in activations_and_inputs:
             activation_encodings[key] = encoding
         elif key in parameters:
@@ -190,4 +188,3 @@ def generate_qnn_encodings_dictionary(
             )
 
     return {"param_encodings": param_encodings, "activation_encodings": activation_encodings}
-

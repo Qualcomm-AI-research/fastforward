@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Callable, TypeAlias, TypeVar
 
 import torch
 
-from torch.nn.intrinsic import quantized
 from typing_extensions import override
 
 import fastforward as ff
@@ -73,8 +72,6 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         # of using the `match` function because dynamo does not
         # support it.
         if ff.get_export_mode():
-            if type(params) is DynamicAffineQuantParams:
-                raise TypeError(f"Export does not support dynamic quantization.")
             return cls._export_quantize(data, params)
 
         match params:
@@ -86,9 +83,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         raise TypeError(f"Unsupported type for argument 'params': '{type(params)}'")
 
     @classmethod
-    def _export_quantize(
-        cls, data: torch.Tensor, params: StaticAffineQuantParams
-    ) -> torch.Tensor:
+    def _export_quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> torch.Tensor:
         """
         Dedicated quantization function for export.
 
@@ -96,6 +91,8 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         as the QuantizedTensor. For this reason this function performs
         quantization, followed immediately by dequantization.
         """
+        if type(params) is DynamicAffineQuantParams:
+            raise TypeError("Export does not support dynamic quantization.")
 
         tile_size = params.granularity.tile_size(data.shape)
         quantized_data = quantize_affine(

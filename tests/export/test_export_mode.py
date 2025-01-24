@@ -1,10 +1,10 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import pytest
 import torch
 
 import fastforward as ff
+
 
 # from fastforward.quantization.affine import quantize_by_tile_function
 from fastforward.quantization.affine.static import quantize_by_tile
@@ -30,4 +30,3 @@ def test_export_mode():  # type: ignore[unreachable]
         assert not isinstance(fake_quant_a, QuantizedTensor)
 
     assert not ff.get_export_mode()
-
