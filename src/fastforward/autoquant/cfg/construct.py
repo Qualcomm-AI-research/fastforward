@@ -14,6 +14,17 @@ from .exceptions import CFGConstructionError
 
 
 def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
+    """
+    Construct a CFG from a `FunctionDef` CST node.
+
+    Currently, CFG creation is only supported for functions.
+
+    Args:
+        node: Function node to turn into a CFG.
+
+    Returns:
+        CFG that represents same function as node.
+    """
     cfg = _block_from_FunctionDef(node)
     _dominance.infer_immediate_dominators(cfg)
     return cfg
@@ -21,6 +32,21 @@ def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
 
 @functools.singledispatch
 def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
+    """
+    Convert CST with `node` as root to a CFG.
+
+    Specialization for this functions that accept a subclass `libcst.CSTNode`
+    can be registered using `_block_from_CSTNode.register`. Each of this
+    functions is expected to accept a single `libcst.CSTNode` as input and
+    construct a CFG for the entire sub-tree.
+
+    Args:
+        node: `CSTNode` to convert to a CFG.
+
+    Returns:
+        A CFG block. This block may be a partial CFG, i.e., some of its edges
+        may be dangling.
+    """
     raise CFGConstructionError(
         f"Cannot convert {type(node).__name__} to CFG. A conversion implementation is missing. "
         + "Please file an issue if you run into this error."
@@ -29,6 +55,20 @@ def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
 
 @_block_from_CSTNode.register
 def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
+    """
+    Convert a `FunctionDef` to a CFG.
+
+    The returned `FunctionBlock` contains the `FunctionDef` node and points to
+    a CFG block that represents the function implementation.
+
+    Args:
+        node: A `FunctionDef` CST node that is converted into a CFG.
+
+    Returns:
+        `FunctionBlock` that represents the same function as `node`. The CFG
+        returned from this function is 'complete', i.e., non of its edges are
+        dangling.
+    """
     body_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
     body = _block_from_IndentedBlock(body_node)
 
@@ -40,6 +80,19 @@ def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
 
 @_block_from_CSTNode.register
 def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
+    """
+    Convert an `IndentedBlock` to a CFG.
+
+    The returned `Block` may be any subclass of `Block` and depends on the
+    statements in `node.body`.
+
+    Args:
+        node: An `IndentedBlock` CST node that is converted into a CFG.
+
+    Returns:
+        `Block` that represents the same block of code as `node`. The returned
+        block may be partial, i.e., some of its edges may be dangling.
+    """
     entry: blocks.Block | None = None
     previous: blocks.Block | None = None
 
@@ -75,6 +128,20 @@ def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
 
 @_block_from_CSTNode.register
 def _block_from_If(node: libcst.If) -> blocks.IfBlock:
+    """
+    Convert `libcst.If` to a CFG.
+
+    The returned `IfBlock` contains the test expression. The contents of the
+    true and false branches are represented by other blocks that are pointed to
+    by the `true` and `false` attribute.
+
+    Args:
+        node: An `If` CST node that is converted in a CFG.
+
+    Returns:
+        `IfBlock` that represents the if statement of `node`. The returned
+        block may be partial, i.e., the `false` edge may be dangling.
+    """
     true_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
     true_block = _block_from_IndentedBlock(true_node)
     false_block: blocks.Block | None = None
@@ -87,6 +154,23 @@ def _block_from_If(node: libcst.If) -> blocks.IfBlock:
 
 @_block_from_CSTNode.register
 def _block_from_Else(node: libcst.Else) -> blocks.Block:
+    """
+    Convert an `Else` node to a CFG.
+
+    An else branch is not represented by a specific block in the CFG. It is
+    identified by being the `false` member on an `IfBlock`. As such, it can be
+    any type of block. In order to maintain the information from `node` it is
+    pushed as a wrapper on the block. This information can be retrieved during
+    reconstruction.
+
+    Args:
+        node: An `Else` CST node that is converted in a CFG.
+
+    Returns:
+        `Block` that represents the else branch of `node`. The block
+        specifically represents `node.body` The returned block may be partial,
+        i.e., some edges may be dangling.
+    """
     block = _block_from_CSTNode(node.body)
     block.push_wrapper(node)
     return block
@@ -97,6 +181,14 @@ def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.Indente
     Split a single `IndentedBlock` into one or more `IndentedBlock`s that form
     the content of CFG blocks. All returned blocks contain either no branching
     or a single compound statement that branches.
+
+    Args:
+        node: `IndentedBlock` to break up into one or more smaller `IndentedBlock`s.
+
+    Returns:
+        An iterator of `IndentedBlock`s. It is a guaranteed that each yielded
+        `IndentedBlock` contains either a single statement or multiple
+        statements that or not `CompoundStatement`s.
     """
     assert len(node.body) > 0, "IndentedBlock cannot be empty"
     partial_blocks: list[list[libcst.BaseStatement]] = [[]]
@@ -140,5 +232,8 @@ def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.Indente
 
 
 def _set_tails(block: blocks.Block | None, tail: blocks.Block) -> None:
+    """
+    Helper function that sets tails of `block` if `block` is not `None`.
+    """
     if block:
         block.set_tail(tail)

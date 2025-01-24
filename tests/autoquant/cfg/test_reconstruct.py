@@ -27,8 +27,8 @@ def test_reconstruct(input: str, output: str, description: str) -> None:
     exactly, `EXPECT: exact` can be used instead of providing an expected
     output example.
 
-    Here, each example is loaded, concerted into a CST, followed by a CST ->
-    CFG -> CST roundtrip. The resulting CST is used to generate code and match
+    Here, each example is loaded, converted into a CST, followed by a CST ->
+    CFG -> CST round trip. The resulting CST is used to generate code and match
     against the expected output.
     """
     # GIVEN a CST of a function

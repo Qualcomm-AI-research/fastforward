@@ -157,6 +157,18 @@ def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
 
 
 def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.IndentedBlock:
+    """
+    Merge `IndentedBlock` associated with `block` if the immediate
+    post-dominator of `block` is dominated by `block`.
+
+    Args:
+        block: the `Block` to evaluate.
+        node: the `IndentedBlock` associated with `block`.
+
+    Returns:
+        `IndentedBlock` that is either `node` or `node` merged with the
+        `IndentedBlock` constructed from `block.immediate_post_dominator`.
+    """
     if block.immediate_post_dominator and _has_tail(block):
         tail = reconstruct_block(block.immediate_post_dominator)
         node = node_manipulation.combine_indented_blocks(node, tail)
@@ -164,6 +176,34 @@ def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.Ind
 
 
 def _has_tail(block: blocks.Block) -> bool:
+    """
+    Checks if `block` has a 'tail' block that should be processed as part of
+    the same `IndentedBlock`.
+
+    For example, consider the following code:
+
+    ```python
+    if a > b:
+        print("a is bigger than b")
+    print("end program")
+    ```
+
+    In this example, the final print statement should be in the same
+    `IndentedBlock` as the if statement. It can be identified because it will
+    have the `Block` corresponding to the if-statement as its dominator. From
+    the if-statement block, the block corresponding to the block of the last
+    print statement will be its immediate post-dominator. We can use this
+    information to identify if there are further blocks that should be
+    processed or if blocks that can be reached from `block` are part of another
+    sub-tree of the CST.
+
+    Args:
+        block: the `Block` to evaluate.
+
+    Returns:
+        boolean indicating if immediate post-dominator should be processed as
+        part of CST sub-tree associated with `block`.
+    """
     if block.immediate_post_dominator is None:
         raise RuntimeError(
             f"Encountered {type(block).__name__} with dangling immediate_post_dominator"
@@ -197,6 +237,28 @@ def apply_node_wrapper(
     _node: libcst.CSTNode,
     /,
 ) -> libcst.CSTNode:
+    """
+    Wrappers on `Blocks` are CST nodes that may carry extra information that is
+    not contained in the block itself. During the deconstruction process, these
+    wrappers are applied again. This is a general function for applying
+    wrappers. Node specific functions can be registered using
+    `apply_node_wrapper.register`
+
+    Args:
+        _wrapper: The CST node to apply or unwrap.
+        _block: The block of which the wrapper is stored.
+        _node: The CST node to which to apply the wrapper to.
+
+    Returns:
+        Processed and 'unwrapped' CST Node.
+
+    Note:
+        `Apply` is used in a very general sense. I.e., it simply means: take a
+        wrapper node and a reconstructed node and update the reconstructed node
+        or create a new node such that the relevant information from the
+        wrapper node is contained in the reconstructed CST. The actual
+        implementation is heavily wrapper, block, and node dependent.
+    """
     raise RuntimeError(
         f"There is no known handler for applying a {type(_wrapper).__name__}. "
         + "You can register one using apply_node_wrapper.register."

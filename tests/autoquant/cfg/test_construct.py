@@ -27,9 +27,8 @@ _funcdef1: libcst.FunctionDef = libcst.parse_module(_src1).body[0]  # type: igno
 
 
 def test_cfg_construction():
-    cfg = construct(_funcdef1)
-
-    tail = _TestSimpleBlock(next=_TestExitBlock())
+    # Given an expected CFG structure
+    tail = _TestSimpleBlock(next_block=_TestExitBlock())
     expected_graph_structure = _TestFunctionBlock(
         body=_TestSimpleBlock(
             next_block=_TestIfBlock(
@@ -42,16 +41,43 @@ def test_cfg_construction():
         ),
     )
 
+    # When a CFG is created that matches the expected CFG structure
+    cfg = construct(_funcdef1)
+
+    # Then the CFG structure must match the expected CFG structure.
     expected_graph_structure.assert_cfg_structure(cfg)
 
 
 class _TestBlock:
+    """
+    A test utility to assert the structure of a Control Flow Graph.
+
+    `_TestBlock`s can be used to create a graph structure.
+    `assert_cfg_structure` will then assert that the given CFG has the same
+    structure in terms of edges and node/block types.
+
+    Args:
+        BlockType: The expected block type for a CFG node.
+        edges: Named edges that must be a member of the tested CFG.
+    """
+
     def __init__(self, BlockType: type[blocks.Block], **edges: "_TestBlock") -> None:
         self._expected_type = BlockType
         self._expected_edges: dict[str, _TestBlock] = edges
 
     def assert_cfg_structure(self, block: blocks.Block, *, path: str = "") -> None:
-        name = f"root.{path}" or "root block"
+        """
+        Assert that the given CFG `block` has the same structure as the
+        `_TestBlock` graph.
+
+        The CFG given by `block` must match the `BlockType`s of each
+        `_TestBlock` and all edges must be present.
+
+        Args:
+            block: The CFG to test.
+            path: A string to identify a given block. Used for error reporting.
+        """
+        name = f"root.{path}" if path else "root block"
 
         if type(block) is not self._expected_type:
             raise AssertionError(
@@ -66,6 +92,7 @@ class _TestBlock:
             test_block.assert_cfg_structure(child_block, path=child_path)
 
 
+# Some helpers to create test graphs more succinctly.
 _TestSimpleBlock = functools.partial(_TestBlock, blocks.SimpleBlock)
 _TestIfBlock = functools.partial(_TestBlock, blocks.IfBlock)
 _TestFunctionBlock = functools.partial(_TestBlock, blocks.FunctionBlock)
