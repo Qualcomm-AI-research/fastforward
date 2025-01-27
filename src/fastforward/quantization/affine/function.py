@@ -70,9 +70,12 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
     def quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> "QuantizedTensor":
         # The check is performed here with an if statement instead
         # of using the `match` function because dynamo does not
-        # support it.
+        # support this custom case.
         if ff.get_export_mode():
-            return cls._export_quantize(data, params)
+            # In the export case this function will return a standard torch.Tensor instead
+            # of a QuantizedTensor. We ignore the type error due to how entangled the QuantizedTensor
+            # return is with the rest of the codebase.
+            return cls._export_quantize(data, params) # type: ignore[return-value]
 
         match params:
             case StaticAffineQuantParams():
@@ -91,7 +94,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         as the QuantizedTensor. For this reason this function performs
         quantization, followed immediately by dequantization.
         """
-        if type(params) is DynamicAffineQuantParams:
+        if isinstance(params, DynamicAffineQuantParams):
             raise TypeError("Export does not support dynamic quantization.")
 
         tile_size = params.granularity.tile_size(data.shape)

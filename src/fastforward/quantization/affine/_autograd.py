@@ -65,7 +65,7 @@ def quantize_dynamic_affine(
 class QuantizeStaticAffine(torch.autograd.Function):
     @staticmethod
     @override
-    def forward(  # type: ignore[override]
+    def forward(
         ctx: Any,
         data: torch.Tensor,
         scale: torch.Tensor,
@@ -74,9 +74,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
         num_bits: int,
         quantized_dtype: torch.dtype | None,
     ) -> torch.Tensor:
-        tile_size = data.shape if tile_size == "data_shape" else tile_size
         quant_dtype = quantized_dtype or data.dtype
-
         ctx.save_for_backward(data, scale, offset)
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         ctx.tile_size = tile_size

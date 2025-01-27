@@ -5,13 +5,11 @@ import torch
 
 import fastforward as ff
 
-
-# from fastforward.quantization.affine import quantize_by_tile_function
 from fastforward.quantization.affine.static import quantize_by_tile
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-def test_export_mode():  # type: ignore[unreachable]
+def test_export_mode():
     a = torch.randn(2, 2)
 
     tile_size = a.size()
@@ -29,4 +27,4 @@ def test_export_mode():  # type: ignore[unreachable]
         assert ff.get_export_mode()
         assert not isinstance(fake_quant_a, QuantizedTensor)
 
-    assert not ff.get_export_mode()
+    assert not ff.get_export_mode() # type: ignore[unreachable]

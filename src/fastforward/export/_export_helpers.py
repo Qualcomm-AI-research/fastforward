@@ -11,6 +11,7 @@ from onnx.onnx_ml_pb2 import ModelProto
 from onnxscript.ir import Model
 from torch.export.graph_signature import InputSpec
 
+from fastforward.common import ensure_tensor
 from fastforward.quantization.affine import integer_minimum, quantization_range
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ def generate_qnn_encodings_dictionary(
     # Inputs are also included in the activation encodings for QNN
     activations_and_inputs = activations | inputs
 
-    # TODO: Test encodings generation format when using per channel quantization.
+    # TODO: Test encodings generation format (also when using per channel quantization)
     for key, value in quantization_logs.items():
         scale = value["scale"]
         offset = value.get("offset")
@@ -162,6 +163,8 @@ def generate_qnn_encodings_dictionary(
             qnn_offset = torch.tensor(qnn_offset)
 
         min_range, max_range = quantization_range(scale, offset, bitwidth)
+        min_range = ensure_tensor(min_range)
+        max_range = ensure_tensor(max_range)
 
         encoding = []
 

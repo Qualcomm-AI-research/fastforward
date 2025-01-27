@@ -28,7 +28,7 @@ from fastforward.export.export import (
 )
 
 
-def define_model():  # type: ignore[unreachable]
+def define_model():
     class FFNet(torch.nn.Module):
         def __init__(self):
             super(FFNet, self).__init__()

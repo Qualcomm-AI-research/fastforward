@@ -6,7 +6,7 @@ import json
 import pathlib
 
 from operator import attrgetter
-from typing import Any, Generic, Sequence, TypeVar
+from typing import Any, Generic, Optional, Sequence, TypeVar
 
 import onnx
 import onnxscript
@@ -234,10 +234,9 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
         self._target_name = target_name
         self._logs: dict[str, dict[str, Any]] = {}
 
-        # TODO: Better way of storing the model as torch.module for accessing parameters/buffers
-        self._module_named_parameters = None
-        self._module_named_buffers = None
-        self._module = None
+        self._module_named_parameters: frozenset[str] = frozenset()
+        self._module_named_buffers: frozenset[str] = frozenset()
+        self._module: Optional[torch.nn.Module] = None
 
     def enter(self, node: Node) -> bool:
         node_name = _node_name_as_string(node)
@@ -274,6 +273,16 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
                 arg_to_parameter[name] = input_spec.target or ""
         return arg_to_parameter
 
+    def _maybe_load_module_and_params(
+        self, graph_exported_program: ExportedProgram
+    ) -> None:
+        if not self._module:
+            self._module = graph_exported_program.module()
+            self._module_named_parameters = frozenset(
+                [name for name, _ in self._module.named_parameters()]
+            )
+            self._module_named_buffers = frozenset([name for name, _ in self._module.named_buffers()])
+
     def _log_quantization_parameters(
         self,
         node: Node,
@@ -285,21 +294,11 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
         input_node_name = arg_to_parameter.get(input_node.name, input_node.name)
         parameter_nodes = node.args[1:]
 
-        if not self._module_named_parameters:
-            self._module = graph_exported_program.module()
-            self._module_named_parameters = set(
-                [name for name, _ in self._module.named_parameters()]
-            )
-            self._module_named_buffers = set([name for name, _ in self._module.named_buffers()])
+        self._maybe_load_module_and_params(graph_exported_program)
 
-        print(f"Logging parameters for {node}")
-
-        # module = graph_exported_program.module()
-        # module_parameter_names = set([name for name, _ in module.named_parameters()])
-        # module_buffer_names = set([name for name, _ in module.named_buffers()])
-        module_parameter_names = self._module_named_parameters
-        module_buffer_names = self._module_named_buffers
-        module = self._module
+        # Check for fixing mypy union-attr issue
+        if not self._module:
+            return
 
         parameter_values: dict[str, Any] = {}
         for parameter_node, function_parameter_name in zip(
@@ -308,10 +307,10 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
             if (isinstance(parameter_node, Node)) and (
                 parameter_name := arg_to_parameter.get(parameter_node.name, None)
             ):
-                if parameter_name in module_parameter_names:
-                    parameter_values[function_parameter_name] = module.get_parameter(parameter_name)
-                elif parameter_name in module_buffer_names:
-                    parameter_values[function_parameter_name] = module.get_buffer(parameter_name)
+                if parameter_name in self._module_named_parameters:
+                    parameter_values[function_parameter_name] = self._module.get_parameter(parameter_name)
+                elif parameter_name in self._module_named_buffers:
+                    parameter_values[function_parameter_name] = self._module.get_buffer(parameter_name)
                 else:
                     raise RuntimeError(
                         f"The node {parameter_name} contains neither a buffer or a parameter"
@@ -358,7 +357,7 @@ class GraphWrapper:
 
 def process_dynamo_program(
     dynamo_exported_program: ExportedProgram, graph_operators: Sequence[NodeVisitor[_T]]
-) -> tuple[dict[str, str], list[Any]]:
+) -> tuple[ExportedProgram, dict[str, str], list[Any]]:
     """
     Function for processing a dynamo program.
 
