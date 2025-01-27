@@ -16,6 +16,7 @@ import libcst.helpers
 from typing_extensions import override
 
 from fastforward._import import QualifiedNameReference, fully_qualified_name
+from fastforward.autoquant.cst.validation import ensure_type
 
 
 class SourceContextError(RuntimeError):
@@ -84,7 +85,7 @@ class SourceContext:
         resolved_name = _resolve_name(qualified_name)
         module_src = self._get_module_source(resolved_name.module)
         node = module_src.member_cst(resolved_name.obj_name)
-        return _ensure_type(node, NodeType)
+        return ensure_type(node, NodeType)
 
     def _get_module_source(self, module: ModuleType) -> "_ModuleSource":
         if module not in self._modules:
@@ -117,7 +118,7 @@ class PySource:
             NodeType: Node type that is expected. If the resulting node does not
                 match `NodeType`, a `TypeError` is raised.
         """
-        return _ensure_type(self._source_context.get_cst(self._qualified_name), NodeType)
+        return ensure_type(self._source_context.get_cst(self._qualified_name), NodeType)
 
     def member(self, name: str) -> "PySource":
         """Obtain a `PySource` object for an attribute of the python object represented by `self`.
@@ -239,12 +240,6 @@ class _SymbolVisitor(libcst.CSTVisitor):
         name = _get_full_name_or_fail(node)
         self._record_member(name, node)
         return False
-
-
-def _ensure_type(obj: object, T: type[_T]) -> _T:
-    if not isinstance(obj, T):
-        raise TypeError(f"Expected a {T.__name__} but got a {type(obj).__name__}!")
-    return obj
 
 
 def _join_qualified_names(*names: str) -> str:

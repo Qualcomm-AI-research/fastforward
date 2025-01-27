@@ -8,9 +8,9 @@ from typing import cast
 
 import libcst
 
+from ..cst.validation import ensure_type
 from . import _dominance, blocks
 from .exceptions import CFGConstructionError
-from .validation import ensure_type
 
 
 def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:

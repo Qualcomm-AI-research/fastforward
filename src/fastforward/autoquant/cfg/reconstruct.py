@@ -9,9 +9,9 @@ from typing import overload
 import libcst
 
 from ..cst import node_manipulation
+from ..cst.validation import ensure_type
 from . import blocks
 from .exceptions import CFGReconstructionError
-from .validation import ensure_type
 
 logger = logging.getLogger(__name__)
 
