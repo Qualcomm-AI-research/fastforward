@@ -273,15 +273,15 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
                 arg_to_parameter[name] = input_spec.target or ""
         return arg_to_parameter
 
-    def _maybe_load_module_and_params(
-        self, graph_exported_program: ExportedProgram
-    ) -> None:
+    def _maybe_load_module_and_params(self, graph_exported_program: ExportedProgram) -> None:
         if not self._module:
             self._module = graph_exported_program.module()
             self._module_named_parameters = frozenset(
                 [name for name, _ in self._module.named_parameters()]
             )
-            self._module_named_buffers = frozenset([name for name, _ in self._module.named_buffers()])
+            self._module_named_buffers = frozenset(
+                [name for name, _ in self._module.named_buffers()]
+            )
 
     def _log_quantization_parameters(
         self,
@@ -308,9 +308,13 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
                 parameter_name := arg_to_parameter.get(parameter_node.name, None)
             ):
                 if parameter_name in self._module_named_parameters:
-                    parameter_values[function_parameter_name] = self._module.get_parameter(parameter_name)
+                    parameter_values[function_parameter_name] = self._module.get_parameter(
+                        parameter_name
+                    )
                 elif parameter_name in self._module_named_buffers:
-                    parameter_values[function_parameter_name] = self._module.get_buffer(parameter_name)
+                    parameter_values[function_parameter_name] = self._module.get_buffer(
+                        parameter_name
+                    )
                 else:
                     raise RuntimeError(
                         f"The node {parameter_name} contains neither a buffer or a parameter"

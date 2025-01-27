@@ -75,7 +75,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             # In the export case this function will return a standard torch.Tensor instead
             # of a QuantizedTensor. We ignore the type error due to how entangled the QuantizedTensor
             # return is with the rest of the codebase.
-            return cls._export_quantize(data, params) # type: ignore[return-value]
+            return cls._export_quantize(data, params)  # type: ignore[return-value]
 
         match params:
             case StaticAffineQuantParams():

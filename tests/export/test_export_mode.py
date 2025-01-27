@@ -27,4 +27,4 @@ def test_export_mode():
         assert ff.get_export_mode()
         assert not isinstance(fake_quant_a, QuantizedTensor)
 
-    assert not ff.get_export_mode() # type: ignore[unreachable]
+    assert not ff.get_export_mode()  # type: ignore[unreachable]

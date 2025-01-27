@@ -221,7 +221,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         """
         Provide extra repr information on num_bits, symmetric flag and granularities.
         """
-        extra_repr = "symmetric={self.symmetric}"
+        extra_repr = f"symmetric={self.symmetric}"
         super_extra = super().extra_repr()
         if super_extra != "":
             return super_extra + ", " + extra_repr

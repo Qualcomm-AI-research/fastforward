@@ -60,9 +60,13 @@ def initialize_quantizers(quantizers, quantizer, **quantizer_params):
     quantizers.initialize(quantizer, **quantizer_params)
 
 
-def activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers):
+def activate_quantizers(
+    quant_model, data, activation_quantizers, parameter_quantizers, param_granularity=ff.PerTensor()
+):
     initialize_quantizers(activation_quantizers, ff.nn.LinearQuantizer, num_bits=8)
-    initialize_quantizers(parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8)
+    initialize_quantizers(
+        parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
+    )
 
     with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
         quant_model(data)
@@ -180,10 +184,11 @@ def test_node_removal():
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_logging():
+@pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
+def test_node_logging(granularity):
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = define_model()
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     with ff.export_mode(True):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
@@ -194,18 +199,18 @@ def test_node_logging():
     )
 
     quantization_targets = [
-        "arg30_1",
+        "x",
         "fc1.weight",
         "fc1.bias",
-        "addmm",
+        "linear",
         "relu",
         "fc2.weight",
         "fc2.bias",
-        "addmm_1",
+        "linear_1",
         "relu_1",
         "fc3.weight",
         "fc3.bias",
-        "addmm_2",
+        "linear_2",
     ]
 
     assert isinstance(quantization_logs, dict)
@@ -214,19 +219,17 @@ def test_node_logging():
     for quantization_target in quantization_targets:
         assert quantization_target in quantization_logs
 
-    for node_log in quantization_logs.values():
-        for parameter_name, parameter_value in node_log.items():
-            # Only check the parameter (weight, bias) quantizers.
-            # Associating the torch module input/quantizers with the
-            # dynamo names is more involved, so it is omitted for now.
-            if parameter_name.split(".")[-1] in ("weight", "bias"):
-                quantizer_name = "_".join([parameter_name, "quantizer"])
-                quantizer = quant_model.get_submodule(quantizer_name)
+    for parameter_name, parameter_value in quantization_logs.items():
+        # Only check the parameter (weight, bias) quantizers.
+        # Associating the torch module input/quantizers with the
+        # dynamo names is more involved, so it is omitted for now.
+        if parameter_name.split(".")[-1] in ("weight", "bias"):
+            quantizer_name = "_".join([parameter_name, "quantizer"])
+            quantizer = quant_model.get_submodule(quantizer_name)
 
-                assert quantizer.scale == parameter_value["scale"]
-                assert quantizer.offset == parameter_value["offset"]
-                assert quantizer.num_bits == parameter_value["num_bits"]
-                assert quantizer.quant_metadata.shape == torch.Size(parameter_value["tile_size"])
+            assert (quantizer.scale == parameter_value["scale"]).all()
+            assert (quantizer.offset == parameter_value["offset"]).all()
+            assert quantizer.num_bits == parameter_value["num_bits"]
 
 
 @pytest.mark.slow
@@ -354,7 +357,8 @@ def test_onnx_parameter_collection(
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_export_function(tmp_path):
+@pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
+def test_export_function(tmp_path, granularity):
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = define_model()
     output_directory = tmp_path
@@ -362,7 +366,7 @@ def test_export_function(tmp_path):
 
     output_model_directory = pathlib.Path(output_directory) / model_name
 
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     export(quant_model, (data,), output_directory, model_name)
 

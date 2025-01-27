@@ -48,7 +48,7 @@ RUN curl -L "https://github.com/neovim/neovim/releases/download/v0.10.0/nvim-lin
     && curl -L "https://github.com/jesseduffield/lazygit/releases/download/v0.43.1/lazygit_0.43.1_Linux_x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/bin -x -z -f - lazygit
 
 ARG VER_PYTHON=3.10 \
-    VER_TORCH=2.3.0 \
+    VER_TORCH=2.4.0 \
     VER_CUDA=11.8.0
 
 RUN ${CONDA_PREFIX}/bin/conda create --quiet --name ${CONDA_DEFAULT_ENV} -y --strict-channel-priority \

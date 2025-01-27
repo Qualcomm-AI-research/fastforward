@@ -3,6 +3,7 @@
 
 import logging
 
+from sys import breakpointhook
 from typing import Any, Sequence, TypedDict
 
 import torch
@@ -144,17 +145,18 @@ def generate_qnn_encodings_dictionary(
     # Inputs are also included in the activation encodings for QNN
     activations_and_inputs = activations | inputs
 
-    # TODO: Test encodings generation format (also when using per channel quantization)
     for key, value in quantization_logs.items():
         scale = value["scale"]
         offset = value.get("offset")
         bitwidth = value["num_bits"]
         int_min = integer_minimum(bitwidth)
-        if not isinstance(int_min, int):
+        if not isinstance(int_min, int) and not int_min.is_integer():
             raise TypeError(
                 "QNN requires the offset value to be an integer but the "
                 "integer_mininum function returned a float."
             )
+
+        int_min = int(int_min)
         if isinstance(offset, torch.Tensor):
             offset = torch.round(offset)
 
@@ -170,7 +172,7 @@ def generate_qnn_encodings_dictionary(
 
         for s, o, oo, min_r, max_r in zip(scale, qnn_offset, offset, min_range, max_range):
             output_entry: QNNEncodingEntry = {
-                "bitwidth": bitwidth,
+                "bitwidth": int(bitwidth),
                 "dtype": "int",
                 "is_symmetric": "True" if not oo else "False",
                 "min": min_r.item(),
