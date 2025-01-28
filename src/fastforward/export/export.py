@@ -178,7 +178,6 @@ class RemoveFunction(NodeVisitor[None]):
     def _remove_node(
         self, graph_exported_program: ExportedProgram, node: Node, input_idx: int
     ) -> None:
-        print(f"Removing node: {node}")
         graph: Graph = graph_exported_program.graph_module.graph
         input_specs = graph_exported_program.graph_signature.input_specs
         input_nodes = node.all_input_nodes
@@ -384,15 +383,12 @@ def process_dynamo_program(
     """
     logs: list[Any] = []
 
-    print("Wrapping graph")
     graph_wrapper = GraphWrapper(dynamo_exported_program)
     for operation in graph_operators:
-        print(f"Running operation : {operation}")
         output_logs = graph_wrapper.visit(operation)
         logs.append(output_logs)
 
     original_input_specs = dynamo_exported_program.graph_signature.input_specs
-    print("Running decompositions for getting correct input spec names...")
     dynamo_exported_program = dynamo_exported_program.run_decompositions({})
 
     updated_input_specs = dynamo_exported_program.graph_signature.input_specs
@@ -461,9 +457,7 @@ def export(
     graph_operators = [*graph_operators, *default_graph_operators]
 
     with export_mode(True):
-        print("Exporting to dynamo...")
         dynamo_exported_program = torch.export.export(model, args=data)
-        print("Running decompositions...")
         dynamo_exported_program = dynamo_exported_program.run_decompositions({})
 
     dynamo_exported_program, new_old_input_spec_mapping, raw_logs = process_dynamo_program(

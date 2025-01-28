@@ -8,3 +8,11 @@ class QuantizationError(RuntimeError):
     """
 
     pass
+
+
+class ExportError(RuntimeError):
+    """
+    Export related error.
+    """
+
+    pass

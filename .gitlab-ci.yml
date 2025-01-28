@@ -1,7 +1,7 @@
 variables:
   VER_PYTHON: "3.10"
   VER_CUDA: "11.8.0"
-  VER_TORCH: "2.3.0"
+  VER_TORCH: "2.4.0"
   IMAGE_NAME: $DOCKER_REGISTRY/users/$USER/${CI_PROJECT_NAME}-py${VER_PYTHON}
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   OLDER_THAN: "1d" # Cleanup docker images older 1 day
@@ -54,7 +54,7 @@ before_script:
         VER_CUDA: &ver_cuda
           - "11.8.0"
         VER_TORCH: &ver_torch
-          - "2.3.0"
+          - "2.4.0"
 
 .verify: # All inheretance jobs must have a name which verify could use as an argument
   stage: test

@@ -3,7 +3,6 @@
 
 import logging
 
-from sys import breakpointhook
 from typing import Any, Sequence, TypedDict
 
 import torch
@@ -13,6 +12,7 @@ from onnxscript.ir import Model
 from torch.export.graph_signature import InputSpec
 
 from fastforward.common import ensure_tensor
+from fastforward.exceptions import ExportError
 from fastforward.quantization.affine import integer_minimum, quantization_range
 
 logger = logging.getLogger(__name__)
@@ -133,6 +133,15 @@ def get_parameters(
     return used_parameters, unused_parameters
 
 
+def _check_if_integer_and_cast(value: float | int, value_name: str) -> int:
+    if not isinstance(value, int) and not value.is_integer():
+        raise ExportError(
+            f"QNN requires the {value_name} value to be an integer (instead got {value})"
+        )
+
+    return int(value)
+
+
 def generate_qnn_encodings_dictionary(
     inputs: set[str],
     activations: set[str],
@@ -150,13 +159,10 @@ def generate_qnn_encodings_dictionary(
         offset = value.get("offset")
         bitwidth = value["num_bits"]
         int_min = integer_minimum(bitwidth)
-        if not isinstance(int_min, int) and not int_min.is_integer():
-            raise TypeError(
-                "QNN requires the offset value to be an integer but the "
-                "integer_mininum function returned a float."
-            )
 
-        int_min = int(int_min)
+        int_min = _check_if_integer_and_cast(int_min, "int_min")
+        bitwidth = _check_if_integer_and_cast(bitwidth, "bitwidth")
+
         if isinstance(offset, torch.Tensor):
             offset = torch.round(offset)
 

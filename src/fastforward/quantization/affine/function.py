@@ -10,10 +10,11 @@ import torch
 from typing_extensions import override
 
 import fastforward as ff
-
-# Import linear_quantized_ops to register linear_quantized_op impls
 import fastforward.quantization._linear_quantized_ops  # noqa: F401
 
+
+# Import linear_quantized_ops to register linear_quantized_op impls
+from fastforward.exceptions import ExportError
 from fastforward.quantization import granularity as granularities
 from fastforward.quantization.function import (
     QuantizationContext,
@@ -95,7 +96,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         quantization, followed immediately by dequantization.
         """
         if isinstance(params, DynamicAffineQuantParams):
-            raise TypeError("Export does not support dynamic quantization.")
+            raise ExportError("Export does not support dynamic quantization.")
 
         tile_size = params.granularity.tile_size(data.shape)
         quantized_data = quantize_affine(
