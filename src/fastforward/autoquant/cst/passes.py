@@ -12,15 +12,7 @@ import libcst.matchers as m
 
 from typing_extensions import override
 
-import fastforward as ff
-
-from fastforward._quantops.optable import OperatorTable
-
 from .nodes import (
-    AnnotatedCall,
-    CandidateAssignment,
-    CandidateReturn,
-    CandidateYield,
     GeneralAssignment,
     ReplacementCandidate,
 )
@@ -360,30 +352,6 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 
         return suite.with_changes(body=tuple(body))
 
-    @override
-    def leave_Assign(
-        self, original_node: libcst.Assign, updated_node: libcst.Assign
-    ) -> libcst.BaseSmallStatement:
-        if isinstance(updated_node.value, ReplacementCandidate):
-            return CandidateAssignment(updated_node)
-        return updated_node
-
-    @override
-    def leave_Yield(
-        self, original_node: libcst.Yield, updated_node: libcst.Yield
-    ) -> libcst.BaseExpression:
-        if isinstance(updated_node.value, ReplacementCandidate):
-            return CandidateYield(updated_node)
-        return updated_node
-
-    @override
-    def leave_Return(
-        self, original_node: libcst.Return, updated_node: libcst.Return
-    ) -> libcst.BaseSmallStatement:
-        if isinstance(updated_node.value, ReplacementCandidate):
-            return CandidateReturn(updated_node)
-        return updated_node
-
     def leave_ReplacementCandidate(
         self, original_node: ReplacementCandidate, updated_node: ReplacementCandidate
     ) -> ReplacementCandidate | libcst.Name:
@@ -410,7 +378,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         assign_name = libcst.Name(f"_tmp_{self._count}")
         self._count += 1
         assign_target = libcst.AssignTarget(assign_name)
-        assignment = CandidateAssignment(libcst.Assign([assign_target], updated_node))
+        assignment = libcst.Assign([assign_target], updated_node)
 
         # Walk up the visitor stack. When we find a SimpleStatementLine,
         # we can insert our new statement just before that in its parent.
@@ -447,97 +415,3 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self, original_node: libcst.Module, updated_node: libcst.Module
     ) -> libcst.Module:
         return self._resolve_insertions(original_node, updated_node)
-
-
-class CandidateRewriter(libcst.CSTTransformer):
-    """
-    Rewrite function calls or operators for alternatives in optable.
-    This is used to, for example, rewrite `torch.sigmoid` to an alternative
-    activation function.
-
-    Specifically, this pass will replace Candidate nodes and
-    ReplacementCandidate node children with annotated CST nodes. I.e., these
-    are 'normal' CST nodes with extra metadata for further analysis.
-
-    Args:
-        optable: Operator table that contains all operations to rewrite.
-    """
-
-    def __init__(self, optable: OperatorTable) -> None:
-        super().__init__()
-        self.optable = optable
-
-    def leave_CandidateAssignment(
-        self, original_node: CandidateAssignment, updated_node: CandidateAssignment
-    ) -> libcst.Assign:
-        assign = updated_node.original
-
-        value: libcst.BaseExpression
-        match assign.value:
-            case ReplacementCandidate(libcst.Call()):
-                value = self._rewrite_call(cast(libcst.Call, assign.value.original))
-            case ReplacementCandidate(libcst.BinaryOperation()):
-                value = assign.value.original
-            case ReplacementCandidate(node):
-                raise ValueError(
-                    f"Found {type(node)} but is not supported. However, it was identified as a "
-                    + "candidate for autoquant replacement. Please file an issue if you see "
-                    + "this exception."
-                )
-            case node:
-                raise ValueError(f"Found {type(node)} but is not supported")
-
-        return updated_node.original.with_changes(value=value)
-
-    def leave_CandidateReturn(
-        self, original_node: CandidateReturn, updated_node: CandidateReturn
-    ) -> libcst.Return | libcst.FlattenSentinel[libcst.CSTNode]:
-        return_node = updated_node.original
-
-        value: libcst.BaseExpression
-        match return_node.value:
-            case None:
-                return return_node
-            case ReplacementCandidate(libcst.Call()):
-                value = self._rewrite_call(cast(libcst.Call, return_node.value.original))
-            case ReplacementCandidate(libcst.BinaryOperation()):
-                value = return_node.value.original
-            case ReplacementCandidate(node):
-                raise ValueError(
-                    f"Found {type(node)} but is not supported. However, it was identified as a "
-                    + "candidate for autoquant replacement. Please file an issue if you see "
-                    + "this exception."
-                )
-            case node:
-                raise ValueError(f"Found {type(node)} but is not supported")
-
-        return return_node.with_changes(value=value)
-
-    def leave_CandidateYield(
-        self, original_node: CandidateYield, updated_node: CandidateYield
-    ) -> libcst.Yield:
-        raise NotImplementedError("Yield support is pending")
-
-    def _rewrite_call(self, call: libcst.Call) -> AnnotatedCall:
-        """
-        Given existing Call node, create a new Call node that replaces the
-        function call with the target associated to the current target in the
-        operator table.
-        """
-
-        func_name = libcst.helpers.get_full_name_for_node(call)
-
-        if func_name is None:
-            raise ff.exceptions.AutoquantError(f"Cannot resolve {call} to function")
-
-        quant_op = self.optable.get(func_name)
-        replace_name = quant_op.dispatch_qualified_name()
-        if replace_name is None:
-            raise ff.exceptions.AutoquantError(f"Cannot resolve qualified name for {quant_op} ")
-
-        func_cst = libcst.parse_statement(replace_name)
-        if len(func_refs := m.findall(func_cst, m.Expr(m.Attribute() | m.Name()))) == 1:
-            func_ref = cast(libcst.Expr, func_refs[0]).value
-            call = call.with_changes(func=func_ref)
-            return AnnotatedCall(original=call, operator=quant_op)
-        raise ff.exceptions.AutoquantError(f"{replace_name} is not a valid function name")

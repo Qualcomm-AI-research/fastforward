@@ -6,7 +6,6 @@ import libcst.display
 
 from fastforward._quantops import OperatorTable
 
-from .cst import passes
 from .pybuilder import ClassBuilder, FunctionBuilder
 from .pysource import PySource
 
@@ -18,9 +17,6 @@ def convert_method(
     Convert existing function.
     """
     src_cst = src.cst(NodeType=libcst.FunctionDef)
-
-    src_cst = src_cst.visit(passes.CandidateRewriter(optable))  # type: ignore[assignment]
-    assert isinstance(src_cst, libcst.FunctionDef)
 
     dst_cst = src_cst  # Conversion is work in progress
     assert isinstance(dst_cst, libcst.FunctionDef)
