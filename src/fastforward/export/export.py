@@ -118,7 +118,7 @@ class RemoveFunction(NodeVisitor[None]):
     NodeVisitor subclass responsible for removing nodes from a graph. This is done
     by reconfiguring the input/outputs from a given node.
 
-    For example, consider a three node system containing nodes `x`, `y`, `z` with the following
+    For example, consider a three node graph containing nodes `x`, `y`, `z` with the following
     simple structure:
     ```
         x -> y -> z
@@ -139,10 +139,10 @@ class RemoveFunction(NodeVisitor[None]):
     needs to be done first.
 
     The class will work with nodes that have multiple output nodes, where the node's parent will
-    be connected to each different output. ATTENTION: this is not the case with the note inputs, where
+    be connected to each different output. ATTENTION: this is not the case with the node inputs, where
     we assume that only one input is of importance.
 
-    Finally, note that this reconfiguration needs to happen for a middle node (the node needs to have at least
+    Finally, note that this reconfiguration needs to happen for a intermediate node (the node needs to have at least
     one input, and at least one output) otherwise the reconnection will raise an error.
     """
 
@@ -204,12 +204,12 @@ class RemoveFunction(NodeVisitor[None]):
                     break
 
 
-class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
+class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
     """
     NodeVisitor subclass responsible for logging the quantization parameter of
     a subset of nodes.
 
-    In the case of quantization, the fastforward operations (`quantize_by_tile` and
+    In the case of quantization, the FastForward operations (`quantize_by_tile` and
     `dequantize_by_tile`) are represented in the graph. The torch.fx nodes for these
     operations contain the parameters that need to be logged, where the first input
     to the node is the parameter/activation to be quantized, and the node arguments
@@ -266,9 +266,7 @@ class LogQuantizationParameter(NodeVisitor[dict[str, Any]]):
         for input_spec in input_specs:
             argument = input_spec.arg
             if input_spec.kind in (InputKind.PARAMETER, InputKind.BUFFER):
-                # The only kind of argument that does not have a name is
-                # `ConstantArgument` so this check is required for type checks.
-                name = getattr(argument, "name", "")
+                name = getattr(argument, "name")
                 arg_to_parameter[name] = input_spec.target or ""
         return arg_to_parameter
 
@@ -404,7 +402,7 @@ def export(
     data: tuple[torch.Tensor],
     output_directory: str,
     model_name: str,
-    graph_operators: None | Sequence[NodeVisitor[Any]] = None,
+    graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
 ) -> None:
     """
     The main export function for retrieving artifacts that can be passed to QNN.
@@ -435,7 +433,7 @@ def export(
         output_directory: The directory where the artifacts (ONNX model, encodings file) will be
             stored.
         model_name: The name of the model.
-        graph_operators: Optionally pass a list of operations that can take place before the
+        graph_preprocessors: Optionally pass a list of operations that can take place before the
             standard export graph operations required by QNN (parameter logging, removal of
             quantization/dequantization operations).
     """
@@ -443,10 +441,10 @@ def export(
     output_path.mkdir(exist_ok=True, parents=True)
     artifact_location = output_path / model_name
 
-    if not graph_operators:
-        graph_operators = []
+    if not graph_preprocessors:
+        graph_preprocessors = []
 
-    log_quantization_parameter_operation_location = len(graph_operators)
+    log_quantization_parameter_operation_location = len(graph_preprocessors)
 
     default_graph_operators: list[NodeVisitor[Any]] = [
         LogQuantizationParameter("call_function", "fastforward::quantize_by_tile"),
@@ -454,7 +452,7 @@ def export(
         RemoveFunction("call_function", "fastforward::quantize_by_tile", input_replace_idx=0),
     ]
 
-    graph_operators = [*graph_operators, *default_graph_operators]
+    graph_operators = [*graph_preprocessors, *default_graph_operators]
 
     with export_mode(True):
         dynamo_exported_program = torch.export.export(model, args=data)

@@ -53,8 +53,8 @@ def get_input_spec_new_old_mapping(
                 f"has changed. InputSpec ({old_input_spec}) before had target: "
                 f"{old_input_spec.target}, now it has target: {new_input_spec.target}."
             )
-        old_name = getattr(old_input_spec.arg, "name", "")
-        new_name = getattr(new_input_spec.arg, "name", "")
+        old_name = getattr(old_input_spec.arg, "name")
+        new_name = getattr(new_input_spec.arg, "name")
 
         new_old_mapping[new_name] = old_name
 
@@ -66,6 +66,31 @@ def get_inputs(
     quantization_logs: dict[str, Any],
     new_old_mapping: dict[str, str],
 ) -> tuple[set[str], set[str]]:
+    """
+    Function to retrieve a model's input nodes.
+
+    Given a model this function checks whether its inputs
+    have been quantized (they exist as entries to a quantization
+    log), and they are assigned the correct names. The function
+    will return a tuple of all inputs separated to two groups:
+
+    1) inputs that are associated with user defined quantization
+        parameters, ie quantized inputs.
+    2) inputs that are not associated with user defined quantization
+        parameters, ie unquantized inputs.
+
+    Args:
+        onnxscript_model: An onnxscript model
+        quantization_logs: Dictionary containing quantization
+            settings for the various inputs/activations/parameters
+            to the onnxscript_model
+        new_old_mapping: Dictionary containing the translation of
+            the onnxscript model inputs/activations/parameters
+            names to the updated name. (NOTE: The change in name
+            can occur due to manipulation of the dynamo graph,
+            either through custom operations, or through the
+            usage of the `run_decompositions` method).
+    """
     graph_inputs = onnxscript_model.graph.inputs
     used_input_nodes = set()
     unused_input_nodes = set()
@@ -116,9 +141,9 @@ def get_parameters(
     onnxscript_model: Model, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
     # In ONNX the initializer entry of the graph contains the names of the model parameters.
-    # Here we check which for which to which of these parameters quantization was applied, and
-    # to which it was not (in case these are eventually needed to fill in some bypass instructions
-    # in the QNN encodings file).
+    # Here we check which these parameters quantization was applied, and to which it was
+    # not (in case these are eventually needed to fill in some bypass instructions in the
+    # QNN encodings file).
 
     initializers = onnxscript_model.graph.initializers
     used_parameters = set()
@@ -133,7 +158,7 @@ def get_parameters(
     return used_parameters, unused_parameters
 
 
-def _check_if_integer_and_cast(value: float | int, value_name: str) -> int:
+def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     if not isinstance(value, int) and not value.is_integer():
         raise ExportError(
             f"QNN requires the {value_name} value to be an integer (instead got {value})"
@@ -160,8 +185,8 @@ def generate_qnn_encodings_dictionary(
         bitwidth = value["num_bits"]
         int_min = integer_minimum(bitwidth)
 
-        int_min = _check_if_integer_and_cast(int_min, "int_min")
-        bitwidth = _check_if_integer_and_cast(bitwidth, "bitwidth")
+        int_min = _strict_cast_to_int(int_min, "int_min")
+        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
 
         if isinstance(offset, torch.Tensor):
             offset = torch.round(offset)
