@@ -6,7 +6,7 @@ import dataclasses
 
 from collections.abc import Iterator, Sequence
 from types import UnionType
-from typing import TypeVar, Union, get_args, get_origin, get_type_hints
+from typing import Protocol, TypeVar, Union, get_args, get_origin, get_type_hints
 
 import libcst
 
@@ -138,8 +138,9 @@ class Block(abc.ABC):
         """
         return _dominates(self, other)
 
-
-BlockT = TypeVar("BlockT", bound=Block)
+    @abc.abstractmethod
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        """Visit block using visitor."""
 
 
 @dataclasses.dataclass(eq=False)
@@ -163,6 +164,10 @@ class SimpleBlock(Block):
             next_block.set_tail(tail)
         else:
             self.next_block = tail
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_SimpleBlock(self)
 
 
 @dataclasses.dataclass(eq=False)
@@ -195,6 +200,10 @@ class IfBlock(BranchingBlock):
         else:
             self.false = tail
 
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_IfBlock(self)
+
 
 @dataclasses.dataclass(eq=False)
 class FunctionBlock(Block):
@@ -211,6 +220,10 @@ class FunctionBlock(Block):
     def set_tail(self, tail: Block) -> None:
         self.body.set_tail(tail)
 
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_FunctionBlock(self)
+
 
 @dataclasses.dataclass(eq=False)
 class ExitBlock(Block):
@@ -224,6 +237,10 @@ class ExitBlock(Block):
     @override
     def set_tail(self, tail: Block) -> None:
         pass
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_ExitBlock(self)
 
 
 def _dominates(maybe_dom: Block, block: Block) -> bool:
@@ -249,3 +266,49 @@ def _is_block_annotation(cls: type) -> bool:
         return False
     else:
         return issubclass(cls, Block)
+
+
+_VT = TypeVar("_VT", covariant=True)
+
+
+class BlockVisitor(Protocol[_VT]):
+    """Protocol for a BlockVisitor.
+
+    An object that satisfies the `BlockVisitor` can be passed to `Block.visit`
+    which will dispatch to the appropriate visit method.
+
+    Note that this visitor does not traverse the graph by default. Any form of
+    traversal must be implemented in the respective visit methods.
+    """
+
+    def visit_FunctionBlock(self, __block: FunctionBlock) -> _VT:
+        """Visitor for `FunctionBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_ExitBlock(self, __block: ExitBlock) -> _VT:
+        """Visitor for `ExitBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_IfBlock(self, __block: IfBlock) -> _VT:
+        """Visitor for `IfBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_SimpleBlock(self, __block: SimpleBlock) -> _VT:
+        """Visitor for `SimpleBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError

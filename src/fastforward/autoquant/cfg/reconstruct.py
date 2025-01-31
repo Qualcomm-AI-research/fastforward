@@ -28,147 +28,144 @@ def reconstruct(block: blocks.FunctionBlock) -> libcst.FunctionDef:
             "Expected a single FunctionDef node associated with the function block"
         )
 
-    node = wrappers[0].with_changes(body=reconstruct_block(block.body))
+    body_node = block.body.visit(_BlockReconstructor())
+    node = wrappers[0].with_changes(body=body_node)
     assert isinstance(node, libcst.FunctionDef)
     return node
 
 
-@functools.singledispatch
-def reconstruct_block(block: blocks.Block) -> libcst.IndentedBlock:
-    """Convert `block` into an `IndentedBlock`.
+class _BlockReconstructor:
+    """Visitor used for constructing CSTs from CFGs.
 
-    Specializations for this function that accept a subclass of `blocks.Block`
-    can be registered using `reconstruct_block.register`. Each of these
-    functions is expected to accept a single block as input and construct a CST
-    of all the blocks dominated by the input block. The constructed CST root
-    element must be an `IndentedBlock`.
+    This visitor cannot visit `FunctionBlock`s. Instead, for a given CFG with a
+    `FunctionBlock` root it should be applied to its `body` attribute.
 
-    Args:
-        block: `Block` to convert into a CST.
-
-    Returns:
-            CST representation of `block` with `IndentedBlock` as root node.
+    Each visit function returns an IndentedBlock and reconstructs the CST for all
+    blocks that are dominated by the input block.
     """
-    raise TypeError(
-        f"No reconstruction function is registered for {type(block).__name__}. "
-        + "Please file an issue when you run into this error."
-    )
 
-
-@reconstruct_block.register
-def reconstruct_SimpleBlock(block: blocks.SimpleBlock) -> libcst.IndentedBlock:
-    """Convert a `SimpleBlock` into an `IndentedBlock`.
-
-    A `SimpleBlock` has a list of statements and a 'root' wrapper that must be
-    an `IndentedBlock`. The CST is reconstructed by replacing the wrapper's
-    body with the block's statements.
-
-    If the block pointed to by `next_block` is dominated by `block` then the
-    `IndentedBlock` created from `block` is merged with the `IndentedBlock`
-    created from `block.next_block`.
-
-    Args:
-        block: `Block` to convert into a CST.
-
-    Returns:
-            CST representation of `block` with `IndentedBlock` as root node.
-    """
-    node = block.wrappers[0].with_changes(body=block.statements)
-    if not isinstance(node, libcst.IndentedBlock):
-        raise TypeError(
-            f"Expected 'root' wrapper of SimpleBlock to be IndentedBlock, got {type(node).__name__}"
+    def visit_FunctionBlock(self, _block: blocks.FunctionBlock) -> libcst.IndentedBlock:
+        # FunctionBlock is the only block that the we don't reconstruct as an
+        # IndentedBlock and is dealt with outside of the BlockConcstructor.
+        # If we encounter a `FunctionBlock` as part of the CFG, it is considered
+        # an error.
+        raise RuntimeError(
+            f"Encountered 'FunctionBlock' as a non root-node of a CFG or {type(self).__name__} "
+            + "was passed to 'FunctionBlock.visit'. Both are not allowed."
         )
 
-    # Check if block.next_block is dominated by block. If true, merge CSTs from block
-    # and block.next_block.
-    return _process_tail(block, node)
+    def visit_ExitBlock(self, _block: blocks.ExitBlock) -> libcst.IndentedBlock:
+        """Construct a CST from an `ExitBlock`.
 
+        Since the exit block does not contain any logic this function simply
+        returns an empty `IndentedBlock`.
 
-@reconstruct_block.register
-def reconstruct_IfBlock(block: blocks.IfBlock) -> libcst.IndentedBlock:
-    """Convert an `IfBlock` into an `IndentedBlock`.
+        Args:
+            block: `Block` to convert into a CST.
 
-    An `IfBlock` contains a test expression and references blocks for the true
-    and false branch. The body of the `libcst.If` is made up of the
-    `IndentedBlock` that is created by converting the `true` block to and
-    `IndentedBlock`.
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        return libcst.IndentedBlock(body=())
 
-    If `block.false` is equal to the post-dominator of block, there is no
-    specific control flow for the else branch, hence, else branch is created.
-    Otherwise, the else branch is created from the block pointed to by
-    `block.false`. In the case where the `IndentedBlock` of the `false` branch
-    only contains a single `libcst.If` node, the `libcst.If` is used directly
-    as an elif branch, if no `libcst.Else` wrapper node is present.
+    def visit_IfBlock(self, block: blocks.IfBlock) -> libcst.IndentedBlock:
+        """Convert an `IfBlock` into an `IndentedBlock`.
 
-    If the immediate post-dominator of `block` is dominated by `block`, its
-    reconstructed `IndentedBlock` is merged with that of `block`.
+        An `IfBlock` contains a test expression and references blocks for the true
+        and false branch. The body of the `libcst.If` is made up of the
+        `IndentedBlock` that is created by converting the `true` block to and
+        `IndentedBlock`.
 
-    Args:
-        block: `Block` to convert into a CST.
+        If `block.false` is equal to the post-dominator of block, there is no
+        specific control flow for the else branch, hence, else branch is created.
+        Otherwise, the else branch is created from the block pointed to by
+        `block.false`. In the case where the `IndentedBlock` of the `false` branch
+        only contains a single `libcst.If` node, the `libcst.If` is used directly
+        as an elif branch, if no `libcst.Else` wrapper node is present.
 
-    Returns:
-            CST representation of `block` with `IndentedBlock` as root node.
-    """
-    if block.false is None:
-        raise ValueError("Encountered IfBlock within dangling 'else' edge")
+        If the immediate post-dominator of `block` is dominated by `block`, its
+        reconstructed `IndentedBlock` is merged with that of `block`.
 
-    true_branch = reconstruct_block(block.true)
-    false_branch: libcst.If | libcst.IndentedBlock | None = None
-    if block.immediate_post_dominator is not block.false:
-        false_branch = reconstruct_block(block.false)
-        false_branch = node_manipulation.unwrap_single_statement(false_branch, libcst.If)
-        false_branch = _apply_wrappers(false_branch, block.false)  # type: ignore[assignment]
-        assert isinstance(false_branch, (libcst.If, libcst.Else)), type(false_branch).__name__
+        Args:
+            block: `Block` to convert into a CST.
 
-    if_node = block.wrappers[0].with_changes(body=true_branch, orelse=false_branch, test=block.test)
-    if_node = ensure_type(if_node, libcst.If, CFGReconstructionError)
-    node = libcst.IndentedBlock(body=(if_node,))
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        if block.false is None:
+            raise ValueError("Encountered IfBlock with dangling 'else' edge")
 
-    return _process_tail(block, node)
+        true_branch = block.true.visit(self)
+        false_branch: libcst.If | libcst.IndentedBlock | None = None
+        if block.immediate_post_dominator is not block.false:
+            false_branch = block.false.visit(self)
+            false_branch = node_manipulation.unwrap_single_statement(false_branch, libcst.If)
+            false_branch = _apply_wrappers(false_branch, block.false)  # type: ignore[assignment]
+            assert isinstance(false_branch, (libcst.If, libcst.Else)), type(false_branch).__name__
 
+        if_node = block.wrappers[0].with_changes(
+            body=true_branch, orelse=false_branch, test=block.test
+        )
+        if_node = ensure_type(if_node, libcst.If, CFGReconstructionError)
+        node = libcst.IndentedBlock(body=(if_node,))
 
-@reconstruct_block.register
-def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
-    """Construct a CST from an `ExitBlock`.
+        return self._process_tail(block, node)
 
-    Since the exit block does not contain any logic this function simply
-    returns an empty `IndentedBlock`.
+    def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> libcst.IndentedBlock:
+        """Convert a `SimpleBlock` into an `IndentedBlock`.
 
-    Args:
-        block: `Block` to convert into a CST.
+        A `SimpleBlock` has a list of statements and a 'root' wrapper that must be
+        an `IndentedBlock`. The CST is reconstructed by replacing the wrapper's
+        body with the block's statements.
 
-    Returns:
-            CST representation of `block` with `IndentedBlock` as root node.
-    """
-    return libcst.IndentedBlock(body=())
+        If the block pointed to by next is dominated by `block` then the
+        `IndentedBlock` created from `block` is merged with the `IndentedBlock`
+        created from `block.next`.
 
+        Args:
+            block: `Block` to convert into a CST.
 
-def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.IndentedBlock:
-    """Process the 'tail' of `block` and merge with node if appropriate.
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        node = block.wrappers[0].with_changes(body=block.statements)
+        if not isinstance(node, libcst.IndentedBlock):
+            raise TypeError(
+                f"Expected 'root' wrapper of SimpleBlock to be IndentedBlock, got {type(node).__name__}"
+            )
 
-    Consider a `Block` `A` and let its immediate post-dominator be `P`. `A` is
-    considered to have a "tail" iff `A` is the immediate dominator of `P`. In
-    this case, control flow can only reach `P` through `A`. In terms of CST
-    reconstruction, this means that the `IndentedBlock` associated with `A` and
-    `P` can be merged into a single `IndentedBlock`.
+        # Check if block.next is dominated by block. If true, merge CSTs from block
+        # and block.next.
+        return self._process_tail(block, node)
 
-    This function merges `node` (the `IndentedBlock` associated with `block`,
-    i.e., `A` in the description above) and the associated (to be constructed)
-    `IndentedBlock` associated with `blocks`s immediate post-dominator if the
-    requirements described above hold. Otherwise, this function returns `node`.
+    def _process_tail(
+        self, block: blocks.Block, node: libcst.IndentedBlock
+    ) -> libcst.IndentedBlock:
+        """Process the 'tail' of `block` and merge with node if appropriate.
 
-    Args:
-        block: the `Block` to evaluate.
-        node: the `IndentedBlock` associated with `block`.
+        Consider a `Block` `B` and let its immediate post-dominator be `P`. `A` is
+        considered to have a "tail" iff `A` is the immediate post-dominator of `P`.
+        In this case, control flow can only reach `P` through `A`. In terms of CST
+        reconstruction, this means that the `IndentedBlock` associated with `A` and
+        `P` can be merged into a single `IndentedBlock`.
 
-    Returns:
-        `IndentedBlock` that is either `node` or `node` merged with the
-        `IndentedBlock` constructed from `block.immediate_post_dominator`.
-    """
-    if block.immediate_post_dominator and _has_tail(block):
-        tail = reconstruct_block(block.immediate_post_dominator)
-        node = node_manipulation.combine_indented_blocks(node, tail)
-    return node
+        This function merges `node` (the `IndentedBlock` associated with `block`,
+        i.e., `A` in the description above) and the associated (to be constructed)
+        `IndentedBlock` associated with `blocks`s immediate post-dominator if the
+        requirements described above hold. Otherwise, this function returns `node`.
+
+        Args:
+            block: the `Block` to evaluate.
+            node: the `IndentedBlock` associated with `block`.
+
+        Returns:
+            `IndentedBlock` that is either `node` or `node` merged with the
+            `IndentedBlock` constructed from `block.immediate_post_dominator`.
+        """
+        if block.immediate_post_dominator and _has_tail(block):
+            tail = block.immediate_post_dominator.visit(self)
+            node = node_manipulation.combine_indented_blocks(node, tail)
+        return node
 
 
 def _has_tail(block: blocks.Block) -> bool:

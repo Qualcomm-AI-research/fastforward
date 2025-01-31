@@ -121,6 +121,11 @@ class _TestBlock(blocks.Block):
             if child is not None:
                 yield f"child_{i}", child
 
+    @override
+    def visit(self, visitor: blocks.BlockVisitor[blocks._VT]) -> blocks._VT:
+        # Implementation to make tests.autoquant.cfg.blocks::test_block_visitor pass.
+        return visitor.visit__TestBlock(self)  # type: ignore[no-any-return, attr-defined]
+
 
 @dataclasses.dataclass
 class _Graph:
