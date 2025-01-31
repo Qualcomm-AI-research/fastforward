@@ -99,11 +99,11 @@ def get_inputs(
         new_arg_name = getattr(graph_input, "name", "")
         old_arg_name = new_old_mapping[new_arg_name]
 
-        if old_arg_name not in quantization_logs:
-            unused_input_nodes.add(new_arg_name)
-        else:
+        if old_arg_name in quantization_logs:
             used_input_nodes.add(new_arg_name)
             update_arg_name_in_quantization_logs(old_arg_name, new_arg_name, quantization_logs)
+        else:
+            unused_input_nodes.add(new_arg_name)
 
     return used_input_nodes, unused_input_nodes
 
@@ -118,42 +118,83 @@ def update_arg_name_in_quantization_logs(
 def get_activations(
     onnx_proto: ModelProto, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
+    """
+    Function to retrieve a model's activation nodes.
+
+    Given a model this function checks whether its activations
+    have been quantized (they exist as entries to a quantization
+    log).
+
+    For activation quantization, QNN is expecting the name of the node
+    output in which the quantization parameters will be applied. So,
+    for each node in the ONNX graph we grab its output (which name
+    is already the same as in the dynamo graph, which is a feature of the
+    torch_onnx package). We also filter out, but keep the activations that do not
+    have quantization parameters as knowing these might be useful for bypassing in QNN.
+
+    The function will return a tuple of all inputs separated
+    to two groups:
+
+    1) activations that are associated with user defined quantization
+        parameters, ie quantized activations.
+    2) activations that are not associated with user defined quantization
+        parameters, ie unquantized activations.
+
+    Args:
+        onnx_model: An onnx protobuf model
+        quantization_logs: Dictionary containing quantization
+            settings for the various inputs/activations/parameters
+            to the onnxscript_model
+    """
     nodes = onnx_proto.graph.node
     used_activation_nodes = set()
     unused_activation_nodes = set()
 
-    # For activation quantization, QNN is expecting the name of the node output in which
-    # the quantization parameters will be applied. So, for each node in the ONNX graph we
-    # grab its output (which name is already the same as in the dynamo graph, which is a
-    # feature of the torch_onnx package). We also filter out, but keep the activations that do not
-    # have quantization parameters as knowing these might be useful for bypassing in QNN.
-
     for node in nodes:
         for node_output in node.output:
-            if node_output not in quantization_logs:
-                unused_activation_nodes.add(node_output)
-            else:
+            if node_output in quantization_logs:
                 used_activation_nodes.add(node_output)
+            else:
+                unused_activation_nodes.add(node_output)
     return used_activation_nodes, unused_activation_nodes
 
 
 def get_parameters(
     onnxscript_model: Model, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
-    # In ONNX the initializer entry of the graph contains the names of the model parameters.
-    # Here we check which these parameters quantization was applied, and to which it was
-    # not (in case these are eventually needed to fill in some bypass instructions in the
-    # QNN encodings file).
+    """
+    Function to retrieve a model's parameter nodes.
+
+    Given a model this function checks whether its parameters (
+    ie weights, biases etc) have been quantized (they exist as
+    entries to a quantization log). Note that in In ONNX the initializer
+    entry of the graph contains the names of the model parameters. We also
+    filter out, but keep the parameters that do not have quantization
+    parameters as knowing these might be useful for bypassing in QNN.
+
+    The function will return a tuple of all parameters separated to two groups:
+
+    1) parameters that are associated with user defined quantization
+        parameters, ie quantized parameters.
+    2) parameters that are not associated with user defined quantization
+        parameters, ie unquantized parameters.
+
+    Args:
+        onnxscript_model: An onnxscript model
+        quantization_logs: Dictionary containing quantization
+            settings for the various inputs/activations/parameters
+            to the onnxscript_model
+    """
 
     initializers = onnxscript_model.graph.initializers
     used_parameters = set()
     unused_parameters = set()
 
     for initializer in initializers:
-        if initializer not in quantization_logs:
-            unused_parameters.add(initializer)
-        else:
+        if initializer in quantization_logs:
             used_parameters.add(initializer)
+        else:
+            unused_parameters.add(initializer)
 
     return used_parameters, unused_parameters
 

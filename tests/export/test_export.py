@@ -84,9 +84,6 @@ def test_export_quantized_model(simple_model):
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
-    with ff.export_mode(True):
-        quant_model(data)
-
     # The export method does not support custom tensors objects (like the QuantizedTensor)
     # and the usage of certain methods (such as the inspect.signature.bind) and will throw
     # an UnsupportedError message if these are present in the code. This test checks that
@@ -135,7 +132,7 @@ def test_node_request(simple_model):
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_node_removal(simple_model):
-    # GIVEN a model wuth a number of quantizers
+    # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     non_quant_result = quant_model(data)
