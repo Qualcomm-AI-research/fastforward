@@ -12,8 +12,15 @@ import libcst.matchers as m
 
 from typing_extensions import override
 
+from fastforward._quantops import OperatorTable
+from fastforward.autoquant.cst.node_creation import (
+    get_next_output_quantizer_kw_arg_and_name,
+    get_quantized_function_counterpart,
+)
+
 from .nodes import (
     GeneralAssignment,
+    QuantizedCall,
     ReplacementCandidate,
 )
 
@@ -83,6 +90,19 @@ class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
 
 
 class WrapAssignments(libcst.CSTTransformer):
+    """Wraps all types of assignments into a wrapped assignment.
+
+    That is, assignments of the sort
+    - x = 0 (libcst.Assign)
+    - x: int = 0 (libcst.AnnAssign)
+    - x : int (libcst.AnnAssign)
+    - x = y = 0 (libcst.Assign)
+    - x += 1 (libcst.AugAssign)
+
+    We do not wrap the walrus operator, and the assignments resulting from various forms of
+    import statements.
+    """
+
     @override
     def leave_AnnAssign(
         self, original_node: libcst.AnnAssign, updated_node: libcst.AnnAssign
@@ -415,3 +435,60 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self, original_node: libcst.Module, updated_node: libcst.Module
     ) -> libcst.Module:
         return self._resolve_insertions(original_node, updated_node)
+
+
+class QuantizedCounterpartReplacer(libcst.CSTTransformer):
+    """Replaces function calls with their quantized counterparts in the CST.
+
+    For example, torch.sigmoid(*args, **kwargs) is replaced with
+    ff.nn.functional.sigmoid(*args, output_quantizer=self.quantizer_sigmoid_1).
+    The new name quantizer_sigmoid_1 variable is tracked in `quantized_vars`.
+    """
+
+    def __init__(self, optable: OperatorTable) -> None:
+        self._optable = optable
+        self._quantized_vars: list[str] = []  # Keeps track of names of quantizer variables
+
+    def get_quantized_vars(self) -> tuple[str, ...]:
+        return tuple(self._quantized_vars)
+
+    def leave_ReplacementCandidate(
+        self,
+        original_node: ReplacementCandidate,
+        updated_node: ReplacementCandidate,
+    ) -> libcst.BaseExpression:
+        del original_node
+
+        match updated_node.original:
+            case libcst.BinaryOperation():
+                # Binary operations not yet implemented
+                return updated_node
+            case libcst.Call():
+                func_name = libcst.helpers.get_full_name_for_node(updated_node.original)
+                # We cannot determine the name of the function called, skip it.
+                if func_name is None:
+                    return updated_node
+
+                # We don't have a quantized replacement for this function, skip it.
+                if func_name not in self._optable:
+                    return updated_node
+
+                func, operator = get_quantized_function_counterpart(
+                    optable=self._optable, func_name=func_name
+                )
+                num_quantized_vars = len(self.get_quantized_vars())
+                arg, quantizer_var_name = get_next_output_quantizer_kw_arg_and_name(
+                    func_name=func_name,
+                    current_num_quantized_vars=num_quantized_vars,
+                )
+                self._quantized_vars.append(quantizer_var_name)
+
+                # Unwrap call
+                return QuantizedCall(
+                    func=func,
+                    args=(*updated_node.original.args, arg),
+                    original_name=func_name,
+                    operator=operator,
+                )
+            case _:
+                return updated_node

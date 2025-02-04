@@ -1,11 +1,9 @@
-import difflib
-import textwrap
-
 from collections.abc import Sequence
 
 import libcst as libcst
 
 from fastforward.autoquant.cst import passes
+from tests.utils.string import assert_strings_match_verbose, dedent_strip
 
 _STATEMENT_SUITE_TO_BLOCK_IN = """
 x = 10; y = 20; z = x + y
@@ -37,7 +35,7 @@ def some_function():
 def test_statement_suite_to_indented_block() -> None:
     """Verifies simple statement suite is replaced by indented block."""
     # GIVEN code with non-simple statements, and its reference simplified version
-    input, expected = _strip_dedent(_STATEMENT_SUITE_TO_BLOCK_IN, _STATEMENT_SUITE_TO_BLOCK_OUT)
+    input, expected = dedent_strip(_STATEMENT_SUITE_TO_BLOCK_IN, _STATEMENT_SUITE_TO_BLOCK_OUT)
 
     # WHEN we visit the code with ConvertSemicolonJoinedStatements
     transformer = passes.ConvertSemicolonJoinedStatements()
@@ -57,7 +55,7 @@ y = z = x
 def test_mark_assignment() -> None:
     """Verifies GeneralAssignment does not interfere with codegen."""
     # GIVEN different types of assignments
-    input = _strip_dedent(_ASSIGNMENT_IN)[0]
+    input = dedent_strip(_ASSIGNMENT_IN)[0]
 
     # WHEN we wrap them into GeneralAssignments
     transformer = passes.WrapAssignments()
@@ -90,7 +88,7 @@ r = a + _tmp_3
 
 def test_isolate_replacement_candidates() -> None:
     # GIVEN statements with compound expressions
-    input, expected = _strip_dedent(
+    input, expected = dedent_strip(
         _ISOLATE_REPLACEMENT_CANDIDATES_IN, _ISOLATE_REPLACEMENT_CANDIDATES_OUT
     )
 
@@ -124,12 +122,4 @@ def assert_input_transforms_as_expected(
         module = module.visit(transformer)
 
     transformed = module.code
-    if not transformed == output_module:
-        output = "\n".join(
-            difflib.unified_diff(output_module.splitlines(), transformed.splitlines())
-        )
-        raise AssertionError(f"Transformed module does not match expected output:\n{output}")
-
-
-def _strip_dedent(*txt: str) -> tuple[str, ...]:
-    return tuple(textwrap.dedent(t.strip()) for t in txt)
+    assert_strings_match_verbose(transformed, output_module)

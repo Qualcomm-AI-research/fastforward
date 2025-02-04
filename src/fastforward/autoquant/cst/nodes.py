@@ -11,13 +11,12 @@ CST and can be used during code generation.
 
 import dataclasses
 
+from dataclasses import dataclass
 from typing import Any, Sequence
 
 import libcst
 
 from libcst._nodes.internal import visit_optional, visit_required, visit_sequence
-
-from fastforward import _quantops
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -126,12 +125,13 @@ class ReplacementCandidate(libcst.BaseExpression):
         return self.original._check_left_right_word_concatenation_safety(*args, **kwargs)
 
 
-@dataclasses.dataclass(slots=True, frozen=True)
-class AnnotatedCall(libcst.Call):
+@dataclass(slots=True, frozen=True)
+class QuantizedCall(libcst.Call):
     """
     A metadata node that carries extra information and wraps a `libcst.Call`
     node. This wrapper node contains extra information on the quantized
     operation that is 'called'. This can be helpful in further analysis.
     """
 
-    operator: _quantops.operator.Operator = dataclasses.field(kw_only=True)
+    original_name: str = dataclasses.field(kw_only=True)
+    operator: Any = dataclasses.field(kw_only=True)

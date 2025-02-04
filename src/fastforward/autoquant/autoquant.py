@@ -1,6 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+
 import libcst
 import libcst.display
 import libcst.matchers
@@ -8,6 +9,7 @@ import torch
 
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
+from fastforward.autoquant.pybuilder.builder import InitQuantizationMethod
 
 from . import pybuilder, pysource
 from .convert import convert_method
@@ -29,14 +31,14 @@ def autoquant(module: torch.nn.Module, operator_table: optable.OperatorTable | N
     operator_table = operator_table or optable.OperatorTable.from_yaml(
         alias_extensions=optable.STR_ALIASES_EXTENSIONS
     )
-    _autoquant(module, default_source_context(), operator_table)
+    print(_autoquant(module, default_source_context(), operator_table))
 
 
 def _autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
-) -> None:
+) -> str:
     ModuleType = type(module)
     src_class = source_context.get(fully_qualified_name(ModuleType))
 
@@ -46,6 +48,9 @@ def _autoquant(
     )
 
     forward_src = src_class.member("forward")
-    dst_class.add_method(convert_method(forward_src, dst_class, operator_table))
+    quantized_forward, quantizer_collection = convert_method(forward_src, dst_class, operator_table)
 
-    print(libcst.Module([dst_class.build()]).code)
+    dst_class.add_method(InitQuantizationMethod(quantizer_collection))
+    dst_class.add_method(quantized_forward)
+
+    return libcst.Module([dst_class.build()]).code
