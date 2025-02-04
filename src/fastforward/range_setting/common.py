@@ -290,6 +290,10 @@ def estimate_ranges(
 
     if isinstance(estimator, type):
         estimator = estimator(*args, **kwargs)
+    elif args or kwargs:
+        raise ValueError(
+            "`estimator` is already initialized so no `args` or `kwargs` can be given."
+        )
 
     prepared_modules: list[tuple[_Module, _T]] = []
     for module in model_or_layers:
