@@ -30,6 +30,8 @@ dev = [
 ]
 test = ["pytest>=6", "pytest-cov>=3", "types-PyYAML", "onnxruntime"]
 docs = [
+  "datasets",
+  "ipywidgets",
   "jupytext",
   "mike",
   "mkdocs-gen-files",
@@ -38,6 +40,9 @@ docs = [
   "mkdocs-material",
   "mkdocs-section-index",
   "mkdocstrings-python",
+  "ruff",
+  "sentencepiece",
+  "transformers==4.46.3",
 ]
 
 [tool.scikit-build]

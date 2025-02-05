@@ -177,8 +177,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
 
         Args:
             extra_conversion: A dict that maps `torch.nn.Module` to `QuantizedModule` subclasses.
-              For any conversion, this dict is first checked. If there is no match, the general
-              mapping as given by `quantized_module_map` is used.
+                For any conversion, this dict is first checked. If there is no match, the general
+                mapping as given by `quantized_module_map` is used.
             skip_quantized_modules: If `True` do not try to requantize already
                 quantized modules.
 

@@ -300,7 +300,7 @@ class QuantizationConfig:
             query: Mpath.Selector or str that represent the filter query.
                 Please see the documentation of `fastforward.mpath.query` and
                 `fastforward.mpath.search` for more details.
-            quantizer_factory: `Quantizer` or callable to initialize each
+            factory: `Quantizer` or callable to initialize each
                 quantizer in the collection. This factory is called for each
                 element in the collection. If a `Quantizer` class is passed,
                 all `kwargs` will be forwarded to the initializer. In the case

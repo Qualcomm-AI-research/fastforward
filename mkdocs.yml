@@ -5,6 +5,7 @@ repo_url: !ENV DOCS_REPO_URL
 site_dir: "site"
 watch: [mkdocs.yml, README.md]
 edit_uri: edit/main/docs/
+strict: true
 
 validation:
   omitted_files: warn
@@ -31,9 +32,10 @@ nav:
 
 exclude_docs: |
   gen_reference.py
+  no_sitemap_plugin.py
 
 not_in_nav: |
-  examples/*.nb.py
+  examples/**/*.nb.py
 
 # Customization
 extra:
@@ -46,6 +48,7 @@ plugins:
       execute: True
       include: ["*.nb.py"]
       include_source: True
+      allow_errors: false
 
   # https://squidfunk.github.io/mkdocs-material/plugins/search/
   - search
@@ -62,21 +65,25 @@ plugins:
         python:
           paths: [src/fastforward]
           options:
-            heading_level: 3
-            show_source: false
-            show_inheritance_diagram: True
-            show_if_no_docstring: True
-            merge_init_into_class: true
-            allow_inspection: false
-            show-root-full-path: true
-            show_root_members_full_path: true
-            show_symbol_type_heading: true
-            show_root_toc_entry: false
+            extra:
+              heading_level: 3
+              show_source: false
+              show_inheritance_diagram: True
+              show_if_no_docstring: True
+              merge_init_into_class: true
+              allow_inspection: false
+              show-root-full-path: true
+              show_root_members_full_path: true
+              show_symbol_type_heading: true
+              show_root_toc_entry: false
   - section-index
   # https://github.com/jimporter/mike
   # Generate doc for each version
   - mike:
       version_selector: True
+
+hooks:
+  - docs/no_sitemap_plugin.py
 
 markdown_extensions:
   - pymdownx.magiclink

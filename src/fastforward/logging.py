@@ -16,7 +16,6 @@ class DuplicateLogFilter:
     if that lower level is not a member of levels.
 
     Args:
-        name: Name of the filter
         levels: Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)
     """
 

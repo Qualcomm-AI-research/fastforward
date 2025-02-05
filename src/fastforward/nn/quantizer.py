@@ -337,7 +337,7 @@ class QuantizerStub(Quantizer):
         input_quantizer: Whether to add the input quantizer tag.
         output_quantizer: Whether to add the output quantizer tag.
         shape: The shape attribute.
-        __metadata: If provided, use as metadata and ignore all other arguments.
+        _metadata: If provided, use as metadata and ignore all other arguments.
         kwargs: Additional attributes.
     """
 
