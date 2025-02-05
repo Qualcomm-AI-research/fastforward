@@ -1,6 +1,13 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+"""
+Functionality to export a quantized module for running inference on device.
+
+Supported backends:
+- QNN
+"""
+
 import abc
 import json
 import pathlib

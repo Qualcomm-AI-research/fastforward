@@ -67,7 +67,7 @@ def get_inputs(
     new_old_mapping: dict[str, str],
 ) -> tuple[set[str], set[str]]:
     """
-    Function to retrieve a model's input nodes.
+    Retrieve a model's input nodes.
 
     Given a model this function checks whether its inputs
     have been quantized (they exist as entries to a quantization
@@ -119,7 +119,7 @@ def get_activations(
     onnx_proto: ModelProto, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
     """
-    Function to retrieve a model's activation nodes.
+    Retrieve a model's activation nodes.
 
     Given a model this function checks whether its activations
     have been quantized (they exist as entries to a quantization
@@ -163,7 +163,7 @@ def get_parameters(
     onnxscript_model: Model, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
     """
-    Function to retrieve a model's parameter nodes.
+    Retrieve a model's parameter nodes.
 
     Given a model this function checks whether its parameters (
     ie weights, biases etc) have been quantized (they exist as
