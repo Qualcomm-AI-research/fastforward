@@ -104,8 +104,10 @@ class _QualifiedNameReference:
 
 
 class OperatorTable:
-    """Lookup table for quantized operators. In memory representation of
-    quantized_operators.yaml that can be extended at runtime.
+    """Lookup table for quantized operators.
+
+    In memory representation of quantized_operators.yaml that can be extended
+    at runtime.
     """
 
     def __init__(self, *, _resolve_dispatch: bool = True) -> None:
@@ -115,8 +117,9 @@ class OperatorTable:
         self._resolve_dispatch = _resolve_dispatch
 
     def append_operator(self, operator: Operator) -> None:
-        """Add a new operator to the table. The operator _must_ have a non-empty
-        metadata field.
+        """Add a new operator to the table.
+
+        The operator _must_ have a non-empty metadata field.
 
         If the `operator.metadata.dispatch_op` field is None, a dispatch_op is
         infered from `fastforward.nn.functional` based on the operator
@@ -184,16 +187,19 @@ class OperatorTable:
 
     @classmethod
     def from_yaml(
-        cls, source: pathlib.Path = _default_yaml_file(), *, _resolve_dispatch: bool = True
+        cls, source: pathlib.Path | None = None, *, _resolve_dispatch: bool = True
     ) -> Self:
         """Create an `OperatorTable` from yaml file at `path`.
 
         Args:
-            path: Path to the yaml file
+            source: Path to the yaml file
+            _resolve_dispatch: If `True`, resolve the default dispatch function
+                using standard heuristics.
 
         Returns:
             `OperatorTable` constructed from `path`
         """
+        source = source or _default_yaml_file()
         with source.open() as f:
             raw_source = yaml.load(f, Loader=_SafeLoaderWithLines)
 
@@ -223,8 +229,10 @@ class OperatorTable:
         return table
 
     def operators(self) -> Iterator[Operator]:
-        """Returns:
-        `Iterator` over all operators in the table.
+        """All operaotrs in the table.
+
+        Returns:
+            `Iterator` over all operators in the table.
         """
         yield from self._operator_specs
 
@@ -271,8 +279,9 @@ class OperatorTable:
             raise KeyError(f"'{alias}' is not a known alias") from e
 
     def add_alias(self, alias: str, py_op: str | _PyOp) -> None:
-        """Add an string alias for an operation. Both get and __getitem__ will
-        resolve string aliases before lookup.
+        """Add an string alias for an operation.
+
+        Both get and __getitem__ will resolve string aliases before lookup.
 
         This may be used to associate multiple string (qualified) names
         to a single operator.

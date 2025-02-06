@@ -21,6 +21,8 @@ from typing import (
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.quantization import granularity
 from fastforward.quantized_tensor import QuantizedTensor
 
@@ -218,7 +220,8 @@ class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
         """
         ...
 
-    def forward(
+    @override
+    def forward(  # type: ignore[misc]
         self,
         quantizer: _QuantizerType,
         callback: Callable[[torch.Tensor], torch.Tensor],

@@ -25,11 +25,18 @@ module_header_raw = """
 
 
 class Writer(Protocol):
-    """Implementations of the writer protocol are used to 'export' the generated
+    """Writer for code generation.
+
+    Implementations of the writer protocol are used to 'export' the generated
     code.
     """
 
     def write(self, __data: str) -> Any:
+        """Write `__data` to output.
+
+        Args:
+            __data: data to write to output.
+        """
         raise NotImplementedError
 
 
@@ -78,7 +85,7 @@ class _ModuleGenerator:
         self._header_parts.append(source_cst.body)
 
 
-class ParameterList:
+class _ParameterList:
     def __init__(self) -> None:
         self._params: list[tuple[str, str]] = []  # name, value
 
@@ -189,7 +196,7 @@ def _simple_if(
     )
 
 
-def param_quantization_guard(param: operator.Parameter) -> list[libcst.BaseStatement]:
+def _param_quantization_guard(param: operator.Parameter) -> list[libcst.BaseStatement]:
     TQuantList = symtypes.List[symtypes.MaybeQuantized] | symtypes.List[symtypes.QuantizedTensor]
     if param.param_type in TQuantList:
         return _quantizer_list_param_quantization_guard(param)
@@ -261,7 +268,7 @@ def _single_param_quantization_guard(param: operator.Parameter) -> list[libcst.B
         return quant_check
 
 
-def fallback_op(op: operator.Operator) -> libcst.FunctionDef:
+def _fallback_op(op: operator.Operator) -> libcst.FunctionDef:
     if op.metadata is None:
         raise ValueError("Cannot create fallback op without metadata")
 
@@ -290,12 +297,12 @@ def fallback_op(op: operator.Operator) -> libcst.FunctionDef:
         )
 
     # Ensure all parameters are properly quantized
-    params = ParameterList()
+    params = _ParameterList()
     for param in op.parameters:
         # The parameter names of the fallback function and the argument names
         # are the same; We can use param.name for both
         params.append(param.name, param.name)
-        body += param_quantization_guard(param)
+        body += _param_quantization_guard(param)
 
     # fallback call
     body.append(
@@ -320,7 +327,7 @@ def fallback_op(op: operator.Operator) -> libcst.FunctionDef:
     return func_def.with_changes(body=libcst.IndentedBlock(body))
 
 
-def dispatch_op(op: operator.Operator) -> libcst.FunctionDef:
+def _dispatch_op(op: operator.Operator) -> libcst.FunctionDef:
     if op.metadata is None:
         raise ValueError("Cannot create dispatch op without metadata")
 
@@ -343,7 +350,7 @@ def dispatch_op(op: operator.Operator) -> libcst.FunctionDef:
         )
     )
 
-    params = ParameterList()
+    params = _ParameterList()
     for param in op.parameters:
         params.append(param.name, param.name)
     if has_output_quantizer:
@@ -390,7 +397,7 @@ def _generate_fallback(operators: OperatorTable, source: pathlib.Path, writer: W
     """)
 
     for op in operators.operators():
-        module.append_op(fallback_op(op))
+        module.append_op(_fallback_op(op))
 
     writer.write(module.code)
 
@@ -404,12 +411,19 @@ def _generate_operators(operators: OperatorTable, source: pathlib.Path, writer: 
     """)
 
     for op in operators.operators():
-        module.append_op(dispatch_op(op))
+        module.append_op(_dispatch_op(op))
 
     writer.write(module.code)
 
 
 def generate(operators: OperatorTable, source: pathlib.Path, destination: pathlib.Path) -> None:
+    """Generate "fallback.py" and "operators.py" from operators.
+
+    Args:
+        operators: The `OperatorTable` to generate files from.
+        source: The source locationfrom which the files are created.
+        destination: The directory to write the newly created files to.
+    """
     with (destination / "fallback.py").open("w") as dest_file:
         _generate_fallback(operators, source=source, writer=dest_file)
     with (destination / "operators.py").open("w") as dest_file:

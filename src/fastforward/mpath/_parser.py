@@ -406,10 +406,11 @@ class Parser:
 
 
 def get_caller_context(stack_depth: int = 1) -> dict[str, Any]:
-    """An MPath extension may need access to the caller context. This function
-    returns a dictionary of the builtins, globals and locals available in the
-    caller context. `stack_depth` determines how deep in the stack we loop for
-    the context.
+    """An MPath extension may need access to the caller context.
+
+    This function returns a dictionary of the builtins, globals and locals
+    available in the caller context. `stack_depth` determines how deep in the
+    stack we loop for the context.
     """
     current_frame = inspect.currentframe()
     context: dict[str, Any] = {}

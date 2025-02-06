@@ -33,7 +33,7 @@ def maybe_tensor_apply(maybe_tensor: T, fn: Callable[[torch.Tensor], S]) -> T | 
 
 
 def ensure_tensor(
-    maybe_tensor: torch.Tensor | float | Sequence[float], device: Optional[torch.device] = None
+    maybe_tensor: torch.Tensor | float | Sequence[float], device: torch.device | None = None
 ) -> torch.Tensor:
     """Convert `maybe_tensor` to a tensor if it is not already a tensor.
 
@@ -58,6 +58,17 @@ def tensor_or_none(data: None, dtype: torch.dtype, device: torch.device) -> None
 def tensor_or_none(
     data: float | torch.Tensor | None, dtype: torch.dtype, device: torch.device
 ) -> torch.Tensor | None:
+    """Convert data to `Tensor` unless it already is or equals `None`.
+
+    Args:
+        data: data to convert to a tensor
+        dtype: The dtype to use for the newly created tensor.
+        device: The device to create the new tensor on.
+
+    Returns:
+        Tensor from `data` or `None` is `data` equals None.
+
+    """
     if data is None or isinstance(data, torch.Tensor):
         return data
     return torch.tensor(data, dtype=dtype, device=device)

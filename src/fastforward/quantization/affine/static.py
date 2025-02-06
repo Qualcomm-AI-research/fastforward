@@ -62,8 +62,7 @@ def quantize_per_granularity(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """Quantize `input` following `granularity` and the given
-    quantization parameters.
+    """Quantize `input` using `granularity` and given quantization parameters.
 
     Args:
         input: The data to be quantized

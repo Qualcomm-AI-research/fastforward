@@ -3,17 +3,21 @@
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.nn import QuantizedModule, QuantizerStub, functional
 
 
 class QuantizedEmbedding(torch.nn.Embedding, QuantizedModule):
     """Quantized implementation of torch.nn.Embedding."""
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.weight_quantizer = QuantizerStub(weight_quantizer=True)
         self.output_quantizer = QuantizerStub(output_quantizer=True)
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return functional.embedding(
             input,

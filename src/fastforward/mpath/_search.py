@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Iterator, Optional, TypeVar, overload
 
 import torch
 
-from typing_extensions import Self
+from typing_extensions import Self, override
 
 from . import _parser as mpath_parser
 from . import selector
@@ -72,7 +72,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return len(self._results)
 
     def append(self, item: FilterResult) -> None:
-        """Add `FilterResult` to the collection:
+        """Add `FilterResult` to the collection.
 
         Args:
             item: Filter result to add to the collection.
@@ -94,12 +94,13 @@ class MPathCollection(abc.Sequence[FilterResult]):
         safe: bool = True,
         update: bool = True,
     ) -> None:
-        """Apply `func` to all modules in the collection. If the result of func is
-        not None and update is True, the module is replaced in the original
-        model by the result of func. This only happens when the module in the
-        collection was still part of the original model and not already
-        changed. Use safe=False, to ignore this and always update the module
-        independent of the current value.
+        """Apply `func` to all modules in the collection.
+
+        If the result of func is not None and update is True, the module is
+        replaced in the original model by the result of func. This only happens
+        when the module in the collection was still part of the original model
+        and not already changed. Use safe=False, to ignore this and always
+        update the module independent of the current value.
 
         Args:
             func: Function to apply to all modules
@@ -115,8 +116,9 @@ class MPathCollection(abc.Sequence[FilterResult]):
         self._results = _results
 
     def map(self, func: Callable[[str, torch.nn.Module], _T]) -> list[_T]:
-        """Apply func to all modules in the collection, the result of func is
-        returned as a list.
+        """Apply func to all modules in the collection.
+
+        The result of func is returned as a list.
 
         Args:
             func: Function to apply to each member of the collection
@@ -128,6 +130,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def named_modules(self) -> Iterator[tuple[str, torch.nn.Module]]:
         """Returns An interator with name and modules of all modules in the collection.
+
         The name is relative with respect to the root module, i.e., the module that
         was queried to produce this collection.
         """
@@ -149,18 +152,20 @@ class MPathCollection(abc.Sequence[FilterResult]):
         if self._root is not other._root:
             raise ValueError(
                 f"Can only create {operation} of {type(self).__name__}s that were "
-                "created from the same model"
+                + "created from the same model"
             )
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not isinstance(other, MPathCollection):
             return NotImplemented
         return self._root == other._root and self._results == other._results
 
     def union(self, other: "MPathCollection") -> Self:
-        """Create a new `MPathCollection` that contains all elements from this
-        collection and other. A ValueError is raised if the root elements of
-        self and other are not the same.
+        """Create a new collection containing all elements from this and `other`.
+
+        Raises:
+            `ValueError` if the root elements of self and other are not the same.
         """
         self._check_same_root(other, "union")
         return type(self)(root=self._root, results=set(self._results) | set(other._results))
@@ -171,9 +176,10 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.union(other)
 
     def intersection(self, other: "MPathCollection") -> Self:
-        """Create a new `MPathCollection` that contains all elements that are
-        present in this collection and other. A ValueError is raised if the
-        root elements of self and other are not the same.
+        """Create new collection that contains all elements in this and `other`.
+
+        Raises:
+            `ValueError` if the root elements of self and other are not the same.
         """
         self._check_same_root(other, "intersection")
         return type(self)(root=self._root, results=set(self._results) & set(other._results))
@@ -184,9 +190,10 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.intersection(other)
 
     def difference(self, other: "MPathCollection") -> Self:
-        """Create a new `MPathCollection` that contains all elements in this
-        collection that are not in other. A ValueError is raised if the root
-        elements of self and other are not the same.
+        """Create new collection containing all elements in this and `other`.
+
+        Raises:
+            `ValueError` if the root elements of self and other are not the same.
         """
         self._check_same_root(other, "union")
         return type(self)(root=self._root, results=set(self._results) - set(other._results))
@@ -197,9 +204,10 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.difference(other)
 
     def symmetric_difference(self, other: "MPathCollection") -> Self:
-        """Create a new `MPathCollection` that contains all elements that a in this
-        collection or in other, but not in both. A ValueError is raised if the root
-        elements of self and other are not the same.
+        """Create a new collection of difference of this and `other`.
+
+        Raises:
+            `ValueError` if the root elements of self and other are not the same.
         """
         self._check_same_root(other, "union")
         return type(self)(root=self._root, results=set(self._results) ^ set(other._results))
@@ -249,6 +257,8 @@ def search(
         query: Query to specify included/excluded submodules
         root: Root module, all submodules of the root module are considered for inclusion
             in the result set. root itself is never part of the result set.
+        aliases: Aliases to consider in the query. Any occurence of `&<alias>`
+            is replaced by the corresponding query in aliases.
 
     Returns:
         Collection of (sub)modules that satisfy query.

@@ -37,6 +37,7 @@ def _get_default_dst() -> pathlib.Path:
 
 
 def main():
+    """Entry point for code generation for FastForward."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",

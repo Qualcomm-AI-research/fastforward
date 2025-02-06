@@ -102,7 +102,9 @@ def test_to_dtype(dtype: torch.dtype):
 
 @ff.flags.context(ff.strict_quantization, False)
 def test_quantized_tensor_cpu_cuda():
-    """Test if quantized tensor and associated tensor quantization parameters are moved between
+    """Test `Tensor.cpu` and `Tensor.cuda`.
+
+    Test if quantized tensor and associated tensor quantization parameters are moved between
     devices and if quant.
     """
     torch.manual_seed(7480)
@@ -146,7 +148,9 @@ def test_quantized_tensor_cpu_cuda():
 
 @ff.flags.context(ff.strict_quantization, False)
 def test_quantized_tensor_to():
-    """Test if quantized tensor and associated tensor quantization parameters are moved between
+    """Test `Tensor.cuda` and `Tensor.cpu`.
+
+    Test if quantized tensor and associated tensor quantization parameters are moved between
     devices and if quant.
     """
     data = torch.randn(10, 10)
@@ -227,11 +231,11 @@ def test_quantized_tensor_dispatches():
 
     @contextmanager
     def _mock_dispatcher_function(dispatch_key: str, dispatch_pos: int):
-        """Temporarily mock dispatch item, ideally we would directly mock the
-        funtion that is being dispatched to, but that does not seem to be
-        possible as the dispatches are already registered when the
-        QuantizedTensor is imported.
-        """
+        # Temporarily mock dispatch item, ideally we would directly mock the
+        # funtion that is being dispatched to, but that does not seem to be
+        # possible as the dispatches are already registered when the
+        # QuantizedTensor is imported.
+
         from fastforward.dispatcher import _DISPATCHER, DispatcherItem
 
         old_dispatch_item = _DISPATCHER[dispatch_key][dispatch_pos]

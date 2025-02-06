@@ -3,6 +3,8 @@
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.nn import QuantizedModule, Quantizer, QuantizerStub
 from fastforward.nn.functional import linear
 
@@ -15,6 +17,7 @@ class QuantizedLinear(QuantizedModule, torch.nn.Linear):
     input_quantizer: Quantizer
     output_quantizer: Quantizer
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.input_quantizer = QuantizerStub(input_quantizer=True)
@@ -25,6 +28,7 @@ class QuantizedLinear(QuantizedModule, torch.nn.Linear):
             self.register_quantizer("bias_quantizer", None)  # type: ignore[unreachable]
         self.output_quantizer = QuantizerStub(output_quantizer=True)
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         weight = self.weight_quantizer(self.weight)

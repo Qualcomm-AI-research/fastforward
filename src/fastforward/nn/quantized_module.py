@@ -43,6 +43,7 @@ def named_quantizers(
     direct children if `recurse` is False.
 
     Args:
+        module: The module to yield the quantizers for.
         prefix: Str that prefixed to the name of the module.
         recurse: Only yield direct children if True, yield all quantizers in
             submodules otherwise.
@@ -178,6 +179,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             extra_conversion: A dict that maps `torch.nn.Module` to `QuantizedModule` subclasses.
               For any conversion, this dict is first checked. If there is no match, the general
               mapping as given by `quantized_module_map` is used.
+            skip_quantized_modules: If `True` do not try to requantize already
+                quantized modules.
 
         Warning:
             If this method is used on a module that has submodules for which no

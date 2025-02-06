@@ -3,6 +3,8 @@
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.nn import QuantizedModule, Quantizer, QuantizerStub
 from fastforward.nn.functional import conv1d, conv2d
 
@@ -25,6 +27,7 @@ class QuantizedConv2d(QuantizedModule, torch.nn.Conv2d):
             self.register_quantizer("bias_quantizer", None)
         self.output_quantizer = QuantizerStub(output_quantizer=True)
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         weight = self.weight_quantizer(self.weight)
@@ -63,6 +66,7 @@ class QuantizedConv1d(QuantizedModule, torch.nn.Conv1d):
             self.register_quantizer("bias_quantizer", None)
         self.output_quantizer = QuantizerStub(output_quantizer=True)
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         weight = self.weight_quantizer(self.weight)

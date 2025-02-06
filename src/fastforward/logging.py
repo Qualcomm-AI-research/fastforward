@@ -22,6 +22,7 @@ class DuplicateLogFilter:
         self._logged_warnings: set[tuple[int, str]] = set()
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Filter record for duplicate log messages."""
         if record.levelno not in self._supressed_levels:
             return True
 

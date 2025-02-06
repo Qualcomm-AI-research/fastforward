@@ -19,19 +19,19 @@ from fastforward.quantized_tensor import QuantizedTensor
 
 @dataclasses.dataclass
 class QuantizationParameters:
-    """Container for quantization parameters. Each quantization expects a specific
-    `QuantizationParamers`.
+    """Container for quantization parameters.
+
+    Each quantization expects a specific `QuantizationParamers`.
     """
 
     def with_changes(self, **changes: Any) -> Self:
-        """Replace any provided keyword argument and return a newly created
-        `QuantizationParameters`.
-        """
+        """Replace given keywords and return a new `QuantizationParameters`."""
         return dataclasses.replace(self, **changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:
-        """Apply `fn` to every parameter and create a new `QuantizationParameters`
-        using the results of each application.
+        """Apply `fn` to every parameter.
+
+        Create a new `QuantizationParameters` using the results of each application.
         """
         new_values = {k: fn(v) for k, v in dataclasses.asdict(self).items()}
         return type(self)(**new_values)
@@ -88,8 +88,7 @@ class QuantizationContext(Generic[QuantParams_co]):
         quantization_fn: type[QuantizationFunction[QuantParams_co]] | None = None,
         **changes: Any,
     ) -> Self:
-        """Create new `QuantizationContext` replacing `quantization_fn` or
-        quantization parameters.
+        """Create new context replacing `quantization_fn` or parameters.
 
         Args:
             quantization_fn: `QuantizationFunction` for new
@@ -106,30 +105,31 @@ class QuantizationContext(Generic[QuantParams_co]):
         return dataclasses.replace(self, **context_changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:
-        """Apply `fn` to every parameter and create a new `QuantizationParameters`
-        using the results of each application.
+        """Apply `fn` to every parameter.
+
+        Create a new `QuantizationParameters` using the results of each application.
         """
         params = self.quantization_params._apply(fn)
         return dataclasses.replace(self, quantization_params=params)
 
     def clone_parameters(self) -> Self:
-        """Clone each tensor in `quantization_params` and return a new context
-        with updated parameters.
+        """Clone each tensor in `quantization_params`.
+
+        Return a new context with updated parameters.
         """
         fn = functools.partial(maybe_tensor_apply, fn=torch.clone)
         return self._apply(fn)
 
     def detach_parameters(self) -> Self:
-        """Detach each tensor in `quantization_params` and return a new context
-        with updated parameters.
+        """Detach each tensor in `quantization_params`.
+
+        Return a new context with updated parameters.
         """
         fn = functools.partial(maybe_tensor_apply, fn=torch.detach)
         return self._apply(fn)
 
     def contiguous_parameters(self) -> Self:
-        """Update each tensor in `quantization_params` to make it contiguous and
-        return a new context with updated parameters.
-        """
+        """Update each tensor in `quantization_params` to be contiguous."""
         fn = functools.partial(maybe_tensor_apply, fn=torch.Tensor.contiguous)
         ctx = self._apply(fn)
 
@@ -142,9 +142,7 @@ class QuantizationContext(Generic[QuantParams_co]):
         return self
 
     def to(self, device: torch.device | str) -> Self:
-        """Update each tensor in `quantization_params` to `device` and
-        return a new context with updated parameters.
-        """
+        """Update each tensor in `quantization_params` to `device`."""
 
         def _to_device(tensor: torch.Tensor) -> torch.Tensor:
             return tensor.to(device=device)
@@ -153,8 +151,10 @@ class QuantizationContext(Generic[QuantParams_co]):
         return self._apply(fn)
 
     def attach(self, data: torch.Tensor) -> QuantizedTensor:
-        """Attach to `data` to this context by creating a `QuantizedTensor` that
-        uses data as raw_data and this context as quantization context.
+        """Attach to `data` to this context.
+
+        Creates a `QuantizedTensor` that uses data as raw_data and this context
+        as quantization context.
         """
         if ff.get_export_mode():
             # The QuantizedTensor can be used once issue #166 is resolved (waiting for changes

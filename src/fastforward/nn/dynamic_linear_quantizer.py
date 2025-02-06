@@ -4,6 +4,8 @@
 
 import torch
 
+from typing_extensions import override
+
 import fastforward.quantization.granularity as granularities
 
 from fastforward.nn.linear_quantizer import AbstractAffineQuantizer
@@ -37,7 +39,7 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         self,
         num_bits: int,
         *,
-        granularity: granularities.Granularity = granularities.PerTensor(),
+        granularity: granularities.Granularity | None = None,
         quantized_dtype: torch.dtype | None = None,
         parameter_inference_fn: DynamicParamInferenceFn | None = None,
     ):
@@ -45,7 +47,7 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
             num_bits=num_bits, granularity=granularity, quantized_dtype=quantized_dtype
         )
         self.num_bits = num_bits
-        self.granularity = granularity
+        self.granularity = granularity or granularities.PerTensor()
         self.quantized_dtype = quantized_dtype
         self.parameter_inference_fn = parameter_inference_fn
 
@@ -57,6 +59,7 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         """
         return False
 
+    @override
     def quantization_parameters(self) -> DynamicAffineQuantParams:
         """Quantization parameters of this quantizer.
 
@@ -71,9 +74,12 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         )
 
     @property
+    @override
     def quantization_function(self) -> type[QuantizationFunction[DynamicAffineQuantParams]]:
-        """Returns:
-        `QuantizationFunction` that implements the quantization operator
-        specific to this quantizer.
+        """Quantization function associated with this quantizer.
+
+        Returns:
+            `QuantizationFunction` that implements the quantization operator
+            specific to this quantizer.
         """
         return AffineQuantizationFunction

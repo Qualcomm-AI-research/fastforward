@@ -9,6 +9,7 @@ from typing import Any, Callable, Iterator, Optional
 import torch
 
 from typing_extensions import Self, deprecated
+from typing_extensions import override as typing_override
 
 from fastforward import forward_override as override
 
@@ -223,6 +224,7 @@ class QuantizerMetadata:
         "Use QuantizerStub and pass metadata arguments directly instead"
     )
     def to_stub(self) -> "QuantizerStub":
+        """Deprecated."""
         return QuantizerStub(_metadata=self)
 
 
@@ -279,6 +281,7 @@ class Quantizer(torch.nn.Module):
         self._quantizer_overrides[handle.handle_id] = override_fn
         return handle
 
+    @typing_override
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         wrapped_quantize = override.apply_overrides(self, self.quantize, self._quantizer_overrides)
         return wrapped_quantize(data)

@@ -108,7 +108,8 @@ def apply_overrides(
         context: An object related to overridden fn that may store
             contextual data that is passed into the function overrides.
         overridden_fn: The function to override.
-        override_map:
+        override_map: A mapping from int to overides. The overrides are applied
+            in order of the key.
 
     Returns:
         (Callable[..., T]) wrapped overridden_fn, or overridden_fn if override_map

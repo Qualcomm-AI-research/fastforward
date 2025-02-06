@@ -89,7 +89,12 @@ class _SpecParser(Parser):
 
 
 def parse_schema(schema_str: str) -> operator.Operator:
-    """Parse schema_str of a quantized operator and create corresponding OpSpec
+    """Parse operator schema.
+
+    Parse schema_str of a quantized operator and create corresponding OpSpec
     object.
+
+    Returns:
+        New `Operator` parsed from `schema_str`.
     """
     return _SpecParser(tokenizer(schema_str)).parse()  # type: ignore[no-any-return]

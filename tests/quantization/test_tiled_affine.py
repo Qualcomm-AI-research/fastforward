@@ -247,7 +247,9 @@ def test_quantize_per_element_cpu(num_bits, output_dtype, input_dtype, scale_dty
 def gen_data(
     scale: float, offset: float, shape: tuple[int, ...] | torch.Size, device="cpu"
 ) -> torch.Tensor:
-    """Generate data that is sufficiently far from the discontinuities of the
+    """Generate test data.
+
+    Generate data that is sufficiently far from the discontinuities of the
     quantization step function using scale. This ensures that rounding errors
     are less likely to occur during testing.
     """

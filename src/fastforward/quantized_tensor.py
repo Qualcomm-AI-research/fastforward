@@ -425,6 +425,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def quantization_context(self) -> "QuantizationContext[QuantizationParameters]":
+        """The quantization context assoaciated with this `QuantizedTensor`."""
         return self._quantization_context
 
     @property

@@ -67,6 +67,11 @@ def parameters_for_range(
     Args:
         min_range: `Tensor` representing the minimum range threshold
         max_range: `Tensor` representing the maximum range threshold
+        num_bits: The quantization bitwidth.
+        symmetric: `True` if the quantizer is symmetric, `False` otherwise.
+        allow_one_sided: If `True`, infer a parameter range between zero and a
+            maximum value if `min_range` is non-negative. This is sometimes refered
+            to as an unsigned quantizer.
 
     Returns:
         tuple[torch.Tensor, torch.Tensor | None]:

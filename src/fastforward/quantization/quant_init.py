@@ -198,6 +198,8 @@ class QuantizerCollection(mpath.MPathCollection):
                 this collection and the call to initialize. When safe is
                 `True`, an error is raised. Otherwise, a (re-)initialization of
                 the quantizer is attempted.
+            **kwargs: Any extra keyword argument is passed to the `Quantizer`
+                initializer.
         """
         self._initialize_with_factory(
             _ensure_factory_func(quantizer_factory, kwargs),
@@ -219,6 +221,8 @@ def find_quantizers(
         query: Mpath.Selector or str that represent the filter query.
             Please see the documentation of `fastforward.mpath.query` and
             `fastforward.mpath.search` for more details.
+        aliases: Aliases to consider in the query. Any occurence of `&<alias>`
+            is replaced by the corresponding query in aliases.
     """
     if isinstance(query, str):
         query = mpath._parser.parse(
@@ -301,6 +305,10 @@ class QuantizationConfig:
                 element in the collection. If a `Quantizer` class is passed,
                 all `kwargs` will be forwarded to the initializer. In the case
                 of a callable, all `kwargs` are ignored.
+            factory: A function that creates a new quantizer. Either a `Quantizer` type
+                or any object that implements `_QuantizerFactory`.
+            **kwargs: Any extra keyword argument is passed to the `Quantizer`
+                initializer.
         """
         if isinstance(query, str):
             query = mpath.query(query, context=mpath.local_context())

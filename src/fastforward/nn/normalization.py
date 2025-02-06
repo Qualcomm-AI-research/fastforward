@@ -3,6 +3,8 @@
 
 import torch
 
+from typing_extensions import override
+
 import fastforward.nn as ffnn
 
 
@@ -12,6 +14,7 @@ class QuantizedLayerNorm(torch.nn.LayerNorm, ffnn.QuantizedModule):
     weight: torch.Tensor | None  # type: ignore[assignment]
     bias: torch.Tensor | None  # type: ignore[assignment]
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.input_quantizer = ffnn.QuantizerStub(input_quantizer=True)
@@ -24,6 +27,7 @@ class QuantizedLayerNorm(torch.nn.LayerNorm, ffnn.QuantizedModule):
             self.register_quantizer("bias_quantizer", None)
         self.output_quantizer = ffnn.QuantizerStub(output_quantizer=True)
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         weight = self.weight

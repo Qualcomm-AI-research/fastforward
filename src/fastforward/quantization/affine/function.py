@@ -62,6 +62,11 @@ AffineQuantParams = TypeVar("AffineQuantParams", StaticAffineQuantParams, Dynami
 
 
 class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
+    """Affine quantization function.
+
+    Implementation of standard affine quantization.
+    """
+
     @classmethod
     @override
     def quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> "QuantizedTensor":

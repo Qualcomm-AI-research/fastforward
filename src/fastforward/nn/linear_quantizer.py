@@ -84,7 +84,9 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
     @property
     @abc.abstractmethod
     def quantization_function(self) -> type[QuantizationFunction[QuantParams_co]]:
-        """Returns:
+        """Quantization function associated with this quantizer.
+
+        Returns:
         `QuantizationFunction` that implements the quantization operator
         specific to this quantizer.
         """
@@ -98,6 +100,7 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
         """
 
     def quantization_context(self) -> QuantizationContext[QuantParams_co]:
+        """Quantization context for the current parameters for this quantizer."""
         return QuantizationContext(self.quantization_function, self.quantization_parameters())
 
     @override

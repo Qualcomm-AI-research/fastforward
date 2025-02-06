@@ -3,12 +3,15 @@
 
 import torch
 
+from typing_extensions import override
+
 from fastforward.nn import QuantizedModule, QuantizerStub, functional
 
 
 class QuantizedActivation(QuantizedModule, include_in_module_map=False):
     """Base class for quantized activations."""
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.input_quantizer = QuantizerStub(input_quantizer=True)
@@ -23,10 +26,12 @@ class QuantizedRelu(torch.nn.ReLU, QuantizedActivation):
     2. output_quantizer: output activation after relu is applied.
     """
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.inplace = False
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         return functional.relu(input, output_quantizer=self.output_quantizer)
@@ -40,10 +45,12 @@ class QuantizedSilu(torch.nn.SiLU, QuantizedActivation):
     2. output_quantizer: output activation after silu is applied.
     """
 
+    @override
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         self.inplace = False
 
+    @override
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         input = self.input_quantizer(input)
         return functional.silu(input, output_quantizer=self.output_quantizer)

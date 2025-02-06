@@ -7,6 +7,8 @@ from typing import Any, Callable, Generator, Iterable
 
 import torch
 
+from typing_extensions import override as typing_override
+
 import fastforward as ff
 
 from fastforward import forward_override as override
@@ -83,11 +85,13 @@ class DisableQuantizationOverride:
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> torch.Tensor:
+        """Override function for quantizer disabling."""
         if self._quantization_enabled:
             return callback(*args, **kwargs)
         else:
             return _extract_data_from_args(*args, **kwargs)
 
+    @typing_override
     def __repr__(self) -> str:
         return f"{type(self).__name__}(quantization_enabled={self._quantization_enabled})"
 

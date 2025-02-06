@@ -13,11 +13,11 @@ from typing import Callable, Iterator, Optional
 HEADER = "# Copyright (c) 2024 Qualcomm Technologies, Inc.\n# All Rights Reserved."
 
 
-class HeaderViolation(Exception):
+class _HeaderViolation(Exception):
     pass
 
 
-def main() -> None:
+def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", type=pathlib.Path, default=os.getcwd())
     parser.add_argument("--header", type=str, default=HEADER)
@@ -37,7 +37,7 @@ def run(root: pathlib.Path, header: str) -> None:
     for file in _src_files(root, filter=_py_filter):
         try:
             process_file(file, header=header)
-        except HeaderViolation:
+        except _HeaderViolation:
             violations.append(file)
 
     for violation in violations:
@@ -54,7 +54,7 @@ def process_file(filepath: pathlib.Path, header: str) -> None:
         contents = f.read()
     if _has_header(contents, header):
         if not _check_header(contents, header):
-            raise HeaderViolation(filepath)
+            raise _HeaderViolation(filepath)
         print(f"✅ {filepath}: already included a copyright header")
         return
 
@@ -119,4 +119,4 @@ def _py_filter(filepath: pathlib.Path) -> bool:
 
 
 if __name__ == "__main__":
-    main()
+    _main()

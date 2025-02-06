@@ -1,8 +1,10 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""This file holds temporary implementations for view-like operations that test for
-linear quantizers. It should be refactord to use a more robust dispatching
+"""Linear quantizer operattion.
+
+This file holds temporary implementations for view-like operations that test
+for linear quantizers. It should be refactord to use a more robust dispatching
 system once that lands.
 """
 

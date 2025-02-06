@@ -141,9 +141,10 @@ def _create_TestFragment(expected_raw_str: str):
 
 
 def test_query_extension_raw():
-    """Test if the extension text is forwarded exactly to the extension. I.e. in the query
-    "[ext:<some text>]", the extension should receive "<some text>" exactly for all possible
-    characters.
+    """Test if the extension text is forwarded exactly to the extension.
+
+    I.e. in the query "[ext:<some text>]", the extension should receive "<some
+    text>" exactly for all possible characters.
     """
     # ']' is part of string.printable, but '\' happens to be just before it such that it is
     # 'properly' escaped.

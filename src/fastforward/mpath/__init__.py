@@ -42,20 +42,23 @@ _QueryContext = NewType("_QueryContext", dict[str, Any])
 
 
 def local_context() -> _QueryContext:
+    """Returns the local context of the caller."""
     return _QueryContext(_parser.get_caller_context())
 
 
 def caller_context() -> _QueryContext:
+    """Returns the local context of the caller's caller."""
     return _QueryContext(_parser.get_caller_context(2))
 
 
 def query(
     query_str: str,
     *,
-    context: Optional[_QueryContext] = None,
-    aliases: Optional[dict[str, selector.BaseSelector]] = None,
+    context: _QueryContext | None = None,
+    aliases: dict[str, selector.BaseSelector] | None = None,
 ) -> selector.BaseSelector:
     """Construct a query object for MPath from a query string.
+
     A query string consists of multiple fragment strings separated by a '/'
     fragment strings may consists of the following:
 
@@ -103,13 +106,14 @@ def query(
 
 
 def aliases(
-    *, context: Optional[dict[str, Any]] = None, **kwargs: str
+    *, context: dict[str, Any] | None = None, **kwargs: str
 ) -> dict[str, selector.BaseSelector]:
-    """Create aliases that can be used in `mpath.query` and `mpath.search`. Aliases
-    are a dictionary that maps identifier strings to subqueries. This function is
-    a convenience function for creating that mapping. When aliases are passed to
-    `mpath.query` or `mpath.search` they can be referenced in the query using
-    `&<alias identifier>`.
+    """Create aliases that can be used in `mpath.query` and `mpath.search`.
+
+    Aliases are a dictionary that maps identifier strings to subqueries. This
+    function is a convenience function for creating that mapping. When aliases
+    are passed to `mpath.query` or `mpath.search` they can be referenced in the
+    query using `&<alias identifier>`.
 
     The aliases passed to this function are processed in order, this means that
     an alias can be defined in terms of other aliases, e.g.:
@@ -122,7 +126,9 @@ def aliases(
     the aliases argument
 
     Args:
-        context: Context dictionary in which to evaluate the queries. Same as `mpath.query`
+        context: Context dictionary in which to evaluate the queries. Same as
+            `mpath.query`.
+        **kwargs: Named aliases to process.
 
     Returns:
         Dictionary that can be used as alias in `mpath.query` and `mpath.search`
