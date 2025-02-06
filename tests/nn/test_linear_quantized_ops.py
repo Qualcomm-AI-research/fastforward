@@ -144,3 +144,51 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]):
 
     # Then: The dequantized and non-quantized tensor should match exactly.
     torch.testing.assert_close(quantized_expanded.dequantize(), expanded, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize(
+    "granularity",
+    [
+        ff.PerChannel(0),
+        ff.PerChannel(1),
+        ff.PerChannel(-1),
+        ff.PerChannel((0, 1, 2)),
+        ff.PerChannel((1, 2)),
+        ff.PerChannel((0, 2)),
+    ],
+)
+@pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
+def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTensor]):
+    """
+    Test QuantizedTensor.__getitem__ implementation of Per-Channel quantized
+    tensors for many different ways of indexing.
+    """
+
+    # Given: a quantized and dequantized tensor
+    data_shape = (3, 2, 2)
+    x_in = torch.randn(data_shape)
+    qx = ff.nn.DynamicLinearQuantizer(4, granularity=granularity)(x_in)
+    x = qx.dequantize()
+
+    # Iterate over a large set of possible ways of indexing a tensor
+    for slices_and_indices in itertools.product(
+        *[_dim_slices_and_indices(dim) for dim in data_shape]
+    ):
+        for i in range(1, len(slices_and_indices) + 1):
+            # When: one or more dimensions are indexed
+            slicer = slices_and_indices[:i]
+            qx_slice = qx[slices_and_indices[:i]]
+            x_slice = x[slices_and_indices[:i]]
+
+            # Then: indexing before or after dequantization should result in the same tensor
+            torch.testing.assert_close(qx_slice.dequantize(), x_slice, rtol=0, atol=0)
+
+        if len(slices_and_indices) == 0:
+            continue
+
+        # When: the first dimension is indexed
+        qx_slice = qx[slices_and_indices[0]]
+        x_slice = x[slices_and_indices[0]]
+
+        # Then: indexing before or after dequantization should result in the same tensor
+        torch.testing.assert_close(qx_slice.dequantize(), x_slice, rtol=0, atol=0)

@@ -8,7 +8,7 @@ system once that lands.
 """
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, cast, Tuple, Optional, Iterable
 
 import torch
 
@@ -211,7 +211,7 @@ def cat(
 
 
 @register("__getitem__", affine_per_tensor_predicate)
-def getitem(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
+def getitem_per_tensor(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.__getitem__(*args), input)
 
 
@@ -265,3 +265,77 @@ def topk(
     values, indices = torch.topk(input, k, dim=dim, largest=largest, sorted=sorted)
     values = input.quantization_context.attach(values)
     return torch.return_types.topk((values, indices))
+
+
+def _is_affine_per_channel(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
+    # As part of the predicate we verify input is acutally a QuantizedTensor
+    if not isinstance(input, QuantizedTensor):
+        return False  # type: ignore[unreachable]
+
+    # Lazy import to break circular import
+    from fastforward.quantization.affine import AffineQuantizationFunction, StaticAffineQuantParams
+
+    context = input.quantization_context
+    granularity = getattr(context.quantization_params, "granularity", None)
+
+    is_affine = issubclass(context.quantization_fn, AffineQuantizationFunction)
+    has_affine_params = isinstance(context.quantization_params, StaticAffineQuantParams)
+    is_per_channel = isinstance(granularity, ff.PerChannel)
+    return is_affine and has_affine_params and is_per_channel
+
+
+affine_per_channel_predicate = Predicate(_is_affine_per_channel)
+
+
+@register("__getitem__", affine_per_channel_predicate)
+def getitem_per_channel(
+    input: QuantizedTensor, slices: Optional[slice | int] | Tuple[Optional[slice | int]]
+) -> QuantizedTensor:
+    if not isinstance(slices, Iterable):
+        slices = (slices,)
+
+    q_params = input.quantization_context.quantization_params
+
+    from fastforward.quantization.affine import StaticAffineQuantParams
+
+    assert isinstance(q_params, StaticAffineQuantParams)
+    assert isinstance(q_params.granularity, ff.PerChannel)
+    assert isinstance(q_params.scale, torch.Tensor)
+    assert q_params.offset is None or isinstance(q_params.offset, torch.Tensor)
+
+    channel_dims = q_params.granularity.channel_dims
+    # avoid negative channel dims
+    channel_dims = tuple(
+        [input.raw_data.ndim + c if (c < 0) else c for c in channel_dims]
+    )
+
+    # get the operations we need to perform on the scaling and offset
+    param_tmp_shape = [
+        dim if (i in channel_dims) else 1 for i, dim in enumerate(input.raw_data.shape)
+    ]
+    slices_effective_ = []
+    for i, s in enumerate(slices):
+        if i in channel_dims or s is None:
+            slices_effective_.append(s)
+        elif isinstance(s, int):
+            slices_effective_.append(0)  # this reduces the dimension
+        else:
+            slices_effective_.append(slice(None, None, None))  # doesn't do anything
+
+    # make into tuple (lists are interpreted as indexing by __getitem__)
+    slices_effective = tuple(slices_effective_)
+
+    # reshape scale into full shape, perform perchannel __getitem__ slices, and vectorize again
+    scale = q_params.scale.view(param_tmp_shape).__getitem__(slices_effective)
+    new_channel_dims = tuple([i for i, dim in enumerate(scale.shape) if dim > 1])
+    scale = scale.reshape(-1)
+    if q_params.offset is not None:
+        offset = (q_params.offset.view(param_tmp_shape).__getitem__(slices_effective)).reshape(-1)
+    else:
+        offset = None
+
+    granularity = ff.PerChannel(channel_dim=tuple(new_channel_dims))
+    new_data = input.raw_data.__getitem__(slices)
+    return input.quantization_context.with_changes(
+        scale=scale, offset=offset, granularity=granularity
+    ).attach(new_data)
