@@ -277,22 +277,13 @@ def test_ff_model_to_onnx_export(tmp_path, simple_model):
     np.testing.assert_allclose(to_numpy(non_quantized_result), ort_outs[0], rtol=1e-03, atol=1e-05)
 
 
-@pytest.fixture
-def mock_onnx_and_proto_objects():
-    mock_torch_onnx_model = unittest.mock.Mock(onnxscript.ir.Model)
-    mock_proto = unittest.mock.Mock(onnx.onnx_ml_pb2.ModelProto)
-    mock_proto_graph = unittest.mock.Mock(onnx.onnx_ml_pb2.GraphProto)
-
-    mock_torch_onnx_model.graph.inputs = []
-    mock_torch_onnx_model.graph.initializers = []
-    mock_proto.graph = mock_proto_graph
-    mock_proto.graph.node = []
-
-    return mock_torch_onnx_model, mock_proto
-
-
-def populate_mock_onnx_and_proto_objects(
-    mock_torch_onnx_model, mock_proto, inputs, activations, parameters
+@pytest.mark.slow
+@pytest.mark.parametrize("quantize_input", [True, False])
+@pytest.mark.parametrize("quantize_outputs", [True, False])
+@pytest.mark.parametrize("quantize_weights", [True, False])
+@pytest.mark.parametrize("quantize_bias", [True, False])
+def test_onnx_parameter_collection(
+    quantize_input, quantize_outputs, quantize_weights, quantize_bias
 ):
     def create_mock_sym_tensor(name):
         mock_symbolic_tensor = unittest.mock.Mock(torch_onnx._tensors.SymbolicTensor)
@@ -304,26 +295,27 @@ def populate_mock_onnx_and_proto_objects(
         mock_proto_node.output = [name]
         return mock_proto_node
 
-    for input_ in inputs:
-        mock_torch_onnx_model.graph.inputs.append(create_mock_sym_tensor(input_))
+    def create_mock_onnx_and_proto_objects(inputs, activations, parameters):
+        mock_torch_onnx_model = unittest.mock.Mock(onnxscript.ir.Model)
+        mock_proto = unittest.mock.Mock(onnx.onnx_ml_pb2.ModelProto)
+        mock_proto_graph = unittest.mock.Mock(onnx.onnx_ml_pb2.GraphProto)
 
-    for activation in activations:
-        mock_proto.graph.node.append(create_mock_proto_node(activation))
+        mock_torch_onnx_model.graph.inputs = []
+        mock_torch_onnx_model.graph.initializers = []
+        mock_proto.graph = mock_proto_graph
+        mock_proto.graph.node = []
 
-    for parameter in parameters:
-        mock_torch_onnx_model.graph.initializers.append(parameter)
+        for input_ in inputs:
+            mock_torch_onnx_model.graph.inputs.append(create_mock_sym_tensor(input_))
 
-    return mock_torch_onnx_model, mock_proto
+        for activation in activations:
+            mock_proto.graph.node.append(create_mock_proto_node(activation))
 
+        for parameter in parameters:
+            mock_torch_onnx_model.graph.initializers.append(parameter)
 
-@pytest.mark.slow
-@pytest.mark.parametrize("quantize_input", [True, False])
-@pytest.mark.parametrize("quantize_outputs", [True, False])
-@pytest.mark.parametrize("quantize_weights", [True, False])
-@pytest.mark.parametrize("quantize_bias", [True, False])
-def test_onnx_parameter_collection(
-    mock_onnx_and_proto_objects, quantize_input, quantize_outputs, quantize_weights, quantize_bias
-):
+        return mock_torch_onnx_model, mock_proto
+
     def _set_pop_key(input_set, key):
         input_set.remove(key)
         return key
@@ -337,13 +329,8 @@ def test_onnx_parameter_collection(
     unused_input_names = set(["arg6_1"])
 
     used_activation_names, used_parameter_names, used_input_names = set(), set(), set()
-    mock_torch_onnx_model, mock_proto = mock_onnx_and_proto_objects
-    mock_torch_onnx_model, mock_proto = populate_mock_onnx_and_proto_objects(
-        mock_torch_onnx_model,
-        mock_proto,
-        unused_input_names,
-        unused_activation_names,
-        unused_parameter_names,
+    mock_torch_onnx_model, mock_proto = create_mock_onnx_and_proto_objects(
+        unused_input_names, unused_activation_names, unused_parameter_names
     )
 
     if quantize_outputs:

@@ -96,7 +96,7 @@ def get_inputs(
     unused_input_nodes = set()
 
     for graph_input in graph_inputs:
-        new_arg_name = getattr(graph_input, "name", "")
+        new_arg_name = getattr(graph_input, "name")
         old_arg_name = new_old_mapping[new_arg_name]
 
         if old_arg_name in quantization_logs:
