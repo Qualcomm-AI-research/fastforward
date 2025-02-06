@@ -22,8 +22,7 @@ _OverwriteOptions: TypeAlias = Literal["overwrite"] | Literal["skip"] | Literal[
 @mpath_query_extension("quantizer")
 @mpath_query_extension("qtag")
 class QuantizerTagSelectorFragment(Fragment):
-    """
-    Fragment that matches quantizer tags.
+    """Fragment that matches quantizer tags.
 
     Can be used in query string using `[quantizer:<tag>(,<tag>)+]` or
     "[qtag:<tag>(,<tag>)+]
@@ -33,8 +32,7 @@ class QuantizerTagSelectorFragment(Fragment):
         self._tags = tuple(Tag(tag) for tag in tags)
 
     def match(self, fragment_name: str, module: torch.nn.Module) -> bool:
-        """
-        Return True if module's tag metadata includes `self._tags`, False otherwise.
+        """Return True if module's tag metadata includes `self._tags`, False otherwise.
 
         Args:
             fragment_name: Unused
@@ -57,8 +55,7 @@ class QuantizerTagSelectorFragment(Fragment):
 
     @classmethod
     def from_raw_string(cls, raw_str: str) -> Selector:
-        """
-        Create a `QuantizerTagSelectorFragment` from a string.
+        """Create a `QuantizerTagSelectorFragment` from a string.
 
         Tags are expected to be comma separated. Any whitespace between tags
         is ignored.
@@ -115,8 +112,7 @@ def _ensure_factory_func(
 
 
 class QuantizerCollection(mpath.MPathCollection):
-    """
-    MPathCollection that only stores Quantizer subclasses.
+    """MPathCollection that only stores Quantizer subclasses.
 
     On creation, all non quantizer results are filtered out from the results
     iterable. In contrast, append will throw an error when a non quantizer
@@ -135,8 +131,7 @@ class QuantizerCollection(mpath.MPathCollection):
         super().__init__(root=root, results=results)
 
     def append(self, item: FilterResult) -> None:
-        """
-        Add `FilterResult` to the collection.
+        """Add `FilterResult` to the collection.
 
         Raises an error if the filter result contains a module that is not a
         Quantizer.
@@ -176,8 +171,7 @@ class QuantizerCollection(mpath.MPathCollection):
         safe: bool = True,
         **kwargs: Any,
     ) -> None:
-        """
-        Initialize all quantizers in the collection using `quantizer_factory`.
+        """Initialize all quantizers in the collection using `quantizer_factory`.
 
         `quantizer_factory` may either be a `Quantizer` subclass or a callable
         that accepts a `str` and `Quantizer`. In the latter case, the provided
@@ -218,8 +212,7 @@ def find_quantizers(
     *,
     aliases: Optional[dict[str, mpath.selector.BaseSelector]] = None,
 ) -> QuantizerCollection:
-    """
-    Find all quantizers in root_module that match query.
+    """Find all quantizers in root_module that match query.
 
     Args:
         root_module: The module to search for quantizers.
@@ -237,8 +230,7 @@ def find_quantizers(
 
 @dataclasses.dataclass(frozen=True)
 class _QuantConfigRule:
-    """
-    Represents a rule for quantization configuration.
+    """Represents a rule for quantization configuration.
 
     Attributes:
         query: The query to match quantizers.
@@ -261,8 +253,7 @@ class _QuantConfigRule:
 
 @dataclasses.dataclass
 class _RuleItem:
-    """
-    Represents an item containing a quantization rule and its filter result.
+    """Represents an item containing a quantization rule and its filter result.
 
     Attributes:
         rule: The quantization rule.
@@ -276,8 +267,7 @@ class _RuleItem:
 
 
 class QuantizationConfig:
-    """
-    Manages quantization configuration rules and initializes quantizers in a model.
+    """Manages quantization configuration rules and initializes quantizers in a model.
     """
 
     def __init__(self) -> None:
@@ -289,8 +279,7 @@ class QuantizationConfig:
         factory: type[Quantizer] | _QuanttizerFactory,
         **kwargs: Any,
     ) -> Self:
-        """
-        Add a quantizer rule to the collection.
+        """Add a quantizer rule to the collection.
 
         A rule consists of an mpath query and a quantizer factory. When a query
         matches a quantizer (stub) and has highest precedence, the factory is
@@ -320,8 +309,7 @@ class QuantizationConfig:
         return self
 
     def precedence_score(self, rule: _QuantConfigRule, result: mpath.FilterResult) -> int:
-        """
-        Score precedence given a result.
+        """Score precedence given a result.
 
         Returns an integer value that is used to choose between two matching
         rules. The rule with the highest score is selected. Ties are broken by
@@ -347,8 +335,7 @@ class QuantizationConfig:
         safe: bool = True,
         overwrite_policy: _OverwriteOptions = "error",
     ) -> None:
-        """
-        Initialize quantizers in model following the rules in this config.
+        """Initialize quantizers in model following the rules in this config.
 
         For each quantizer (stub) that matches at least one location, the last
         added rule is applied. The factory function of this rule is executed

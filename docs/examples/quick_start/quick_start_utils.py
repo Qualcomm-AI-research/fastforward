@@ -15,7 +15,6 @@ def tokenize_dataset(dataset, tokenizer, sequence_length):
 
     def _group_texts(examples):
         """Concatenate all texts from our dataset and generate chunks of max_seq_length."""
-
         # Concatenate all texts.
         concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
         total_length = len(concatenated_examples[list(examples.keys())[0]])

@@ -17,8 +17,7 @@ from fastforward.type_common import SizeT
 
 
 def check_tile_compatibility(input_size: SizeT, tile_size: SizeT) -> None:
-    """
-    Helper function to assess whether a given tile size can be used with a given data shape.
+    """Helper function to assess whether a given tile size can be used with a given data shape.
 
     The function will raise an error if not, otherwise return None.
     """
@@ -69,18 +68,17 @@ def _interleave(seq1: Sequence[T], seq2: Sequence[T] | T) -> Iterable[T]:
 
 
 def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) -> torch.Tensor:
-    """
-    Reshape and permute data.
+    """Reshape and permute data.
 
     Reshape and permute data to a tensor in which the elements per tile are
     layed out per row, following tile_size.
 
-    Args
+    Args:
     ----
         data: Data to reshape and permute
         tile_size: Tile size to use for row collection
 
-    Returns
+    Returns:
     -------
         Tensor: The reshaped tensor.
     """
@@ -102,23 +100,22 @@ def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) 
 def rows_to_tiles(
     tiled_data: torch.Tensor, data_size: SizeT, tile_size: SizeT | Literal["data_shape"]
 ) -> torch.Tensor:
-    """
-    Reshape and permute tiled_data.
+    """Reshape and permute tiled_data.
 
     Reshape and permute tiled_data to a tensor of data_size tiled by tile_size where each row
     in tiled_data corresponds to a single tile.
 
-    Args
+    Args:
     ----
         tiled_data: Data to reshape and permute
         data_size: Size of the output
         tile_size: Tile size to use for row collection
 
-    Returns
+    Returns:
     -------
         Tensor: The reshaped tensor.
 
-    Raises
+    Raises:
     ------
         ValuEerror: Tiled_data's size does not correspond to data_size and tile_size.
     """

@@ -18,8 +18,7 @@ from ._parser import TokenizationError as TokenizationError
 def _operator(
     identifier: str, params: list[operator.Parameter], return_type: symtypes.Type | Sentinel
 ) -> operator.Operator:
-    """
-    Helper function to turn parse result into operator
+    """Helper function to turn parse result into operator
     """
     return_type_ = None
     if isinstance(return_type, symtypes.Type):
@@ -28,8 +27,7 @@ def _operator(
 
 
 def _param(identifier: str, type_: symtypes.Type, default: str | Sentinel) -> operator.Parameter:
-    """
-    Helper function to turn parse result into parameter
+    """Helper function to turn parse result into parameter
     """
     default_value = None
     if isinstance(default, str):
@@ -38,8 +36,7 @@ def _param(identifier: str, type_: symtypes.Type, default: str | Sentinel) -> op
 
 
 def _type(*args: Any) -> symtypes.Type | None:
-    """
-    Helper function to turn parse result into symbolic type
+    """Helper function to turn parse result into symbolic type
     """
     match args:
         case (str(),):
@@ -69,8 +66,7 @@ _R: TypeAlias = ParseRule
 
 
 class _SpecParser(Parser):
-    """
-    Simple PEG based parser for quantizer operator spec.
+    """Simple PEG based parser for quantizer operator spec.
     """
 
     rules = (
@@ -97,8 +93,7 @@ class _SpecParser(Parser):
 
 
 def parse_schema(schema_str: str) -> operator.Operator:
-    """
-    Parse schema_str of a quantized operator and create corresponding OpSpec
+    """Parse schema_str of a quantized operator and create corresponding OpSpec
     object.
     """
     return _SpecParser(tokenizer(schema_str)).parse()  # type: ignore[no-any-return]

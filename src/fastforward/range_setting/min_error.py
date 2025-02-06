@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-Minimum error range estimators.
+"""Minimum error range estimators.
 
 This module contains implementations for range estimators that perform a search to determine
 the (near) optimal quantization grid that minimizes a specified error.
@@ -62,8 +61,7 @@ class _SearchGridGenerator(Protocol):
 
 
 def mse_error(quantized_data: torch.Tensor, unquantized_data: torch.Tensor) -> torch.Tensor:
-    """
-    Mean Squared Error error function for min_error_grid method.
+    """Mean Squared Error error function for min_error_grid method.
 
     Args:
         quantized_data: Data after quantization
@@ -82,8 +80,7 @@ def _default_search_grid(
     num_candidates: int,
     range_margin: float = 0.5,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Generate a default grid for grid search.
+    """Generate a default grid for grid search.
 
     Returns
         (Torch.Tensor, Torch.Tensor): min_threshold and max_threshold tensors of dimension
@@ -202,8 +199,7 @@ class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator],
 
 
 class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
-    """
-    Grid range estimator for error minimization.
+    """Grid range estimator for error minimization.
 
     Range Estimator that searches for quantization range that minimizes
     `error_fn` between quantized and non-quantized value.
@@ -245,8 +241,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         self._skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
-        """
-        Prepare `module` for min error range estimation.
+        """Prepare `module` for min error range estimation.
         """
         if not isinstance(module, SupportsRangeBasedOperator):
             proto_name = (
@@ -264,15 +259,13 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         )
 
     def cleanup(self, module: Quantizer, metadata: OverrideHandle) -> None:
-        """
-        Cleanup `module` after min error range estimation.
+        """Cleanup `module` after min error range estimation.
         """
         del module
         metadata.remove()
 
     def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
-        """
-        Yields all quantizers in `module`.
+        """Yields all quantizers in `module`.
 
         Each is set up for min error range estimation seperately.
         """

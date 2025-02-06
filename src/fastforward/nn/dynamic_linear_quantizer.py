@@ -16,8 +16,7 @@ from fastforward.quantization.function import QuantizationFunction
 
 
 class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
-    """
-    Dynamic Linear quantizer.
+    """Dynamic Linear quantizer.
 
     Support multiple quantization granularities. A granularity
     defines which parts of the input tensor are quantized using the same
@@ -59,8 +58,7 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         return False
 
     def quantization_parameters(self) -> DynamicAffineQuantParams:
-        """
-        Quantization parameters of this quantizer.
+        """Quantization parameters of this quantizer.
 
         Returns:
             `DynamicAffineQuantParams` specific to this quantizer
@@ -74,9 +72,8 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
 
     @property
     def quantization_function(self) -> type[QuantizationFunction[DynamicAffineQuantParams]]:
-        """
-        Returns:
-            `QuantizationFunction` that implements the quantization operator
-            specific to this quantizer.
+        """Returns:
+        `QuantizationFunction` that implements the quantization operator
+        specific to this quantizer.
         """
         return AffineQuantizationFunction

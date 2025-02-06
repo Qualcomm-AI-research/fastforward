@@ -7,8 +7,7 @@ from fastforward.common import ensure_tensor
 
 
 def integer_minimum(num_bits: float) -> float:
-    """
-    Return the minimum integer value given num_bits.
+    """Return the minimum integer value given num_bits.
 
     Args:
         num_bits: Number of bits
@@ -19,8 +18,7 @@ def integer_minimum(num_bits: float) -> float:
 
 
 def integer_maximum(num_bits: float) -> float:
-    """
-    Return the maximum integer value given num_bits.
+    """Return the maximum integer value given num_bits.
 
     Args:
         num_bits: Number of bits
@@ -33,8 +31,7 @@ def integer_maximum(num_bits: float) -> float:
 def quantization_range(
     scale: torch.Tensor | float, offset: torch.Tensor | float | None, num_bits: float
 ) -> tuple[torch.Tensor | float, torch.Tensor | float]:
-    """
-    Compute quantization range for a set of quantization parameters.
+    """Compute quantization range for a set of quantization parameters.
 
     If both scale and offset are tensors, their dimensions must match.
 
@@ -61,8 +58,7 @@ def parameters_for_range(
     symmetric: bool,
     allow_one_sided: bool,
 ) -> tuple[torch.Tensor, torch.Tensor | None]:
-    """
-    Compute affine quantization parameters for a range.
+    """Compute affine quantization parameters for a range.
 
     Given a range or ranges (if min_range and max_range are multidimensional),
     compute the scale and offset parameters that best represent that the given

@@ -16,8 +16,7 @@ from fastforward.quantization.quant_init import QuantizerCollection
 
 @contextlib.contextmanager
 def disable_quantization(model: torch.nn.Module) -> Generator[None, None, None]:
-    """
-    Disable quantization for all quantizers in `model` within context.
+    """Disable quantization for all quantizers in `model` within context.
 
     The global `strict_quantization` flag is also set to `False` during the context.
 
@@ -35,8 +34,7 @@ def disable_quantization(model: torch.nn.Module) -> Generator[None, None, None]:
 
 
 class DisableQuantizationOverride:
-    """
-    Override to disable quantization.
+    """Override to disable quantization.
 
     Attach `DisableQuantizationOverride` instance as quantizer override to
     disable quantization. Quantization is enabled/disabled using the
@@ -60,8 +58,7 @@ class DisableQuantizationOverride:
         return self._quantization_enabled
 
     def enable_quantization(self, enabled: bool = True) -> None:
-        """
-        Enable quantization.
+        """Enable quantization.
 
         More specifically, this instance will not disable quantization for any
         quantizers it is attached to. Other instance, or other methods may
@@ -73,8 +70,7 @@ class DisableQuantizationOverride:
         self._quantization_enabled = enabled
 
     def disable_quantization(self) -> None:
-        """
-        Disable quantization.
+        """Disable quantization.
 
         See the docstring of `enable_quantization` for more information.
         """
@@ -98,8 +94,7 @@ class DisableQuantizationOverride:
     def attach_to(
         self, quantizers: ff.nn.Quantizer | QuantizerCollection | Iterable[ff.nn.Quantizer]
     ) -> None:
-        """
-        Attach this override to one or more quantizers.
+        """Attach this override to one or more quantizers.
 
         Args:
             quantizers: Either a single quantizer, a `QuantizerCollection`
@@ -117,8 +112,7 @@ class DisableQuantizationOverride:
                 self.attach_to(quantizer)
 
     def detach(self) -> None:
-        """
-        Detach this override.
+        """Detach this override.
 
         Detach from all quantizers it was attached to using the
         `attach_to` method.

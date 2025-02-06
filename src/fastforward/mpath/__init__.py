@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-MPath is a utility for finding and filtering submodules of
+"""MPath is a utility for finding and filtering submodules of
 a module. For example, it helps in finding all submodules
 of the same type or all modules whose name relative to the root module
 satisfies a certain condition.
@@ -56,8 +55,7 @@ def query(
     context: Optional[_QueryContext] = None,
     aliases: Optional[dict[str, selector.BaseSelector]] = None,
 ) -> selector.BaseSelector:
-    """
-    Construct a query object for MPath from a query string.
+    """Construct a query object for MPath from a query string.
     A query string consists of multiple fragment strings separated by a '/'
     fragment strings may consists of the following:
 
@@ -107,8 +105,7 @@ def query(
 def aliases(
     *, context: Optional[dict[str, Any]] = None, **kwargs: str
 ) -> dict[str, selector.BaseSelector]:
-    """
-    Create aliases that can be used in `mpath.query` and `mpath.search`. Aliases
+    """Create aliases that can be used in `mpath.query` and `mpath.search`. Aliases
     are a dictionary that maps identifier strings to subqueries. This function is
     a convenience function for creating that mapping. When aliases are passed to
     `mpath.query` or `mpath.search` they can be referenced in the query using

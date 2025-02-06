@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-This file holds temporary implementations for view-like operations that test for
+"""This file holds temporary implementations for view-like operations that test for
 linear quantizers. It should be refactord to use a more robust dispatching
 system once that lands.
 """
@@ -127,8 +126,7 @@ def ones_like(input: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
 
 
 class _ScaleGradient(torch.autograd.Function):
-    """
-    Scale the gradient by `scalar` during backward pass.
+    """Scale the gradient by `scalar` during backward pass.
     """
 
     @staticmethod
@@ -166,8 +164,7 @@ no_output_quantizer_predicate = Predicate(_no_output_quantizer)
 def scalar_multiply(
     input: QuantizedTensor, other: float, *args: Any, **kwargs: Any
 ) -> QuantizedTensor:
-    """
-    Multiply quantized `input` tensor by a scalar.
+    """Multiply quantized `input` tensor by a scalar.
 
     Mutliplication by a scalar is a special case for affine quanitzed tensors
     since it can be implemented by only multiplying the scaling factor.
@@ -186,8 +183,7 @@ def cat_predicate(
     output_quantizer: Any = None,
     strict_quantization: bool = False,
 ) -> bool:
-    """
-    Predicate for quantized concatenation
+    """Predicate for quantized concatenation
 
     Returns True if all elements of `tensors` are quantized using affine quantization
     using the exact same quantization params.

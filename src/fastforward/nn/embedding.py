@@ -7,8 +7,7 @@ from fastforward.nn import QuantizedModule, QuantizerStub, functional
 
 
 class QuantizedEmbedding(torch.nn.Embedding, QuantizedModule):
-    """
-    Quantized implementation of torch.nn.Embedding.
+    """Quantized implementation of torch.nn.Embedding.
     """
 
     def __init_quantization__(self) -> None:

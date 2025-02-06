@@ -121,8 +121,7 @@ def test_fragment_parser():
 def _create_TestFragment(expected_raw_str: str):
     class TestFragment(Fragment):
         def match(self, fragment_name: str, module: torch.nn.Module) -> bool:
-            """
-            Matches a single fragment of a path on name or module.
+            """Matches a single fragment of a path on name or module.
 
             Args:
                 fragment_name: The name of the path, corresponds to the attribute
@@ -142,8 +141,7 @@ def _create_TestFragment(expected_raw_str: str):
 
 
 def test_query_extension_raw():
-    """
-    Test if the extension text is forwarded exactly to the extension. I.e. in the query
+    """Test if the extension text is forwarded exactly to the extension. I.e. in the query
     "[ext:<some text>]", the extension should receive "<some text>" exactly for all possible
     characters.
     """

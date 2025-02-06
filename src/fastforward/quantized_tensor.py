@@ -47,15 +47,13 @@ _U = TypeVar("_U")
 
 
 def _to_dtype(dtype: torch.dtype, qtensor: "QuantizedTensor") -> torch.Tensor:
-    """
-    Dequantize quantized tensor and convert to `dtype`.
+    """Dequantize quantized tensor and convert to `dtype`.
     """
     return qtensor.dequantize().to(dtype)
 
 
 def _torch_function_to_op_name(func: Callable[..., Any]) -> str:
-    """
-    Convert a pointer to a torch Tensor function to simple name.
+    """Convert a pointer to a torch Tensor function to simple name.
 
     E.g. `torch.add -> "add"`, `torch.Tensor.add -> "add"`. The function returns a primitive name, unlike
     `torch.overrides.resolve_name` (`torch.add -> "torch.add"`, `torch.Tensor.add -> "torch.Tensor.add"`).
@@ -82,8 +80,7 @@ register("byte", None, functools.partial(_to_dtype, torch.uint8))
 def _remove_default_implementation(
     func: Callable[_P, Any], func_name: Optional[str] = None, msg: Optional[str] = None
 ) -> None:
-    """
-    Remove default implementation from torch for quantized tensors.
+    """Remove default implementation from torch for quantized tensors.
 
     For some functions that are implemented on torch.Tensor, there is no single way
     to implement it for a quantized tensor as it may depend on the quantized representation.
@@ -134,8 +131,7 @@ _EXCLUDE_FROM_DISPATCH_OR_FALLBACK: set[Callable[..., Any]] = set()
 
 
 def _set_no_dispatch(attr_name: str, silent: bool = False) -> None:
-    """
-    Register `attr_name` as 'no dispatch' attribute on QuantizedTensor.
+    """Register `attr_name` as 'no dispatch' attribute on QuantizedTensor.
 
     This means that the default torch.Tensor implementation is used. This
     ensures that no default dequantization happens.
@@ -239,8 +235,7 @@ def apply_and_reattach(
 def apply_and_reattach(
     func: Callable[[torch.Tensor], torch.Tensor], quantized: Optional["QuantizedTensor"] = None
 ) -> Callable[["QuantizedTensor"], "QuantizedTensor"] | "QuantizedTensor":
-    """
-    Apply func to quantized as if it is a normal tensor.
+    """Apply func to quantized as if it is a normal tensor.
 
     Rewrap the result as quantized tensor using the same quantization metadata.
     If `quantized` is not provided, a callable that accepts a quantized_tensor
@@ -281,8 +276,7 @@ def _ignore_quantized_tensor_warnings() -> Generator[None, None, None]:
 
 
 class QuantizedTensor(torch.Tensor):
-    """
-    Tensor that holds quantized data that can be dequantized.
+    """Tensor that holds quantized data that can be dequantized.
 
     In general, a quantized tensor has an integer representation and associated
     parameters. Operations can either dequantize to obtain a 'real-valued'
@@ -296,8 +290,7 @@ class QuantizedTensor(torch.Tensor):
     """
 
     def __new__(cls, data: torch.Tensor, *args: Any, **kwargs: Any) -> "QuantizedTensor":
-        """
-        Create a new quantized tensor.
+        """Create a new quantized tensor.
         """
         return data.as_subclass(cls)
 
@@ -324,8 +317,7 @@ class QuantizedTensor(torch.Tensor):
     # pylint: disable=invalid-name
     # pylint: enable=invalid-name, line-too-long
     def to(self, *args: Any, **kwargs: Any) -> torch.Tensor:
-        """
-        Perform tensor dtype and/or device conversions.
+        """Perform tensor dtype and/or device conversions.
 
         When `QuantizedTensor` is moved to a different device, the associated
         quantization parameter tensors are moved to the same device. This
@@ -378,16 +370,14 @@ class QuantizedTensor(torch.Tensor):
         return self.to("cpu")
 
     def dequantize(self) -> torch.Tensor:
-        """
-        Dequantize and return real-valued torch.Tensor.
+        """Dequantize and return real-valued torch.Tensor.
         """
         return self._quantization_context.quantization_fn.dequantize(
             self.raw_data, self.quant_args()
         )
 
     def clone(self) -> "QuantizedTensor":  # type: ignore[override]
-        """
-        Clone tensor.
+        """Clone tensor.
 
         This makes a copy of the tensor and associated quantization
         parameter tensors
@@ -404,8 +394,7 @@ class QuantizedTensor(torch.Tensor):
         return quant_ctx.attach(cloned_tensor)
 
     def detach(self) -> "QuantizedTensor":  # type: ignore[override]
-        """
-        Detach tensor.
+        """Detach tensor.
 
         This returns a ternsor that alliases this tensor, but is
         detached from the autograd graph.
@@ -417,8 +406,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def raw_data(self) -> torch.Tensor:
-        """
-        Return raw data representation.
+        """Return raw data representation.
 
         Returns:
             Torch.Tensor: the raw_data as a normal tensor.
@@ -426,8 +414,7 @@ class QuantizedTensor(torch.Tensor):
         return self.as_subclass(torch.Tensor)
 
     def quant_args(self) -> "QuantizationParameters":
-        """
-        Return quantization arguments.
+        """Return quantization arguments.
 
         Returns:
             QuantArgs: Arguments used to quantize self.
@@ -445,8 +432,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def quant_func(self) -> type["QuantizationFunction[QuantizationParameters]"]:
-        """
-        Return the associated quantization function.
+        """Return the associated quantization function.
 
         Returns:
             BaseQuantizationFunction: The `QuantizationFunction` implementation used
@@ -509,8 +495,7 @@ class QuantizedTensor(torch.Tensor):
     # fmt: on
 
     def int_repr(self) -> torch.Tensor:
-        """
-        Return the integer (or quantized) data representation underlying this quantized tensor.
+        """Return the integer (or quantized) data representation underlying this quantized tensor.
         """
         return self.raw_data
 
@@ -524,8 +509,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def is_quantized(self) -> bool:
-        """
-        Always returns False for a `QuantizedTensor` and should not be used to identify QuantizedTensors.
+        """Always returns False for a `QuantizedTensor` and should not be used to identify QuantizedTensors.
 
         This property evaluates to False for QuantizedTensors as it is otherwise
         identified as a PyTorch native Quantized tensor. The recommended

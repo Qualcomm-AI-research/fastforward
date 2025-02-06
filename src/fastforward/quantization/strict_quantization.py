@@ -15,16 +15,14 @@ strict_quantization = ff.flags.strict_quantization
 
 
 class ModuleStrictQuantHandle:
-    """
-    A handle to manage strict quantization settings for specific modules.
+    """A handle to manage strict quantization settings for specific modules.
 
     This class attaches pre-forward and post-forward hooks to the provided modules
     to enable or disable strict quantization during their execution.
     """
 
     def __init__(self, enable_strict_quantization: bool) -> None:
-        """
-        Initialize the ModuleStrictQuantHandle.
+        """Initialize the ModuleStrictQuantHandle.
 
         Args:
             enable_strict_quantization: Flag to enable or disable strict quantization.
@@ -36,8 +34,7 @@ class ModuleStrictQuantHandle:
         )
 
     def _pre_forward_hook(self, module: torch.nn.Module, args: tuple[Any, ...]) -> None:
-        """
-        Pre-forward hook to set the strict quantization mode before module execution.
+        """Pre-forward hook to set the strict quantization mode before module execution.
 
         Args:
             module: The module being executed.
@@ -49,8 +46,7 @@ class ModuleStrictQuantHandle:
     def _post_forward_hook(
         self, module: torch.nn.Module, args: tuple[Any, ...], output: Any
     ) -> None:
-        """
-        Post-forward hook to restore the original strict quantization mode after module execution.
+        """Post-forward hook to restore the original strict quantization mode after module execution.
 
         Args:
             module: The module being executed.
@@ -61,8 +57,7 @@ class ModuleStrictQuantHandle:
             ff.set_strict_quantization(strict_mode)
 
     def attach(self, module: torch.nn.Module) -> None:
-        """
-        Attach the pre-forward and post-forward hooks to a module.
+        """Attach the pre-forward and post-forward hooks to a module.
 
         Args:
             module: The module to attach hooks to.
@@ -73,8 +68,7 @@ class ModuleStrictQuantHandle:
         self._handles.append(post_handle)
 
     def remove(self) -> None:
-        """
-        Remove all attached hooks.
+        """Remove all attached hooks.
         """
         for handle in self._handles:
             handle.remove()
@@ -84,8 +78,7 @@ class ModuleStrictQuantHandle:
         pass
 
     def __exit__(self, exc_type, exc_value, traceback):  # type: ignore[no-untyped-def]
-        """
-        Exit the context manager and remove all hooks.
+        """Exit the context manager and remove all hooks.
         """
         self.remove()
 
@@ -93,8 +86,7 @@ class ModuleStrictQuantHandle:
 def strict_quantization_for_module(
     strict: bool = True, *modules: torch.nn.Module
 ) -> ModuleStrictQuantHandle:
-    """
-    Enable or disable strict quantization on a per module basis.
+    """Enable or disable strict quantization on a per module basis.
 
     This function attaches pre-forward and post-forward hooks to the provided modules
     to set the global strict quantization setting before executing the model and reset it

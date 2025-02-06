@@ -25,8 +25,7 @@ def quantization_context(
     quantized_dtype: torch.dtype | None = None,
     dequantize_dtype: torch.dtype | None = None,
 ) -> QuantizationContext[DynamicAffineQuantParams]:
-    """
-    Create quantization context for dynamic linear quantization
+    """Create quantization context for dynamic linear quantization
 
     Args:
         granularity: The granuliarty to use for quantization
@@ -53,8 +52,7 @@ def quantize_per_granularity(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Dynamically quantize `input` following `granularity`.
+    """Dynamically quantize `input` following `granularity`.
 
     Args:
         input: The data to be quantized
@@ -82,8 +80,7 @@ def quantize_by_tile(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Dynamically quantize `input` by tile.
+    """Dynamically quantize `input` by tile.
 
     Args:
         input: The data to be quantized
@@ -94,7 +91,6 @@ def quantize_by_tile(
     Returns:
         Quantized tensor
     """
-
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerTile(tile_size),
@@ -108,8 +104,7 @@ def quantize_per_tensor(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Dynamically quantize `input` per tensor.
+    """Dynamically quantize `input` per tensor.
 
     Args:
         input: The data to be quantized
@@ -133,8 +128,7 @@ def quantize_per_channel(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Dynamically quantize `input` per channel.
+    """Dynamically quantize `input` per channel.
 
     Args:
         input: The data to be quantized
@@ -145,7 +139,6 @@ def quantize_per_channel(
     Returns:
         Quantized tensor
     """
-
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerChannel(axis),
@@ -162,8 +155,7 @@ def quantize_per_block(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Dynamically quantize `input` per block,
+    """Dynamically quantize `input` per block,
 
     Args:
         input: The data to be quantized

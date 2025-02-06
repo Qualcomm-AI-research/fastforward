@@ -17,8 +17,7 @@ KernelType: typing.TypeAlias = Callable[P, torch.Tensor]
 
 
 class _Predicate(Generic[P], Protocol):
-    """
-    Protocol for predicate functions used in dispatching.
+    """Protocol for predicate functions used in dispatching.
 
     A predicate function takes arbitrary arguments and returns a boolean indicating
     whether the predicate is satisfied.
@@ -41,8 +40,7 @@ class _Predicate(Generic[P], Protocol):
 
 
 class _PredicateNot(_Predicate[P]):
-    """
-    Predicate that represents the logical negation of another predicate.
+    """Predicate that represents the logical negation of another predicate.
     """
 
     def __init__(self, p: _Predicate[P]) -> None:
@@ -53,8 +51,7 @@ class _PredicateNot(_Predicate[P]):
 
 
 class _PredicateAnd(_Predicate[P]):
-    """
-    Predicate that represents the logical conjunction of multiple predicates.
+    """Predicate that represents the logical conjunction of multiple predicates.
     """
 
     def __init__(self, *p: _Predicate[P]) -> None:
@@ -65,8 +62,7 @@ class _PredicateAnd(_Predicate[P]):
 
 
 class _PredicateOr(_Predicate[P]):
-    """
-    Predicate that represents the logical disjunction of multiple predicates.
+    """Predicate that represents the logical disjunction of multiple predicates.
     """
 
     def __init__(self, *p: _Predicate[P]) -> None:
@@ -77,8 +73,7 @@ class _PredicateOr(_Predicate[P]):
 
 
 class Predicate(_Predicate[P]):
-    """
-    Wrapper for a predicate function.
+    """Wrapper for a predicate function.
 
     Args:
         fn: A callable that takes arbitrary arguments and returns a boolean.
@@ -88,8 +83,7 @@ class Predicate(_Predicate[P]):
         self._fn = fn
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> bool:
-        """
-        Call wrapped predicate and return result.
+        """Call wrapped predicate and return result.
         """
         return self._fn(*args, **kwargs)
 
@@ -98,8 +92,7 @@ class Predicate(_Predicate[P]):
 
 
 class DispatcherPriority(enum.IntEnum):
-    """
-    Dispatch priority for registered implementations.
+    """Dispatch priority for registered implementations.
 
     Operator implementations predicates are evaluated in the order
     DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.
@@ -112,8 +105,7 @@ class DispatcherPriority(enum.IntEnum):
 
 @dataclasses.dataclass
 class DispatcherItem(Generic[P]):
-    """
-    Data class representing an item in the dispatcher.
+    """Data class representing an item in the dispatcher.
 
     Args:
         predicate: A predicate that determines when the kernel should be used.
@@ -130,8 +122,7 @@ _DISPATCHER: dict[str, list[DispatcherItem[Any]]] = defaultdict(list)
 
 
 class DispatcherRegistrationHook:
-    """
-    Context manager for registering and unregistering dispatcher items.
+    """Context manager for registering and unregistering dispatcher items.
 
     Args:
         op_name: The name of the operation.
@@ -157,8 +148,7 @@ def _register_decorator(
     predicate: Optional[Predicate[P]],
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]]:
-    """
-    Decorator for registering a kernel function with the dispatcher.
+    """Decorator for registering a kernel function with the dispatcher.
 
     Args:
         op_name: The name of the operation.
@@ -177,8 +167,7 @@ def _register_decorator(
 
 
 def _true_predicate_func(signature_func: Callable[P, Any]) -> Callable[P, bool]:
-    """
-    Create a predicate that always returns true with the same typed signature as signature_func.
+    """Create a predicate that always returns true with the same typed signature as signature_func.
 
     Args:
         signature_func: The function whose signature is used for the predicate.
@@ -199,8 +188,7 @@ def _register_functional(
     kernel: KernelType[P],
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> DispatcherRegistrationHook:
-    """
-    Register a kernel function with the dispatcher.
+    """Register a kernel function with the dispatcher.
 
     Args:
         op_name: The name of the operation.
@@ -243,8 +231,7 @@ def register(
     kernel: Optional[KernelType[P]] = None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]] | DispatcherRegistrationHook:
-    """
-    Register a new implementation for an operator.
+    """Register a new implementation for an operator.
 
     This which will be used when the predicate evaluates to True. Might raise
     an exception if there is already a kernel with the same priority.
@@ -274,8 +261,7 @@ def register(
 
 
 def dispatch(op_name: str, *args: P.args, **kwargs: P.kwargs) -> Optional[KernelType[P]]:
-    """
-    Returns the latest registered kernel whose predicate evaluates to True.
+    """Returns the latest registered kernel whose predicate evaluates to True.
 
     Args:
         op_name: The name of the operation.

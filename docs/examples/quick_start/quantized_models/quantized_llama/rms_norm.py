@@ -16,8 +16,7 @@ from fastforward.quantization.strict_quantization import strict_quantization
 
 
 class QuantizedLlamaRMSNorm(LlamaRMSNorm, QuantizedModule):
-    """
-    LlamaRMSNorm is equivalent to T5LayerNorm
+    """LlamaRMSNorm is equivalent to T5LayerNorm
     """
 
     def __init_quantization__(self) -> None:

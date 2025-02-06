@@ -20,8 +20,7 @@ def random_quantized(
     device: torch.device | str | None = None,
     storage_dtype: torch.dtype = torch.float32,
 ) -> QuantizedTensor:
-    """
-    Generate a random quantized tensor.
+    """Generate a random quantized tensor.
 
     The tensor is sampled from a zero-centered unit normal distribution and
     subsequently quantized using the provided quantization parameters.

@@ -76,8 +76,7 @@ def _register_context_hooks(
 def execution_context(
     func: Callable[..., Generator[None, None, None]],
 ) -> Callable[[], _GeneratorExecContext]:
-    """
-    Decorator to create an ExecutorContext.
+    """Decorator to create an ExecutorContext.
 
     Returns:
         _GeneratorExecContext that wraps func
@@ -91,8 +90,7 @@ def execution_context(
 
 
 class LocalErrorMethod(abc.ABC):
-    """
-    Abstract base class for local error methods.
+    """Abstract base class for local error methods.
 
     A local error method minimizes errors for sub networks. Specifically, it
     aims to minimize the error between a 'default' or reference forward pass
@@ -119,8 +117,7 @@ class LocalErrorMethod(abc.ABC):
 
     @abc.abstractmethod
     def update(self, __default_value: torch.Tensor, __alternative_value: torch.Tensor, /) -> None:
-        """
-        Perform update step.
+        """Perform update step.
 
         Perform update step given the value obtain from the default context
         and the value obtained from the alternative context.
@@ -130,8 +127,7 @@ class LocalErrorMethod(abc.ABC):
     def propagate(
         self, __replay_value: torch.Tensor, /
     ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
-        """
-        Propagate data from replay stage to default and alterantive stage.
+        """Propagate data from replay stage to default and alterantive stage.
 
         Given the value obtained in the replay stage, generate new activation
         value for default and alternative stage. Return None to 'propagate' the
@@ -140,24 +136,21 @@ class LocalErrorMethod(abc.ABC):
 
     @abc.abstractmethod
     def conclude_partition(self) -> None:
-        """
-        Conclude the evaluation and update of a partition of the network.
+        """Conclude the evaluation and update of a partition of the network.
 
         This is called after all stages for a particular partition have been concluded.
         """
 
 
 class RunnerContext(Protocol):
-    """
-    Protocol for RunnerContext.
+    """Protocol for RunnerContext.
 
     Defines methods that are exposed to implementors of the LocalErrorMethod
     interface through a context object.
     """
 
     def communicate(self, value: torch.Tensor) -> torch.Tensor:
-        """
-        Communicate values to other stages.
+        """Communicate values to other stages.
 
         Communicate a value obtained during the execution of a partition in a
         stage to the runner. This enables 'communication' between different
@@ -180,8 +173,7 @@ class Runner:
     _orchestrator: Orchestrator
 
     def __init__(self, target: Callable[..., Any], method: LocalErrorMethod):
-        """
-        Initialize the runner.
+        """Initialize the runner.
 
         Args:
             target: The target function to run.
@@ -191,8 +183,7 @@ class Runner:
         self._setup_orchestrator(target)
 
     def _setup_orchestrator(self, target: Callable[..., Any]) -> None:
-        """
-        Set up the orchestrator with the target function.
+        """Set up the orchestrator with the target function.
 
         Args:
             target: The target function to run.
@@ -208,15 +199,13 @@ class Runner:
         )
 
     def _partition_complete(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Notify underlying local error method of the partition complete event.
+        """Notify underlying local error method of the partition complete event.
         """
         del args, kwargs
         self._method.conclude_partition()
 
     def record_input(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Record input data for the orchestrator.
+        """Record input data for the orchestrator.
 
         Args:
             *args: Positional arguments for the input data.
@@ -251,8 +240,7 @@ class Runner:
 
     @ensure_non_mainthread
     def communicate(self, value: torch.Tensor) -> torch.Tensor:
-        """
-        Communicate a value within the runner's context.
+        """Communicate a value within the runner's context.
 
         Args:
             value: The value to communicate.

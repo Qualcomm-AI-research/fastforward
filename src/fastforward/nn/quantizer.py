@@ -14,8 +14,7 @@ from fastforward import forward_override as override
 
 
 class Tag:
-    """
-    Tags are symbol-like objects used to communicate features of a quantizer.
+    """Tags are symbol-like objects used to communicate features of a quantizer.
 
     A tag can be hierarchical using '/' to separate the tag levels. A
     hierarchical tag can also be constructed using `tag / tag`, which produces
@@ -26,8 +25,7 @@ class Tag:
     _symbol: str
 
     def __new__(cls, symbol: str | Self) -> "Tag":
-        """
-        Create a new Tag instance or return an existing one if it already exists.
+        """Create a new Tag instance or return an existing one if it already exists.
 
         Args:
             symbol: The symbol representing the tag.
@@ -50,8 +48,7 @@ class Tag:
         return f"{self._symbol}"
 
     def hierarchy(self) -> Iterator[Self]:
-        """
-        Return all tags in the hierarchy.
+        """Return all tags in the hierarchy.
 
         For example, if the tag is
         `first/second/third`, this function will yield a tag for `first`,
@@ -97,13 +94,11 @@ default_tags = SimpleNamespace(
 
 
 class _TagAttribute:
-    """
-    Descriptor class for tag attributes in QuantizerMetadata.
+    """Descriptor class for tag attributes in QuantizerMetadata.
     """
 
     def __init__(self, tag: str | Tag) -> None:
-        """
-        Initialize the _TagAttribute with a tag.
+        """Initialize the _TagAttribute with a tag.
 
         Args:
             tag: The tag associated with this attribute.
@@ -111,8 +106,7 @@ class _TagAttribute:
         self._tag = Tag(tag)
 
     def __get__(self, instance: "QuantizerMetadata", owner: Any = None) -> bool:
-        """
-        Get the value of the attribute for an instance of QuantizerMetadata.
+        """Get the value of the attribute for an instance of QuantizerMetadata.
 
         Args:
             instance: The instance of QuantizerMetadata.
@@ -125,8 +119,7 @@ class _TagAttribute:
 
 
 class QuantizerMetadata:
-    """
-    Metadata class for quantizers, holding tags and additional attributes.
+    """Metadata class for quantizers, holding tags and additional attributes.
 
     Args:
         tags: Tags to be added to the metadata.
@@ -172,8 +165,7 @@ class QuantizerMetadata:
             self.add_tag(default_tags.output_quantizer)
 
     def add_tag(self, tag: Tag | str) -> None:
-        """
-        Add a tag to the metadata.
+        """Add a tag to the metadata.
 
         Args:
             tag: The tag to be added.
@@ -195,8 +187,7 @@ class QuantizerMetadata:
 
     @property
     def shape(self) -> tuple[int, ...] | torch.Size | None:
-        """
-        Return the shape metadata, if set. Otherwise return None.
+        """Return the shape metadata, if set. Otherwise return None.
 
         Returns:
             tuple[int, ...] | torch.Size | None: The shape attribute.
@@ -204,8 +195,7 @@ class QuantizerMetadata:
         return self._kwargs.get("shape")
 
     def is_extension(self, other: Self) -> bool:
-        """
-        Returns True if other is an extension of self, False otherwise.
+        """Returns True if other is an extension of self, False otherwise.
 
         metadata B is an extension of metadata A if B's tag set is a superset
         of A's tag set and all attributes of A match with the corresponding
@@ -238,16 +228,14 @@ class QuantizerMetadata:
 
 
 class Quantizer(torch.nn.Module):
-    """
-    Base class for Quantizers.
+    """Base class for Quantizers.
     """
 
     _quantizer_overrides: dict[int, override.OverrideFn[torch.Tensor]]
     quant_metadata: QuantizerMetadata | None
 
     def __init__(self) -> None:
-        """
-        Initialize the Quantizer.
+        """Initialize the Quantizer.
 
         This sets up the quantizer overrides as an ordered dictionary and initializes
         the quantizer metadata to None.
@@ -259,8 +247,7 @@ class Quantizer(torch.nn.Module):
         self.quant_metadata = None
 
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
-        """
-        Quantize the input data.
+        """Quantize the input data.
 
         This method should be overridden by subclasses to implement the actual
         quantization logic.
@@ -276,8 +263,7 @@ class Quantizer(torch.nn.Module):
     def register_override(
         self, override_fn: override.OverrideFn[torch.Tensor]
     ) -> override.OverrideHandle:
-        """
-        Push a quantizer override on the module.
+        """Push a quantizer override on the module.
 
         This override will be called instead of `self.quantizer`. The quantizer
         and self.quantizer is passed into the overwrite and can be called. If
@@ -300,8 +286,7 @@ class Quantizer(torch.nn.Module):
         return wrapped_quantize(data)
 
     def extra_repr(self) -> str:
-        """
-        Extra representation of the quantizer.
+        """Extra representation of the quantizer.
 
         This includes information about the registered overrides.
 
@@ -317,15 +302,13 @@ class Quantizer(torch.nn.Module):
     __call__: Callable[..., torch.Tensor]
 
     def is_stub(self) -> bool:
-        """
-        Returns: False, indicating this is not a stub.
+        """Returns: False, indicating this is not a stub.
         """
         return False
 
 
 class QuantizerStub(Quantizer):
-    """
-    Stub class for Quantizers.
+    """Stub class for Quantizers.
 
     Used for Quantizer/Quantized network initialization.
 
@@ -368,8 +351,7 @@ class QuantizerStub(Quantizer):
             )
 
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
-        """
-        Stub quantize method that returns the input data unchanged.
+        """Stub quantize method that returns the input data unchanged.
 
         Args:
             data: The input tensor.
@@ -380,8 +362,7 @@ class QuantizerStub(Quantizer):
         return data
 
     def is_stub(self) -> bool:
-        """
-        Check if this quantizer is a stub.
+        """Check if this quantizer is a stub.
 
         Returns:
             bool: True, indicating this is a stub.

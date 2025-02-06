@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-This file contains autograd functions for quantization.
+"""This file contains autograd functions for quantization.
 
 We following the following autograd semantics: all gradients/gradient
 approximations are implemented in the 'quantize' functions. As a result, the

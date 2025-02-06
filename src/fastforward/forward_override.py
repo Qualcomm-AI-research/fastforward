@@ -11,8 +11,7 @@ T = TypeVar("T")
 
 
 class OverrideFn(Protocol[T]):
-    """
-    Protocol for override functions.
+    """Protocol for override functions.
 
     Override functions can be registered to override a quantizer. These acts as
     dynamic decorators that can be applied an removed at runtime.
@@ -25,8 +24,7 @@ class OverrideFn(Protocol[T]):
         __args: tuple[Any, ...],
         __kwargs: dict[str, Any],
     ) -> T:
-        """
-        Generic call signature.
+        """Generic call signature.
 
         Args:
             __context: The quantizer that is overriden by this override function
@@ -41,8 +39,7 @@ class OverrideFn(Protocol[T]):
 
 
 class OverrideHandle:
-    """
-    Handle object which that can be used to remove a function override.
+    """Handle object which that can be used to remove a function override.
 
     Args:
         override_map: Mapping that stores
@@ -58,8 +55,7 @@ class OverrideHandle:
         OverrideHandle.global_handles += 1
 
     def remove(self) -> OverrideFn[Any] | None:
-        """
-        Remove override associated with this handle.
+        """Remove override associated with this handle.
 
         Returns:
             (Callable) the override function associated with this handle
@@ -101,8 +97,7 @@ def apply_overrides(
     overridden_fn: Callable[..., T],
     override_map: Mapping[int, OverrideFn[T]],
 ) -> _WrappedOverriddenFn[T] | Callable[..., T]:
-    """
-    Apply overrides in `override_map` to `overridden_fn`.
+    """Apply overrides in `override_map` to `overridden_fn`.
 
     This returns a callable that, when applicable, calls functions overrides.
     These act similarly to decorators.

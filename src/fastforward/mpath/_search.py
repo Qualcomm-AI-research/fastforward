@@ -42,8 +42,7 @@ class FilterResult:
 
 
 class MPathCollection(abc.Sequence[FilterResult]):
-    """
-    Collection for mpath search results as returned by `mpath.search`
+    """Collection for mpath search results as returned by `mpath.search`
 
     Args:
         root: The root module that was used to produce the search results
@@ -73,8 +72,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return len(self._results)
 
     def append(self, item: FilterResult) -> None:
-        """
-        Add `FilterResult` to the collection:
+        """Add `FilterResult` to the collection:
 
         Args:
             item: Filter result to add to the collection.
@@ -96,8 +94,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         safe: bool = True,
         update: bool = True,
     ) -> None:
-        """
-        Apply `func` to all modules in the collection. If the result of func is
+        """Apply `func` to all modules in the collection. If the result of func is
         not None and update is True, the module is replaced in the original
         model by the result of func. This only happens when the module in the
         collection was still part of the original model and not already
@@ -118,8 +115,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         self._results = _results
 
     def map(self, func: Callable[[str, torch.nn.Module], _T]) -> list[_T]:
-        """
-        Apply func to all modules in the collection, the result of func is
+        """Apply func to all modules in the collection, the result of func is
         returned as a list
 
         Args:
@@ -128,27 +124,23 @@ class MPathCollection(abc.Sequence[FilterResult]):
         Returns:
             list that contains all the results of the applications of func
         """
-
         return [func(*named_module) for named_module in self.named_modules()]
 
     def named_modules(self) -> Iterator[tuple[str, torch.nn.Module]]:
-        """
-        Returns An interator with name and modules of all modules in the collection.
+        """Returns An interator with name and modules of all modules in the collection.
         The name is relative with respect to the root module, i.e., the module that
         was queried to produce this collection.
         """
         yield from ((result.full_name, result.module) for result in self._results)
 
     def modules(self) -> Iterator[torch.nn.Module]:
-        """
-        Returns an iterator over all modules in this collection
+        """Returns an iterator over all modules in this collection
         """
         for _, module in self.named_modules():
             yield module
 
     def parents(self) -> Iterator[tuple[torch.nn.Module, torch.nn.Module]]:
-        """
-        Returns and iterator that yield (parent, child) tuples in the collection.
+        """Returns and iterator that yield (parent, child) tuples in the collection.
 
         NB: Parent does not have to be part of the collection, but child always is.
         """
@@ -167,8 +159,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self._root == other._root and self._results == other._results
 
     def union(self, other: "MPathCollection") -> Self:
-        """
-        Create a new `MPathCollection` that contains all elements from this
+        """Create a new `MPathCollection` that contains all elements from this
         collection and other. A ValueError is raised if the root elements of
         self and other are not the same.
         """
@@ -181,8 +172,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.union(other)
 
     def intersection(self, other: "MPathCollection") -> Self:
-        """
-        Create a new `MPathCollection` that contains all elements that are
+        """Create a new `MPathCollection` that contains all elements that are
         present in this collection and other. A ValueError is raised if the
         root elements of self and other are not the same.
         """
@@ -195,8 +185,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.intersection(other)
 
     def difference(self, other: "MPathCollection") -> Self:
-        """
-        Create a new `MPathCollection` that contains all elements in this
+        """Create a new `MPathCollection` that contains all elements in this
         collection that are not in other. A ValueError is raised if the root
         elements of self and other are not the same.
         """
@@ -209,8 +198,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return self.difference(other)
 
     def symmetric_difference(self, other: "MPathCollection") -> Self:
-        """
-        Create a new `MPathCollection` that contains all elements that a in this
+        """Create a new `MPathCollection` that contains all elements that a in this
         collection or in other, but not in both. A ValueError is raised if the root
         elements of self and other are not the same.
         """
@@ -253,8 +241,7 @@ def search(
     *,
     aliases: Optional[dict[str, selector.BaseSelector]] = None,
 ) -> MPathCollection:
-    """
-    Search/filter all submodules of `root` that satsify query.
+    """Search/filter all submodules of `root` that satsify query.
 
     See `mpath.query` for more details on the string syntax for query or manually create
     a query `Selector` by combinding multiple fragments (e.g., from mpath.fragments).

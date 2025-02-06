@@ -25,8 +25,7 @@ module_header_raw = """
 
 
 class Writer(Protocol):
-    """
-    Implementations of the writer protocol are used to 'export' the generated
+    """Implementations of the writer protocol are used to 'export' the generated
     code.
     """
 
@@ -133,15 +132,13 @@ def _statement(stmt: str | libcst.BaseStatement) -> libcst.BaseStatement:
 def _operator_function_stub(
     op: operator.Operator, extra_params: Sequence[libcst.Param] = ()
 ) -> libcst.FunctionDef:
-    """
-    Returns FunctionDef with correct signature for op and empty body
+    """Returns FunctionDef with correct signature for op and empty body
 
     Args:
         op: Operator to create function for
         extra_params: extra params that are not specified by op. Each is added
             to function signature as kwonly parameter.
     """
-
     if not op.metadata or not op.metadata.specification_file:
         raw_warning = "This function was automatically generated"
     else:

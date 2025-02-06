@@ -24,8 +24,7 @@ def quantization_context(
     output_dtype: torch.dtype | None = None,
     dequantize_dtype: torch.dtype | None = None,
 ) -> QuantizationContext[StaticAffineQuantParams]:
-    """
-    Create quantization context for static linear quantization
+    """Create quantization context for static linear quantization
 
     Args:
         scale: Scale parameters to use for quantization. Its dimensionality must match the number
@@ -63,8 +62,7 @@ def quantize_per_granularity(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Quantize `input` following `granularity` and the given
+    """Quantize `input` following `granularity` and the given
     quantization parameters.
 
     Args:
@@ -99,8 +97,7 @@ def quantize_by_tile(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Quantize `input` by tile and the given quantization parameters.
+    """Quantize `input` by tile and the given quantization parameters.
 
     Args:
         input: The data to be quantized
@@ -132,8 +129,7 @@ def quantize_per_tensor(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Quantize `input` per tensor.
+    """Quantize `input` per tensor.
 
     Args:
         input: The data to be quantized
@@ -163,8 +159,7 @@ def quantize_per_channel(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Quantize `input` per channel.
+    """Quantize `input` per channel.
 
     Args:
         input: The data to be quantized
@@ -197,8 +192,7 @@ def quantize_per_block(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """
-    Quantize `input` per block,
+    """Quantize `input` per block,
 
     Args:
         input: The data to be quantized

@@ -18,15 +18,13 @@ if TYPE_CHECKING:
 
 
 class MPathQueryError(Exception):
-    """
-    Exception raised for errors in the MPath query.
+    """Exception raised for errors in the MPath query.
     """
 
 
 @dataclasses.dataclass(frozen=True)
 class _SelectorMatch:
-    """
-    Represents a match for a selector fragment.
+    """Represents a match for a selector fragment.
 
     Attributes:
         fragment: The matched fragment.
@@ -37,8 +35,7 @@ class _SelectorMatch:
 
 @dataclasses.dataclass(frozen=True)
 class _SelectorContinuation:
-    """
-    Represents a continuation for a selector fragment.
+    """Represents a continuation for a selector fragment.
 
     Attributes:
         selector: The next selector to continue matching.
@@ -56,8 +53,7 @@ FragmentList: TypeAlias = "tuple[Fragment | FragmentList, ...]"
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class BaseSelector(abc.ABC):
-    """
-    Selector is the representation of MPath query.
+    """Selector is the representation of MPath query.
 
     A selector consists of a sequence of SelectorFragments that all need to
     match for a module to be included in the results set.
@@ -97,8 +93,7 @@ class BaseSelector(abc.ABC):
         return NotImplemented
 
     def extends(self, selector: "BaseSelector") -> Self:
-        """
-        Extend the current selector with another selector.
+        """Extend the current selector with another selector.
 
         This method is used to concatenate two selectors. The order of fragments
         is kept unchanged, i.e., the new selector contains first all the fragments
@@ -168,8 +163,7 @@ class BaseSelector(abc.ABC):
     def matches_and_continuations(
         self, name: str, module: torch.nn.Module
     ) -> tuple[list[_SelectorMatch], list[_SelectorContinuation]]:
-        """
-        Returns a list of selector matches and a list of selector continuations.
+        """Returns a list of selector matches and a list of selector continuations.
 
         Matches represent a complete matching, i.e., there is no selector tail and the
         current fragment matched name/module.
@@ -180,8 +174,7 @@ class BaseSelector(abc.ABC):
 
     @abc.abstractmethod
     def fragments(self) -> tuple["Fragment", ...]:
-        """
-        Return a list of fragments that make up this selector.
+        """Return a list of fragments that make up this selector.
 
         Returns:
             A list of fragments that make up this selector.
@@ -189,14 +182,12 @@ class BaseSelector(abc.ABC):
 
     @abc.abstractmethod
     def fragment_list(self) -> FragmentList:
-        """
-        Return a list of fragments that make up this selector and all subsequent selectors.
+        """Return a list of fragments that make up this selector and all subsequent selectors.
         """
 
     @abc.abstractmethod
     def remove_multi_wildcard_root(self) -> "BaseSelector | None":
-        """
-        Remove the multi-wildcard root from the selector.
+        """Remove the multi-wildcard root from the selector.
 
         Returns:
             The selector with the multi-wildcard root removed, or None if the selector is made up of only a multi-wildcard fragment
@@ -204,13 +195,11 @@ class BaseSelector(abc.ABC):
 
     @abc.abstractmethod
     def has_multi_wildcard_root(self) -> bool:
-        """
-        Return True if the root fragment is a multi-wildcard fragment and False otherwise.
+        """Return True if the root fragment is a multi-wildcard fragment and False otherwise.
         """
 
     def simplify(self) -> "BaseSelector":
-        """
-        Simplify the selector by removing any redundant or unnecessary fragments.
+        """Simplify the selector by removing any redundant or unnecessary fragments.
 
         This method is used to optimize the selector for better performance.
 
@@ -226,8 +215,7 @@ class BaseSelector(abc.ABC):
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class Selector(BaseSelector):
-    """
-    Represents a single fragment selector in an MPath query.
+    """Represents a single fragment selector in an MPath query.
 
     Attributes:
         fragment: The fragment to match.
@@ -236,8 +224,7 @@ class Selector(BaseSelector):
     fragment: "Fragment"
 
     def __invert__(self) -> Self:
-        """
-        Invert the selector.
+        """Invert the selector.
 
         Returns:
             Self: The inverted selector.
@@ -252,8 +239,7 @@ class Selector(BaseSelector):
         return dataclasses.replace(self, fragment=~self.fragment)
 
     def __and__(self, rhs: object) -> Self:
-        """
-        Combine this selector with another using the '&' operator.
+        """Combine this selector with another using the '&' operator.
 
         Args:
             rhs: The other selector.
@@ -274,8 +260,7 @@ class Selector(BaseSelector):
         return type(self)(None, JointFragment(self.fragment, rhs.fragment))
 
     def __str__(self) -> str:
-        """
-        Return a string representation of the selector.
+        """Return a string representation of the selector.
 
         Returns:
             A string representation of the selector.
@@ -286,8 +271,7 @@ class Selector(BaseSelector):
         return head
 
     def has_multi_wildcard_root(self) -> bool:
-        """
-        Check if the selector has a multi-wildcard root.
+        """Check if the selector has a multi-wildcard root.
 
         Returns:
             bool: True if the selector has a multi-wildcard root, False otherwise.
@@ -297,8 +281,7 @@ class Selector(BaseSelector):
         return isinstance(self.fragment, WildcardFragment) and self.fragment.match_multiple
 
     def remove_multi_wildcard_root(self) -> BaseSelector | None:
-        """
-        Remove the multi-wildcard root from the selector.
+        """Remove the multi-wildcard root from the selector.
 
         Returns:
             BaseSelector | None: The selector without the multi-wildcard root, or None if not applicable.
@@ -312,8 +295,7 @@ class Selector(BaseSelector):
     def matches_and_continuations(
         self, name: str, module: torch.nn.Module
     ) -> tuple[list[_SelectorMatch], list[_SelectorContinuation]]:
-        """
-        Return a list of selector matches and continuations.
+        """Return a list of selector matches and continuations.
 
         Args:
             name: The name of the module.
@@ -368,8 +350,7 @@ class Selector(BaseSelector):
             return [], continuations
 
     def fragments(self) -> tuple["Fragment", ...]:
-        """
-        Return a list of fragments in the selector.
+        """Return a list of fragments in the selector.
 
         Returns:
             list[Fragment]: A list of fragments.
@@ -379,8 +360,7 @@ class Selector(BaseSelector):
         return (self.fragment,)
 
     def fragment_list(self) -> FragmentList:
-        """
-        Return a nested list of fragments in the selector.
+        """Return a nested list of fragments in the selector.
 
         Returns:
             FragmentList: A nested list of fragments.
@@ -392,8 +372,7 @@ class Selector(BaseSelector):
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class MultiSelector(BaseSelector):
-    """
-    Represents a multi-fragment selector in an MPath query.
+    """Represents a multi-fragment selector in an MPath query.
 
     Attributes:
         selectors: The selectors to match.
@@ -402,8 +381,7 @@ class MultiSelector(BaseSelector):
     selectors: tuple[BaseSelector, ...]
 
     def __str__(self) -> str:
-        """
-        Return a string representation of the multi-selector.
+        """Return a string representation of the multi-selector.
 
         Returns:
             str: A string representation of the multi-selector.
@@ -415,8 +393,7 @@ class MultiSelector(BaseSelector):
         return head
 
     def _selectors(self) -> list[BaseSelector]:
-        """
-        Return a list of expanded selectors.
+        """Return a list of expanded selectors.
 
         Returns:
             list[BaseSelector]: A list of expanded selectors.
@@ -429,8 +406,7 @@ class MultiSelector(BaseSelector):
     def matches_and_continuations(
         self, name: str, module: torch.nn.Module
     ) -> tuple[list[_SelectorMatch], list[_SelectorContinuation]]:
-        """
-        Return a list of selector matches and continuations.
+        """Return a list of selector matches and continuations.
 
         Args:
             name: The name of the module.
@@ -450,8 +426,7 @@ class MultiSelector(BaseSelector):
         return all_matches, all_continuations
 
     def fragments(self) -> tuple["Fragment", ...]:
-        """
-        Return a list of fragments in the multi-selector.
+        """Return a list of fragments in the multi-selector.
 
         Returns:
             list[Fragment]: A list of fragments.
@@ -462,8 +437,7 @@ class MultiSelector(BaseSelector):
         return all_fragments
 
     def fragment_list(self) -> FragmentList:
-        """
-        Return a nested list of fragments in the multi-selector.
+        """Return a nested list of fragments in the multi-selector.
 
         Returns:
             FragmentList: A nested list of fragments.
@@ -477,8 +451,7 @@ class MultiSelector(BaseSelector):
         return fragment_list
 
     def remove_multi_wildcard_root(self) -> "BaseSelector | None":
-        """
-        Remove the multi-wildcard root from the multi-selector.
+        """Remove the multi-wildcard root from the multi-selector.
 
         Returns:
             BaseSelector | None: The multi-selector without the multi-wildcard root, or None if not applicable.
@@ -490,8 +463,7 @@ class MultiSelector(BaseSelector):
         return type(self)(self.next, tuple(selectors))
 
     def has_multi_wildcard_root(self) -> bool:
-        """
-        Check if all selectors have a multi-wildcard root.
+        """Check if all selectors have a multi-wildcard root.
 
         Returns:
             bool: True if all selectors have a multi-wildcard root, False otherwise.
@@ -500,8 +472,7 @@ class MultiSelector(BaseSelector):
 
 
 def _is_multi_wildcard(selector: BaseSelector) -> bool:
-    """
-    Check if the selector is equivalent to `**`, i.e., all remaining fragments match zero or more arbitrary modules.
+    """Check if the selector is equivalent to `**`, i.e., all remaining fragments match zero or more arbitrary modules.
 
     Args:
         selector: The selector to check.
@@ -518,8 +489,7 @@ def _is_multi_wildcard(selector: BaseSelector) -> bool:
 
 
 class Fragment(abc.ABC):
-    """
-    A selector fragment is a matcher for a single element in a module path.
+    """A selector fragment is a matcher for a single element in a module path.
 
     Here a module path is the sequence of module names and modules through
     which one would access a specific module from a root.
@@ -565,8 +535,7 @@ class Fragment(abc.ABC):
 
     @abc.abstractmethod
     def match(self, fragment_name: str, module: torch.nn.Module) -> bool:
-        """
-        Matches a single fragment of a path on name or module.
+        """Matches a single fragment of a path on name or module.
 
         Args:
             fragment_name: The name of the path, corresponds to the attribute
@@ -578,8 +547,7 @@ class Fragment(abc.ABC):
         return False
 
     def must_advance(self) -> bool:
-        """
-        Return whether the current fragment can be repeated.
+        """Return whether the current fragment can be repeated.
 
         Returns a boolean that indicates if the current module can be considered
         for the next fragment. This allows implement wildcard like FragmentSelectors.

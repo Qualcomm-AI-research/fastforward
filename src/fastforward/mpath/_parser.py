@@ -195,8 +195,7 @@ class QueryExtensionContext:
 def register_mpath_query_extension(
     tag: str, extension: _QueryExtension, override: bool = False
 ) -> QueryExtensionContext:
-    r"""
-    Register an MPath query extension.
+    r"""Register an MPath query extension.
 
     A query extension produces a SelectorFragment from a string. Once
     registered, it can be used in an MPath query string using "[<tag>:
@@ -229,8 +228,7 @@ def register_mpath_query_extension(
 def mpath_query_extension(
     tag: str, override: bool = False
 ) -> Callable[[_QueryExtension], _QueryExtension]:
-    r"""
-    Decorator for creating an MPath query extensions.
+    r"""Decorator for creating an MPath query extensions.
 
     A query extension produces a SelectorFragment from a string. Once
     registered, it can be used in an MPath query string using "[<tag>:
@@ -408,8 +406,7 @@ class Parser:
 
 
 def get_caller_context(stack_depth: int = 1) -> dict[str, Any]:
-    """
-    An MPath extension may need access to the caller context. This function
+    """An MPath extension may need access to the caller context. This function
     returns a dictionary of the builtins, globals and locals available in the
     caller context. `stack_depth` determines how deep in the stack we loop for
     the context.
@@ -438,8 +435,7 @@ def parse(
     context: Optional[dict[str, Any]] = None,
     aliases: Optional[dict[str, selector.BaseSelector]] = None,
 ) -> selector.BaseSelector:
-    """
-    Parse a raw query and produce a Selector
+    """Parse a raw query and produce a Selector
     """
     aliases = aliases or {}
     context = context or get_caller_context()

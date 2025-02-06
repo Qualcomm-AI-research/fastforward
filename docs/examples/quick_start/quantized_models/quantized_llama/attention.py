@@ -35,8 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class QuantizedLlamaFlashAttention2(LlamaFlashAttention2, QuantizedModule):
-    """
-    Llama flash attention module. This module inherits from `LlamaAttention` as the weights of the module stays
+    """Llama flash attention module. This module inherits from `LlamaAttention` as the weights of the module stays
     untouched. The only required change would be on the forward pass where it needs to correctly call the public API of
     flash attention and deal with padding tokens in case the input contains any of them.
     """
@@ -186,8 +185,7 @@ class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
 
 
 class QuantizedLlamaSdpaAttention(LlamaSdpaAttention, QuantizedModule):
-    """
-    Llama attention module using torch.nn.functional.scaled_dot_product_attention. This module inherits from
+    """Llama attention module using torch.nn.functional.scaled_dot_product_attention. This module inherits from
     `LlamaAttention` as the weights of the module stays untouched. The only changes are on the forward pass to adapt to
     SDPA API.
     """

@@ -11,8 +11,7 @@ from .selector import Fragment, MPathQueryError, Selector
 
 
 class WildcardFragment(Fragment):
-    """
-    Match any fragment exactly once if match_multiple=True and match any
+    """Match any fragment exactly once if match_multiple=True and match any
     fragment zero or more times otherwise.
     """
 
@@ -30,8 +29,7 @@ class WildcardFragment(Fragment):
 
 
 class PathFragment(Fragment):
-    """
-    Match the fragment name (i.e., module name in parent module)
+    """Match the fragment name (i.e., module name in parent module)
     exactly.
     """
 
@@ -50,8 +48,7 @@ class PathFragment(Fragment):
 
 
 class RegexPathFragment(Fragment):
-    """
-    Match a regex against the fragment name (i.e., module name in parent
+    """Match a regex against the fragment name (i.e., module name in parent
     module). The regex must match the full name, otherwise it evaluates
     """
 
@@ -80,8 +77,7 @@ class RegexPathFragment(Fragment):
 
 
 class ClassFragment(Fragment):
-    """
-    Match a fragment if the module is an instance of fragment_class
+    """Match a fragment if the module is an instance of fragment_class
     """
 
     def __init__(self, fragment_class: type) -> None:
@@ -90,8 +86,7 @@ class ClassFragment(Fragment):
 
     @classmethod
     def from_raw_string_with_context(cls, raw_str: str, context: dict[str, Any]) -> Selector:
-        """
-        Find an object in context, by name, that matches `raw_str`. `raw_str` may be
+        """Find an object in context, by name, that matches `raw_str`. `raw_str` may be
         qualified path (i.e., period separated string) that is not directly available
         in `context`, but is indirectly through attribute lookups.
 
@@ -125,8 +120,7 @@ class ClassFragment(Fragment):
 
 
 class PredicateFragment(Fragment):
-    """
-    Match a fragment if predicate evaluates to True.
+    """Match a fragment if predicate evaluates to True.
     """
 
     def __init__(self, predicate: Callable[[str, torch.nn.Module], bool]) -> None:
@@ -144,8 +138,7 @@ class PredicateFragment(Fragment):
 
 
 class JointFragment(Fragment):
-    """
-    Match a fragment if all fragments evaluate to True
+    """Match a fragment if all fragments evaluate to True
     """
 
     def __init__(self, *fragments: Fragment) -> None:
@@ -174,8 +167,7 @@ class JointFragment(Fragment):
 
 
 class DisjointFragment(Fragment):
-    """
-    Match a fragment if one of fragments evaluates to True
+    """Match a fragment if one of fragments evaluates to True
     """
 
     def __init__(self, *fragments: Fragment) -> None:
@@ -200,8 +192,7 @@ class DisjointFragment(Fragment):
 
 
 class InvertedFragment(Fragment):
-    """
-    Match a fragment if fragment evaluates to False
+    """Match a fragment if fragment evaluates to False
     """
 
     def __init__(self, fragment: Fragment) -> None:

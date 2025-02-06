@@ -11,8 +11,7 @@ from fastforward.quantization.local_error import LocalErrorMethod, RunnerContext
 
 
 def _data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
-    """
-    Extract the data tensor from the arguments.
+    """Extract the data tensor from the arguments.
 
     Args:
         data: The data tensor.
@@ -26,19 +25,16 @@ def _data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tens
 
 
 class _Handle(Protocol):
-    """
-    Protocol for a handle that can be removed.
+    """Protocol for a handle that can be removed.
     """
 
     def remove(self) -> Any:
-        """
-        Remove the handle.
+        """Remove the handle.
         """
 
 
 class OutputMSEOverride:
-    """
-    Override class for output Mean Squared Error (MSE) calculation.
+    """Override class for output Mean Squared Error (MSE) calculation.
 
     Attributes:
         passthrough: Flag to enable passthrough mode.
@@ -54,8 +50,7 @@ class OutputMSEOverride:
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> torch.Tensor:
-        """
-        Call the override with the given quantizer, callback, and arguments.
+        """Call the override with the given quantizer, callback, and arguments.
 
         Args:
             quantizer: The quantizer instance.
@@ -76,8 +71,7 @@ class OutputMSEOverride:
 
 
 class OutputMSE(LocalErrorMethod):
-    """
-    Local error method for output Mean Squared Error (MSE) minimization.
+    """Local error method for output Mean Squared Error (MSE) minimization.
     """
 
     def __init__(
@@ -89,8 +83,7 @@ class OutputMSE(LocalErrorMethod):
         self._optimizer_factory = optimizer_factory
 
     def _all_quantizers(self) -> Iterator[Quantizer]:
-        """
-        Iterate over all quantizers in the modules.
+        """Iterate over all quantizers in the modules.
 
         Yields:
             Iterator[Quantizer]: An iterator over quantizers.
@@ -100,8 +93,7 @@ class OutputMSE(LocalErrorMethod):
                 yield quantizer
 
     def _all_outputs(self) -> Iterator[Quantizer]:
-        """
-        Iterate over all output quantizers in the modules.
+        """Iterate over all output quantizers in the modules.
 
         Yields:
             Iterator[Quantizer]: An iterator over output quantizers.
@@ -112,8 +104,7 @@ class OutputMSE(LocalErrorMethod):
                     yield quantizer
 
     def prepare(self, ctx: RunnerContext) -> None:
-        """
-        Prepare the context by registering hooks for quantizers.
+        """Prepare the context by registering hooks for quantizers.
 
         Args:
             ctx: The runner context.
@@ -131,8 +122,7 @@ class OutputMSE(LocalErrorMethod):
             self._handles.append(output_quantizer.register_forward_pre_hook(hook))
 
     def cleanup(self) -> None:
-        """
-        Clean up by removing all registered hooks.
+        """Clean up by removing all registered hooks.
         """
         for handle in self._handles:
             handle.remove()
@@ -140,8 +130,7 @@ class OutputMSE(LocalErrorMethod):
 
     @execution_context
     def alternative_context(self) -> Generator[None, None, None]:
-        """
-        Provide an alternative context with passthrough mode enabled.
+        """Provide an alternative context with passthrough mode enabled.
 
         Yields:
             Generator[None, None, None]: A generator for the alternative context.
@@ -153,14 +142,12 @@ class OutputMSE(LocalErrorMethod):
             self._override.passthrough = False
 
     def conclude_partition(self) -> None:
-        """
-        Conclude the current partition by zeroing the gradients.
+        """Conclude the current partition by zeroing the gradients.
         """
         self._optimizer_factory.zero_grad()
 
     def update(self, quantized: torch.Tensor, unquantized: torch.Tensor) -> None:
-        """
-        Update the model parameters based on the MSE between quantized and unquantized tensors.
+        """Update the model parameters based on the MSE between quantized and unquantized tensors.
 
         Args:
             quantized: The quantized tensor.
@@ -172,8 +159,7 @@ class OutputMSE(LocalErrorMethod):
         self._optimizer_factory.step()
 
     def propagate(self, replay_value: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Propagate the replay value to the default and alternative context.
+        """Propagate the replay value to the default and alternative context.
 
         Args:
             replay_value: The replay value tensor.

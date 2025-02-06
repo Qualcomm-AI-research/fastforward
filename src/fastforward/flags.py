@@ -79,8 +79,7 @@ def _context_flag(flag_name: str, init_value: bool) -> _FlagMethods:
 
 
 def context(flag: _FlagContext, value: bool) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
-    """
-    Decorator to execute a function in a given context.
+    """Decorator to execute a function in a given context.
 
     Here context refers to a value of a flag. Using this decorator, the flag value is
     set to `value` before the decorated function is invoked and reset to it's state

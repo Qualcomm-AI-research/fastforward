@@ -7,8 +7,7 @@ from fastforward.nn import QuantizedModule, QuantizerStub, functional
 
 
 class QuantizedActivation(QuantizedModule, include_in_module_map=False):
-    """
-    Base class for quantized activations.
+    """Base class for quantized activations.
     """
 
     def __init_quantization__(self) -> None:
@@ -18,8 +17,7 @@ class QuantizedActivation(QuantizedModule, include_in_module_map=False):
 
 
 class QuantizedRelu(torch.nn.ReLU, QuantizedActivation):
-    """
-    Applies quantized Relu.
+    """Applies quantized Relu.
 
     # Quantizers
     1. input_quantizer: input activation before relu is applied.
@@ -36,8 +34,7 @@ class QuantizedRelu(torch.nn.ReLU, QuantizedActivation):
 
 
 class QuantizedSilu(torch.nn.SiLU, QuantizedActivation):
-    """
-    Applies quantized Silu.
+    """Applies quantized Silu.
 
     # Quantizers
     1. input_quantizer: input activation before silu is applied.

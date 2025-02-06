@@ -278,8 +278,7 @@ CP: TypeAlias = _Tokenizer.Checkpoint
 
 
 class Parser:
-    """
-    Simple PEG-based parser.
+    """Simple PEG-based parser.
 
     The grammar is expected to be stored in rules. From this, the rules are
     inspecting for left recursion, which is handles accordingly during parsing.

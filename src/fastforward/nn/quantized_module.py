@@ -36,8 +36,7 @@ def named_quantizers(
     remove_duplicate: bool = True,
     skip_stubs: bool = True,
 ) -> Iterator[tuple[str, Quantizer]]:
-    """
-    `Iterator` over quantizers with names.
+    """`Iterator` over quantizers with names.
 
     Return an iterator over `QuantizedModule`s in module, yielding both
     the name of the quantizer as well ass the quantizer itself. Yields only
@@ -101,8 +100,7 @@ def _record_quantized_module(cls: type["QuantizedModule"]) -> None:
 
 
 class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylint: disable=abstract-method
-    """
-    Base class for quantized neural network models/modules.
+    """Base class for quantized neural network models/modules.
 
     # Extending existing (non-quantized) modules
     In many cases, a quantized module will be a specialization of a non-quantized module.
@@ -142,8 +140,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
     _quantizer_metadata: dict[str, QuantizerMetadata]
 
     def __init_quantization__(self) -> None:
-        """
-        Quantization specific initializer.
+        """Quantization specific initializer.
 
         This method is automatically called when a `QuantizedModule` is
         initialized directly, after `__init__()`.
@@ -151,8 +148,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         super(torch.nn.Module, self).__setattr__("_quantizer_metadata", {})
 
     def __init_subclass__(cls, include_in_module_map: bool = True) -> None:
-        """
-        Record `QuantizedModule` subclasses in module map for model conversion.
+        """Record `QuantizedModule` subclasses in module map for model conversion.
 
         Args:
             include_in_module_map: If True, the newly created `QuantizedModule` is recorded
@@ -171,8 +167,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         extra_conversion: ModuleConversionDict | None = None,
         skip_quantized_modules: bool = False,
     ) -> None:
-        """
-        Quantize children.
+        """Quantize children.
 
         Converts the children modules to their `QuantizedModule` counterparts defined in
         `fastforward.nn.quantized_module.quantized_module_map` and `extra_conversion`.
@@ -201,8 +196,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
     def register_quantizer(
         self, name: str, quantizer: Optional[Quantizer], *, _register_module: bool = True
     ) -> None:
-        """
-        Register new quantizer on module.
+        """Register new quantizer on module.
 
         Register a quantizer with under `name` on this module. This method is similar to
         register_module, but specific to quantizers. If an attribute is set to a quantizer
@@ -269,8 +263,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         remove_duplicate: bool = True,
         skip_stubs: bool = True,
     ) -> Iterator[tuple[str, Quantizer]]:
-        """
-        `Iterator` over quantizers and their names.
+        """`Iterator` over quantizers and their names.
 
         Return an iterator over `QuantizedModule`s in the network, yielding both
         the name of the quantizer as well ass the quantizer itself. Yields only
@@ -290,8 +283,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         yield from named_quantizers(self, prefix, recurse, remove_duplicate, skip_stubs=skip_stubs)
 
     def quantizers(self, recurse: bool = True, skip_stubs: bool = True) -> Iterator[Quantizer]:
-        """
-        Iteartor over quantizers.
+        """Iteartor over quantizers.
 
         Return an iterator over `QuantizedModule`s in the network. Yields only
         direct children if `recurse` is False.
@@ -306,8 +298,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
 
 
 class SkipQuantization:
-    """
-    Marker class to signify that a module must not be quantized.
+    """Marker class to signify that a module must not be quantized.
     """
 
     def __repr__(self) -> str:
@@ -322,8 +313,7 @@ def _missing_modules(
     module_map: dict[ModuleType, QuantizedModuleType | SkipQuantization],
     skip_quantized_modules: bool = False,
 ) -> list[type[torch.nn.Module]]:
-    """
-    Find unquantizable modules.
+    """Find unquantizable modules.
 
     Returns a list of Module types that appear in `model` but for which no
     quantized counterpart is available.
@@ -365,8 +355,7 @@ def _check_quantizable(
 
 
 def surrogate_quantized_modules(model: torch.nn.Module) -> ModuleConversionDict:
-    """
-    Create surrogate quantization modules for prototyping.
+    """Create surrogate quantization modules for prototyping.
 
     Construct a `ModuleConversionDict` that contains surrogate quantized modules
     of all submodules in `model` for which no quantized counterpart exists.
@@ -426,8 +415,7 @@ def quantize_model(
     extra_conversion: Optional[ModuleConversionDict] = None,
     skip_quantized_modules: bool = False,
 ) -> torch.nn.Module:
-    """
-    Convert modules and submodules to quantized counterparts.
+    """Convert modules and submodules to quantized counterparts.
 
     Converts a `torch.nn.Module` and it's children to their `QuantizedModule`
     counterparts defined in
@@ -485,8 +473,7 @@ def quantize_model(
 
 
 def quantized_module_map() -> dict[ModuleType, QuantizedModuleType]:
-    """
-    Returns a dictionary that maps `torch.nn.Module`s to their `ff.nn.QuantizedModule` counterparts.
+    """Returns a dictionary that maps `torch.nn.Module`s to their `ff.nn.QuantizedModule` counterparts.
 
     Warning:
         This finds all known subclasses of `ff.nn.QuantizedModule`, hence, in

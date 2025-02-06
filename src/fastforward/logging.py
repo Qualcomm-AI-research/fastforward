@@ -4,8 +4,7 @@ from collections.abc import Sequence
 
 
 class DuplicateLogFilter:
-    """
-    Filter for duplicated log messages.
+    """Filter for duplicated log messages.
 
     Filters log messages that are logged more than once on a specific loglevel
     included in `levels` are filtered. This reduces noise on either stdout or

@@ -19,21 +19,18 @@ from fastforward.quantized_tensor import QuantizedTensor
 
 @dataclasses.dataclass
 class QuantizationParameters:
-    """
-    Container for quantization parameters. Each quantization expects a specific
+    """Container for quantization parameters. Each quantization expects a specific
     `QuantizationParamers`
     """
 
     def with_changes(self, **changes: Any) -> Self:
-        """
-        Replace any provided keyword argument and return a newly created
+        """Replace any provided keyword argument and return a newly created
         `QuantizationParameters`.
         """
         return dataclasses.replace(self, **changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:
-        """
-        Apply `fn` to every parameter and create a new `QuantizationParameters`
+        """Apply `fn` to every parameter and create a new `QuantizationParameters`
         using the results of each application.
         """
         new_values = {k: fn(v) for k, v in dataclasses.asdict(self).items()}
@@ -49,8 +46,7 @@ QuantParams_co = TypeVar("QuantParams_co", bound=QuantizationParameters, covaria
 
 
 class QuantizationFunction(Generic[QuantParams_co], abc.ABC):
-    """
-    Base class for QuantizationFunctions.
+    """Base class for QuantizationFunctions.
     """
 
     # mypy does not allow covariant parameters. It's a coarse way of not
@@ -59,8 +55,7 @@ class QuantizationFunction(Generic[QuantParams_co], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def quantize(cls, data: torch.Tensor, params: QuantParams_co) -> QuantizedTensor:  # type: ignore[misc]
-        """
-        Abstract method for quantization.
+        """Abstract method for quantization.
 
         Implementors are expected to implement the quantize function that takes
         input data and a `QuantizationParameters` object and return a
@@ -70,8 +65,7 @@ class QuantizationFunction(Generic[QuantParams_co], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def dequantize(cls, data: torch.Tensor, params: QuantParams_co) -> torch.Tensor:  # type: ignore[misc]
-        """
-        Abstract method for dequantization.
+        """Abstract method for dequantization.
 
         Implementors are expected to implement the dequantize function that takes
         quantized data and a `QuantizationParameters` object and return a
@@ -81,8 +75,7 @@ class QuantizationFunction(Generic[QuantParams_co], abc.ABC):
 
 @dataclasses.dataclass(frozen=True)
 class QuantizationContext(Generic[QuantParams_co]):
-    """
-    A container for `QuantizationFunction`s and corresponding parameters.
+    """A container for `QuantizationFunction`s and corresponding parameters.
 
     Together these form the quantization context and contain all information to
     perform quantization and/or dequantization.
@@ -96,8 +89,7 @@ class QuantizationContext(Generic[QuantParams_co]):
         quantization_fn: type[QuantizationFunction[QuantParams_co]] | None = None,
         **changes: Any,
     ) -> Self:
-        """
-        Create new `QuantizationContext` replacing `quantization_fn` or
+        """Create new `QuantizationContext` replacing `quantization_fn` or
         quantization parameters.
 
         Args:
@@ -115,32 +107,28 @@ class QuantizationContext(Generic[QuantParams_co]):
         return dataclasses.replace(self, **context_changes)
 
     def _apply(self, fn: Callable[[Any], Any]) -> Self:
-        """
-        Apply `fn` to every parameter and create a new `QuantizationParameters`
+        """Apply `fn` to every parameter and create a new `QuantizationParameters`
         using the results of each application.
         """
         params = self.quantization_params._apply(fn)
         return dataclasses.replace(self, quantization_params=params)
 
     def clone_parameters(self) -> Self:
-        """
-        Clone each tensor in `quantization_params` and return a new context
+        """Clone each tensor in `quantization_params` and return a new context
         with updated parameters.
         """
         fn = functools.partial(maybe_tensor_apply, fn=torch.clone)
         return self._apply(fn)
 
     def detach_parameters(self) -> Self:
-        """
-        Detach each tensor in `quantization_params` and return a new context
+        """Detach each tensor in `quantization_params` and return a new context
         with updated parameters.
         """
         fn = functools.partial(maybe_tensor_apply, fn=torch.detach)
         return self._apply(fn)
 
     def contiguous_parameters(self) -> Self:
-        """
-        Update each tensor in `quantization_params` to make it contiguous and
+        """Update each tensor in `quantization_params` to make it contiguous and
         return a new context with updated parameters.
         """
         fn = functools.partial(maybe_tensor_apply, fn=torch.Tensor.contiguous)
@@ -155,8 +143,7 @@ class QuantizationContext(Generic[QuantParams_co]):
         return self
 
     def to(self, device: torch.device | str) -> Self:
-        """
-        Update each tensor in `quantization_params` to `device` and
+        """Update each tensor in `quantization_params` to `device` and
         return a new context with updated parameters.
         """
 
@@ -167,8 +154,7 @@ class QuantizationContext(Generic[QuantParams_co]):
         return self._apply(fn)
 
     def attach(self, data: torch.Tensor) -> QuantizedTensor:
-        """
-        Attach to `data` to this context by creating a `QuantizedTensor` that
+        """Attach to `data` to this context by creating a `QuantizedTensor` that
         uses data as raw_data and this context as quantization context.
         """
         if ff.get_export_mode():

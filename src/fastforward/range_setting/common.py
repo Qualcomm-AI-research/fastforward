@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-Collection of types, protocols and base implementations for range setting methods.
+"""Collection of types, protocols and base implementations for range setting methods.
 """
 
 import abc
@@ -29,8 +28,7 @@ from fastforward.quantized_tensor import QuantizedTensor
 
 @runtime_checkable
 class RangeSettable(Protocol):
-    """
-    Interface for range settable quantization modules.
+    """Interface for range settable quantization modules.
 
     The quantization parameters for modules that implement this interface can
     be specified through a quantization range. This is a generalization over
@@ -39,8 +37,7 @@ class RangeSettable(Protocol):
 
     @property
     def granularity(Protocol) -> granularity.Granularity:
-        """
-        The quantization granularity for a quantizer.
+        """The quantization granularity for a quantizer.
 
         The granularity specifies which part of the input tensor is quantized
         using which quantization parameters. Examples of granularities are
@@ -56,8 +53,7 @@ class RangeSettable(Protocol):
 
     @property
     def quantization_range(self) -> tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
-        """
-        Quantization range for a quantizer specified through a minimum and maximum threshold.
+        """Quantization range for a quantizer specified through a minimum and maximum threshold.
 
         Returns:
             Minimum threshold for quantization range as N-d tensor or None of
@@ -74,8 +70,7 @@ class RangeSettable(Protocol):
 
 @runtime_checkable
 class SupportsRangeBasedOperator(RangeSettable, Protocol):
-    """
-    Interface for quantizers that can create a quantization operator for a range.
+    """Interface for quantizers that can create a quantization operator for a range.
 
     Interface for Quantizers that can specify a quantization function given a
     min/max thresholded quantization range. This is used by range setting
@@ -87,8 +82,7 @@ class SupportsRangeBasedOperator(RangeSettable, Protocol):
 
     @property
     def symmetric(self) -> bool:
-        """
-        Return boolean indicating if quantizer is symmetric.
+        """Return boolean indicating if quantizer is symmetric.
 
         Returns:
             Boolean indicating if quantization operator is symmetric or not
@@ -98,8 +92,7 @@ class SupportsRangeBasedOperator(RangeSettable, Protocol):
     def operator_for_range(
         self, __min: torch.Tensor, __max: torch.Tensor, __data_shape: torch.Size
     ) -> Callable[[torch.Tensor], QuantizedTensor]:
-        """
-        Return quantization operator using the given range.
+        """Return quantization operator using the given range.
 
         Returns a callable that specifies a quantization operator for the given min/max thresholded
         quantization range and specific data_shape.
@@ -126,8 +119,7 @@ _Module = TypeVar("_Module", bound=torch.nn.Module)
 
 
 class RangeEstimator(abc.ABC, Generic[_T, _Module]):
-    """
-    Abstract base class for range estimator methods.
+    """Abstract base class for range estimator methods.
 
     Subclasses of this base class implement preparation and cleanup methods for
     range estimation that setup a module for range estimation before passing
@@ -142,8 +134,7 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
 
     @abc.abstractmethod
     def prepare(self, module: _Module) -> _T:
-        """
-        Prepare module for a particular range estimation method.
+        """Prepare module for a particular range estimation method.
 
         Any metadata that is returned from this method is fed back to cleanup
         after range estimation.
@@ -158,8 +149,7 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
 
     @abc.abstractmethod
     def cleanup(self, module: _Module, metadata: _T) -> None:
-        """
-        Clean up any range estimation specific settings from module.
+        """Clean up any range estimation specific settings from module.
 
         After the conclusion of this method, it is assumed that module is in
         the same state as before `prepare` was called, except for some
@@ -174,8 +164,7 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
 
     @abc.abstractmethod
     def split_module(self, module: torch.nn.Module) -> Iterator[_Module]:
-        """
-        Split the module into one or more submodules.
+        """Split the module into one or more submodules.
 
         For each module yielded from this function, prepare and cleanup are
         called seperately. If only a single prepare and cleanup should be
@@ -192,8 +181,7 @@ _QuantizerType = TypeVar("_QuantizerType", bound=RangeSettable)
 
 
 class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
-    """
-    Base class for simple range estimator step.
+    """Base class for simple range estimator step.
 
     SimpleEstimatorStep provides a forward pass in which estimate_step is called. During
     the first execution of the forward pass, setup_estimator is called.
@@ -211,8 +199,7 @@ class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
         super().__init__(*args, **kwargs)
 
     def setup_estimator(self, data: torch.Tensor) -> None:
-        """
-        Perform setup for the estimator.
+        """Perform setup for the estimator.
 
         The first data batch is passed. this method is only called once during
         the first estimator step.
@@ -224,8 +211,7 @@ class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
 
     @abc.abstractmethod
     def estimate_step(self, quantizer: _QuantizerType, data: torch.Tensor) -> None:
-        """
-        Given quantizer and data, update the quantization parameters of `quantizer` based on data.
+        """Given quantizer and data, update the quantization parameters of `quantizer` based on data.
 
         Args:
             quantizer: `Quantizer` module for which parameters should be updated
@@ -262,8 +248,7 @@ def estimate_ranges(
     *args: Any,
     **kwargs: Any,
 ) -> Generator[None, None, None]:
-    """
-    Context manager to setup `model_or_layers` for range estimation.
+    """Context manager to setup `model_or_layers` for range estimation.
 
     Within the context, any data that is passed to `model_or_layers` will
     trigger a range estimation step. Each module will be setup by `estimator`

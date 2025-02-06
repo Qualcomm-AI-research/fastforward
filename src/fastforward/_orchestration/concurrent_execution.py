@@ -44,8 +44,7 @@ class _StopThreadExecution(Exception):
 
 
 class ConcurrentExecOrchestrator:
-    """
-    Orchestrator to run a target function multiple times in a configurable
+    """Orchestrator to run a target function multiple times in a configurable
     order. Multiple execution for a single input can communicate between
     different executions. This can be useful to implement local emperical error
     minimizations between two different execution contexts.
@@ -227,8 +226,7 @@ class ConcurrentExecOrchestrator:
     @property
     @ensure_non_mainthread
     def stage(self) -> int:
-        """
-        Returns the stage index for the current execution.
+        """Returns the stage index for the current execution.
 
         Raises a RuntimeError when called from the main thread.
         """
@@ -237,8 +235,7 @@ class ConcurrentExecOrchestrator:
     @property
     @ensure_non_mainthread
     def batch(self) -> int:
-        """
-        Returns the batch index for the current execution.
+        """Returns the batch index for the current execution.
 
         Raises a RuntimeError when called from the main thread.
         """
@@ -247,8 +244,7 @@ class ConcurrentExecOrchestrator:
     @property
     @ensure_non_mainthread
     def batch_data(self) -> dict[int, Any]:
-        """
-        Returns batch_data for the current execution. batch_data is a
+        """Returns batch_data for the current execution. batch_data is a
         dictionary that maps from stage index to recorded data. Note that there
         is no guarantee that recorded data exists for each stage. In that case,
         the value for a stage may be missing or None.
@@ -343,8 +339,7 @@ class ConcurrentExecOrchestrator:
         _wait: bool = True,
         _init_sync: bool = False,
     ) -> Any:
-        """
-        Synchronize execution runs. All execution runs will run up to the call site and wait
+        """Synchronize execution runs. All execution runs will run up to the call site and wait
         for other executions to 'catch-up'.
 
         When an optional data argument is passed, it is stored in batch_data and made available
@@ -352,7 +347,7 @@ class ConcurrentExecOrchestrator:
         and is returned by this functions. This can be used to communicate between different
         executions for the same batch.
 
-        Arguments
+        Arguments:
         ---------
             data: Data to be saved and shared with other executions
 
@@ -389,8 +384,7 @@ class ConcurrentExecOrchestrator:
         self._next_event().set()
 
     def register_post_stage_hook(self, stage: int, hook: _StageHook) -> RemovableHandle:
-        """
-        Register a post_stage hook. See class docstring for a more detailed discussion.
+        """Register a post_stage hook. See class docstring for a more detailed discussion.
 
         Returns a RemovableHandle. The hook can be removed by invoking `remove` on this handle.
 
@@ -402,8 +396,7 @@ class ConcurrentExecOrchestrator:
         return handle
 
     def register_pre_stage_hook(self, stage: int, hook: _StageHook) -> RemovableHandle:
-        """
-        Register a pre_stage hook. See class docstring for a more detailed discussion.
+        """Register a pre_stage hook. See class docstring for a more detailed discussion.
 
         Returns a RemovableHandle. The hook can be removed by invoking `remove` on this handle.
 
@@ -417,8 +410,7 @@ class ConcurrentExecOrchestrator:
     def register_global_post_stage_hook(
         self, stage: int, hook: _GlobalStageHook
     ) -> RemovableHandle:
-        """
-        Register a global_post_stage hook. See class docstring for a more detailed discussion.
+        """Register a global_post_stage hook. See class docstring for a more detailed discussion.
 
         Returns a RemovableHandle. The hook can be removed by invoking `remove` on this handle.
 
@@ -430,8 +422,7 @@ class ConcurrentExecOrchestrator:
         return handle
 
     def register_global_pre_stage_hook(self, stage: int, hook: _GlobalStageHook) -> RemovableHandle:
-        """
-        Register a global_pre_stage hook. See class docstring for a more detailed discussion.
+        """Register a global_pre_stage hook. See class docstring for a more detailed discussion.
 
         Returns a RemovableHandle. The hook can be removed by invoking `remove` on this handle.
 
@@ -443,8 +434,7 @@ class ConcurrentExecOrchestrator:
         return handle
 
     def start(self) -> None:
-        """
-        Start orchestrated execution.
+        """Start orchestrated execution.
         """
         for thread in self._threads:
             thread.start()
@@ -464,8 +454,7 @@ class ConcurrentExecOrchestrator:
             raise RuntimeError(msg) from self._thread_exc.exc_value
 
     def add_batch(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Add input data to orchestration grid. See the class docstring for a more
+        """Add input data to orchestration grid. See the class docstring for a more
         detailed discussion.
 
         All passed arguments and keyword arguments are passed to the target

@@ -24,8 +24,7 @@ logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
 
 
 class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module):
-    """
-    Estimates the quantization range using exponential smoothing of the minimum and maximum values.
+    """Estimates the quantization range using exponential smoothing of the minimum and maximum values.
 
     Attributes:
         min: The minimum values observed.
@@ -39,8 +38,7 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
     def __init__(
         self, quantizer: RangeSettable, gamma: float = 1.0, disable_quantization: bool = False
     ) -> None:
-        """
-        Initialize the SmoothedMinMaxEstimator.
+        """Initialize the SmoothedMinMaxEstimator.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -54,8 +52,7 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
         self.register_buffer("max", max)
 
     def initialize_parameters(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
-        """
-        Initialize the min and max parameters.
+        """Initialize the min and max parameters.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -68,8 +65,7 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
             self.max = torch.full(shape, float("-inf"), dtype=data.dtype, device=data.device)
 
     def estimate_step(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
-        """
-        Perform a single estimation step.
+        """Perform a single estimation step.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -96,8 +92,7 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
         quantizer.quantization_range = (self.min, self.max)
 
     def extra_repr(self) -> str:
-        """
-        Return a string representation of the estimator.
+        """Return a string representation of the estimator.
 
         Returns:
             str: A string representation of the estimator.
@@ -106,8 +101,7 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
 
 
 class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
-    """
-    Exponential moving average range estimator.
+    """Exponential moving average range estimator.
 
     Estimates the ranges based on a exponential moving average over batches of
     the minimum and maximum for each quantizer.
@@ -132,8 +126,7 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         self.skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
-        """
-        Prepare the module for range estimation.
+        """Prepare the module for range estimation.
 
         Args:
             module: The quantizer module.
@@ -151,8 +144,7 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         )
 
     def cleanup(self, module: Quantizer, metadata: OverrideHandle) -> None:
-        """
-        Clean up the module after range estimation.
+        """Clean up the module after range estimation.
 
         Args:
             module: The quantizer module.
@@ -162,8 +154,7 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         metadata.remove()
 
     def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
-        """
-        Split the module into individual quantizers.
+        """Split the module into individual quantizers.
 
         Args:
             module: The module to split.
@@ -185,8 +176,7 @@ smoothed_minmax = SmoothedMinMaxRangeEstimator
 
 
 class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module):
-    """
-    Estimates the quantization range using the running minimum and maximum values.
+    """Estimates the quantization range using the running minimum and maximum values.
 
     Attributes:
         min: The minimum values observed.
@@ -197,8 +187,7 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
     max: torch.Tensor | None
 
     def __init__(self, quantizer: RangeSettable, disable_quantization: bool = False) -> None:
-        """
-        Initialize the RunningMinMaxEstimator.
+        """Initialize the RunningMinMaxEstimator.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -210,8 +199,7 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
         self.register_buffer("max", max)
 
     def initialize_parameters(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
-        """
-        Initialize the min and max parameters.
+        """Initialize the min and max parameters.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -224,8 +212,7 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
             self.max = torch.full(shape, float("-inf"), dtype=data.dtype, device=data.device)
 
     def estimate_step(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
-        """
-        Perform a single estimation step.
+        """Perform a single estimation step.
 
         Args:
             quantizer: The quantizer to estimate ranges for.
@@ -251,8 +238,7 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
         quantizer.quantization_range = (self.min, self.max)
 
     def extra_repr(self) -> str:
-        """
-        Return a string representation of the estimator.
+        """Return a string representation of the estimator.
 
         Returns:
             str: A string representation of the estimator.
@@ -261,8 +247,7 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
 
 
 class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
-    """
-    Running min-max range estimator.
+    """Running min-max range estimator.
 
     Estimates the quantization ranges based on the minimum and maximum over all
     data seen for each quantizer.
@@ -284,8 +269,7 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         self.skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
-        """
-        Prepare the module for range estimation.
+        """Prepare the module for range estimation.
 
         Args:
             module: The quantizer module.
@@ -306,8 +290,7 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         metadata.remove()
 
     def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
-        """
-        Split module up into separate quantizers.
+        """Split module up into separate quantizers.
         """
         for _, quantizer in named_quantizers(module, recurse=True):
             if isinstance(quantizer, RangeSettable) or not self.skip_unsupported_quantizers:

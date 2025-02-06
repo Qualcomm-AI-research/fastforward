@@ -23,8 +23,7 @@ from fastforward.quantized_tensor import QuantizedTensor
 
 
 class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
-    """
-    Abstract affine quantizer.
+    """Abstract affine quantizer.
 
     Abstract base class for affine quantizers.
 
@@ -48,44 +47,38 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
 
     @property
     def per_channel(self) -> bool:
-        """
-        Boolean indicating whether quantizer uses PerChannel quantization.
+        """Boolean indicating whether quantizer uses PerChannel quantization.
         """
         return granularities.is_per_channel(self.granularity)
 
     @property
     def per_tensor(self) -> bool:
-        """
-        Boolean indicating whether quantizer uses PerTensor quantization.
+        """Boolean indicating whether quantizer uses PerTensor quantization.
         """
         return granularities.is_per_tensor(self.granularity)
 
     @property
     def integer_minimum(self) -> float:
-        """
-        The minimum integer value that quantized data takes, based on bitwidth.
+        """The minimum integer value that quantized data takes, based on bitwidth.
         """
         return affine_quant.integer_minimum(self.num_bits)
 
     @property
     def integer_maximum(self) -> float:
-        """
-        The maximum integer value that quantized data takes, based on bitwidth.
+        """The maximum integer value that quantized data takes, based on bitwidth.
         """
         return affine_quant.integer_maximum(self.num_bits)
 
     @property
     def has_uninitialized_params(self) -> bool:
-        """
-        Check if there any quantization parameters that are unitialized.
+        """Check if there any quantization parameters that are unitialized.
         """
         Uninitialized = torch.nn.parameter.UninitializedParameter
         return any(isinstance(p, Uninitialized) for p in self.parameters())
 
     @override
     def extra_repr(self) -> str:
-        """
-        Provide extra repr information
+        """Provide extra repr information
         """
         extra_repr = f"num_bits={self.num_bits}, granularity={self.granularity}"
         super_extra = super().extra_repr()
@@ -97,16 +90,14 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
     @property
     @abc.abstractmethod
     def quantization_function(self) -> type[QuantizationFunction[QuantParams_co]]:
-        """
-        Returns:
-            `QuantizationFunction` that implements the quantization operator
-            specific to this quantizer.
+        """Returns:
+        `QuantizationFunction` that implements the quantization operator
+        specific to this quantizer.
         """
 
     @abc.abstractmethod
     def quantization_parameters(self) -> QuantParams_co:
-        """
-        Quantization parameters of this quantizer.
+        """Quantization parameters of this quantizer.
 
         Returns:
             `QuantizationParameterss` specific to this quantizer
@@ -117,8 +108,7 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
 
     @override
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
-        """
-        Quantize data using affine quantizer.
+        """Quantize data using affine quantizer.
 
         Args:
             data: Tensor to quantize
@@ -131,8 +121,7 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
 
 
 class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantParams"]):
-    """
-    Linear quantizer.
+    """Linear quantizer.
 
     Support multiple quantization granularities. A granularity
     defines which part of the input tensor are quantized using the same
@@ -177,8 +166,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
 
     @property
     def symmetric(self) -> bool:
-        """
-        True if symmetric quantization, False otherwise.
+        """True if symmetric quantization, False otherwise.
 
         Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol
         """
@@ -194,8 +182,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         return "offset" in self._buffers or self.offset is None
 
     def reset_parameters(self) -> None:
-        """
-        Reset parameters to scale=1, offset=0.
+        """Reset parameters to scale=1, offset=0.
         """
         with torch.no_grad():
             self.scale.fill_(1.0)
@@ -203,8 +190,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
                 _ = self.offset.fill_(0.0)
 
     def _initialize_parameters(self, parameter_dimensionality: int) -> None:  # pylint: disable=arguments-differ
-        """
-        Internal method to materialize the uninitialized parameters of the quantizer.
+        """Internal method to materialize the uninitialized parameters of the quantizer.
         """
         if self.has_uninitialized_params:  # type: ignore[unused-ignore]
             scale_shape = torch.Size([parameter_dimensionality])
@@ -218,8 +204,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
 
     @override
     def extra_repr(self) -> str:
-        """
-        Provide extra repr information on num_bits, symmetric flag and granularities.
+        """Provide extra repr information on num_bits, symmetric flag and granularities.
         """
         extra_repr = f"symmetric={self.symmetric}"
         super_extra = super().extra_repr()
@@ -247,8 +232,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
 
     @override
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
-        """
-        Quantize data using affine quantizer.
+        """Quantize data using affine quantizer.
 
         Args:
             data: Tensor to quantize
@@ -278,8 +262,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
     def operator_for_range(
         self, min_range: torch.Tensor, max_range: torch.Tensor, data_shape: torch.Size
     ) -> Callable[[torch.Tensor], QuantizedTensor]:
-        """
-        Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol.
+        """Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol.
         """
         scale, offset = self._parameters_for_range(min_range, max_range)
         quant_context = affine_quant.quantization_context(
@@ -309,8 +292,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
     def quantization_range(
         self,
     ) -> tuple[torch.Tensor | float | None, torch.Tensor | float | None]:
-        """
-        Getter for quantization range.
+        """Getter for quantization range.
 
         Returns:
             tuple[torch.Tensor, torch.Tensor]:
@@ -327,8 +309,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
     def quantization_range(
         self, quant_range: tuple[torch.Tensor | float, torch.Tensor | float]
     ) -> None:
-        """
-        Setter for quantization range.
+        """Setter for quantization range.
 
         `quantization_range` is part of the
         fastforward.range_setting.RangeSettable Protocol

@@ -11,8 +11,7 @@ _P = ParamSpec("_P")
 
 
 class STEAutogradFunc(torch.autograd.Function):
-    """
-    A custom autograd function for Straight-Through Estimator (STE).
+    """A custom autograd function for Straight-Through Estimator (STE).
 
     This function allows the forward pass to be non-differentiable while
     providing a gradient for the backward pass.
@@ -25,8 +24,7 @@ class STEAutogradFunc(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx: Any, input: torch.Tensor, output: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass for the STE function.
+        """Forward pass for the STE function.
 
         Args:
             ctx: Context object to store information for backward computation.
@@ -40,8 +38,7 @@ class STEAutogradFunc(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx: Any, output_grad: torch.Tensor) -> tuple[torch.Tensor, None]:  # type: ignore[override]
-        """
-        Backward pass for the STE function.
+        """Backward pass for the STE function.
 
         Args:
             ctx: Context object.
@@ -54,15 +51,13 @@ class STEAutogradFunc(torch.autograd.Function):
 
 
 class STEWrappedFunction(Protocol[_P]):
-    """
-    Protocol for a wrapped function using STE.
+    """Protocol for a wrapped function using STE.
 
     This protocol defines the call signature for functions wrapped with STE.
     """
 
     def __call__(self, __input: torch.Tensor, *args: _P.args, **kwargs: _P.kwargs) -> torch.Tensor:
-        """
-        Call the wrapped function.
+        """Call the wrapped function.
 
         Args:
             __input: The input tensor.
@@ -76,8 +71,7 @@ class STEWrappedFunction(Protocol[_P]):
 
 
 def ste(func: Callable[Concatenate[torch.Tensor, _P], torch.Tensor]) -> STEWrappedFunction[_P]:
-    """
-    Decorator to apply STE to a function.
+    """Decorator to apply STE to a function.
 
     This decorator wraps a function to use STE, ensuring the input and output shapes match.
 

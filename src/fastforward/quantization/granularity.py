@@ -13,8 +13,7 @@ from fastforward.quantization.tiled_tensor import check_tile_compatibility
 
 
 class Granularity(abc.ABC):
-    """
-    Granularity represents how paraameters are shared during quantization.
+    """Granularity represents how paraameters are shared during quantization.
 
     Granularities provide an abstraction used for element-wise operations with
     shared parameters. These are most prominently used in quantizers. For
@@ -47,8 +46,7 @@ class Granularity(abc.ABC):
 
     @abc.abstractmethod
     def tile_size(self, data_shape: torch.Size) -> torch.Size | Literal["data_shape"]:
-        """
-        Retrieve the tile size that will be applied over the input data.
+        """Retrieve the tile size that will be applied over the input data.
 
         The tile functions (fastforward.quantization.affine) brodcast the
         dimensions with a size of 1 over the data shape. For example, given an
@@ -59,8 +57,7 @@ class Granularity(abc.ABC):
         raise NotImplementedError
 
     def parameter_dimensionality(self, data_shape: torch.Size) -> int:
-        """
-        The dimensionality of the quantizer parameters  to porcess the input data.
+        """The dimensionality of the quantizer parameters  to porcess the input data.
 
         This is computed by dividing the number of elements of the original
         data shape over the number of elements of the tile size. For example,
@@ -73,8 +70,7 @@ class Granularity(abc.ABC):
         return data_shape.numel() // tile_size.numel()
 
     def repr_args(self) -> dict[str, Any]:
-        """
-        Return a dictionary of arguments for the __repr__ method.
+        """Return a dictionary of arguments for the __repr__ method.
 
         Returns:
             dict[str, Any]: A dictionary of arguments.
@@ -99,8 +95,7 @@ class Granularity(abc.ABC):
 
 
 class PerTensor(Granularity):
-    """
-    Granularity class for per-tensor quantization.
+    """Granularity class for per-tensor quantization.
     """
 
     def __init__(self) -> None:
@@ -108,8 +103,7 @@ class PerTensor(Granularity):
 
     @override
     def tile_size(self, data_shape: torch.Size) -> Literal["data_shape"]:
-        """
-        Return the tile size for per-tensor quantization.
+        """Return the tile size for per-tensor quantization.
 
         Args:
             data_shape: The shape of the input data.
@@ -121,8 +115,7 @@ class PerTensor(Granularity):
 
 
 class PerChannel(Granularity):
-    """
-    Granularity class for per-channel quantization.
+    """Granularity class for per-channel quantization.
 
     Attributes:
         channel_dims: The dimensions to apply per-channel quantization.
@@ -138,8 +131,7 @@ class PerChannel(Granularity):
 
     @override
     def tile_size(self, data_shape: torch.Size) -> torch.Size:
-        """
-        Return the tile size for per-channel quantization.
+        """Return the tile size for per-channel quantization.
 
         Args:
             data_shape: The shape of the input data.
@@ -155,16 +147,14 @@ class PerChannel(Granularity):
 
     @override
     def repr_args(self) -> dict[str, Any]:
-        """
-        Return a dictionary of arguments for the __repr__ method.
+        """Return a dictionary of arguments for the __repr__ method.
         """
         dim = self.channel_dims[0] if len(self.channel_dims) == 1 else self.channel_dims
         return {"channel": dim}
 
 
 class PerTile(Granularity):
-    """
-    Granularity class for per-tile quantization.
+    """Granularity class for per-tile quantization.
 
     Attributes:
         tile_shape: The shape of the tile.
@@ -178,8 +168,7 @@ class PerTile(Granularity):
 
     @override
     def tile_size(self, data_shape: torch.Size) -> torch.Size:
-        """
-        Return the tile size for per-tile quantization.
+        """Return the tile size for per-tile quantization.
 
         Args:
             data_shape: The shape of the input data.
@@ -198,15 +187,13 @@ class PerTile(Granularity):
 
     @override
     def repr_args(self) -> dict[str, Any]:
-        """
-        Return a dictionary of arguments for the __repr__ method.
+        """Return a dictionary of arguments for the __repr__ method.
         """
         return {"tile_shape": self.tile_shape}
 
 
 def is_per_tensor(granularity: Granularity) -> bool:
-    """
-    Check if the granularity is per-tensor.
+    """Check if the granularity is per-tensor.
 
     Args:
         granularity: The granularity instance.
@@ -218,8 +205,7 @@ def is_per_tensor(granularity: Granularity) -> bool:
 
 
 def is_per_channel(granularity: Granularity) -> bool:
-    """
-    Check if the granularity is per-channel.
+    """Check if the granularity is per-channel.
 
     Args:
         granularity: The granularity instance.

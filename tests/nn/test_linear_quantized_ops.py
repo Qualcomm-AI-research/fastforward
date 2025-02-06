@@ -16,8 +16,7 @@ LINEAR_QUANT_GENERATORS = (ff.random.random_quantized,)
 
 
 def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
-    """
-    Generate various legal indexers (i.e., slice or integers) for a
+    """Generate various legal indexers (i.e., slice or integers) for a
     tensor dimension of size `dimlen`.
     """
     yield slice(None, None, None)  # case ':', e.g, x[:]
@@ -34,11 +33,9 @@ def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
 @pytest.mark.parametrize("data_shape", [(3, 3), (), (1, 3), (3, 1), (1, 0, 2), (3,)])
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
 def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor]):
-    """
-    Test QuantizedTensor.__getitem__ implementation of Per-Tensor quantized
+    """Test QuantizedTensor.__getitem__ implementation of Per-Tensor quantized
     tensors for many different ways of indexing.
     """
-
     # Given: a quantized and dequantized tensor
     torch.randn(data_shape)
     qx = quantfunc(data_shape)
@@ -126,8 +123,7 @@ def test_unsqueeze(granularity, quantfunc: Callable[..., ff.QuantizedTensor]):
 
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
 def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]):
-    """
-    Test `torch.expand/torch.Tensor.expand` implementation for quantized
+    """Test `torch.expand/torch.Tensor.expand` implementation for quantized
     tensors for which the following holds:
 
         - Per-Tensor quantized
