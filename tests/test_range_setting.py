@@ -3,11 +3,8 @@
 
 from typing import cast
 
-import torch
-
-from torch import nn
-
 import fastforward
+import torch
 
 from fastforward.nn.activations import QuantizedRelu
 from fastforward.nn.linear import QuantizedLinear
@@ -15,6 +12,7 @@ from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.nn.quantized_module import named_quantizers
 from fastforward.quantization import granularity
 from fastforward.range_setting import estimate_ranges, smoothed_minmax
+from torch import nn
 
 
 @fastforward.flags.context(fastforward.strict_quantization, False)

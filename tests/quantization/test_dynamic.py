@@ -1,11 +1,10 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import pytest
-import torch
-
 import fastforward as ff
 import fastforward.quantization.affine.dynamic as dynamic
+import pytest
+import torch
 
 DEVICES = ["cpu", "cuda"]
 NUM_BITS = [3, 4, 8]

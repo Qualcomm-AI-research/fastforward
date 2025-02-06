@@ -2,10 +2,9 @@
 # All Rights Reserved.
 
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.quantization.affine import StaticAffineQuantParams, quantization_context
 from fastforward.quantization.affine.function import AffineQuantParams

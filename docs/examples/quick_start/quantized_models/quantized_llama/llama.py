@@ -3,9 +3,8 @@
 
 import logging
 
-from transformers import LlamaForCausalLM, LlamaModel
-
 from fastforward.nn import QuantizedModule
+from transformers import LlamaForCausalLM, LlamaModel
 
 logger = logging.getLogger(__name__)
 

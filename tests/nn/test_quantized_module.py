@@ -4,10 +4,9 @@
 # pylint: disable=missing-function-docstring
 from copy import deepcopy
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.nn import QuantizerMetadata, QuantizerStub
 from fastforward.nn.quantized_module import SKIP_QUANTIZATION

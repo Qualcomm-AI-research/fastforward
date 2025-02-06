@@ -6,10 +6,9 @@ import math
 
 from typing import Any, Dict, cast
 
+import fastforward
 import pytest
 import torch
-
-import fastforward
 
 from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.quantization import granularity

@@ -1,10 +1,9 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 
 class _MockQuantizer1(ff.nn.Quantizer):

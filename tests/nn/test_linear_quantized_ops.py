@@ -6,10 +6,9 @@ import itertools
 
 from typing import Callable, Iterator
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 # Functions that produce tensors that should be treated as linearly quantized.
 LINEAR_QUANT_GENERATORS = (ff.random.random_quantized,)

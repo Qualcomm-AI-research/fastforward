@@ -5,14 +5,12 @@
 # Copyright 2018- The Hugging Face team. All rights reserved. Licensed under the Apache License, Version 2.0
 # License is provided for attribution purposes only, Not a Contribution
 
-import torch
-
-from transformers.models.llama.modeling_llama import LlamaRMSNorm
-
 import fastforward.nn.functional as FFF
+import torch
 
 from fastforward.nn import QuantizedModule, QuantizerMetadata
 from fastforward.quantization.strict_quantization import strict_quantization
+from transformers.models.llama.modeling_llama import LlamaRMSNorm
 
 
 class QuantizedLlamaRMSNorm(LlamaRMSNorm, QuantizedModule):

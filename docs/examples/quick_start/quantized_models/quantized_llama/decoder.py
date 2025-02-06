@@ -9,14 +9,12 @@ import logging
 
 from typing import Optional, Tuple
 
+import fastforward.nn.functional as FFF
 import torch
 
+from fastforward.nn import QuantizedModule, QuantizerMetadata
 from transformers.cache_utils import Cache
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
-
-import fastforward.nn.functional as FFF
-
-from fastforward.nn import QuantizedModule, QuantizerMetadata
 
 logger = logging.getLogger(__name__)
 

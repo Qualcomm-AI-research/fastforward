@@ -8,10 +8,9 @@ from contextlib import contextmanager
 from typing import Any, Callable
 from unittest.mock import MagicMock
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.quantization import granularity
 from fastforward.quantization.affine import StaticAffineQuantParams, quantize_per_tensor

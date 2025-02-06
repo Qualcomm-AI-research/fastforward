@@ -1,10 +1,9 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding, rotate_half
-
 from fastforward.nn import QuantizedModule
 from fastforward.quantization.strict_quantization import strict_quantization
+from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding, rotate_half
 
 
 class QuantizedLlamaRotaryEmbedding(LlamaRotaryEmbedding, QuantizedModule):

@@ -31,9 +31,8 @@ import copy
 
 from pprint import pprint
 
-import torch
-
 import fastforward as ff
+import torch
 
 # %% [markdown]
 # # 1. Quantized Tensors

@@ -31,6 +31,7 @@
 # +
 import os
 
+import fastforward as ff
 import torch
 
 from datasets import load_dataset
@@ -38,8 +39,6 @@ from quick_start_utils import tokenize_dataset
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
-
-import fastforward as ff
 
 model_dtype = torch.float16
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

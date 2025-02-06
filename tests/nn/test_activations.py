@@ -1,9 +1,8 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import torch
-
 import fastforward as ff
+import torch
 
 
 @ff.flags.context(ff.strict_quantization, False)

@@ -25,9 +25,8 @@
 # Let's look at a few examples. First, we'll create a PyTorch module (with submodules) that we'll refer to as `my_module`:
 
 # %%
-import torch
-
 import fastforward as ff
+import torch
 
 
 # %%

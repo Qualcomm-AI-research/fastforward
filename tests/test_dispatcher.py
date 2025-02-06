@@ -3,10 +3,9 @@
 
 import unittest
 
+import fastforward
 import pytest
 import torch
-
-import fastforward
 
 from fastforward.dispatcher import _DISPATCHER, Predicate, dispatch, register
 from fastforward.quantization.random import random_quantized

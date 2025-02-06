@@ -3,11 +3,10 @@
 
 import logging
 
-from transformers.models.llama.modeling_llama import LlamaMLP
-
 import fastforward.nn.functional as FFF
 
 from fastforward.nn import QuantizedModule, QuantizerMetadata
+from transformers.models.llama.modeling_llama import LlamaMLP
 
 logger = logging.getLogger(__name__)
 

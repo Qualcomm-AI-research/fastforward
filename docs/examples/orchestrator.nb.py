@@ -40,9 +40,8 @@
 # %%
 from typing import Any, Optional
 
-from IPython.display import Markdown, display
-
 from fastforward._orchestration.concurrent_execution import ConcurrentExecOrchestrator
+from IPython.display import Markdown, display
 
 
 def example_function(name: str) -> None:
