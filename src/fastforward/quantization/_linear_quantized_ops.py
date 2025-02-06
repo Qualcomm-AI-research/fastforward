@@ -305,9 +305,7 @@ def getitem_per_channel(
 
     channel_dims = q_params.granularity.channel_dims
     # avoid negative channel dims
-    channel_dims = tuple(
-        [input.raw_data.ndim + c if (c < 0) else c for c in channel_dims]
-    )
+    channel_dims = tuple([input.raw_data.ndim + c if (c < 0) else c for c in channel_dims])
 
     # get the operations we need to perform on the scaling and offset
     param_tmp_shape = [
