@@ -47,8 +47,7 @@ _U = TypeVar("_U")
 
 
 def _to_dtype(dtype: torch.dtype, qtensor: "QuantizedTensor") -> torch.Tensor:
-    """Dequantize quantized tensor and convert to `dtype`.
-    """
+    """Dequantize quantized tensor and convert to `dtype`."""
     return qtensor.dequantize().to(dtype)
 
 
@@ -290,8 +289,7 @@ class QuantizedTensor(torch.Tensor):
     """
 
     def __new__(cls, data: torch.Tensor, *args: Any, **kwargs: Any) -> "QuantizedTensor":
-        """Create a new quantized tensor.
-        """
+        """Create a new quantized tensor."""
         return data.as_subclass(cls)
 
     def __init__(
@@ -370,8 +368,7 @@ class QuantizedTensor(torch.Tensor):
         return self.to("cpu")
 
     def dequantize(self) -> torch.Tensor:
-        """Dequantize and return real-valued torch.Tensor.
-        """
+        """Dequantize and return real-valued torch.Tensor."""
         return self._quantization_context.quantization_fn.dequantize(
             self.raw_data, self.quant_args()
         )
@@ -495,8 +492,7 @@ class QuantizedTensor(torch.Tensor):
     # fmt: on
 
     def int_repr(self) -> torch.Tensor:
-        """Return the integer (or quantized) data representation underlying this quantized tensor.
-        """
+        """Return the integer (or quantized) data representation underlying this quantized tensor."""
         return self.raw_data
 
     def contiguous(self, memory_format: Any = torch.contiguous_format) -> "QuantizedTensor":

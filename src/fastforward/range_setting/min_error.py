@@ -241,8 +241,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         self._skip_unsupported_quantizers = skip_unsupported_quantizers
 
     def prepare(self, module: Quantizer) -> OverrideHandle:
-        """Prepare `module` for min error range estimation.
-        """
+        """Prepare `module` for min error range estimation."""
         if not isinstance(module, SupportsRangeBasedOperator):
             proto_name = (
                 f"{SupportsRangeBasedOperator.__module__}.{SupportsRangeBasedOperator.__qualname__}"
@@ -259,8 +258,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         )
 
     def cleanup(self, module: Quantizer, metadata: OverrideHandle) -> None:
-        """Cleanup `module` after min error range estimation.
-        """
+        """Cleanup `module` after min error range estimation."""
         del module
         metadata.remove()
 

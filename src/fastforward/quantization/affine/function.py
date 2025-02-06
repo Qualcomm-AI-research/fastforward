@@ -30,8 +30,7 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass
 class StaticAffineQuantParams(QuantizationParameters):
-    """Quantization parameters for static affine quantization.
-    """
+    """Quantization parameters for static affine quantization."""
 
     scale: float | torch.Tensor
     offset: float | torch.Tensor | None
@@ -50,8 +49,7 @@ DynamicParamInferenceFn: TypeAlias = Callable[
 
 @dataclasses.dataclass
 class DynamicAffineQuantParams(QuantizationParameters):
-    """Quantization parameters for dynamic affine quantization.
-    """
+    """Quantization parameters for dynamic affine quantization."""
 
     num_bits: int
     granularity: granularities.Granularity

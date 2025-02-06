@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""Collection of types, protocols and base implementations for range setting methods.
-"""
+"""Collection of types, protocols and base implementations for range setting methods."""
 
 import abc
 import contextlib

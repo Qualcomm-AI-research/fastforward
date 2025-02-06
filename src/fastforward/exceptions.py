@@ -3,8 +3,7 @@
 
 
 class QuantizationError(RuntimeError):
-    """General quantization error.
-    """
+    """General quantization error."""
 
     pass
 

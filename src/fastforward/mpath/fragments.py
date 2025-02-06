@@ -49,7 +49,7 @@ class PathFragment(Fragment):
 
 class RegexPathFragment(Fragment):
     """Match a regex against the fragment name (i.e., module name in parent
-    module). The regex must match the full name, otherwise it evaluates
+    module). The regex must match the full name, otherwise it evaluates.
     """
 
     def __init__(self, fragment_pattern: str) -> None:
@@ -77,8 +77,7 @@ class RegexPathFragment(Fragment):
 
 
 class ClassFragment(Fragment):
-    """Match a fragment if the module is an instance of fragment_class
-    """
+    """Match a fragment if the module is an instance of fragment_class."""
 
     def __init__(self, fragment_class: type) -> None:
         super().__init__()
@@ -120,8 +119,7 @@ class ClassFragment(Fragment):
 
 
 class PredicateFragment(Fragment):
-    """Match a fragment if predicate evaluates to True.
-    """
+    """Match a fragment if predicate evaluates to True."""
 
     def __init__(self, predicate: Callable[[str, torch.nn.Module], bool]) -> None:
         super().__init__()
@@ -138,8 +136,7 @@ class PredicateFragment(Fragment):
 
 
 class JointFragment(Fragment):
-    """Match a fragment if all fragments evaluate to True
-    """
+    """Match a fragment if all fragments evaluate to True."""
 
     def __init__(self, *fragments: Fragment) -> None:
         super().__init__()
@@ -167,8 +164,7 @@ class JointFragment(Fragment):
 
 
 class DisjointFragment(Fragment):
-    """Match a fragment if one of fragments evaluates to True
-    """
+    """Match a fragment if one of fragments evaluates to True."""
 
     def __init__(self, *fragments: Fragment) -> None:
         super().__init__()
@@ -192,8 +188,7 @@ class DisjointFragment(Fragment):
 
 
 class InvertedFragment(Fragment):
-    """Match a fragment if fragment evaluates to False
-    """
+    """Match a fragment if fragment evaluates to False."""
 
     def __init__(self, fragment: Fragment) -> None:
         super().__init__()

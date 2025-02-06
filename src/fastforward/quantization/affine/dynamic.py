@@ -25,7 +25,7 @@ def quantization_context(
     quantized_dtype: torch.dtype | None = None,
     dequantize_dtype: torch.dtype | None = None,
 ) -> QuantizationContext[DynamicAffineQuantParams]:
-    """Create quantization context for dynamic linear quantization
+    """Create quantization context for dynamic linear quantization.
 
     Args:
         granularity: The granuliarty to use for quantization
@@ -155,7 +155,7 @@ def quantize_per_block(
     num_bits: int = 8,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
-    """Dynamically quantize `input` per block,
+    """Dynamically quantize `input` per block.
 
     Args:
         input: The data to be quantized

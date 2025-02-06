@@ -7,8 +7,7 @@ import fastforward.nn as ffnn
 
 
 class QuantizedLayerNorm(torch.nn.LayerNorm, ffnn.QuantizedModule):
-    """Quantized implementation of torch.nn.LayerNorm.
-    """
+    """Quantized implementation of torch.nn.LayerNorm."""
 
     weight: torch.Tensor | None  # type: ignore[assignment]
     bias: torch.Tensor | None  # type: ignore[assignment]

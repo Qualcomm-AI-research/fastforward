@@ -290,8 +290,7 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         metadata.remove()
 
     def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
-        """Split module up into separate quantizers.
-        """
+        """Split module up into separate quantizers."""
         for _, quantizer in named_quantizers(module, recurse=True):
             if isinstance(quantizer, RangeSettable) or not self.skip_unsupported_quantizers:
                 yield quantizer

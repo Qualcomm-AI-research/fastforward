@@ -40,8 +40,7 @@ class _Predicate(Generic[P], Protocol):
 
 
 class _PredicateNot(_Predicate[P]):
-    """Predicate that represents the logical negation of another predicate.
-    """
+    """Predicate that represents the logical negation of another predicate."""
 
     def __init__(self, p: _Predicate[P]) -> None:
         self._p = p
@@ -51,8 +50,7 @@ class _PredicateNot(_Predicate[P]):
 
 
 class _PredicateAnd(_Predicate[P]):
-    """Predicate that represents the logical conjunction of multiple predicates.
-    """
+    """Predicate that represents the logical conjunction of multiple predicates."""
 
     def __init__(self, *p: _Predicate[P]) -> None:
         self._p = p
@@ -62,8 +60,7 @@ class _PredicateAnd(_Predicate[P]):
 
 
 class _PredicateOr(_Predicate[P]):
-    """Predicate that represents the logical disjunction of multiple predicates.
-    """
+    """Predicate that represents the logical disjunction of multiple predicates."""
 
     def __init__(self, *p: _Predicate[P]) -> None:
         self._p = p
@@ -83,8 +80,7 @@ class Predicate(_Predicate[P]):
         self._fn = fn
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> bool:
-        """Call wrapped predicate and return result.
-        """
+        """Call wrapped predicate and return result."""
         return self._fn(*args, **kwargs)
 
     def __repr__(self) -> str:

@@ -68,8 +68,7 @@ class ModuleStrictQuantHandle:
         self._handles.append(post_handle)
 
     def remove(self) -> None:
-        """Remove all attached hooks.
-        """
+        """Remove all attached hooks."""
         for handle in self._handles:
             handle.remove()
         self._handles = []
@@ -78,8 +77,7 @@ class ModuleStrictQuantHandle:
         pass
 
     def __exit__(self, exc_type, exc_value, traceback):  # type: ignore[no-untyped-def]
-        """Exit the context manager and remove all hooks.
-        """
+        """Exit the context manager and remove all hooks."""
         self.remove()
 
 

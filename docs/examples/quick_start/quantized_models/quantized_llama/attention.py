@@ -60,7 +60,7 @@ class QuantizedLlamaFlashAttention2(LlamaFlashAttention2, QuantizedModule):
 
 
 class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
-    """Multi-headed attention from 'Attention Is All You Need' paper"""
+    """Multi-headed attention from 'Attention Is All You Need' paper."""
 
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -377,7 +377,7 @@ def _scaled_dot_product_attention(
     output_quantizer: Optional[Quantizer] = None,
     strict_quantization: Optional[bool] = None,
 ) -> QuantizedTensor | Tensor:
-    """Quantized version of scaled_dot_product_attention from torch documentation
+    """Quantized version of scaled_dot_product_attention from torch documentation.
 
     Reference: https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
     """

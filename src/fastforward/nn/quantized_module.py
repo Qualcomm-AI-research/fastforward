@@ -298,8 +298,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
 
 
 class SkipQuantization:
-    """Marker class to signify that a module must not be quantized.
-    """
+    """Marker class to signify that a module must not be quantized."""
 
     def __repr__(self) -> str:
         return "<skip quantization>"

@@ -97,7 +97,7 @@ def test_disable_quantization_override_context():
 
 def test_disable_quantzation_quantizer_attachement():
     """DisableQuantizationOverride.attach_to must only attach to quantizers that
-    are passed to `attach_to`
+    are passed to `attach_to`.
     """
     # Setup quantized module
     module = ff.nn.QuantizedLinear(10, 10, bias=False)

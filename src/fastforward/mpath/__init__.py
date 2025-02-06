@@ -1,11 +1,11 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""MPath is a utility for finding and filtering submodules of
-a module. For example, it helps in finding all submodules
+"""MPath is a utility for finding and filtering submodules of a module.
+
+For example, it helps in finding all submodules
 of the same type or all modules whose name relative to the root module
 satisfies a certain condition.
-from typing import Any, NewType, Optional, cast
 
 At it's core MPath is used through query strings, however, more complicated
 queries can be build programmatically.

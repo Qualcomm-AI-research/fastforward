@@ -94,8 +94,7 @@ default_tags = SimpleNamespace(
 
 
 class _TagAttribute:
-    """Descriptor class for tag attributes in QuantizerMetadata.
-    """
+    """Descriptor class for tag attributes in QuantizerMetadata."""
 
     def __init__(self, tag: str | Tag) -> None:
         """Initialize the _TagAttribute with a tag.
@@ -228,8 +227,7 @@ class QuantizerMetadata:
 
 
 class Quantizer(torch.nn.Module):
-    """Base class for Quantizers.
-    """
+    """Base class for Quantizers."""
 
     _quantizer_overrides: dict[int, override.OverrideFn[torch.Tensor]]
     quant_metadata: QuantizerMetadata | None
@@ -302,8 +300,7 @@ class Quantizer(torch.nn.Module):
     __call__: Callable[..., torch.Tensor]
 
     def is_stub(self) -> bool:
-        """Returns: False, indicating this is not a stub.
-        """
+        """Returns: False, indicating this is not a stub."""
         return False
 
 

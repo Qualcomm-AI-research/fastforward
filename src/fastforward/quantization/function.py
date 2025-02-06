@@ -20,7 +20,7 @@ from fastforward.quantized_tensor import QuantizedTensor
 @dataclasses.dataclass
 class QuantizationParameters:
     """Container for quantization parameters. Each quantization expects a specific
-    `QuantizationParamers`
+    `QuantizationParamers`.
     """
 
     def with_changes(self, **changes: Any) -> Self:
@@ -46,8 +46,7 @@ QuantParams_co = TypeVar("QuantParams_co", bound=QuantizationParameters, covaria
 
 
 class QuantizationFunction(Generic[QuantParams_co], abc.ABC):
-    """Base class for QuantizationFunctions.
-    """
+    """Base class for QuantizationFunctions."""
 
     # mypy does not allow covariant parameters. It's a coarse way of not
     # allowing mutable covariant functions. This is not a problem in this case,

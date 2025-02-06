@@ -47,8 +47,7 @@ def _default_yaml_file() -> pathlib.Path:
 
 
 class _SafeLoaderWithLines(yaml.loader.SafeLoader):
-    """Load YAML file while also storing line numbers using __line__ key.
-    """
+    """Load YAML file while also storing line numbers using __line__ key."""
 
     def construct_mapping(
         self, node: yaml.nodes.MappingNode, *args: Any, **kwargs: Any
@@ -225,12 +224,12 @@ class OperatorTable:
 
     def operators(self) -> Iterator[Operator]:
         """Returns:
-        `Iterator` over all operators in the table
+        `Iterator` over all operators in the table.
         """
         yield from self._operator_specs
 
     def get(self, key: _PyOp | str) -> Operator:
-        """Lookup operator based on the fallback operator
+        """Lookup operator based on the fallback operator.
 
         Args:
             key: Either a reference to the operator or a string referencing

@@ -45,7 +45,7 @@ def run(root: pathlib.Path, header: str) -> None:
 
 
 def process_file(filepath: pathlib.Path, header: str) -> None:
-    """Add header to file at filepath if it doesn't contain it yet
+    """Add header to file at filepath if it doesn't contain it yet.
 
     The header may only be preceded by shebang and empty lines,
     if not a HeaderViolation is raised.

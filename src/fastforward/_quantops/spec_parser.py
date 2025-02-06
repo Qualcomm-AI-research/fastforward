@@ -18,8 +18,7 @@ from ._parser import TokenizationError as TokenizationError
 def _operator(
     identifier: str, params: list[operator.Parameter], return_type: symtypes.Type | Sentinel
 ) -> operator.Operator:
-    """Helper function to turn parse result into operator
-    """
+    """Helper function to turn parse result into operator."""
     return_type_ = None
     if isinstance(return_type, symtypes.Type):
         return_type_ = return_type
@@ -27,8 +26,7 @@ def _operator(
 
 
 def _param(identifier: str, type_: symtypes.Type, default: str | Sentinel) -> operator.Parameter:
-    """Helper function to turn parse result into parameter
-    """
+    """Helper function to turn parse result into parameter."""
     default_value = None
     if isinstance(default, str):
         default_value = default
@@ -36,8 +34,7 @@ def _param(identifier: str, type_: symtypes.Type, default: str | Sentinel) -> op
 
 
 def _type(*args: Any) -> symtypes.Type | None:
-    """Helper function to turn parse result into symbolic type
-    """
+    """Helper function to turn parse result into symbolic type."""
     match args:
         case (str(),):
             try:
@@ -66,8 +63,7 @@ _R: TypeAlias = ParseRule
 
 
 class _SpecParser(Parser):
-    """Simple PEG based parser for quantizer operator spec.
-    """
+    """Simple PEG based parser for quantizer operator spec."""
 
     rules = (
         _R("start", ["operator"]),

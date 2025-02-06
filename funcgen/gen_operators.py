@@ -132,7 +132,7 @@ def _statement(stmt: str | libcst.BaseStatement) -> libcst.BaseStatement:
 def _operator_function_stub(
     op: operator.Operator, extra_params: Sequence[libcst.Param] = ()
 ) -> libcst.FunctionDef:
-    """Returns FunctionDef with correct signature for op and empty body
+    """Returns FunctionDef with correct signature for op and empty body.
 
     Args:
         op: Operator to create function for

@@ -434,8 +434,7 @@ class ConcurrentExecOrchestrator:
         return handle
 
     def start(self) -> None:
-        """Start orchestrated execution.
-        """
+        """Start orchestrated execution."""
         for thread in self._threads:
             thread.start()
 

@@ -42,7 +42,7 @@ class FilterResult:
 
 
 class MPathCollection(abc.Sequence[FilterResult]):
-    """Collection for mpath search results as returned by `mpath.search`
+    """Collection for mpath search results as returned by `mpath.search`.
 
     Args:
         root: The root module that was used to produce the search results
@@ -116,7 +116,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def map(self, func: Callable[[str, torch.nn.Module], _T]) -> list[_T]:
         """Apply func to all modules in the collection, the result of func is
-        returned as a list
+        returned as a list.
 
         Args:
             func: Function to apply to each member of the collection
@@ -134,8 +134,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         yield from ((result.full_name, result.module) for result in self._results)
 
     def modules(self) -> Iterator[torch.nn.Module]:
-        """Returns an iterator over all modules in this collection
-        """
+        """Returns an iterator over all modules in this collection."""
         for _, module in self.named_modules():
             yield module
 

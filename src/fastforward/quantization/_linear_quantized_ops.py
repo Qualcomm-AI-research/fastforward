@@ -66,7 +66,7 @@ affine_per_channel_predicate = Predicate(_is_affine_per_channel)
 
 
 def _affine_params(tensor: QuantizedTensor) -> "StaticAffineQuantParams":
-    """Perform implicit cast ont quant_args"""
+    """Perform implicit cast ont quant_args."""
     return tensor.quant_args()  # type: ignore[return-value]
 
 
@@ -126,8 +126,7 @@ def ones_like(input: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
 
 
 class _ScaleGradient(torch.autograd.Function):
-    """Scale the gradient by `scalar` during backward pass.
-    """
+    """Scale the gradient by `scalar` during backward pass."""
 
     @staticmethod
     def forward(ctx: Any, input: torch.Tensor, scalar: float) -> torch.Tensor:
@@ -183,7 +182,7 @@ def cat_predicate(
     output_quantizer: Any = None,
     strict_quantization: bool = False,
 ) -> bool:
-    """Predicate for quantized concatenation
+    """Predicate for quantized concatenation.
 
     Returns True if all elements of `tensors` are quantized using affine quantization
     using the exact same quantization params.

@@ -63,7 +63,7 @@ class QuantizedLlamaDecoderLayer(LlamaDecoderLayer, QuantizedModule):
             with `head_dim` being the embedding dimension of each attention head.
         kwargs (`dict`, *optional*):
             Arbitrary kwargs to be ignored, used for FSDP and other methods that injects code
-            into the model
+            into the model.
         """
         # quantize input
         hidden_states = self.input_quantizer(hidden_states)

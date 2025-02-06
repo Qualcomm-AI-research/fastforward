@@ -199,8 +199,7 @@ class Runner:
         )
 
     def _partition_complete(self, *args: Any, **kwargs: Any) -> None:
-        """Notify underlying local error method of the partition complete event.
-        """
+        """Notify underlying local error method of the partition complete event."""
         del args, kwargs
         self._method.conclude_partition()
 

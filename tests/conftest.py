@@ -10,7 +10,7 @@ import pytest
 
 
 def pytest_addoption(parser):
-    """Enable logging benchmark results"""
+    """Enable logging benchmark results."""
     group = parser.getgroup("benchmark")
     group.addoption(
         "--benchmark",

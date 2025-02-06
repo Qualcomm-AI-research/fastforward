@@ -267,8 +267,7 @@ class _RuleItem:
 
 
 class QuantizationConfig:
-    """Manages quantization configuration rules and initializes quantizers in a model.
-    """
+    """Manages quantization configuration rules and initializes quantizers in a model."""
 
     def __init__(self) -> None:
         self._rules: list[_QuantConfigRule] = []

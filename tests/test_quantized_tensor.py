@@ -38,8 +38,7 @@ class _MockQuantizationFunction(QuantizationFunction[StaticAffineQuantParams]):
 
 
 def test_quantize_dequantize():
-    """Assert that quantize and dequant _transform_ data.
-    """
+    """Assert that quantize and dequant _transform_ data."""
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
     scale = 4.0
@@ -105,7 +104,7 @@ def test_to_dtype(dtype: torch.dtype):
 @ff.flags.context(ff.strict_quantization, False)
 def test_quantized_tensor_cpu_cuda():
     """Test if quantized tensor and associated tensor quantization parameters are moved between
-    devices and if quant
+    devices and if quant.
     """
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
@@ -149,7 +148,7 @@ def test_quantized_tensor_cpu_cuda():
 @ff.flags.context(ff.strict_quantization, False)
 def test_quantized_tensor_to():
     """Test if quantized tensor and associated tensor quantization parameters are moved between
-    devices and if quant
+    devices and if quant.
     """
     data = torch.randn(10, 10)
     scale = torch.tensor(3.0)
@@ -198,8 +197,7 @@ def test_quantized_tensor_to():
 
 
 def test_quantized_tensor_grad_backward():
-    """Test if graph is properly created and gradient are accumulated using backward.
-    """
+    """Test if graph is properly created and gradient are accumulated using backward."""
     torch.manual_seed(7480)
     scale = torch.tensor(3.0, requires_grad=True)
 

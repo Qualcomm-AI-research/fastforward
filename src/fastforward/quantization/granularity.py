@@ -95,8 +95,7 @@ class Granularity(abc.ABC):
 
 
 class PerTensor(Granularity):
-    """Granularity class for per-tensor quantization.
-    """
+    """Granularity class for per-tensor quantization."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -147,8 +146,7 @@ class PerChannel(Granularity):
 
     @override
     def repr_args(self) -> dict[str, Any]:
-        """Return a dictionary of arguments for the __repr__ method.
-        """
+        """Return a dictionary of arguments for the __repr__ method."""
         dim = self.channel_dims[0] if len(self.channel_dims) == 1 else self.channel_dims
         return {"channel": dim}
 
@@ -187,8 +185,7 @@ class PerTile(Granularity):
 
     @override
     def repr_args(self) -> dict[str, Any]:
-        """Return a dictionary of arguments for the __repr__ method.
-        """
+        """Return a dictionary of arguments for the __repr__ method."""
         return {"tile_shape": self.tile_shape}
 
 

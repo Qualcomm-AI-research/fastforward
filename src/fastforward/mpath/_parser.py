@@ -435,8 +435,7 @@ def parse(
     context: Optional[dict[str, Any]] = None,
     aliases: Optional[dict[str, selector.BaseSelector]] = None,
 ) -> selector.BaseSelector:
-    """Parse a raw query and produce a Selector
-    """
+    """Parse a raw query and produce a Selector."""
     aliases = aliases or {}
     context = context or get_caller_context()
     return Parser(raw, context=context, aliases=aliases).parse()

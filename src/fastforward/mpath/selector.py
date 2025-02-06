@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 
 
 class MPathQueryError(Exception):
-    """Exception raised for errors in the MPath query.
-    """
+    """Exception raised for errors in the MPath query."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -182,8 +181,7 @@ class BaseSelector(abc.ABC):
 
     @abc.abstractmethod
     def fragment_list(self) -> FragmentList:
-        """Return a list of fragments that make up this selector and all subsequent selectors.
-        """
+        """Return a list of fragments that make up this selector and all subsequent selectors."""
 
     @abc.abstractmethod
     def remove_multi_wildcard_root(self) -> "BaseSelector | None":
@@ -195,8 +193,7 @@ class BaseSelector(abc.ABC):
 
     @abc.abstractmethod
     def has_multi_wildcard_root(self) -> bool:
-        """Return True if the root fragment is a multi-wildcard fragment and False otherwise.
-        """
+        """Return True if the root fragment is a multi-wildcard fragment and False otherwise."""
 
     def simplify(self) -> "BaseSelector":
         """Simplify the selector by removing any redundant or unnecessary fragments.

@@ -7,8 +7,7 @@ from fastforward.nn import QuantizedModule, QuantizerStub, functional
 
 
 class QuantizedActivation(QuantizedModule, include_in_module_map=False):
-    """Base class for quantized activations.
-    """
+    """Base class for quantized activations."""
 
     def __init_quantization__(self) -> None:
         super().__init_quantization__()

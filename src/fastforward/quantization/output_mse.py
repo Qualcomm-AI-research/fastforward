@@ -25,12 +25,10 @@ def _data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tens
 
 
 class _Handle(Protocol):
-    """Protocol for a handle that can be removed.
-    """
+    """Protocol for a handle that can be removed."""
 
     def remove(self) -> Any:
-        """Remove the handle.
-        """
+        """Remove the handle."""
 
 
 class OutputMSEOverride:
@@ -71,8 +69,7 @@ class OutputMSEOverride:
 
 
 class OutputMSE(LocalErrorMethod):
-    """Local error method for output Mean Squared Error (MSE) minimization.
-    """
+    """Local error method for output Mean Squared Error (MSE) minimization."""
 
     def __init__(
         self, modules: Sequence[QuantizedModule], optimizer_factory: torch.optim.Optimizer
@@ -122,8 +119,7 @@ class OutputMSE(LocalErrorMethod):
             self._handles.append(output_quantizer.register_forward_pre_hook(hook))
 
     def cleanup(self) -> None:
-        """Clean up by removing all registered hooks.
-        """
+        """Clean up by removing all registered hooks."""
         for handle in self._handles:
             handle.remove()
         self._handles.clear()
@@ -142,8 +138,7 @@ class OutputMSE(LocalErrorMethod):
             self._override.passthrough = False
 
     def conclude_partition(self) -> None:
-        """Conclude the current partition by zeroing the gradients.
-        """
+        """Conclude the current partition by zeroing the gradients."""
         self._optimizer_factory.zero_grad()
 
     def update(self, quantized: torch.Tensor, unquantized: torch.Tensor) -> None:
