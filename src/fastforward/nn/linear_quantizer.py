@@ -135,6 +135,9 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
             are above zero. (Default: True)
         granularity: Granularity object that specifies the quantization
             granularity
+        quantized_dtype: datatype in which the quantized data is stored
+        param_dtype: datatype in which the quantization parameters are stored
+            (which can affect the datatype in which quantization is simulated)
         device: The device used for parameters
     """
 
@@ -147,19 +150,26 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         symmetric: bool = True,
         allow_one_sided: bool = True,
         granularity: granularities.Granularity | None = None,
+        quantized_dtype: torch.dtype | None = None,
+        param_dtype: torch.dtype | None = None,
         device: torch.device | str = "cpu",
     ) -> None:
-        super().__init__(num_bits=num_bits, granularity=granularity)
+        super().__init__(
+            num_bits=num_bits, granularity=granularity, quantized_dtype=quantized_dtype
+        )
 
-        self.scale = torch.nn.UninitializedParameter(device=device)  # type: ignore[call-arg]
+        self.scale = torch.nn.UninitializedParameter(device=device, dtype=param_dtype)  # type: ignore[call-arg]
         self.allow_one_sided = allow_one_sided
 
         if symmetric and not allow_one_sided:
             self.register_parameter("offset", None)
         elif symmetric and allow_one_sided:
-            self.register_buffer("offset", torch.nn.UninitializedBuffer(device=device))  # type: ignore[call-arg]
+            self.register_buffer(
+                "offset",
+                torch.nn.UninitializedBuffer(device=device, dtype=param_dtype),  # type: ignore[call-arg]
+            )
         else:
-            self.offset = torch.nn.UninitializedParameter(device=device)  # type: ignore[call-arg]
+            self.offset = torch.nn.UninitializedParameter(device=device, dtype=param_dtype)  # type: ignore[call-arg]
 
     @property
     def symmetric(self) -> bool:
