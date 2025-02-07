@@ -4,7 +4,7 @@
 import pathlib
 import unittest
 
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 import onnx
@@ -32,9 +32,11 @@ from fastforward.nn.quantizer import Quantizer
 from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 
+QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
+
 
 @pytest.fixture
-def simple_model() -> tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]:
+def simple_model() -> QuantizedModelFixture:
     class FFNet(torch.nn.Module):
         def __init__(self):
             super(FFNet, self).__init__()
@@ -86,15 +88,19 @@ def activate_quantizers(
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_export_quantized_model(
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
-) -> None:
+def test_export_quantized_model(simple_model: QuantizedModelFixture) -> None:
+    # GIVEN a model with quantizer stubs.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    # Check that the export mode works for model with only quantizer stubs.
+    # WHEN exporting the model before quantizers are activated.
     with ff.export_mode(False):
         exported_graph = torch.export.export(quant_model, args=(data,))
 
+    # THEN the dynamo export should work as with any standard torch modules
+    # without the need for switching to export mode.
+    assert isinstance(exported_graph, torch.export.exported_program.ExportedProgram)
+
+    # WHEN exporitng the model with activated quantizers.
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
     # The export method does not support custom tensors objects (like the QuantizedTensor)
@@ -104,14 +110,14 @@ def test_export_quantized_model(
     with ff.export_mode(True):
         exported_graph = torch.export.export(quant_model, args=(data,))
 
+    # THEN the dynamo export should work when export mode is activated.
     assert isinstance(exported_graph, torch.export.exported_program.ExportedProgram)
 
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_request(
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
-) -> None:
+def test_node_request(simple_model: QuantizedModelFixture) -> None:
+    # GIVEN a quantized model and its exported dynamo graph.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
@@ -121,17 +127,26 @@ def test_node_request(
 
     graph_wrapper = GraphWrapper(quantized_model_graph)
 
-    assert not graph_wrapper.visit(
+    # WHEN using the node request node for a function/module that does not exist
+    nodes = graph_wrapper.visit(
         RequestNode("call_function", "nonexisting_module::nonexisting_function")
     )
-    assert not graph_wrapper.visit(
+    # THEN the returned node list should not include any entries
+    assert len(nodes) == 0
+
+    # WHEN using the node request node for a node type that does not exist
+    nodes = graph_wrapper.visit(
         RequestNode("nonexisting_node_type", "fastforward::dequantize_by_tile")
     )
+    # THEN the returned node list should include some entries
+    assert len(nodes) == 0
 
+    # GIVEN that the quantized model has a number of quantizers.
     num_quantizers = len(
         [module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)]
     )
 
+    # WHEN visiting the quantize_by_tile/dequantize_by_tile nodes.
     dequantized_nodes = graph_wrapper.visit(
         RequestNode("call_function", "fastforward::quantize_by_tile")
     )
@@ -139,6 +154,8 @@ def test_node_request(
         RequestNode("call_function", "fastforward::dequantize_by_tile")
     )
 
+    # THEN the resulting lists should have the same number of entries as the number
+    # of quantizers in the model.
     assert isinstance(dequantized_nodes, list)
     assert isinstance(quantized_nodes, list)
     assert len(dequantized_nodes) == len(quantized_nodes) == num_quantizers
@@ -146,9 +163,7 @@ def test_node_request(
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_removal(
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
-) -> None:
+def test_node_removal(simple_model: QuantizedModelFixture) -> None:
     # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -215,10 +230,8 @@ def test_node_removal(
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
-def test_node_logging(
-    granularity: Granularity,
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
-) -> None:
+def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixture) -> None:
+    # GIVEN a quantized model
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
@@ -226,6 +239,8 @@ def test_node_logging(
     with ff.export_mode(True):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
 
+    # WHEN loggign the quantization parameters of the model (knowing beforehand
+    # what the quantization targets are).
     graph_wrapper = GraphWrapper(quantized_model_graph)
     quantization_logs = graph_wrapper.visit(
         LogQuantizationParameter("call_function", "fastforward::quantize_by_tile")
@@ -246,6 +261,9 @@ def test_node_logging(
         "linear_2",
     ]
 
+    # THEN the logs should match the targets, and the model
+    # quantization parameters should match the values logged in the
+    # dictionary.
     assert isinstance(quantization_logs, dict)
     assert len(quantization_targets) == len(quantization_logs)
     assert set(quantization_targets) <= set(quantization_logs)
@@ -266,9 +284,9 @@ def test_node_logging(
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_ff_model_to_onnx_export(
-    tmp_path: pathlib.Path,
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture
 ) -> None:
+    # GIVEN a model and its initial non-quantized result.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     non_quantized_result = quant_model(data)
@@ -283,6 +301,8 @@ def test_ff_model_to_onnx_export(
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
+    # WHEN using the export pipeline for the quantized model
+    # and running inference on the ONNX artifact
     export(quant_model, (data,), str(output_directory), model_name)
 
     ort_session = onnxruntime.InferenceSession(
@@ -296,7 +316,10 @@ def test_ff_model_to_onnx_export(
     ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(data)}
     ort_outs = ort_session.run(None, ort_inputs)
 
-    # compare ONNX Runtime and PyTorch results
+    # THEN the results between the original non-quantized model inference
+    # and the ONNX inference should match (since the export pipeline removes
+    # all quantize_by_tile and dequantize_by_tile ops, the exported model is
+    # equivalent to the original model before its quantizers are activated)
     np.testing.assert_allclose(to_numpy(non_quantized_result), ort_outs[0], rtol=1e-03, atol=1e-05)
 
 
@@ -393,10 +416,9 @@ def test_onnx_parameter_collection(
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
-    tmp_path: pathlib.Path,
-    granularity: Granularity,
-    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+    tmp_path: pathlib.Path, granularity: Granularity, simple_model: QuantizedModelFixture
 ) -> None:
+    # GIVEN a quantized model.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     output_directory = tmp_path
@@ -406,10 +428,13 @@ def test_export_function(
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
+    # WHEN exporting the quantized model
     export(quant_model, (data,), str(output_directory), model_name)
     onnx_file_path = (output_model_directory / model_name).with_suffix(".onnx")
     encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
+    # THEN we expect that ONNX/encodings files are created and they are
+    # not empty.
     assert output_model_directory.is_dir()
     assert onnx_file_path.is_file()
     assert encodings_file_path.is_file()
