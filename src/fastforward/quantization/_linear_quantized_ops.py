@@ -310,34 +310,41 @@ def getitem_per_channel(
     channel_dims = q_params.granularity.channel_dims
     # avoid negative channel dims
     channel_dims = tuple(input.raw_data.ndim + c if (c < 0) else c for c in channel_dims)
-    assert all(x >= 0 for x in channel_dims)
+    if any(x < 0 for x in channel_dims):
+        raise ValueError(
+            f"Granularity channels ({q_params.granularity.channel_dims}) are larger than data shape ({input.raw_data.shape})"
+        )
 
-    # get the operations we need to perform on the scaling and offset
+    # expand dimensions without per channel scaling (size 1)
     param_tmp_shape = [
         dim if (i in channel_dims) else 1 for i, dim in enumerate(input.raw_data.shape)
     ]
 
-    slices_effective_ = []
-    i = 0
-    for j, s in enumerate(slices):
-        if s == Ellipsis:
-            slices_effective_.append(s)
+    # get the operations we need to perform on the scaling and offset
+    slices_effective_: list[SliceLike] = []
+    orig_index = 0
+    for slice_index, slice_ in enumerate(slices):
+        if slice_ == Ellipsis:
+            slices_effective_.append(slice_)
             # consider the next slices as indexing the end of the tensor
-            n_slices_left = len([0 for s in slices[j + 1 :] if s is not None and s != Ellipsis])
-            i = input.raw_data.ndim - n_slices_left
-        elif s is None:
+            n_slices_left = 0
+            for s in slices[slice_index + 1 :]:
+                if s is not None and s != Ellipsis:
+                    n_slices_left += 1
+            orig_index = input.raw_data.ndim - n_slices_left
+        elif slice_ is None:
             # expands original dimension. Do not increment counter
             slices_effective_.append(None)
-        elif i in channel_dims:
-            slices_effective_.append(s)
-            i += 1
-        elif isinstance(s, int):
+        elif orig_index in channel_dims:
+            slices_effective_.append(slice_)
+            orig_index += 1
+        elif isinstance(slice_, int):
             # this reduces the dimension along a non-per-channel-axis.
             slices_effective_.append(0)
-            i += 1
+            orig_index += 1
         else:
             slices_effective_.append(slice(None, None, None))  # doesn't do anything
-            i += 1
+            orig_index += 1
 
     # make into tuple (lists are interpreted as indexing by __getitem__)
     slices_effective = tuple(slices_effective_)

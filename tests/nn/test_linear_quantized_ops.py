@@ -194,8 +194,8 @@ def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTe
 
     # Some custom tests with None, Ellipsis, negative indices.
     special_test_cases = [
-        (-1),
-        (None),
+        -1,
+        None,
         (None, -1, -1),
         (-1, None, -1),
         (...),
@@ -206,7 +206,7 @@ def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTe
         (-1, None, ...),
     ]
 
-    for slices_and_indices in special_test_cases:  # type: ignore[assignment]
+    for special_slices in special_test_cases:
         torch.testing.assert_close(
-            qx[slices_and_indices].dequantize(), x[slices_and_indices], rtol=0, atol=0
+            qx[special_slices].dequantize(), x[special_slices], rtol=0, atol=0
         )
