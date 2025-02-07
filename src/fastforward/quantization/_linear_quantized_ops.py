@@ -289,7 +289,7 @@ affine_per_channel_predicate = Predicate(_is_affine_per_channel)
 
 @register("__getitem__", affine_per_channel_predicate)
 def getitem_per_channel(
-    input: QuantizedTensor, slices: Optional[slice | int] | Tuple[Optional[slice | int]]
+    input: QuantizedTensor, slices: slice | int | None | tuple[slice | int | None]
 ) -> QuantizedTensor:
     if not isinstance(slices, Iterable):
         slices = (slices,)
