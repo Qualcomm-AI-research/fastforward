@@ -9,7 +9,7 @@ from fastforward.quantization.affine.static import quantize_by_tile
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-def test_export_mode():
+def test_export_mode() -> None:
     # GIVEN a torch tensor and some quantization parameters
     a = torch.randn(2, 2)
 

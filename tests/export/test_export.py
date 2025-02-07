@@ -4,6 +4,8 @@
 import pathlib
 import unittest
 
+from typing import Any
+
 import numpy as np
 import onnx
 import onnxruntime  # type: ignore[import-untyped]
@@ -26,10 +28,13 @@ from fastforward.export.export import (
     RequestNode,
     export,
 )
+from fastforward.nn.quantizer import Quantizer
+from fastforward.quantization.granularity import Granularity
+from fastforward.quantization.quant_init import QuantizerCollection
 
 
 @pytest.fixture
-def simple_model():
+def simple_model() -> tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]:
     class FFNet(torch.nn.Module):
         def __init__(self):
             super(FFNet, self).__init__()
@@ -57,13 +62,19 @@ def simple_model():
     return quant_model, activation_quantizers, parameter_quantizers
 
 
-def initialize_quantizers(quantizers, quantizer, **quantizer_params):
+def initialize_quantizers(
+    quantizers: QuantizerCollection, quantizer: type[Quantizer], **quantizer_params: Any
+) -> None:
     quantizers.initialize(quantizer, **quantizer_params)
 
 
 def activate_quantizers(
-    quant_model, data, activation_quantizers, parameter_quantizers, param_granularity=ff.PerTensor()
-):
+    quant_model: torch.nn.Module,
+    data: torch.Tensor,
+    activation_quantizers: QuantizerCollection,
+    parameter_quantizers: QuantizerCollection,
+    param_granularity: Granularity = ff.PerTensor(),
+) -> None:
     initialize_quantizers(activation_quantizers, ff.nn.LinearQuantizer, num_bits=8)
     initialize_quantizers(
         parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
@@ -75,7 +86,9 @@ def activate_quantizers(
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_export_quantized_model(simple_model):
+def test_export_quantized_model(
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     # Check that the export mode works for model with only quantizer stubs.
@@ -96,7 +109,9 @@ def test_export_quantized_model(simple_model):
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_request(simple_model):
+def test_node_request(
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
@@ -131,7 +146,9 @@ def test_node_request(simple_model):
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_removal(simple_model):
+def test_node_removal(
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -198,7 +215,10 @@ def test_node_removal(simple_model):
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
-def test_node_logging(granularity, simple_model):
+def test_node_logging(
+    granularity: Granularity,
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
@@ -245,7 +265,10 @@ def test_node_logging(granularity, simple_model):
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_ff_model_to_onnx_export(tmp_path, simple_model):
+def test_ff_model_to_onnx_export(
+    tmp_path: pathlib.Path,
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     non_quantized_result = quant_model(data)
@@ -260,7 +283,7 @@ def test_ff_model_to_onnx_export(tmp_path, simple_model):
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
-    export(quant_model, (data,), output_directory, model_name)
+    export(quant_model, (data,), str(output_directory), model_name)
 
     ort_session = onnxruntime.InferenceSession(
         onnx_artifact_location, providers=["CPUExecutionProvider"]
@@ -369,7 +392,11 @@ def test_onnx_parameter_collection(
 
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
-def test_export_function(tmp_path, granularity, simple_model):
+def test_export_function(
+    tmp_path: pathlib.Path,
+    granularity: Granularity,
+    simple_model: tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection],
+) -> None:
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     output_directory = tmp_path
@@ -379,7 +406,7 @@ def test_export_function(tmp_path, granularity, simple_model):
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
-    export(quant_model, (data,), output_directory, model_name)
+    export(quant_model, (data,), str(output_directory), model_name)
     onnx_file_path = (output_model_directory / model_name).with_suffix(".onnx")
     encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
