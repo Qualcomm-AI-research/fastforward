@@ -8,7 +8,7 @@ system once that lands.
 """
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, TypeAlias, cast, Tuple, Optional, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, TypeAlias, cast
 
 import torch
 
