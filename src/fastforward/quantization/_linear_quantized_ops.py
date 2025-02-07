@@ -292,7 +292,7 @@ def topk(
 
 @register("__getitem__", affine_per_channel_predicate)
 def getitem_per_channel(
-    input: QuantizedTensor, slices: SliceLike | Tuple[SliceLike]
+    input: QuantizedTensor, slices: SliceLike | tuple[SliceLike]
 ) -> QuantizedTensor:
     if isinstance(slices, SliceLike):
         # convert a single slice into a tuple
