@@ -8,6 +8,7 @@ system once that lands.
 """
 
 from collections.abc import Sequence
+from types import EllipsisType
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import torch
@@ -17,7 +18,6 @@ import fastforward as ff
 from fastforward.dispatcher import Predicate, register
 from fastforward.quantized_tensor import QuantizedTensor, apply_and_reattach
 
-EllipsisType: TypeAlias = type(...)  # type: ignore[valid-type]
 Size: TypeAlias = torch.Size | tuple[int, ...]
 SliceLike: TypeAlias = slice | int | EllipsisType | None
 
