@@ -176,7 +176,6 @@ def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTe
     ):
         for i in range(1, len(slices_and_indices) + 1):
             # When: one or more dimensions are indexed
-            slicer = slices_and_indices[:i]
             qx_slice = qx[slices_and_indices[:i]]
             x_slice = x[slices_and_indices[:i]]
 
