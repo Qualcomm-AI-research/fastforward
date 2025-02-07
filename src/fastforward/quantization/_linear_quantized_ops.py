@@ -8,7 +8,7 @@ system once that lands.
 """
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Tuple, TypeAlias, cast
 
 import torch
 
@@ -17,7 +17,10 @@ import fastforward as ff
 from fastforward.dispatcher import Predicate, register
 from fastforward.quantized_tensor import QuantizedTensor, apply_and_reattach
 
+EllipsisType: TypeAlias = type(...)  # type: ignore[valid-type]
 Size: TypeAlias = torch.Size | tuple[int, ...]
+SliceLike: TypeAlias = slice | int | EllipsisType | None
+
 
 if TYPE_CHECKING:
     from fastforward.quantization.affine import StaticAffineQuantParams
@@ -41,6 +44,26 @@ def _is_affine_per_tensor(input: QuantizedTensor, *args: Any, **kwargs: Any) -> 
 
 
 affine_per_tensor_predicate = Predicate(_is_affine_per_tensor)
+
+
+def _is_affine_per_channel(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
+    # As part of the predicate we verify input is acutally a QuantizedTensor
+    if not isinstance(input, QuantizedTensor):
+        return False  # type: ignore[unreachable]
+
+    # Lazy import to break circular import
+    from fastforward.quantization.affine import AffineQuantizationFunction, StaticAffineQuantParams
+
+    context = input.quantization_context
+    granularity = getattr(context.quantization_params, "granularity", None)
+
+    is_affine = issubclass(context.quantization_fn, AffineQuantizationFunction)
+    has_affine_params = isinstance(context.quantization_params, StaticAffineQuantParams)
+    is_per_channel = isinstance(granularity, ff.PerChannel)
+    return is_affine and has_affine_params and is_per_channel
+
+
+affine_per_channel_predicate = Predicate(_is_affine_per_channel)
 
 
 def _affine_params(tensor: QuantizedTensor) -> "StaticAffineQuantParams":
@@ -267,31 +290,12 @@ def topk(
     return torch.return_types.topk((values, indices))
 
 
-def _is_affine_per_channel(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
-    # As part of the predicate we verify input is acutally a QuantizedTensor
-    if not isinstance(input, QuantizedTensor):
-        return False  # type: ignore[unreachable]
-
-    # Lazy import to break circular import
-    from fastforward.quantization.affine import AffineQuantizationFunction, StaticAffineQuantParams
-
-    context = input.quantization_context
-    granularity = getattr(context.quantization_params, "granularity", None)
-
-    is_affine = issubclass(context.quantization_fn, AffineQuantizationFunction)
-    has_affine_params = isinstance(context.quantization_params, StaticAffineQuantParams)
-    is_per_channel = isinstance(granularity, ff.PerChannel)
-    return is_affine and has_affine_params and is_per_channel
-
-
-affine_per_channel_predicate = Predicate(_is_affine_per_channel)
-
-
 @register("__getitem__", affine_per_channel_predicate)
 def getitem_per_channel(
-    input: QuantizedTensor, slices: slice | int | None | tuple[slice | int | None]
+    input: QuantizedTensor, slices: SliceLike | Tuple[SliceLike]
 ) -> QuantizedTensor:
-    if not isinstance(slices, Iterable):
+    if isinstance(slices, SliceLike):
+        # convert a single slice into a tuple
         slices = (slices,)
 
     q_params = input.quantization_context.quantization_params
@@ -305,20 +309,35 @@ def getitem_per_channel(
 
     channel_dims = q_params.granularity.channel_dims
     # avoid negative channel dims
-    channel_dims = tuple([input.raw_data.ndim + c if (c < 0) else c for c in channel_dims])
+    channel_dims = tuple(input.raw_data.ndim + c if (c < 0) else c for c in channel_dims)
+    assert all(x >= 0 for x in channel_dims)
 
     # get the operations we need to perform on the scaling and offset
     param_tmp_shape = [
         dim if (i in channel_dims) else 1 for i, dim in enumerate(input.raw_data.shape)
     ]
+
     slices_effective_ = []
-    for i, s in enumerate(slices):
-        if i in channel_dims or s is None:
+    i = 0
+    for j, s in enumerate(slices):
+        if s == Ellipsis:
             slices_effective_.append(s)
+            # consider the next slices as indexing the end of the tensor
+            n_slices_left = len([0 for s in slices[j + 1 :] if s is not None and s != Ellipsis])
+            i = input.raw_data.ndim - n_slices_left
+        elif s is None:
+            # expands original dimension. Do not increment counter
+            slices_effective_.append(None)
+        elif i in channel_dims:
+            slices_effective_.append(s)
+            i += 1
         elif isinstance(s, int):
-            slices_effective_.append(0)  # this reduces the dimension
+            # this reduces the dimension along a non-per-channel-axis.
+            slices_effective_.append(0)
+            i += 1
         else:
             slices_effective_.append(slice(None, None, None))  # doesn't do anything
+            i += 1
 
     # make into tuple (lists are interpreted as indexing by __getitem__)
     slices_effective = tuple(slices_effective_)
