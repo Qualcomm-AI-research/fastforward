@@ -70,7 +70,7 @@ addopts = [
   "--strict-markers",
   "--strict-config",
   "-m",
-  "not patchedtorch",
+  "not patchedtorch and not slow",
 ]
 markers = [
   "benchmark: marks benchmark tests",

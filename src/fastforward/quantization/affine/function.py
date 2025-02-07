@@ -10,10 +10,10 @@ import torch
 from typing_extensions import override
 
 import fastforward as ff
-import fastforward.quantization._linear_quantized_ops  # noqa: F401
-
 
 # Import linear_quantized_ops to register linear_quantized_op impls
+import fastforward.quantization._linear_quantized_ops  # noqa: F401
+
 from fastforward.exceptions import ExportError
 from fastforward.quantization import granularity as granularities
 from fastforward.quantization.function import (

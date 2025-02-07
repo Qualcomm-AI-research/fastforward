@@ -1,26 +1,18 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+import json
 import pathlib
-import unittest
 
 from typing import Any, TypeAlias
 
 import numpy as np
-import onnx
 import onnxruntime  # type: ignore[import-untyped]
-import onnxscript
 import pytest
 import torch
-import torch_onnx  # type: ignore[import-untyped]
 
 import fastforward as ff
 
-from fastforward.export._export_helpers import (
-    get_activations,
-    get_inputs,
-    get_parameters,
-)
 from fastforward.export.export import (
     GraphWrapper,
     LogQuantizationParameter,
@@ -38,7 +30,7 @@ QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, Q
 @pytest.fixture
 def simple_model() -> QuantizedModelFixture:
     class FFNet(torch.nn.Module):
-        def __init__(self):
+        def __init__(self) -> None:
             super(FFNet, self).__init__()
             self.fc1 = ff.nn.QuantizedLinear(10, 10)
             self.relu1 = ff.nn.QuantizedRelu()
@@ -46,7 +38,7 @@ def simple_model() -> QuantizedModelFixture:
             self.relu2 = ff.nn.QuantizedRelu()
             self.fc3 = ff.nn.QuantizedLinear(10, 10)
 
-        def forward(self, x):
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
             x = self.fc1(x)
             x = self.relu1(x)
             x = self.fc2(x)
@@ -238,6 +230,7 @@ def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixt
 
     with ff.export_mode(True):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
+        quantized_model_graph = quantized_model_graph.run_decompositions({})
 
     # WHEN loggign the quantization parameters of the model (knowing beforehand
     # what the quantization targets are).
@@ -250,15 +243,15 @@ def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixt
         "x",
         "fc1.weight",
         "fc1.bias",
-        "linear",
+        "addmm",
         "relu",
         "fc2.weight",
         "fc2.bias",
-        "linear_1",
+        "addmm_1",
         "relu_1",
         "fc3.weight",
         "fc3.bias",
-        "linear_2",
+        "addmm_2",
     ]
 
     # THEN the logs should match the targets, and the model
@@ -309,108 +302,80 @@ def test_ff_model_to_onnx_export(
         onnx_artifact_location, providers=["CPUExecutionProvider"]
     )
 
-    def to_numpy(tensor):
-        return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
-
     # compute ONNX Runtime output prediction
-    ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(data)}
+    ort_inputs = {ort_session.get_inputs()[0].name: data.detach().cpu().numpy()}
     ort_outs = ort_session.run(None, ort_inputs)
 
     # THEN the results between the original non-quantized model inference
     # and the ONNX inference should match (since the export pipeline removes
     # all quantize_by_tile and dequantize_by_tile ops, the exported model is
     # equivalent to the original model before its quantizers are activated)
-    np.testing.assert_allclose(to_numpy(non_quantized_result), ort_outs[0], rtol=1e-03, atol=1e-05)
+    np.testing.assert_allclose(
+        non_quantized_result.detach().cpu().numpy(), ort_outs[0], rtol=1e-03, atol=1e-05
+    )
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("quantize_input", [True, False])
-@pytest.mark.parametrize("quantize_outputs", [True, False])
-@pytest.mark.parametrize("quantize_weights", [True, False])
-@pytest.mark.parametrize("quantize_bias", [True, False])
-def test_onnx_parameter_collection(
-    quantize_input, quantize_outputs, quantize_weights, quantize_bias
-):
-    def create_mock_sym_tensor(name):
-        mock_symbolic_tensor = unittest.mock.Mock(torch_onnx._tensors.SymbolicTensor)
-        mock_symbolic_tensor.name = name
-        return mock_symbolic_tensor
+@ff.flags.context(ff.strict_quantization, False)
+def test_encodings_file_generation(
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture
+) -> None:
+    # GIVEN a quantized model and its exported encodings file path.
+    data = torch.randn(32, 10)
+    quant_model, activation_quantizers, parameter_quantizers = simple_model
 
-    def create_mock_proto_node(name):
-        mock_proto_node = unittest.mock.Mock(onnx.onnx_ml_pb2.NodeProto)
-        mock_proto_node.output = [name]
-        return mock_proto_node
+    model_name = "test_encodings_file_generation"
+    output_directory = tmp_path
+    output_model_directory = pathlib.Path(output_directory) / model_name
 
-    def create_mock_onnx_and_proto_objects(inputs, activations, parameters):
-        mock_torch_onnx_model = unittest.mock.Mock(onnxscript.ir.Model)
-        mock_proto = unittest.mock.Mock(onnx.onnx_ml_pb2.ModelProto)
-        mock_proto_graph = unittest.mock.Mock(onnx.onnx_ml_pb2.GraphProto)
-
-        mock_torch_onnx_model.graph.inputs = []
-        mock_torch_onnx_model.graph.initializers = []
-        mock_proto.graph = mock_proto_graph
-        mock_proto.graph.node = []
-
-        for input_ in inputs:
-            mock_torch_onnx_model.graph.inputs.append(create_mock_sym_tensor(input_))
-
-        for activation in activations:
-            mock_proto.graph.node.append(create_mock_proto_node(activation))
-
-        for parameter in parameters:
-            mock_torch_onnx_model.graph.initializers.append(parameter)
-
-        return mock_torch_onnx_model, mock_proto
-
-    def _set_pop_key(input_set, key):
-        input_set.remove(key)
-        return key
-
-    quantization_logs = {}
-    new_to_old_input_spec_dictionary = {"arg6_1": "arg6_1"}
-
-    unused_activation_names = set(["addmm", "relu", "t"])
-    unused_parameter_names = set(["fc1.weight", "fc1.bias"])
-
-    unused_input_names = set(["arg6_1"])
-
-    used_activation_names, used_parameter_names, used_input_names = set(), set(), set()
-    mock_torch_onnx_model, mock_proto = create_mock_onnx_and_proto_objects(
-        unused_input_names, unused_activation_names, unused_parameter_names
+    encodings_file_path = (pathlib.Path(output_model_directory) / model_name).with_suffix(
+        ".encodings"
     )
 
-    if quantize_outputs:
-        used_activation_names.add(_set_pop_key(unused_activation_names, "addmm"))
-        used_activation_names.add(_set_pop_key(unused_activation_names, "relu"))
+    expected_quantized_inputs = ["x"]
+    expected_quantized_activations = ["addmm", "relu", "addmm_1", "relu_1", "addmm_2"]
 
-        quantization_logs["addmm"] = 0
-        quantization_logs["relu"] = 0
+    expected_quantized_params = [
+        "fc1.weight",
+        "fc1.bias",
+        "fc2.weight",
+        "fc2.bias",
+        "fc3.weight",
+        "fc3.bias",
+    ]
 
-    if quantize_input:
-        used_input_names.add(_set_pop_key(unused_input_names, "arg6_1"))
-
-        quantization_logs["arg18_1"] = 0
-        new_to_old_input_spec_dictionary["arg6_1"] = "arg18_1"
-
-    if quantize_weights:
-        used_parameter_names.add(_set_pop_key(unused_parameter_names, "fc1.weight"))
-        quantization_logs["fc1.weight"] = 0
-
-    if quantize_bias:
-        used_parameter_names.add(_set_pop_key(unused_parameter_names, "fc1.bias"))
-        quantization_logs["fc1.bias"] = 0
-
-    assert get_inputs(
-        mock_torch_onnx_model, quantization_logs, new_to_old_input_spec_dictionary
-    ) == (used_input_names, unused_input_names)
-    assert get_activations(mock_proto, quantization_logs) == (
-        used_activation_names,
-        unused_activation_names,
+    expected_nested_dictionary_keys = sorted(
+        ["bitwidth", "dtype", "is_symmetric", "min", "max", "offset", "scale"]
     )
-    assert get_parameters(mock_torch_onnx_model, quantization_logs) == (
-        used_parameter_names,
-        unused_parameter_names,
+
+    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+
+    # WHEN exporting the quantized model
+    export(quant_model, (data,), str(output_directory), model_name)
+
+    # THEN we expect a json file that can be loaded as a dictionary.
+    with open(encodings_file_path) as f:
+        encodings_dictionary = json.load(f)
+
+    # THEN the structure of the top level of the dictionary should have set keys
+    assert sorted(encodings_dictionary.keys()) == ["activation_encodings", "param_encodings"]
+
+    activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
+    param_encodings_dictionary = encodings_dictionary["param_encodings"]
+
+    # THEN all the nested dictionary keys should also have the expected keys
+    for value in activation_encodings_dictionary.values():
+        assert sorted(value[0].keys()) == expected_nested_dictionary_keys
+
+    for value in param_encodings_dictionary.values():
+        assert sorted(value[0].keys()) == expected_nested_dictionary_keys
+
+    # THEN the number of entries for activations and parameters should match the number of
+    # expected entries respectively
+    assert sorted(activation_encodings_dictionary.keys()) == sorted(
+        expected_quantized_inputs + expected_quantized_activations
     )
+    assert sorted(param_encodings_dictionary) == sorted(expected_quantized_params)
 
 
 @ff.flags.context(ff.strict_quantization, False)
