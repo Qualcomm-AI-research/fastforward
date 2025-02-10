@@ -433,8 +433,8 @@ def get_caller_context(stack_depth: int = 1) -> dict[str, Any]:
 
 def parse(
     raw: str,
-    context: Optional[dict[str, Any]] = None,
-    aliases: Optional[dict[str, selector.BaseSelector]] = None,
+    context: dict[str, Any] | None = None,
+    aliases: dict[str, selector.BaseSelector] | None = None,
 ) -> selector.BaseSelector:
     """Parse a raw query and produce a Selector."""
     aliases = aliases or {}

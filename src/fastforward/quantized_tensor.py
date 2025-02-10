@@ -77,7 +77,7 @@ register("byte", None, functools.partial(_to_dtype, torch.uint8))
 
 
 def _remove_default_implementation(
-    func: Callable[_P, Any], func_name: Optional[str] = None, msg: Optional[str] = None
+    func: Callable[_P, Any], func_name: str | None = None, msg: str | None = None
 ) -> None:
     """Remove default implementation from torch for quantized tensors.
 
@@ -306,9 +306,9 @@ class QuantizedTensor(torch.Tensor):
     @overload # type: ignore[override]
     def to(self, dtype: torch.dtype, non_blocking: bool = False, copy: bool = False) -> Tensor: ...
     @overload
-    def to( self: _TensorT, device: Optional[torch.device | int | str] = None, dtype: None = None, non_blocking: bool = False, copy: bool = False,) -> _TensorT: ...
+    def to( self: _TensorT, device: torch.device | int | str | None = None, dtype: None = None, non_blocking: bool = False, copy: bool = False,) -> _TensorT: ...
     @overload
-    def to( self, device: Optional[torch.device | int | str] = None, dtype: Optional[torch.dtype] = None, non_blocking: bool = False, copy: bool = False,) -> torch.Tensor: ...
+    def to( self, device: torch.device | int | str | None = None, dtype: torch.dtype | None = None, non_blocking: bool = False, copy: bool = False,) -> torch.Tensor: ...
     @overload
     def to(self, other: torch.Tensor, non_blocking: bool = False, copy: bool = False) -> Tensor: ...
     # fmt: on
@@ -488,7 +488,7 @@ class QuantizedTensor(torch.Tensor):
     def __iand__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
     def __ixor__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
     def __ior__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __ipow__(self, other: Any, modulo: Optional[int]=None) -> torch.Tensor: # type: ignore[misc]
+    def __ipow__(self, other: Any, modulo: int | None=None) -> torch.Tensor: # type: ignore[misc]
         return NotImplemented
     # fmt: on
 

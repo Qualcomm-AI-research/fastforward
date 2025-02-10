@@ -49,16 +49,15 @@ class QuantizedLlamaFlashAttention2(LlamaFlashAttention2, QuantizedModule):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.LongTensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Cache] = None,
+        attention_mask: torch.LongTensor | None = None,
+        position_ids: torch.LongTensor | None = None,
+        past_key_value: Cache | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-        cache_position: Optional[torch.LongTensor] = None,
-        position_embeddings: Optional[
-            Tuple[torch.Tensor, torch.Tensor]
-        ] = None,  # will become mandatory in v4.46
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+        cache_position: torch.LongTensor | None = None,
+        position_embeddings: tuple[torch.Tensor, torch.Tensor]
+        | None = None,  # will become mandatory in v4.46
+    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
         raise NotImplementedError()
 
 
@@ -80,17 +79,16 @@ class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Cache] = None,
+        attention_mask: torch.Tensor | None = None,
+        position_ids: torch.LongTensor | None = None,
+        past_key_value: Cache | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-        cache_position: Optional[torch.LongTensor] = None,
-        position_embeddings: Optional[
-            Tuple[torch.Tensor, torch.Tensor]
-        ] = None,  # will become mandatory in v4.46
+        cache_position: torch.LongTensor | None = None,
+        position_embeddings: tuple[torch.Tensor, torch.Tensor]
+        | None = None,  # will become mandatory in v4.46
         **kwargs,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
         bsz, q_len, _ = hidden_states.size()
 
         # quantize inputs
@@ -213,17 +211,16 @@ class QuantizedLlamaSdpaAttention(LlamaSdpaAttention, QuantizedModule):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Cache] = None,
+        attention_mask: torch.Tensor | None = None,
+        position_ids: torch.LongTensor | None = None,
+        past_key_value: Cache | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-        cache_position: Optional[torch.LongTensor] = None,
-        position_embeddings: Optional[
-            Tuple[torch.Tensor, torch.Tensor]
-        ] = None,  # will become mandatory in v4.46
+        cache_position: torch.LongTensor | None = None,
+        position_embeddings: tuple[torch.Tensor, torch.Tensor]
+        | None = None,  # will become mandatory in v4.46
         **kwargs,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
         if output_attentions:
             raise NotImplementedError()
 
@@ -325,11 +322,11 @@ def scaled_dot_product_attention(
     is_causal=False,
     scale: float = None,
     *,
-    matmul_k_quantizer: Optional[Quantizer] = None,
-    softmax_quantizer: Optional[Quantizer] = None,
-    dropout_quantizer: Optional[Quantizer] = None,
-    output_quantizer: Optional[Quantizer] = None,
-    strict_quantization: Optional[bool] = None,
+    matmul_k_quantizer: Quantizer | None = None,
+    softmax_quantizer: Quantizer | None = None,
+    dropout_quantizer: Quantizer | None = None,
+    output_quantizer: Quantizer | None = None,
+    strict_quantization: bool | None = None,
 ) -> torch.Tensor:
     if strict_quantization is None:
         strict_quantization = get_strict_quantization()
@@ -376,11 +373,11 @@ def _scaled_dot_product_attention(
     dropout_p: float = 0.0,
     is_causal: bool = False,
     scale: float = None,
-    matmul_k_quantizer: Optional[Quantizer] = None,
-    softmax_quantizer: Optional[Quantizer] = None,
-    dropout_quantizer: Optional[Quantizer] = None,
-    output_quantizer: Optional[Quantizer] = None,
-    strict_quantization: Optional[bool] = None,
+    matmul_k_quantizer: Quantizer | None = None,
+    softmax_quantizer: Quantizer | None = None,
+    dropout_quantizer: Quantizer | None = None,
+    output_quantizer: Quantizer | None = None,
+    strict_quantization: bool | None = None,
 ) -> QuantizedTensor | Tensor:
     """Quantized version of scaled_dot_product_attention from torch documentation.
 

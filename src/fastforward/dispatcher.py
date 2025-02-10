@@ -141,7 +141,7 @@ class DispatcherRegistrationHook:
 
 def _register_decorator(
     op_name: str,
-    predicate: Optional[Predicate[P]],
+    predicate: Predicate[P] | None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]]:
     """Decorator for registering a kernel function with the dispatcher.
@@ -180,7 +180,7 @@ def _true_predicate_func(signature_func: Callable[P, Any]) -> Callable[P, bool]:
 
 def _register_functional(
     op_name: str,
-    predicate: Optional[Predicate[P]],
+    predicate: Predicate[P] | None,
     kernel: KernelType[P],
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> DispatcherRegistrationHook:
@@ -206,7 +206,7 @@ def _register_functional(
 @typing.overload  # Usage as a function or context manager
 def register(
     op_name: str,
-    predicate: Optional[Predicate[P]],
+    predicate: Predicate[P] | None,
     kernel: KernelType[P],
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> DispatcherRegistrationHook: ...
@@ -215,7 +215,7 @@ def register(
 @typing.overload  # Usage as a decorator
 def register(
     op_name: str,
-    predicate: Optional[Predicate[P]],
+    predicate: Predicate[P] | None,
     kernel: None = None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]]: ...
@@ -223,8 +223,8 @@ def register(
 
 def register(
     op_name: str,
-    predicate: Optional[Predicate[P]],
-    kernel: Optional[KernelType[P]] = None,
+    predicate: Predicate[P] | None,
+    kernel: KernelType[P] | None = None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]] | DispatcherRegistrationHook:
     """Register a new implementation for an operator.
@@ -256,7 +256,7 @@ def register(
         return _register_functional(op_name, predicate, kernel, priority)
 
 
-def dispatch(op_name: str, *args: P.args, **kwargs: P.kwargs) -> Optional[KernelType[P]]:
+def dispatch(op_name: str, *args: P.args, **kwargs: P.kwargs) -> KernelType[P] | None:
     """Returns the latest registered kernel whose predicate evaluates to True.
 
     Args:

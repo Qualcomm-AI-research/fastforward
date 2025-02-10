@@ -42,15 +42,13 @@ def test_running_minmax_range_setting_per_tensor():
     quantizer = LinearQuantizer(num_bits=3)
 
     batch = torch.randn(10, 8)
-    batches = torch.stack(
-        [
-            batch * 0.3,
-            batch,
-            batch * 5,
-            batch * 0.5,
-            batch,
-        ]
-    )
+    batches = torch.stack([
+        batch * 0.3,
+        batch,
+        batch * 5,
+        batch * 0.5,
+        batch,
+    ])
 
     data_min, data_max = batches.min(), batches.max()
 
@@ -67,15 +65,13 @@ def test_running_minmax_range_setting_per_channel():
     quantizer = LinearQuantizer(num_bits=3, granularity=granularity.PerChannel(0))
 
     batch = torch.randn(10, 8)
-    batches = torch.stack(
-        [
-            batch * 0.3,
-            batch,
-            batch * 5,
-            batch * 0.5,
-            batch,
-        ]
-    )
+    batches = torch.stack([
+        batch * 0.3,
+        batch,
+        batch * 5,
+        batch * 0.5,
+        batch,
+    ])
 
     data_min = batches.min(-1).values.min(0).values
     data_max = batches.max(-1).values.max(0).values

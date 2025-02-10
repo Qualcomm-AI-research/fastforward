@@ -124,7 +124,7 @@ class QuantizerCollection(mpath.MPathCollection):
     """
 
     def __init__(
-        self, root: torch.nn.Module, results: Optional[Iterable[mpath.FilterResult]] = None
+        self, root: torch.nn.Module, results: Iterable[mpath.FilterResult] | None = None
     ) -> None:
         if results is not None:
             results = (r for r in results if isinstance(r.module, Quantizer))
@@ -212,7 +212,7 @@ def find_quantizers(
     root_module: torch.nn.Module,
     query: str | mpath.selector.BaseSelector,
     *,
-    aliases: Optional[dict[str, mpath.selector.BaseSelector]] = None,
+    aliases: dict[str, mpath.selector.BaseSelector] | None = None,
 ) -> QuantizerCollection:
     """Find all quantizers in root_module that match query.
 

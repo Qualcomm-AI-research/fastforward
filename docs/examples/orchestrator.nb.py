@@ -197,8 +197,8 @@ def tabulate_exec_order_outputs(labels: list[str], outputs: list[list[tuple[Any,
 
 
 class TargetFunction:
-    def __init__(self, orchestrator: Optional[ConcurrentExecOrchestrator] = None):
-        self.orchestrator: Optional[ConcurrentExecOrchestrator] = orchestrator
+    def __init__(self, orchestrator: ConcurrentExecOrchestrator | None = None):
+        self.orchestrator: ConcurrentExecOrchestrator | None = orchestrator
         self.outputs: list[tuple[str, int, int]] = []
 
     def __call__(self, name: str) -> None:

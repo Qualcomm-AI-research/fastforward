@@ -5,12 +5,8 @@
 class QuantizationError(RuntimeError):
     """General quantization error."""
 
-    pass
-
 
 class ExportError(RuntimeError):
     """
     Export related error.
     """
-
-    pass

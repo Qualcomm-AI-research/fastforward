@@ -80,9 +80,9 @@ def test_per_channel_granularity_multiple_channels(data_shape, channels):
         expected_data_shape[channel_dim] = 1
 
     assert tile_size == torch.Size(expected_data_shape)
-    assert gran.parameter_dimensionality(data_shape) == math.prod(
-        [data_shape[channel_dim] for channel_dim in channels]
-    )
+    assert gran.parameter_dimensionality(data_shape) == math.prod([
+        data_shape[channel_dim] for channel_dim in channels
+    ])
 
 
 @pytest.mark.parametrize(

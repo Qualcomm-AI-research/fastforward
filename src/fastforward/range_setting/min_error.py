@@ -145,7 +145,7 @@ class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator],
         error_fn: _ErrorFn = mse_error,
         num_candidates: int = 100,
         search_grid_generator: _SearchGridGenerator = _default_search_grid,
-        update_range_policy: Optional[Callable[["_MinAvgErrorGridEstimator", int], bool]] = None,
+        update_range_policy: Callable[["_MinAvgErrorGridEstimator", int], bool] | None = None,
         disable_quantization: bool = False,
     ):
         super().__init__(disable_quantization=disable_quantization)
@@ -231,7 +231,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         error_fn: _ErrorFn = mse_error,
         num_candidates: int = 100,
         search_grid_generator: _SearchGridGenerator = _default_search_grid,
-        update_range_policy: Optional[Callable[["_MinAvgErrorGridEstimator", int], bool]] = None,
+        update_range_policy: Callable[["_MinAvgErrorGridEstimator", int], bool] | None = None,
         skip_unsupported_quantizers: bool = False,
     ):
         self._error_fn = error_fn

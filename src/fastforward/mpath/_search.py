@@ -50,7 +50,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
     """
 
     def __init__(
-        self, root: torch.nn.Module, results: Optional[Iterable[FilterResult]] = None
+        self, root: torch.nn.Module, results: Iterable[FilterResult] | None = None
     ) -> None:
         self._root = root
         self._results: list[FilterResult] = list(results) if results is not None else []
@@ -246,7 +246,7 @@ def search(
     query: selector.BaseSelector | str,
     root: torch.nn.Module,
     *,
-    aliases: Optional[dict[str, selector.BaseSelector]] = None,
+    aliases: dict[str, selector.BaseSelector] | None = None,
 ) -> MPathCollection:
     """Search/filter all submodules of `root` that satsify query.
 

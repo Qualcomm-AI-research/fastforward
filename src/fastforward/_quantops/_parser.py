@@ -118,7 +118,7 @@ class _Lexer:
         else:
             raise TokenizationError(f"Expected number at position {start}")
 
-    def _peek_char(self) -> Optional[str]:
+    def _peek_char(self) -> str | None:
         if self._position + 1 < len(self._src):
             return self._src[self._position + 1]
         return None
@@ -224,7 +224,7 @@ class _ParseExp:
     target: str
     optional: bool = False
     remove: bool = False
-    token: Optional[TokenKind] = None
+    token: TokenKind | None = None
 
     def __post_init__(self) -> None:
         target = self.target
@@ -424,7 +424,7 @@ class Parser:
 # Production Helpers
 
 
-def as_list(type_: Any, list_: Optional[list[Any]] = None) -> list[Any]:
+def as_list(type_: Any, list_: list[Any] | None = None) -> list[Any]:
     if not isinstance(type_, (list)):
         return [type_] + (list_ or [])
     return type_ + (list_ or [])

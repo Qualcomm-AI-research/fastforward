@@ -13,7 +13,7 @@ from fastforward._quantops import symtypes
 class Parameter:
     param_type: symtypes.Type
     name: str
-    default_value: Optional[str]
+    default_value: str | None
 
 
 @dataclasses.dataclass
@@ -21,7 +21,7 @@ class OperatorMetadata:
     fallback: str
     specification_file: pathlib.Path | None = None
     line_number: int | None = None
-    cast_output: Optional[str] = None
+    cast_output: str | None = None
     dispatch_op: Callable[..., Any] | None = None
 
 
@@ -30,4 +30,4 @@ class Operator:
     identifier: str
     parameters: tuple[Parameter, ...]
     return_type: symtypes.Type | None
-    metadata: Optional[OperatorMetadata] = None
+    metadata: OperatorMetadata | None = None

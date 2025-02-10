@@ -53,7 +53,7 @@ class RangeSettable(Protocol):
         raise NotImplementedError
 
     @property
-    def quantization_range(self) -> tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    def quantization_range(self) -> tuple[torch.Tensor | None, torch.Tensor | None]:
         """Quantization range for a quantizer specified through a minimum and maximum threshold.
 
         Returns:
@@ -208,7 +208,6 @@ class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
         Args:
             data: The first batch passed to the estimator.
         """
-        pass
 
     @abc.abstractmethod
     def estimate_step(self, quantizer: _QuantizerType, data: torch.Tensor) -> None:

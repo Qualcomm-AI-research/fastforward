@@ -158,7 +158,7 @@ def quant_dequant_by_tile_grad_impl(
     tile_size: SizeT,
     num_bits: float,
     offset: torch.Tensor | None = None,
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     param_shape = scale.shape
     scale = scale.reshape(-1)
     offset_is_none = offset is None
@@ -262,7 +262,7 @@ def quantize_by_tile_backward_meta(
     tile_size: SizeT,
     num_bits: float,
     offset: torch.Tensor | None = None,
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     return [torch.empty(input.shape), torch.empty(scale.shape), torch.empty(scale.shape)]
 
 

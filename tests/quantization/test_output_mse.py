@@ -13,8 +13,8 @@ from fastforward.quantization.output_mse import OutputMSE
 
 
 class TinyModel(torch.nn.Module):
-    def __init__(self):
-        super(TinyModel, self).__init__()
+    def __init__(self) -> None:
+        super().__init__()
 
         self.linear1 = QuantizedLinear(20, 40)
         self.linear2 = QuantizedLinear(40, 40)

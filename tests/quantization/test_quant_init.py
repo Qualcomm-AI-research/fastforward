@@ -17,16 +17,16 @@ class _MockQuantizer2(ff.nn.Quantizer):
 @pytest.fixture()
 def model():
     return ff.quantize_model(
-        torch.nn.ModuleDict(
-            {
-                "layer1": torch.nn.ModuleDict(
-                    {"linear": torch.nn.Linear(10, 10), "relu": torch.nn.ReLU()}
-                ),
-                "layer2": torch.nn.ModuleDict(
-                    {"conv": torch.nn.Conv2d(10, 10, 3), "relu": torch.nn.ReLU()}
-                ),
-            }
-        )
+        torch.nn.ModuleDict({
+            "layer1": torch.nn.ModuleDict({
+                "linear": torch.nn.Linear(10, 10),
+                "relu": torch.nn.ReLU(),
+            }),
+            "layer2": torch.nn.ModuleDict({
+                "conv": torch.nn.Conv2d(10, 10, 3),
+                "relu": torch.nn.ReLU(),
+            }),
+        })
     )
 
 

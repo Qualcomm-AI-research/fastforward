@@ -145,7 +145,7 @@ class BaseSelector(abc.ABC):
         return [dataclasses.replace(self, next=None)]
 
     def _selector_lists(
-        self, *, head: Optional[list[list["BaseSelector"]]] = None
+        self, *, head: list[list["BaseSelector"]] | None = None
     ) -> list[list["BaseSelector"]]:
         head = (head or []) + [self._selectors()]
         if self.next:
@@ -330,8 +330,6 @@ class Selector(BaseSelector):
                 if continuation.selector is self:
                     trimmed.append(continuation)
                     continue
-
-            pass
 
         # If there is no next, we have matched, but we can pottently match
         # more if the last fragment can be applied again.

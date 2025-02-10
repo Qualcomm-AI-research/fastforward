@@ -80,7 +80,7 @@ class _QualifiedNameReference:
         return ".".join(self._parts)
 
     # Use import_ since import is a (non-soft) keyword.
-    def import_(self, *, _remainder: Optional[str] = None) -> Any:
+    def import_(self, *, _remainder: str | None = None) -> Any:
         _remainder = _remainder or ""
 
         # If we reach a root refence, the import must have failed
@@ -154,7 +154,7 @@ class OperatorTable:
         self,
         schema: str,
         fallback_op: str | _PyOp,
-        dispatch_op: Optional[str | _PyOp] = None,
+        dispatch_op: str | _PyOp | None = None,
         **kwargs: Any,
     ) -> None:
         operator = spec_parser.parse_schema(schema)
@@ -216,9 +216,10 @@ class OperatorTable:
                     cast_output=op_info.get("cast_output", None),
                 )
             except spec_parser.ParseError as e:
-                errors.append(
-                    (op_info["__line__"], f"Unable to parse {op_info['op']} because {e.args}")
-                )
+                errors.append((
+                    op_info["__line__"],
+                    f"Unable to parse {op_info['op']} because {e.args}",
+                ))
 
         if errors:
             error_list = "\n".join([f"  - [line: {line}] {err}" for line, err in errors])

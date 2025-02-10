@@ -70,7 +70,7 @@ class _ModuleGenerator:
     def config(self) -> libcst.PartialParserConfig:
         return self._module.config_for_parsing
 
-    def append_import(self, import_module: str, from_module: Optional[str] = None):
+    def append_import(self, import_module: str, from_module: str | None = None):
         if from_module is not None:
             import_str = f"from {from_module} import {import_module}"
         else:
@@ -172,7 +172,7 @@ def _operator_function_stub(
 def _simple_if(
     test_exp: str | libcst.BaseExpression,
     body_stmt: str | libcst.BaseStatement | libcst.IndentedBlock,
-    orelse_stmt: Optional[str | libcst.BaseStatement] = None,
+    orelse_stmt: str | libcst.BaseStatement | None = None,
     leading_empty_line: bool = True,
 ) -> libcst.If:
     orelse: libcst.If | libcst.Else | None

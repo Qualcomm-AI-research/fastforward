@@ -29,12 +29,10 @@ def pytest_configure(config):
         config.option.benchmark = True
 
     if re.match(r"\s*benchmark\s*", config.option.markexpr) is None:
-        config.option.markexpr = " and ".join(
-            [
-                f"({config.option.markexpr})",
-                f"({'' if config.option.benchmark else 'not'} benchmark)",
-            ]
-        )
+        config.option.markexpr = " and ".join([
+            f"({config.option.markexpr})",
+            f"({'' if config.option.benchmark else 'not'} benchmark)",
+        ])
 
 
 @pytest.hookimpl(hookwrapper=True)

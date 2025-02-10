@@ -145,7 +145,7 @@ class QuantizerMetadata:
         bias_quantizer: bool = False,
         input_quantizer: bool = False,
         output_quantizer: bool = False,
-        shape: Optional[tuple[int, ...] | torch.Size] = None,
+        shape: tuple[int, ...] | torch.Size | None = None,
         **kwargs: Any,
     ) -> None:
         self._tags: set[Tag] = set()
@@ -332,8 +332,8 @@ class QuantizerStub(Quantizer):
         bias_quantizer: bool = False,
         input_quantizer: bool = False,
         output_quantizer: bool = False,
-        shape: Optional[tuple[int, ...] | torch.Size] = None,
-        _metadata: Optional[QuantizerMetadata] = None,
+        shape: tuple[int, ...] | torch.Size | None = None,
+        _metadata: QuantizerMetadata | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__()

@@ -197,7 +197,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                 )
 
     def register_quantizer(
-        self, name: str, quantizer: Optional[Quantizer], *, _register_module: bool = True
+        self, name: str, quantizer: Quantizer | None, *, _register_module: bool = True
     ) -> None:
         """Register new quantizer on module.
 
@@ -414,7 +414,7 @@ def surrogate_quantized_modules(model: torch.nn.Module) -> ModuleConversionDict:
 def quantize_model(
     model: torch.nn.Module,
     recursive: bool = True,
-    extra_conversion: Optional[ModuleConversionDict] = None,
+    extra_conversion: ModuleConversionDict | None = None,
     skip_quantized_modules: bool = False,
 ) -> torch.nn.Module:
     """Convert modules and submodules to quantized counterparts.

@@ -39,9 +39,9 @@ def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.Quanti
     x = qx.dequantize()
 
     # Iterate over a large set of possible ways of indexing a tensor
-    for slices_and_indices in itertools.product(
-        *[_dim_slices_and_indices(dim) for dim in data_shape]
-    ):
+    for slices_and_indices in itertools.product(*[
+        _dim_slices_and_indices(dim) for dim in data_shape
+    ]):
         for i in range(1, len(slices_and_indices) + 1):
             # When: one or more dimensions are indexed
             qx_slice = qx[slices_and_indices[:i]]
@@ -160,9 +160,9 @@ def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTe
     x = qx.dequantize()
 
     # Iterate over a large set of possible ways of indexing a tensor
-    for slices_and_indices in itertools.product(
-        *[_dim_slices_and_indices(dim) for dim in data_shape]
-    ):
+    for slices_and_indices in itertools.product(*[
+        _dim_slices_and_indices(dim) for dim in data_shape
+    ]):
         for i in range(1, len(slices_and_indices) + 1):
             # When: one or more dimensions are indexed
             qx_slice = qx[slices_and_indices[:i]]

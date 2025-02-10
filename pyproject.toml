@@ -104,9 +104,21 @@ implicit_reexport = true
 line-length = 100
 target-version = "py310"
 fix = false
+preview = true
 
 [tool.ruff.lint]
-select = ["I", "D", "E401", "E402"]
+select = [
+  "I",
+  "D",
+  "E401",
+  "E402",
+  "UP006",
+  "UP008",
+  "UP045",
+  "CPY001",
+  "ISC001",
+  "PIE790",
+]
 ignore = [
   "D100",
   "D104",

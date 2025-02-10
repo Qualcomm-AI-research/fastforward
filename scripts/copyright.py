@@ -103,7 +103,7 @@ def _split_for_insertion(contents: str) -> tuple[str, str]:
 
 
 def _src_files(
-    root: pathlib.Path, filter: Optional[Callable[[pathlib.Path], bool]] = None
+    root: pathlib.Path, filter: Callable[[pathlib.Path], bool] | None = None
 ) -> Iterator[pathlib.Path]:
     filter = filter or (lambda _: True)
     for dirpath, _, files in os.walk(root):

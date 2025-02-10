@@ -22,7 +22,7 @@ def test_linear_quantizer_function():
     offset = None
     num_bits = 2
 
-    def parameter_dictionary() -> Dict[str, Any]:
+    def parameter_dictionary() -> dict[str, Any]:
         return {
             "scale": scale,
             "offset": offset,
@@ -36,9 +36,25 @@ def test_linear_quantizer_function():
     quant_params = StaticAffineQuantParams(**params)
     quant_data = AffineQuantizationFunction.quantize(data, quant_params)
     raw_quant_data = quant_data.raw_data
-    expected_raw = torch.tensor(
-        [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    )
+    expected_raw = torch.tensor([
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    ])
     torch.testing.assert_close(expected_raw, raw_quant_data)
 
     dequant_data = quant_data.dequantize()
