@@ -245,7 +245,7 @@ def _dominates(maybe_dom: Block, block: Block) -> bool:
     while dom is not None:
         if maybe_dom is dom:
             return True
-        dom = block.immediate_dominator
+        dom = dom.immediate_dominator
     return False
 
 
