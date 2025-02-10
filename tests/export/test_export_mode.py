@@ -1,9 +1,8 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import torch
-
 import fastforward as ff
+import torch
 
 from fastforward.quantization.affine.static import quantize_by_tile
 from fastforward.quantized_tensor import QuantizedTensor

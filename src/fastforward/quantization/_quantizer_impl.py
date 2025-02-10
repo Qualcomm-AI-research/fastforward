@@ -90,7 +90,7 @@ if torch.__version__ < "2.4":
 def quant_operator(name: str) -> Callable[[Callable[..., Any]], Any]:
     def decorator(func: Callable[..., Any]) -> Any:
         if torch.__version__ >= "2.4":
-            return torch.library.custom_op(name, mutates_args=())(func)
+            return torch.library.custom_op(name, mutates_args=())(func)  # type: ignore[attr-defined]
         else:
             return torch.library.impl(name, ("cpu", "cuda"), func=func)
 

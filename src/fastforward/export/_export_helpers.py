@@ -66,8 +66,7 @@ def get_inputs(
     quantization_logs: dict[str, Any],
     new_old_mapping: dict[str, str],
 ) -> tuple[set[str], set[str]]:
-    """
-    Retrieve a model's input nodes.
+    """Retrieve a model's input nodes.
 
     Given a model this function checks whether its inputs
     have been quantized (they exist as entries to a quantization
@@ -118,8 +117,7 @@ def update_arg_name_in_quantization_logs(
 def get_activations(
     onnx_proto: ModelProto, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
-    """
-    Retrieve a model's activation nodes.
+    """Retrieve a model's activation nodes.
 
     Given a model this function checks whether its activations
     have been quantized (they exist as entries to a quantization
@@ -141,7 +139,7 @@ def get_activations(
         parameters, ie unquantized activations.
 
     Args:
-        onnx_model: An onnx protobuf model
+        onnx_proto: An onnx protobuf model
         quantization_logs: Dictionary containing quantization
             settings for the various inputs/activations/parameters
             to the onnxscript_model
@@ -162,8 +160,7 @@ def get_activations(
 def get_parameters(
     onnxscript_model: Model, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
-    """
-    Retrieve a model's parameter nodes.
+    """Retrieve a model's parameter nodes.
 
     Given a model this function checks whether its parameters (
     ie weights, biases etc) have been quantized (they exist as
@@ -185,7 +182,6 @@ def get_parameters(
             settings for the various inputs/activations/parameters
             to the onnxscript_model
     """
-
     initializers = onnxscript_model.graph.initializers
     used_parameters = set()
     unused_parameters = set()

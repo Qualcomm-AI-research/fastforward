@@ -89,8 +89,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
 
     @classmethod
     def _export_quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> torch.Tensor:
-        """
-        Dedicated quantization function for export.
+        """Dedicated quantization function for export.
 
         Torch dynamo does not currently support custom tensor objects, such
         as the QuantizedTensor. For this reason this function performs

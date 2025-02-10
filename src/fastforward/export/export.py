@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-Functionality to export a quantized module for running inference on device.
+"""Functionality to export a quantized module for running inference on device.
 
 Supported backends:
 - QNN
@@ -24,6 +23,7 @@ from torch.export.exported_program import ExportedProgram
 from torch.export.graph_signature import InputKind, InputSpec
 from torch.fx.graph import Graph
 from torch.fx.node import Node
+from typing_extensions import override
 
 from fastforward.export._export_helpers import (
     generate_qnn_encodings_dictionary,
@@ -45,14 +45,11 @@ def _node_name_as_string(node: Node) -> str | Any:
 
 
 class NodeVisitor(abc.ABC, Generic[_T]):
-    """
-    Base class for interacting with torch fx node object in a dynamo graph.
-    """
+    """Base class for interacting with torch fx node object in a dynamo graph."""
 
     @abc.abstractmethod
     def enter(self, node: Node) -> bool:
-        """
-        Method for checking whether a given node will be accessed.
+        """Method for checking whether a given node will be accessed.
 
         Args:
             node: A torch fx node object
@@ -61,10 +58,10 @@ class NodeVisitor(abc.ABC, Generic[_T]):
 
     @abc.abstractmethod
     def visit(self, graph_exported_program: ExportedProgram, node: Node) -> None:
-        """
-        Method for performing an operation with reference to the given node. In certain
-        cases the `ExportedProgram` object is required in order to perform more in-depth
-        graph manipulation.
+        """Method for performing an operation with reference to the given node.
+
+        In certain cases the `ExportedProgram` object is required in order to
+        perform more in-depth graph manipulation.
 
         Args:
             graph_exported_program: An `ExportedProgram` object resulting from `torch.export.export`.
@@ -74,7 +71,8 @@ class NodeVisitor(abc.ABC, Generic[_T]):
 
     @abc.abstractmethod
     def conclude(self) -> _T:
-        """
+        """Conclude processing.
+
         Method for performing any additional operations after the main processing from the
         `visit` method has concluded. This can include some cleanup actions or returning some
         values.
@@ -85,48 +83,49 @@ class NodeVisitor(abc.ABC, Generic[_T]):
 
 
 class RequestNode(NodeVisitor[list[Node]]):
-    """
-    NodeVisitor subclass responsible for grabbing nodes from a graph.
+    """NodeVisitor subclass responsible for grabbing nodes from a graph.
 
     Simple query class which can return all the nodes that match certain
     criteria.
+
+    Args:
+        op_type: The type of operation that is of interest. The types of operations
+            correspond to the `op` propety of the torch.fx nodes.
+        target_name: The name of the target graph operation. The underlying operation
+            that a torch.fx node invokes when performing a forward pass. For example,
+            for the fastforward operation `quantize_by_tile` the target name will
+            be `fastforward::quantize_by_tile`.
     """
 
     def __init__(self, op_type: str, target_name: str) -> None:
-        """
-        Args:
-            op_type: The type of operation that is of interest. The types of operations
-                correspond to the `op` propety of the torch.fx nodes.
-            target_name: The name of the target graph operation. The underlying operation
-                that a torch.fx node invokes when performing a forward pass. For example,
-                for the fastforward operation `quantize_by_tile` the target name will
-                be `fastforward::quantize_by_tile`.
-        """
         self._op_type = op_type
         self._target_name = target_name
         self._nodes: list[Node] = []
 
+    @override
     def enter(self, node: Node) -> bool:
         node_name = _node_name_as_string(node)
         return node.op == self._op_type and node_name == self._target_name
 
+    @override
     def visit(self, graph_exported_program: ExportedProgram, node: Node) -> None:
         self._nodes.append(node)
 
+    @override
     def conclude(self) -> list[Node]:
         return self._nodes
 
+    @override
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._op_type} -> {self._target_name})"
 
 
 class RemoveFunction(NodeVisitor[None]):
-    """
-    NodeVisitor subclass responsible for removing nodes from a graph. This is done
-    by reconfiguring the input/outputs from a given node.
+    """NodeVisitor subclass responsible for removing nodes from a graph.
 
-    For example, consider a three node graph containing nodes `x`, `y`, `z` with the following
-    simple structure:
+    This is done by reconfiguring the input/outputs from a given node. For
+    example, consider a three node graph containing nodes `x`, `y`, `z` with
+    the following simple structure:
     ```
         x -> y -> z
     ```
@@ -151,34 +150,37 @@ class RemoveFunction(NodeVisitor[None]):
 
     Finally, note that this reconfiguration needs to happen for a intermediate node (the node needs to have at least
     one input, and at least one output) otherwise the reconnection will raise an error.
+
+    Args:
+        op_type: The type of operation that is of interest. The types of operations
+            correspond to the `op` propety of the torch.fx nodes.
+        target_name: The name of the target graph operation. The underlying operation
+            that a torch.fx node invokes when performing a forward pass. For example,
+            for the fastforward operation `quantize_by_tile` the target name will
+            be `fastforward::quantize_by_tile`.
+        input_replace_idx: The index of the current nodes input that will be redirected
+            to the output node's input.
     """
 
     def __init__(self, op_type: str, target_name: str, input_replace_idx: int) -> None:
-        """
-        Args:
-            op_type: The type of operation that is of interest. The types of operations
-                correspond to the `op` propety of the torch.fx nodes.
-            target_name: The name of the target graph operation. The underlying operation
-                that a torch.fx node invokes when performing a forward pass. For example,
-                for the fastforward operation `quantize_by_tile` the target name will
-                be `fastforward::quantize_by_tile`.
-            input_replace_idx: The index of the current nodes input that will be redirected
-                to the output node's input.
-        """
         self._op_type = op_type
         self._target_name = target_name
         self._input_replace_idx = input_replace_idx
 
+    @override
     def enter(self, node: Node) -> bool:
         node_name = _node_name_as_string(node)
         return node.op == self._op_type and node_name == self._target_name
 
+    @override
     def visit(self, graph_exported_program: ExportedProgram, node: Node) -> None:
         self._remove_node(graph_exported_program, node, self._input_replace_idx)
 
+    @override
     def conclude(self) -> None:
         return None
 
+    @override
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._op_type} -> {self._target_name})"
 
@@ -212,7 +214,8 @@ class RemoveFunction(NodeVisitor[None]):
 
 
 class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
-    """
+    """Log Quantization parameters.
+
     NodeVisitor subclass responsible for logging the quantization parameter of
     a subset of nodes.
 
@@ -224,30 +227,31 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
 
     The result of this subclass are stored in a dictionary where the keys are the names of the
     parameter/activation nodes, and the values are their corresponding quantization parameters.
+
+    Args:
+        op_type: The type of operation that is of interest. The types of operations
+            correspond to the `op` propety of the torch.fx nodes.
+        target_name: The name of the target graph operation. The underlying operation
+            that a torch.fx node invokes when performing a forward pass. For example,
+            for the fastforward operation `quantize_by_tile` the target name will
+            be `fastforward::quantize_by_tile`.
     """
 
     def __init__(self, op_type: str, target_name: str) -> None:
-        """
-        Args:
-            op_type: The type of operation that is of interest. The types of operations
-                correspond to the `op` propety of the torch.fx nodes.
-            target_name: The name of the target graph operation. The underlying operation
-                that a torch.fx node invokes when performing a forward pass. For example,
-                for the fastforward operation `quantize_by_tile` the target name will
-                be `fastforward::quantize_by_tile`.
-        """
         self._op_type = op_type
         self._target_name = target_name
         self._logs: dict[str, dict[str, Any]] = {}
 
         self._module_named_parameters: frozenset[str] = frozenset()
         self._module_named_buffers: frozenset[str] = frozenset()
-        self._module: Optional[torch.nn.Module] = None
+        self._module: torch.nn.Module | None = None
 
+    @override
     def enter(self, node: Node) -> bool:
         node_name = _node_name_as_string(node)
         return node.op == self._op_type and node_name == self._target_name
 
+    @override
     def visit(self, graph_exported_program: ExportedProgram, node: Node) -> None:
         input_specs = graph_exported_program.graph_signature.input_specs
         arg_to_parameter = self._arg_to_parameter(input_specs)
@@ -259,6 +263,7 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
             node, graph_exported_program, arg_to_parameter, function_parameter_names
         )
 
+    @override
     def conclude(self) -> dict[str, dict[str, Any]]:
         return self._logs
 
@@ -280,12 +285,12 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
     def _maybe_load_module_and_params(self, graph_exported_program: ExportedProgram) -> None:
         if not self._module:
             self._module = graph_exported_program.module()
-            self._module_named_parameters = frozenset(
-                [name for name, _ in self._module.named_parameters()]
-            )
-            self._module_named_buffers = frozenset(
-                [name for name, _ in self._module.named_buffers()]
-            )
+            self._module_named_parameters = frozenset([
+                name for name, _ in self._module.named_parameters()
+            ])
+            self._module_named_buffers = frozenset([
+                name for name, _ in self._module.named_buffers()
+            ])
 
     def _log_quantization_parameters(
         self,
@@ -330,24 +335,23 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
 
 
 class GraphWrapper:
-    """
-    Wrapper class around a ExportedProgram object that facilitates graph operations,
-    such as logging/manipulation.
+    """Wrapper class around a ExportedProgram.
+
+    It that facilitates graph operations, such as logging/manipulation.
+
+    Args:
+        graph_exported_program: The resulting exported program object resulting from
+            a `torch.export.export` function call.
     """
 
     def __init__(self, graph_exported_program: ExportedProgram):
-        """
-        Args:
-            graph_exported_program: The resulting exported program object resulting from
-                a `torch.export.export` function call.
-        """
         self.graph_exported_program = graph_exported_program
 
     def visit(self, visitor: NodeVisitor[_T]) -> _T:
-        """
-        Method to itterate through the nodes of the instance's graph, and given a NodeVisitor
-        object check if a given node matches the visitor's criteria and if so perform
-        the visitor-defined operations.
+        """Method to itterate through the nodes of the instance's graph.
+
+        Given a NodeVisitor object check if a given node matches the visitor's
+        criteria and if so perform the visitor-defined operations.
 
         Args:
             visitor: A `NodeVisitor` object that defines some operation that needs to be
@@ -366,8 +370,7 @@ class GraphWrapper:
 def process_dynamo_program(
     dynamo_exported_program: ExportedProgram, graph_operators: Sequence[NodeVisitor[_T]]
 ) -> tuple[ExportedProgram, dict[str, str], list[Any]]:
-    """
-    Function for processing a dynamo program.
+    """Function for processing a dynamo program.
 
     The function accepts a dynamo program object and a list of operations to be performed on the
     graph. It then creates a `GraphWrapper` object that is responsible for invoking the user-defined
@@ -411,8 +414,7 @@ def export(
     model_name: str,
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
 ) -> None:
-    """
-    The main export function for retrieving artifacts that can be passed to QNN.
+    """The main export function for retrieving artifacts that can be passed to QNN.
 
     This function takes an user-defined torch model (which can contain fastforward layers
     and quantizers). It then performs three processing steps:

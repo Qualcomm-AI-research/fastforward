@@ -7,6 +7,4 @@ class QuantizationError(RuntimeError):
 
 
 class ExportError(RuntimeError):
-    """
-    Export related error.
-    """
+    """Export related error."""

@@ -6,12 +6,11 @@ import pathlib
 
 from typing import Any, TypeAlias
 
+import fastforward as ff
 import numpy as np
 import onnxruntime  # type: ignore[import-untyped]
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.export.export import (
     GraphWrapper,
@@ -31,7 +30,7 @@ QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, Q
 def simple_model() -> QuantizedModelFixture:
     class FFNet(torch.nn.Module):
         def __init__(self) -> None:
-            super(FFNet, self).__init__()
+            super().__init__()
             self.fc1 = ff.nn.QuantizedLinear(10, 10)
             self.relu1 = ff.nn.QuantizedRelu()
             self.fc2 = ff.nn.QuantizedLinear(10, 10)
@@ -134,9 +133,9 @@ def test_node_request(simple_model: QuantizedModelFixture) -> None:
     assert len(nodes) == 0
 
     # GIVEN that the quantized model has a number of quantizers.
-    num_quantizers = len(
-        [module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)]
-    )
+    num_quantizers = len([
+        module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)
+    ])
 
     # WHEN visiting the quantize_by_tile/dequantize_by_tile nodes.
     dequantized_nodes = graph_wrapper.visit(
@@ -162,9 +161,9 @@ def test_node_removal(simple_model: QuantizedModelFixture) -> None:
     non_quant_result = quant_model(data)
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
-    num_quantizers = len(
-        [module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)]
-    )
+    num_quantizers = len([
+        module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)
+    ])
 
     # WHEN exporting the model's dynamo graph there should be
     # a number of nodes corresponding to the quantizer operations
@@ -344,9 +343,15 @@ def test_encodings_file_generation(
         "fc3.bias",
     ]
 
-    expected_nested_dictionary_keys = sorted(
-        ["bitwidth", "dtype", "is_symmetric", "min", "max", "offset", "scale"]
-    )
+    expected_nested_dictionary_keys = sorted([
+        "bitwidth",
+        "dtype",
+        "is_symmetric",
+        "min",
+        "max",
+        "offset",
+        "scale",
+    ])
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
