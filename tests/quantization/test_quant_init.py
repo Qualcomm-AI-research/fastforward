@@ -15,7 +15,7 @@ class _MockQuantizer2(ff.nn.Quantizer):
 
 
 @pytest.fixture()
-def model():
+def model() -> torch.nn.Module:
     return ff.quantize_model(
         torch.nn.ModuleDict({
             "layer1": torch.nn.ModuleDict({
@@ -30,7 +30,7 @@ def model():
     )
 
 
-def test_quantization_quantizer_collection_initialize(model):
+def test_quantization_quantizer_collection_initialize(model: torch.nn.Module) -> None:
     ff.find_quantizers(model, "layer1/*/[quantizer:activation/output]").initialize(_MockQuantizer1)
     ff.find_quantizers(model, "layer1/**").initialize(_MockQuantizer2, overwrite_policy="skip")
 
@@ -71,7 +71,7 @@ def test_quantization_quantizer_collection_initialize(model):
         ff.find_quantizers(model, "layer1/**").initialize(_MockQuantizer2, overwrite_policy="error")
 
 
-def test_quantization_config_presedence(model):
+def test_quantization_config_presedence(model: torch.nn.Module) -> None:
     config = (
         ff.QuantizationConfig()
         .add_rule("layer1/**", _MockQuantizer2)

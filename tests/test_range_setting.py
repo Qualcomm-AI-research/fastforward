@@ -16,8 +16,8 @@ from torch import nn
 
 
 @fastforward.flags.context(fastforward.strict_quantization, False)
-def test_fit_quantizers():
-    def make_fake_data():
+def test_fit_quantizers() -> None:
+    def make_fake_data() -> torch.Tensor:
         return torch.rand(3, 16)
 
     model = nn.Sequential(

@@ -9,7 +9,7 @@ import torch
 from fastforward.nn.quantizer import Quantizer
 
 
-def test_register_override():
+def test_register_override() -> None:
     quantizer = Quantizer()
 
     def override1(

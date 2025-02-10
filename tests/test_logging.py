@@ -9,7 +9,7 @@ from io import StringIO
 import fastforward as ff
 
 
-def test_duplicate_log_filter():
+def test_duplicate_log_filter() -> None:
     # Given: a logger with a DuplicateLogFilter filter that filters duplicated
     # message at the WARNING level
     logger = logging.Logger("test_logger")

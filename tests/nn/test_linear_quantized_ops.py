@@ -7,6 +7,7 @@ import itertools
 from typing import Callable, Iterator
 
 import fastforward as ff
+import fastforward.quantization.affine.dynamic as dynamic_quant
 import pytest
 import torch
 
@@ -32,7 +33,7 @@ def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
 
 @pytest.mark.parametrize("data_shape", [(3, 3), (), (1, 3), (3, 1), (1, 0, 2), (3,)])
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor]):
+def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     # Given: a quantized and dequantized tensor
     torch.randn(data_shape)
     qx = quantfunc(data_shape)
@@ -62,7 +63,7 @@ def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.Quanti
 
 
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_scalar_multiply(quantfunc: Callable[..., ff.QuantizedTensor]):
+def test_scalar_multiply(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     # Given: a per-tensor quantized tensor and a scalar scale_factor
     qx = quantfunc((3, 3), requires_grad=True)
     scale = qx.quant_args().scale  # type: ignore[attr-defined]
@@ -103,7 +104,9 @@ def test_scalar_multiply(quantfunc: Callable[..., ff.QuantizedTensor]):
     ],
 )
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_unsqueeze(granularity, quantfunc: Callable[..., ff.QuantizedTensor]):
+def test_unsqueeze(
+    granularity: ff.granularity.Granularity, quantfunc: Callable[..., ff.QuantizedTensor]
+) -> None:
     num_bits = 4
 
     qx = quantfunc(
@@ -119,7 +122,7 @@ def test_unsqueeze(granularity, quantfunc: Callable[..., ff.QuantizedTensor]):
 
 
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]):
+def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     """Test `torch.expand/torch.Tensor.expand`.
 
     Test implementation for quantized tensors for which the following holds:
@@ -151,12 +154,11 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]):
         ff.PerChannel((0, 2)),
     ],
 )
-@pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_getitem_perchannel(granularity, quantfunc: Callable[..., ff.QuantizedTensor]):
+def test_getitem_perchannel(granularity: ff.granularity.Granularity) -> None:
     # Given: a quantized and dequantized tensor
     data_shape = (3, 2, 2)
     x_in = torch.randn(data_shape)
-    qx = ff.nn.DynamicLinearQuantizer(4, granularity=granularity)(x_in)
+    qx = dynamic_quant.quantize_per_granularity(x_in, granularity=granularity, num_bits=4)
     x = qx.dequantize()
 
     # Iterate over a large set of possible ways of indexing a tensor

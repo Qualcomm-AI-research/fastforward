@@ -21,7 +21,7 @@ from .nn.quantized_module import surrogate_quantized_modules as surrogate_quanti
 from .overrides import disable_quantization as disable_quantization
 from .quantization import _quantizer_impl as _quantizer_impl
 from .quantization import affine as affine
-from .quantization import granularity
+from .quantization import granularity as granularity
 from .quantization import random as random
 from .quantization.quant_init import QuantizationConfig as QuantizationConfig
 from .quantization.quant_init import find_quantizers as find_quantizers

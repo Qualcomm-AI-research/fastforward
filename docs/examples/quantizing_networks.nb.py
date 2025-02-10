@@ -34,6 +34,8 @@ from pprint import pprint
 import fastforward as ff
 import torch
 
+from typing_extensions import override
+
 # %% [markdown]
 # # 1. Quantized Tensors
 #
@@ -388,7 +390,7 @@ quantized_model(data)
 
 # %%
 class MySelfAttentionLayer(torch.nn.Module):
-    def __init__(self, feature_size):
+    def __init__(self, feature_size) -> None:
         print("Calling MySelfAttentionLayer.__init__")
         super().__init__()
         self.feature_size = feature_size
@@ -398,7 +400,8 @@ class MySelfAttentionLayer(torch.nn.Module):
         self.query = torch.nn.Linear(feature_size, feature_size)
         self.value = torch.nn.Linear(feature_size, feature_size)
 
-    def forward(self, x):
+    @override
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         print("Calling MySelfAttentionLayer.forward")
         # Apply linear transformations
         keys = self.key(x)

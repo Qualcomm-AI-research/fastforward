@@ -34,7 +34,9 @@ def quant_context() -> QuantizationContext[StaticAffineQuantParams]:
     return context.with_changes(quantization_fn=MockQuantizationFunction)
 
 
-def test_quantization_function_attach(quant_context: QuantizationContext[AffineQuantParams]):
+def test_quantization_function_attach(
+    quant_context: QuantizationContext[AffineQuantParams],
+) -> None:
     data = torch.randn((3, 3))
     quant_data = quant_context.attach(data)
     assert isinstance(quant_data, QuantizedTensor)
@@ -44,7 +46,7 @@ def test_quantization_function_attach(quant_context: QuantizationContext[AffineQ
 
 def test_quantization_context_clone(
     quant_context: QuantizationContext[StaticAffineQuantParams],
-):
+) -> None:
     cloned_context = quant_context.clone_parameters()
     args = quant_context.quantization_params
     cloned_args = cloned_context.quantization_params
@@ -59,7 +61,7 @@ def test_quantization_context_clone(
 
 def test_quantization_context_detach_arguments(
     quant_context: QuantizationContext[StaticAffineQuantParams],
-):
+) -> None:
     detached_context = quant_context.detach_parameters()
     args = quant_context.quantization_params
     cloned_args = detached_context.quantization_params
@@ -72,7 +74,7 @@ def test_quantization_context_detach_arguments(
 
 def test_quantization_context_to(
     quant_context: QuantizationContext[StaticAffineQuantParams],
-):
+) -> None:
     moved_func = quant_context.to("meta")
     assert isinstance(moved_func.quantization_params.scale, torch.Tensor)
     assert moved_func.quantization_params.scale.device == torch.device("meta")

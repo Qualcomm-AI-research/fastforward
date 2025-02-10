@@ -115,7 +115,7 @@ orchestrator = ConcurrentExecOrchestrator(
 
 
 # Here we implement wait_for_other_people that is used in example_function_wait.
-def wait_for_all_other_people():
+def wait_for_all_other_people() -> None:
     orchestrator.synchronize()
 
 
@@ -266,7 +266,7 @@ tabulate_exec_order_outputs(list(map(str, exec_orders)), exec_results)
 # global and single stage hooks on the last stage
 
 
-def hook_target(idx):
+def hook_target(idx: int) -> None:
     print(f"Partition=1 batch={idx} stage={orchestrator.stage=}")
     orchestrator.synchronize(f"{idx=}")
     print(f"Partition=2 batch={idx} stage={orchestrator.stage}")
@@ -323,7 +323,7 @@ orchestrator.start()
 # Repeated stage example
 
 
-def repeated_target(idx):
+def repeated_target(idx: int) -> None:
     print(f"partition 1 stage={orchestrator.stage} batch={orchestrator.batch}")
     orchestrator.synchronize()
     num_steps = 3 if orchestrator.stage == 1 else 1

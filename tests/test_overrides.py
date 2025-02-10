@@ -8,7 +8,7 @@ from fastforward.overrides import DisableQuantizationOverride, disable_quantizat
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_DisableQuantizationOverride():
+def test_DisableQuantizationOverride() -> None:
     # Setup of non quantized and quantized module using the same weight
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)
@@ -59,7 +59,7 @@ def test_DisableQuantizationOverride():
     )
 
 
-def test_disable_quantization_override_context():
+def test_disable_quantization_override_context() -> None:
     # Setup of non quantized and quantized module using the same weight
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)
@@ -94,7 +94,7 @@ def test_disable_quantization_override_context():
     )
 
 
-def test_disable_quantzation_quantizer_attachement():
+def test_disable_quantzation_quantizer_attachement() -> None:
     # DisableQuantizationOverride.attach_to must only attach to quantizers that
     # are passed to `attach_to`.
     #

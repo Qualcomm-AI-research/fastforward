@@ -36,7 +36,7 @@ def _get_default_dst() -> pathlib.Path:
     return (script_path / ".." / "src" / "fastforward" / "_gen").resolve()
 
 
-def main():
+def main() -> None:
     """Entry point for code generation for FastForward."""
     parser = argparse.ArgumentParser()
     parser.add_argument(

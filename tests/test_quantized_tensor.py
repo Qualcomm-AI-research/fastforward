@@ -19,11 +19,6 @@ from fastforward.quantization.random import random_quantized
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-@pytest.fixture
-def quantization_parameters(scale, dequant_scale):
-    return {"scale": scale, "dequant_scale": dequant_scale}
-
-
 class _MockQuantizationFunction(QuantizationFunction[StaticAffineQuantParams]):
     @classmethod
     def quantize(cls, data: torch.Tensor, params: StaticAffineQuantParams) -> ff.QuantizedTensor:
@@ -36,7 +31,7 @@ class _MockQuantizationFunction(QuantizationFunction[StaticAffineQuantParams]):
         return data / params.scale
 
 
-def test_quantize_dequantize():
+def test_quantize_dequantize() -> None:
     """Assert that quantize and dequant _transform_ data."""
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
@@ -56,7 +51,7 @@ def test_quantize_dequantize():
     "dtype",
     "double,float,half,bfloat16,long,int,short,char,cdouble,cfloat,chalf,bool,byte".split(","),
 )
-def test_dtype_methods(dtype: str):
+def test_dtype_methods(dtype: str) -> None:
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
 
@@ -92,7 +87,7 @@ def test_dtype_methods(dtype: str):
         torch.uint8,
     ],
 )
-def test_to_dtype(dtype: torch.dtype):
+def test_to_dtype(dtype: torch.dtype) -> None:
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
     params = StaticAffineQuantParams(scale=1.0, offset=None, num_bits=3, granularity=ff.PerTensor())
@@ -101,7 +96,7 @@ def test_to_dtype(dtype: torch.dtype):
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_cpu_cuda():
+def test_quantized_tensor_cpu_cuda() -> None:
     """Test `Tensor.cpu` and `Tensor.cuda`.
 
     Test if quantized tensor and associated tensor quantization parameters are moved between
@@ -147,7 +142,7 @@ def test_quantized_tensor_cpu_cuda():
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_to():
+def test_quantized_tensor_to() -> None:
     """Test `Tensor.cuda` and `Tensor.cpu`.
 
     Test if quantized tensor and associated tensor quantization parameters are moved between
@@ -199,7 +194,7 @@ def test_quantized_tensor_to():
     )
 
 
-def test_quantized_tensor_grad_backward():
+def test_quantized_tensor_grad_backward() -> None:
     """Test if graph is properly created and gradient are accumulated using backward."""
     torch.manual_seed(7480)
     scale = torch.tensor(3.0, requires_grad=True)
@@ -220,7 +215,7 @@ def test_quantized_tensor_grad_backward():
     torch.testing.assert_close(expected_scale_grad, scale.grad)
 
 
-def test_quantized_tensor_dispatches():
+def test_quantized_tensor_dispatches() -> None:
     torch.manual_seed(7480)
     quantized_data = random_quantized((10, 10), scale=0.2)
     dequant_data = quantized_data.dequantize()
@@ -230,7 +225,7 @@ def test_quantized_tensor_dispatches():
     # dequant fallback.
 
     @contextmanager
-    def _mock_dispatcher_function(dispatch_key: str, dispatch_pos: int):
+    def _mock_dispatcher_function(dispatch_key: str, dispatch_pos: int) -> Any:
         # Temporarily mock dispatch item, ideally we would directly mock the
         # funtion that is being dispatched to, but that does not seem to be
         # possible as the dispatches are already registered when the
@@ -281,7 +276,7 @@ def test_quantized_tensor_dispatches():
         )
 
 
-def test_quantized_tensor_detach():
+def test_quantized_tensor_detach() -> None:
     data = torch.randn((2, 2), requires_grad=True)
     scale = torch.tensor([0.01])
     quantized_data = quantize_per_tensor(data, scale, None, 3)
@@ -293,7 +288,7 @@ def test_quantized_tensor_detach():
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_clone():
+def test_quantized_tensor_clone() -> None:
     data = torch.randn((2, 2)).clamp(-2.5, 3)
     scale = torch.tensor([1.0])
     data.requires_grad_()
@@ -313,7 +308,7 @@ def test_quantized_tensor_clone():
     torch.testing.assert_close(actual_grad, expected_grad)
 
 
-def test_deepcopy():
+def test_deepcopy() -> None:
     scale = torch.tensor([0.1, 0.2, 0.3])
     offset = 0
     quantized_data = random_quantized(
@@ -343,7 +338,7 @@ def test_deepcopy():
             assert original_arg == copied_arg, f"{arg_key} is not equal"
 
 
-def test_contiguous():
+def test_contiguous() -> None:
     # Construct a quantized tensor with non contiguous data and parameters
     scale = torch.randn(3, 3)[:, 0]
     offset = torch.ones((3, 3))[:, 0]
@@ -363,7 +358,7 @@ def test_contiguous():
     assert contiguous_tensor.quant_args().offset.is_contiguous()  # type: ignore[attr-defined]
 
 
-def test_not_implemented_registation():
+def test_not_implemented_registation() -> None:
     quantized_data = random_quantized((3, 3))
     with pytest.raises(NotImplementedError):
         reversed(quantized_data)
@@ -375,35 +370,43 @@ class TestView:
         return 1, 1, 8, 8
 
     @pytest.fixture
-    def new_shape(self, shape) -> tuple[int, ...]:
+    def new_shape(self, shape: torch.Size) -> tuple[int, ...]:
         return 1, 1, 1, 64
 
     @pytest.fixture
-    def qx_per_channel(self, shape) -> QuantizedTensor:
+    def qx_per_channel(self, shape: torch.Size) -> QuantizedTensor:
         scale = torch.randn(shape[-1])
         return ff.random.random_quantized(shape, scale=scale, granularity=ff.PerChannel(-1))
 
     @pytest.fixture
-    def qx_per_tensor(self, shape) -> QuantizedTensor:
+    def qx_per_tensor(self, shape: torch.Size) -> QuantizedTensor:
         scale = torch.randn(1)
         return ff.random.random_quantized(shape, scale=scale, granularity=ff.PerTensor())
 
-    def test_per_tensor_with_tuple_shape(self, qx_per_tensor, new_shape):
+    def test_per_tensor_with_tuple_shape(
+        self, qx_per_tensor: QuantizedTensor, new_shape: torch.Size
+    ) -> None:
         qx = qx_per_tensor
         out_ff = qx.view(new_shape)
         torch.testing.assert_close(out_ff.dequantize(), qx.dequantize().view(new_shape))
 
-    def test_per_tensor_with_int_shape(self, qx_per_tensor, new_shape):
+    def test_per_tensor_with_int_shape(
+        self, qx_per_tensor: QuantizedTensor, new_shape: torch.Size
+    ) -> None:
         qx = qx_per_tensor
         out_ff = qx.view(*new_shape)
         torch.testing.assert_close(out_ff.dequantize(), qx.dequantize().view(*new_shape))
 
-    def test_per_channel_with_same_tuple_shape(self, qx_per_channel, shape):
+    def test_per_channel_with_same_tuple_shape(
+        self, qx_per_channel: QuantizedTensor, shape: torch.Size
+    ) -> None:
         qx = qx_per_channel
         out_ff = qx.view(shape)
         torch.testing.assert_close(out_ff.dequantize(), qx.dequantize().view(shape))
 
-    def test_per_channel_with_same_int_shape(self, qx_per_channel, shape):
+    def test_per_channel_with_same_int_shape(
+        self, qx_per_channel: QuantizedTensor, shape: torch.Size
+    ) -> None:
         qx = qx_per_channel
         out_ff = qx.view(*shape)
         torch.testing.assert_close(out_ff.dequantize(), qx.dequantize().view(*shape))

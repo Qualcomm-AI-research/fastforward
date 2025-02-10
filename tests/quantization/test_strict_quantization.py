@@ -11,7 +11,7 @@ from fastforward.exceptions import QuantizationError
 from fastforward.quantization.random import random_quantized
 
 
-def test_strict_quantization():
+def test_strict_quantization() -> None:
     a = random_quantized((5, 1, 3))
     b = random_quantized((1, 2, 1), scale=0.2, offset=3)
 
@@ -44,7 +44,7 @@ def test_strict_quantization():
         _ = a + b
 
 
-def test_module_strict_quantization():
+def test_module_strict_quantization() -> None:
     strict_results: list[bool] = []
 
     class MockModule(torch.nn.Module):

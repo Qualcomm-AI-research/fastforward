@@ -70,7 +70,7 @@ class _ModuleGenerator:
     def config(self) -> libcst.PartialParserConfig:
         return self._module.config_for_parsing
 
-    def append_import(self, import_module: str, from_module: str | None = None):
+    def append_import(self, import_module: str, from_module: str | None = None) -> None:
         if from_module is not None:
             import_str = f"from {from_module} import {import_module}"
         else:
@@ -89,7 +89,7 @@ class _ParameterList:
     def __init__(self) -> None:
         self._params: list[tuple[str, str]] = []  # name, value
 
-    def append(self, name: str, value: str):
+    def append(self, name: str, value: str) -> None:
         self._params.append((name, value))
 
     def __repr__(self) -> str:

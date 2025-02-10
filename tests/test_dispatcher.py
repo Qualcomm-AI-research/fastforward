@@ -3,18 +3,21 @@
 
 import unittest
 
+from typing import Any, Callable
+
 import fastforward
 import pytest
 import torch
 
 from fastforward.dispatcher import _DISPATCHER, Predicate, dispatch, register
 from fastforward.quantization.random import random_quantized
+from fastforward.quantized_tensor import QuantizedTensor
 
 _ORIGINAL_DISPATCHER = _DISPATCHER.copy()
 
 
 @pytest.fixture(autouse=True)
-def _clean_registry():
+def _clean_registry() -> None:
     for k in _DISPATCHER:
         _DISPATCHER[k] = []
 
@@ -22,23 +25,23 @@ def _clean_registry():
         _DISPATCHER[k] = v
 
 
-def make_mock(fn):
+def make_mock(fn: Callable[..., Any]) -> Any:
     return unittest.mock.Mock(spec_set=fn, wraps=fn)
 
 
-def test_predicate():
+def test_predicate() -> None:
     p = Predicate(lambda x: "test" == x)
     assert p("test")
     assert not p("not test")
 
 
-def test_predicate_not():
+def test_predicate_not() -> None:
     p = ~Predicate(lambda x: "test" == x)
     assert not p("test")
     assert p("not test")
 
 
-def test_predicate_and():
+def test_predicate_and() -> None:
     m1 = make_mock(lambda x, y: "test" == x)
     m2 = make_mock(lambda x, y: "not" == y)
     p = Predicate(m1) & Predicate(m2)
@@ -53,7 +56,7 @@ def test_predicate_and():
     m2.assert_not_called()
 
 
-def test_predicate_or():
+def test_predicate_or() -> None:
     m1 = make_mock(lambda x, y: "test" == x)
     m2 = make_mock(lambda x, y: "not" == y)
     p = Predicate(m1) | Predicate(m2)
@@ -68,7 +71,7 @@ def test_predicate_or():
     m2.assert_called_once()
 
 
-def test_dispatch():
+def test_dispatch() -> None:
     predicate = make_mock(lambda input, dim: input.dtype == torch.int8)
     kernel = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
     register("softmax", Predicate(predicate), kernel)
@@ -84,7 +87,7 @@ def test_dispatch():
     kernel.assert_called_once()
 
 
-def test_dispatch_order():
+def test_dispatch_order() -> None:
     p1 = make_mock(lambda input, dim: input.dtype == torch.int8)
     k1 = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
     register("softmax", Predicate(p1), k1)
@@ -111,7 +114,7 @@ def test_dispatch_order():
     k1.assert_not_called()
 
 
-def test_dispatch_registration_hook():
+def test_dispatch_registration_hook() -> None:
     predicate = make_mock(lambda input, dim: input.dtype == torch.int8)
     kernel = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
 
@@ -131,7 +134,7 @@ def test_dispatch_registration_hook():
 
 
 @fastforward.flags.context(fastforward.strict_quantization, False)
-def test_dispatchers_are_all_the_same():
+def test_dispatchers_are_all_the_same() -> None:
     from fastforward.nn import functional
 
     a = random_quantized(
@@ -155,7 +158,7 @@ def test_dispatchers_are_all_the_same():
 
     predicate = Predicate(lambda *_, **__: True)
 
-    def kernel(input, other, **kwargs):
+    def kernel(input: QuantizedTensor, other: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
         return input.dequantize() - other.dequantize()
 
     kernel_mock = make_mock(kernel)

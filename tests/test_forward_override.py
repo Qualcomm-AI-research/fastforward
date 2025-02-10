@@ -4,22 +4,22 @@
 import collections
 import unittest.mock
 
-from typing import MutableMapping
+from typing import Any, MutableMapping
 
 from fastforward import forward_override as override
 
 
-def test_function_override():
-    def to_override_function(a, b, **kwargs):
+def test_function_override() -> None:
+    def to_override_function(a: int, b: int, **kwargs: Any) -> int:
         return a + b
 
-    def override1(ctx, fn, args, kwargs):
+    def override1(ctx: Any, fn: Any, args: Any, kwargs: Any) -> Any:
         return fn(*args, **kwargs) + ctx["c"]
 
-    def override2(ctx, fn, args, kwargs):
+    def override2(ctx: Any, fn: Any, args: Any, kwargs: Any) -> Any:
         return fn(*args, **kwargs) * 2
 
-    def override_noop(ctx, fn, args, kwargs):
+    def override_noop(ctx: Any, fn: Any, args: Any, kwargs: Any) -> str:
         return "nothing"
 
     mock_override1 = unittest.mock.Mock(override1, wraps=override1)
@@ -66,11 +66,11 @@ def test_function_override():
     assert wrapped_fn == to_override_function
 
 
-def test_override_handle():
-    def to_override_function(a, b):
+def test_override_handle() -> None:
+    def to_override_function(a: Any, b: Any) -> Any:
         return a + b
 
-    def override1(ctx, fn, args, kwargs):
+    def override1(ctx: Any, fn: Any, args: Any, kwargs: Any) -> Any:
         return fn(*args, **kwargs) + ctx["c"]
 
     mock_override1 = unittest.mock.Mock(override1, wraps=override1)

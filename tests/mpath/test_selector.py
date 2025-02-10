@@ -13,7 +13,7 @@ class _MockFragment(mpath.Fragment):
         return False
 
 
-def test_selector_creation():
+def test_selector_creation() -> None:
     s1, s2, s3 = (mpath.Selector(None, _MockFragment()) for _ in range(3))
 
     for sel in (s1 / s2 / s3, s1 / (s2 / s3), (s1 / s2) / s3, (s1 / s2).extends(s3)):
@@ -43,7 +43,7 @@ def test_selector_creation():
     assert isinstance(observed_3.fragment, mpath.fragments.WildcardFragment)
 
 
-def test_selector_combinations():
+def test_selector_combinations() -> None:
     abc = mpath.query("/abc")
     xyz = mpath.query("/xyz")
     qed = mpath.query("/qed")
@@ -70,7 +70,7 @@ def test_selector_combinations():
         _ = abc & multi_selector
 
 
-def test_aliases():
+def test_aliases() -> None:
     aliases = mpath.aliases(alias1="base/first", alias2="&alias1/second")
     expected = {"alias1": mpath.query("base/first"), "alias2": mpath.query("base/first/second")}
 

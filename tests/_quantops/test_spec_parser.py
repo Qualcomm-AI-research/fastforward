@@ -7,7 +7,7 @@ from fastforward._quantops import operator as ops
 from fastforward._quantops import spec_parser, symtypes
 
 
-def test_parse_schema_parameters():
+def test_parse_schema_parameters() -> None:
     # Extra or missing spaces in schema are intentional and part of the test
     schema = (
         "function_name    ("
@@ -35,7 +35,7 @@ def test_parse_schema_parameters():
     assert operator.parameters == expected_parameters
 
 
-def test_parse_schema_return_type():
+def test_parse_schema_return_type() -> None:
     # Extra or missing spaces in schema are intentional and part of the test
     schema = (
         "function_name    ("
@@ -50,7 +50,7 @@ def test_parse_schema_return_type():
     assert operator.return_type == symtypes.Optional[symtypes.Tensor]
 
 
-def test_parse_schema_expected_failures():
+def test_parse_schema_expected_failures() -> None:
     with pytest.raises(spec_parser.ParseError):
         spec_parser.parse_schema("function_name(Tensor param) Tensor?")
     with pytest.raises(spec_parser.ParseError):

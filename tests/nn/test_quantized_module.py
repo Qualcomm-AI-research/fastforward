@@ -17,7 +17,7 @@ class _QuantizerSubclass(ff.nn.Quantizer):
 
 
 class _MockQuantizedModule(ff.nn.QuantizedModule):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.other_module1 = torch.nn.Linear(10, 10)
         self.other_module3 = torch.nn.Linear(10, 10)
@@ -31,7 +31,7 @@ class _MockQuantizedModule(ff.nn.QuantizedModule):
         self.quantizer4: ff.nn.Quantizer = QuantizerStub(weight_quantizer=True)
 
 
-def test_quantizer_module_named_quantizers():
+def test_quantizer_module_named_quantizers() -> None:
     module = _MockQuantizedModule()
     quantizer_names = {"quantizer1", "quantizer2", "quantizer3", "quantizer4"}
     quantizers = {module.quantizer1, module.quantizer2, module.quantizer3, module.quantizer4}
@@ -47,7 +47,7 @@ def test_quantizer_module_named_quantizers():
     assert len(quantizers) == 0
 
 
-def test_quantizer_module_named_quantizers_after_replace():
+def test_quantizer_module_named_quantizers_after_replace() -> None:
     module = _MockQuantizedModule()
     module.quantizer1 = ff.nn.Quantizer()
     module.quantizer2 = ff.nn.Quantizer()
@@ -66,7 +66,7 @@ def test_quantizer_module_named_quantizers_after_replace():
     assert len(quantizers) == 0
 
 
-def test_quantizer_module_metadata():
+def test_quantizer_module_metadata() -> None:
     module = _MockQuantizedModule()
 
     assert QuantizerMetadata(input_quantizer=True).is_extension(
@@ -83,7 +83,7 @@ def test_quantizer_module_metadata():
     )
 
 
-def test_quantizer_module_quantizers():
+def test_quantizer_module_quantizers() -> None:
     module = _MockQuantizedModule()
     quantizers = {module.quantizer1, module.quantizer2, module.quantizer3, module.quantizer4}
 
@@ -132,7 +132,7 @@ class MyQuantizedModule3(ff.nn.QuantizedModule, MyModule3):
     pass
 
 
-def test_quantized_module_map():
+def test_quantized_module_map() -> None:
     mapping = ff.nn.quantized_module_map()
     assert mapping[torch.nn.Linear] == ff.nn.QuantizedLinear
     assert mapping[torch.nn.Conv2d] == ff.nn.QuantizedConv2d
@@ -163,7 +163,7 @@ def _quantizable_model() -> torch.nn.Sequential:
     )
 
 
-def test_quantize_model():
+def test_quantize_model() -> None:
     quantizable_model = _quantizable_model()
     quantized_model = deepcopy(quantizable_model)
     ff.nn.quantize_model(quantized_model)
@@ -192,7 +192,7 @@ def test_quantize_model():
         ff.nn.quantize_model(unquantizable_model)
 
 
-def test_quantize_model_skip_quantized():
+def test_quantize_model_skip_quantized() -> None:
     # Create a model and quantize a submodule. Then try to quantize again. This should fail
     quantizable_model = _quantizable_model()
     ff.nn.quantize_model(quantizable_model[0])
@@ -206,13 +206,13 @@ def test_quantize_model_skip_quantized():
     ff.nn.quantize_model(quantizable_model, skip_quantized_modules=True)
 
 
-def test_quantize_model_skip_quantized_module_flag():
+def test_quantize_model_skip_quantized_module_flag() -> None:
     quantizable_model = _quantizable_model()
     ff.nn.quantize_model(quantizable_model, extra_conversion={torch.nn.Linear: SKIP_QUANTIZATION})
     assert quantizable_model[0].__class__ is torch.nn.Linear
 
 
-def test_surrogate_quantized_modules():
+def test_surrogate_quantized_modules() -> None:
     model = torch.nn.Sequential(MyUnquantizableModule4(), MyUnquantizableModule4(), MyModule1())
 
     module_map = ff.surrogate_quantized_modules(model)

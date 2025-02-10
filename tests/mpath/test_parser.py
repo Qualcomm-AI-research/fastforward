@@ -29,7 +29,7 @@ def assert_tokens(
         assert etoken.position == pos
 
 
-def test_tokenizer():
+def test_tokenizer() -> None:
     ident = tt.IDENTIFIER
     types = [ident, tt.FORWARD_SLASH, ident, tt.FORWARD_SLASH, ident]
     raw_text = ["abc", "/", "def", "/", "qed"]
@@ -74,7 +74,7 @@ def _parse_fragment(raw: str) -> selectors.BaseSelector:
     return parser.parse(raw, context=parser.get_caller_context())
 
 
-def test_fragment_parser():
+def test_fragment_parser() -> None:
     selector = _parse_fragment("/abc")
     assert isinstance(selector, selectors.Selector)
     assert isinstance(selector.fragment, fragments.PathFragment)
@@ -118,7 +118,7 @@ def test_fragment_parser():
         _parse_fragment("/[re:[abc.*]]")
 
 
-def _create_TestFragment(expected_raw_str: str):
+def _create_TestFragment(expected_raw_str: str) -> type[Fragment]:
     class TestFragment(Fragment):
         def match(self, fragment_name: str, module: torch.nn.Module) -> bool:
             """Matches a single fragment of a path on name or module.
@@ -140,7 +140,7 @@ def _create_TestFragment(expected_raw_str: str):
     return TestFragment
 
 
-def test_query_extension_raw():
+def test_query_extension_raw() -> None:
     """Test if the extension text is forwarded exactly to the extension.
 
     I.e. in the query "[ext:<some text>]", the extension should receive "<some
@@ -149,13 +149,13 @@ def test_query_extension_raw():
     # ']' is part of string.printable, but '\' happens to be just before it such that it is
     # 'properly' escaped.
     TestFragment = _create_TestFragment(string.printable)
-    with register_mpath_query_extension("testext", TestFragment):
+    with register_mpath_query_extension("testext", TestFragment):  # type: ignore[arg-type]
         # The following line will raise an MPathParseError instead of an AssertionError. The actual
         # assertion is printed as cause.
         query(f"[testext:{string.printable}]")
 
 
-def test_parse():
+def test_parse() -> None:
     ModuleSubclass = type("ModuleSubclass", (torch.nn.Module,), {})
     selector = parser.parse("abc/[class:torch.nn.Module]/[cls:ModuleSubclass]/qed/")
     expected_fragments = [

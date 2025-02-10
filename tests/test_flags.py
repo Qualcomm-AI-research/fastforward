@@ -11,7 +11,7 @@ from fastforward.flags import (
 )
 
 
-def test_strict_quantization_flag():
+def test_strict_quantization_flag() -> None:
     with strict_quantization(True):
         assert get_strict_quantization()
         with strict_quantization(False):
@@ -27,7 +27,7 @@ def test_strict_quantization_flag():
     assert get_strict_quantization()
 
 
-def test_export_mode_flag():
+def test_export_mode_flag() -> None:
     with export_mode(True):
         assert get_export_mode()
         with export_mode(False):

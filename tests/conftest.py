@@ -4,12 +4,14 @@
 import os
 import re
 
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser):  # type: ignore[no-untyped-def]
     """Enable logging benchmark results."""
     group = parser.getgroup("benchmark")
     group.addoption(
@@ -24,7 +26,7 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config):  # type: ignore[no-untyped-def]
     if config.getoption("--benchmark-report") is not None:
         config.option.benchmark = True
 
@@ -36,7 +38,7 @@ def pytest_configure(config):
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_report_teststatus(report, config):
+def pytest_report_teststatus(report, config):  # type: ignore[no-untyped-def]
     yield
     if report.when != "teardown":
         return
@@ -45,7 +47,9 @@ def pytest_report_teststatus(report, config):
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_terminal_summary(terminalreporter, exitstatus, config):
+def pytest_terminal_summary(
+    terminalreporter: Any, exitstatus: int, config: pytest.Config
+) -> Generator[None, Any, None]:  # type: ignore[no-untyped-def]
     yield
 
     reports = terminalreporter.getreports("")

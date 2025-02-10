@@ -4,7 +4,7 @@
 import itertools
 import unittest.mock
 
-from typing import Any
+from typing import Any, Callable, NoReturn
 
 import pytest
 
@@ -14,7 +14,7 @@ from fastforward._orchestration.concurrent_execution import ConcurrentExecOrches
 def _create_orchestrator(
     num_partitions: int, execution_order: list[tuple[int, ...]], run_list: list[tuple[int, ...]]
 ) -> ConcurrentExecOrchestrator:
-    def target(batch_input):
+    def target(batch_input: int) -> None:
         for partition in range(num_partitions - 1):
             run_list.append((partition, batch_input, orchestrator.stage))
             callback(batch_input)
@@ -23,13 +23,13 @@ def _create_orchestrator(
     num_stages = sum(len(exec_block) for exec_block in execution_order)
     orchestrator = ConcurrentExecOrchestrator(target, num_stages, execution_order=execution_order)
 
-    def callback(idx):
+    def callback(idx: int) -> None:
         orchestrator.synchronize(idx)
 
     return orchestrator
 
 
-def test_orchestrator_ordered_run():
+def test_orchestrator_ordered_run() -> None:
     run_list: list[tuple[int, ...]] = []
     num_partitions = 6
     num_inputs = 30
@@ -51,32 +51,32 @@ def test_orchestrator_ordered_run():
     assert expected_run_list == run_list
 
 
-def test_orchestrator_repeated_stage():
+def test_orchestrator_repeated_stage() -> None:
     run_list: list[tuple[int, ...]] = []
     expected_run_list: list[tuple[int, ...]] = []
     num_inputs = 3
     execution_order = [(1,), (2,), (0,)]
     partition_2_steps = 3
 
-    def target(batch_idx):
+    def target(batch_idx: int) -> None:
         partition_1(batch_idx)
         partition_2(batch_idx)
         partition_3(batch_idx)
 
     orchestrator = ConcurrentExecOrchestrator(target, num_stages=3, execution_order=execution_order)
 
-    def partition_1(batch_idx):
+    def partition_1(batch_idx: int) -> None:
         run_list.append((batch_idx, 1, orchestrator.stage, 0))
         orchestrator.synchronize(batch_idx)
 
-    def partition_2(batch_idx):
+    def partition_2(batch_idx: int) -> None:
         num_steps = partition_2_steps if orchestrator.stage == 2 else 1
         for step in range(num_steps):
             repeat = step != num_steps - 1
             run_list.append((batch_idx, 2, orchestrator.stage, step))
             orchestrator.synchronize(batch_idx, repeat_stage=repeat)
 
-    def partition_3(batch_idx):
+    def partition_3(batch_idx: int) -> None:
         run_list.append((batch_idx, 3, orchestrator.stage, 0))
         orchestrator.synchronize(batch_idx)
 
@@ -95,14 +95,16 @@ def test_orchestrator_repeated_stage():
     assert run_list == expected_run_list
 
 
-def _hook_order_logger(hook_stage: str, logs: list[str]):
-    def hook_side_effect(orchestrator, *args, **kwargs):
+def _hook_order_logger(hook_stage: str, logs: list[str]) -> Callable[..., None]:
+    def hook_side_effect(
+        orchestrator: ConcurrentExecOrchestrator, *args: Any, **kwargs: Any
+    ) -> None:
         logs.append(f"{hook_stage}_{orchestrator.stage}")
 
     return hook_side_effect
 
 
-def test_orchestrator_hooks():
+def test_orchestrator_hooks() -> None:
     run_list: list[tuple[int, ...]] = []
     num_partitions = 2
     execution_order: list[tuple[int, ...]] = [(0, 1)]
@@ -141,7 +143,7 @@ def test_orchestrator_hooks():
     global_post_stage_hook.assert_any_call(orchestrator)
 
 
-def test_orchestrator_hook_order():
+def test_orchestrator_hook_order() -> None:
     run_list: list[tuple[int, ...]] = []
     num_partitions = 2
     execution_order: list[tuple[int, ...]] = [(0, 1)]
@@ -200,14 +202,14 @@ def test_orchestrator_hook_order():
     assert hook_logs == expected_hook_logs
 
 
-def test_orchestrator_thread_exception():
+def test_orchestrator_thread_exception() -> None:
     run_list: list[tuple[int, ...]] = []
     num_partitions = 3
     execution_order: list[tuple[int, ...]] = [(0, 1), (2,)]
     num_inputs = 5
     orchestrator = _create_orchestrator(num_partitions, execution_order, run_list)
 
-    def error_hook(*args: Any, **kwargs: Any):
+    def error_hook(*args: Any, **kwargs: Any) -> NoReturn:
         raise ValueError()
 
     orchestrator.register_global_post_stage_hook(1, error_hook)

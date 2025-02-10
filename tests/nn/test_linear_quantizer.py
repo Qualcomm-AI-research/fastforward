@@ -16,7 +16,7 @@ from fastforward.quantization.affine import AffineQuantizationFunction, StaticAf
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-def test_linear_quantizer_function():
+def test_linear_quantizer_function() -> None:
     data = torch.linspace(-8, 8, 17)
     scale = torch.tensor(2.0)
     offset = None
@@ -71,7 +71,7 @@ def test_linear_quantizer_function():
     torch.testing.assert_close(expected_symmetric, symmetric_output)
 
 
-def test_linear_quantizer_op_gradients():
+def test_linear_quantizer_op_gradients() -> None:
     data = torch.linspace(-8, 8, 17)
     scale = torch.tensor(2.0)
     offset = torch.tensor(2.3)
@@ -96,7 +96,7 @@ def test_linear_quantizer_op_gradients():
     assert torch.count_nonzero(offset.grad)
 
 
-def test_linear_quantizer_initialisation_behavior():
+def test_linear_quantizer_initialisation_behavior() -> None:
     data = torch.rand((32, 14, 17))
     num_bits = 2
     quantizer = LinearQuantizer(num_bits=num_bits, symmetric=False)
@@ -109,7 +109,7 @@ def test_linear_quantizer_initialisation_behavior():
     assert quantizer(data) is not None
 
 
-def test_linear_quantizer_quantisation_range_setter():
+def test_linear_quantizer_quantisation_range_setter() -> None:
     data = torch.rand((32, 14, 17))
     num_bits = 2
     quantizer = LinearQuantizer(num_bits=num_bits, symmetric=False)
@@ -131,8 +131,8 @@ def test_linear_quantizer_quantisation_range_setter():
 @pytest.mark.parametrize("channel_dim", [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)])
 @pytest.mark.parametrize("data_shape", [(3, 4, 9), (32, 14, 17)])
 def test_linear_quantizer_quantisation_range_setter_correct_shape_per_channel(
-    data_shape, channel_dim
-):
+    data_shape: tuple[int, ...], channel_dim: tuple[int, ...]
+) -> None:
     data = torch.rand(data_shape)
     num_bits = 2
     quantizer = LinearQuantizer(
@@ -152,8 +152,8 @@ def test_linear_quantizer_quantisation_range_setter_correct_shape_per_channel(
 @pytest.mark.parametrize("channel_dim", [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)])
 @pytest.mark.parametrize("data_shape", [(3, 4, 9), (32, 14, 17)])
 def test_linear_quantizer_quantisation_range_setter_incorrect_shape_per_channel(
-    data_shape, channel_dim
-):
+    data_shape: tuple[int, ...], channel_dim: tuple[int, ...]
+) -> None:
     data = torch.rand(data_shape)
     num_bits = 2
     quantizer = LinearQuantizer(
@@ -170,7 +170,7 @@ def test_linear_quantizer_quantisation_range_setter_incorrect_shape_per_channel(
         quantizer(data)
 
 
-def test_linear_quantizer_asymmetric_per_tensor():
+def test_linear_quantizer_asymmetric_per_tensor() -> None:
     batch_size = 32
     data = torch.linspace(-2, 14, 17)
     data = torch.stack([data] * batch_size)
@@ -203,7 +203,7 @@ def test_linear_quantizer_asymmetric_per_tensor():
     torch.testing.assert_close(expected_raw, raw_quant_data)
 
 
-def test_linear_quantizer_asymmetric_per_tensor_gradients():
+def test_linear_quantizer_asymmetric_per_tensor_gradients() -> None:
     data = torch.linspace(-8, 8, 17)
     num_bits = 3
 
@@ -228,7 +228,7 @@ def test_linear_quantizer_asymmetric_per_tensor_gradients():
 
 
 @pytest.mark.parametrize("axis", [0, 1])
-def test_linear_quantizer_asymmetric_per_channel(axis):
+def test_linear_quantizer_asymmetric_per_channel(axis: int) -> None:
     batch_size = 16
     num_features = 32
     num_bits = 3
@@ -260,7 +260,7 @@ def test_linear_quantizer_asymmetric_per_channel(axis):
     torch.testing.assert_close(output, expected_output.permute(axis, axis - 1))
 
 
-def test_linear_quantizer_asymmetric_per_channel_gradients():
+def test_linear_quantizer_asymmetric_per_channel_gradients() -> None:
     batch_size = 2
     num_features = 3
     num_bits = 3
@@ -296,7 +296,7 @@ def test_linear_quantizer_asymmetric_per_channel_gradients():
 
 
 @pytest.mark.parametrize("tile_step", [1, 2, 4, 8])
-def test_linear_quantizer_asymmetric_per_tile(tile_step):
+def test_linear_quantizer_asymmetric_per_tile(tile_step: int) -> None:
     batch_size = 16
     num_features = 32
     num_bits = 3
@@ -337,7 +337,7 @@ def test_linear_quantizer_asymmetric_per_tile(tile_step):
     torch.testing.assert_close(output, expected_output)
 
 
-def test_linear_quantizer_asymmetric_per_tile_gradients():
+def test_linear_quantizer_asymmetric_per_tile_gradients() -> None:
     batch_size = 2
     num_features = 4
     num_bits = 3
@@ -376,7 +376,7 @@ def test_linear_quantizer_asymmetric_per_tile_gradients():
     assert torch.count_nonzero(quantizer.offset.grad)
 
 
-def test_linear_quantizer_unsigned_quantizer():
+def test_linear_quantizer_unsigned_quantizer() -> None:
     quantizer = fastforward.nn.LinearQuantizer(num_bits=4, symmetric=True, allow_one_sided=True)
     assert quantizer.offset is not None
     quantizer.quantization_range = (4.0, 16.0)

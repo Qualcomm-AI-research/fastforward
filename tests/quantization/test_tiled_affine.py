@@ -1,6 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -57,7 +58,9 @@ def assert_close(actual: Any, expected: Any, extra_dtype: torch.dtype | None = N
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
-def test_quantize_per_tensor(device, num_bits, output_dtype):
+def test_quantize_per_tensor(
+    device: torch.device, num_bits: int, output_dtype: torch.dtype
+) -> None:
     data = torch.randn(8, 4, 2, device=device, requires_grad=True)
     scale = torch.tensor([0.38], device=device, requires_grad=True)
     offset = torch.tensor([0.35], device=device, requires_grad=True)
@@ -86,7 +89,9 @@ def test_quantize_per_tensor(device, num_bits, output_dtype):
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize("channel", [0, 1, 2])
-def test_quantize_per_channel(device, num_bits, output_dtype, channel):
+def test_quantize_per_channel(
+    device: torch.device, num_bits: int, output_dtype: torch.dtype, channel: int
+) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
     scale = torch.randn(data.shape[channel], device=device) * 0.5 + 0.3
     offset = torch.randn(data.shape[channel], device=device) * 0.3 + 0.1
@@ -124,7 +129,14 @@ def test_quantize_per_channel(device, num_bits, output_dtype, channel):
 @pytest.mark.parametrize(
     "channel_idx,block_axis,block_size", [(1, 0, 16), (2, 0, 8), (0, 1, 8), (0, 2, 4)]
 )
-def test_quantize_per_block(device, num_bits, output_dtype, channel_idx, block_axis, block_size):
+def test_quantize_per_block(
+    device: torch.device,
+    num_bits: int,
+    output_dtype: torch.dtype,
+    channel_idx: int,
+    block_axis: int,
+    block_size: int,
+) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
 
     tile_size_ = list(data.shape)
@@ -166,7 +178,9 @@ def test_quantize_per_block(device, num_bits, output_dtype, channel_idx, block_a
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize("tile_size", [(16, 8, 4), (8, 16, 2)])
-def test_quantize_by_tile(device, num_bits, output_dtype, tile_size):
+def test_quantize_by_tile(
+    device: torch.device, num_bits: int, output_dtype: torch.dtype, tile_size: Sequence[int]
+) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
 
     tile_size = torch.Size(tile_size)
@@ -221,7 +235,13 @@ def test_quantize_by_tile(device, num_bits, output_dtype, tile_size):
         pytest.param(torch.int8, marks=pytest.mark.patchedtorch),
     ],
 )
-def test_quantize_per_element_cuda(num_bits, output_dtype, input_dtype, scale_dtype, offset_dtype):
+def test_quantize_per_element_cuda(
+    num_bits: int,
+    output_dtype: torch.dtype,
+    input_dtype: torch.dtype,
+    scale_dtype: torch.dtype,
+    offset_dtype: torch.dtype,
+) -> None:
     _quantize_per_element_impl(
         "cuda", num_bits, output_dtype, input_dtype, scale_dtype, offset_dtype
     )
@@ -240,12 +260,17 @@ def test_quantize_per_element_cuda(num_bits, output_dtype, input_dtype, scale_dt
     ],
 )
 @pytest.mark.parametrize("scale_dtype", [torch.float32])
-def test_quantize_per_element_cpu(num_bits, output_dtype, input_dtype, scale_dtype):
+def test_quantize_per_element_cpu(
+    num_bits: int, output_dtype: torch.dtype, input_dtype: torch.dtype, scale_dtype: torch.dtype
+) -> None:
     _quantize_per_element_impl("cpu", num_bits, output_dtype, input_dtype, scale_dtype)
 
 
 def gen_data(
-    scale: float, offset: float, shape: tuple[int, ...] | torch.Size, device="cpu"
+    scale: float,
+    offset: float,
+    shape: tuple[int, ...] | torch.Size,
+    device: str | torch.device = "cpu",
 ) -> torch.Tensor:
     """Generate test data.
 
@@ -268,8 +293,13 @@ def gen_data(
 
 
 def _quantize_per_element_impl(
-    device, num_bits, output_dtype, input_dtype, scale_dtype, offset_dtype=None
-):
+    device: torch.device | str,
+    num_bits: int,
+    output_dtype: torch.dtype,
+    input_dtype: torch.dtype,
+    scale_dtype: torch.dtype,
+    offset_dtype: torch.dtype | None = None,
+) -> None:
     offset_dtype = offset_dtype if offset_dtype is not None else scale_dtype
     scale_ = 0.46
     offset_ = 2.0  # offset are rounded to integer values

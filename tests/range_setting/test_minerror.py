@@ -24,7 +24,7 @@ from fastforward.range_setting.min_error import _default_search_grid, mse_grid
 )
 def test_mse_grid_estimator_decreasing_error_by_num_candidates(
     symmetric: bool, negative_data: bool, quant_granularity: Granularity
-):
+) -> None:
     # The search grids (the size of which is defined by the num_cadidates argument)
     # need to display coherence, ie the larger grid needs to contain all the points
     # of the smaller grid. If that condition is not fulfillied there is no
@@ -54,7 +54,7 @@ def test_mse_grid_estimator_decreasing_error_by_num_candidates(
 
 @pytest.mark.parametrize("symmetric", [True, False])
 @pytest.mark.parametrize("negative_data", [True, False])
-def test__default_search_grid(symmetric: bool, negative_data: bool):
+def test__default_search_grid(symmetric: bool, negative_data: bool) -> None:
     num_candidates = 3
     parameter_dimensionality = 5
 

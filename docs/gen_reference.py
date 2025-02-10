@@ -3,6 +3,7 @@
 
 """Generate the code reference pages and navigation."""
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import mkdocs_gen_files
@@ -10,7 +11,7 @@ import mkdocs_gen_files
 from mkdocs_gen_files.nav import Nav
 
 
-def generate_nav():
+def generate_nav() -> None:
     nav = Nav()
 
     root = Path(__file__).parent.parent
@@ -46,7 +47,7 @@ def generate_nav():
         nav_file.writelines(nav.build_literate_nav())
 
 
-def is_private(parts):
+def is_private(parts: Sequence[str]) -> bool:
     return any([p.startswith("_") and not p.startswith("__") for p in parts])
 
 

@@ -3,6 +3,8 @@
 
 import math
 
+from collections.abc import Sequence
+
 import pytest
 import torch
 
@@ -20,7 +22,7 @@ from fastforward.quantization import granularity
         (2, 10, 30),
     ],
 )
-def test_per_tensor_granularity(data_shape):
+def test_per_tensor_granularity(data_shape: torch.Size | Sequence[int]) -> None:
     data_shape = torch.Size(data_shape)
     gran = granularity.PerTensor()
     tile_size = gran.tile_size(data_shape)
@@ -40,7 +42,7 @@ def test_per_tensor_granularity(data_shape):
         (2, 10, 30),
     ],
 )
-def test_per_channel_granularity_single_channel(data_shape):
+def test_per_channel_granularity_single_channel(data_shape: Sequence[int]) -> None:
     data_shape = torch.Size(data_shape)
 
     for channel_dim in range(len(data_shape)):
@@ -69,7 +71,9 @@ def test_per_channel_granularity_single_channel(data_shape):
         ((2, 10, 30), (1, 2)),
     ],
 )
-def test_per_channel_granularity_multiple_channels(data_shape, channels):
+def test_per_channel_granularity_multiple_channels(
+    data_shape: Sequence[int], channels: tuple[int, ...]
+) -> None:
     data_shape = torch.Size(data_shape)
 
     gran = granularity.PerChannel(channels)
@@ -110,7 +114,9 @@ def test_per_channel_granularity_multiple_channels(data_shape, channels):
         ((2, 10, 30), (1, 5, 12), False),
     ],
 )
-def test_per_tile_granularity(data_shape, tile_size, passes):
+def test_per_tile_granularity(
+    data_shape: Sequence[int], tile_size: tuple[int, ...], passes: bool
+) -> None:
     data_shape = torch.Size(data_shape)
     gran = granularity.PerTile(tile_size)
     if passes:

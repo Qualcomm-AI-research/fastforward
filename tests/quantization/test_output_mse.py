@@ -1,6 +1,8 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+from collections.abc import Sequence
+
 import fastforward as ff
 import pytest
 import torch
@@ -21,7 +23,7 @@ class TinyModel(torch.nn.Module):
         self.linear3 = QuantizedLinear(40, 10)
 
     @staticmethod
-    def quantize_linear_layer(layer, num_bits):
+    def quantize_linear_layer(layer: torch.nn.Module, num_bits: int) -> None:
         # quant_metadata = layer.weight_quantizer.quant_metadata
         layer.weight_quantizer = LinearQuantizer(num_bits=num_bits)
         # layer.weight_quantizer.quant_metadata = quant_metadata
@@ -30,12 +32,12 @@ class TinyModel(torch.nn.Module):
             torch.max(layer.weight),
         )
 
-    def quantize_model(self, num_bits):
+    def quantize_model(self, num_bits: int) -> None:
         self.quantize_linear_layer(self.linear1, num_bits)
         self.quantize_linear_layer(self.linear2, num_bits)
         self.quantize_linear_layer(self.linear3, num_bits)
 
-    def get_all_quantizer_parameters(self):
+    def get_all_quantizer_parameters(self) -> list[torch.nn.Parameter]:
         all_parameters = []
         for module in self.modules():
             if isinstance(module, QuantizedModule):
@@ -47,20 +49,20 @@ class TinyModel(torch.nn.Module):
                 all_parameters.extend(parameters)
         return all_parameters
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.linear1(x)
         x = self.linear2(x)
         x = self.linear3(x)
         return x
 
     @staticmethod
-    def setup_opt(params, lr):
+    def setup_opt(params: Sequence[torch.Tensor], lr: float) -> torch.optim.Adam:
         opt = torch.optim.Adam(params, lr=lr)
         return opt
 
 
 @pytest.mark.parametrize("num_parameters", [1, 2, 3])
-def test_mse_output_optimizer_updates_quantization_parameters(num_parameters):
+def test_mse_output_optimizer_updates_quantization_parameters(num_parameters: int) -> None:
     num_bits, learning_rate = 4, 1e-03
     model = TinyModel()
 

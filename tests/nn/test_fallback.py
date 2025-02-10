@@ -14,17 +14,19 @@ from fastforward.quantization import affine
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-def assert_quantized_tensor(x):
+def assert_quantized_tensor(x: torch.Tensor) -> None:
     assert isinstance(x, torch.Tensor)
     assert isinstance(x, QuantizedTensor)
 
 
-def assert_non_quantized_tensor(x):
+def assert_non_quantized_tensor(x: torch.Tensor) -> None:
     assert isinstance(x, torch.Tensor)
     assert not isinstance(x, QuantizedTensor)
 
 
-def create_per_tensor_linear_quantizer(num_bits: int, scale: float, offset: float | None):
+def create_per_tensor_linear_quantizer(
+    num_bits: int, scale: float, offset: float | None
+) -> LinearQuantizer:
     with warnings.catch_warnings():
         # Suppress warning related to creating quantizers. Not tested here.
         warnings.simplefilter("ignore")
@@ -318,7 +320,7 @@ def create_per_tensor_linear_quantizer(num_bits: int, scale: float, offset: floa
         ("cumsum", "torch.cumsum", [(1, 10)], [(-1, 1)], (-1, 1), {"dim": 1}),
     ],
 )
-def test_quantized_functionals(
+def test_quantized_functionals(  # type: ignore[no-untyped-def]
     function_name,
     fallback_func,
     input_shapes,
@@ -468,7 +470,7 @@ def test_quantized_functionals(
 #         ff_functional(None, ff_output_quantizer=None)
 
 
-def test_dequantization_fallback_grad():
+def test_dequantization_fallback_grad() -> None:
     num_bits = 3
 
     scale = torch.tensor(0.1)

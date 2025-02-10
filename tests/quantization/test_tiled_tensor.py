@@ -7,7 +7,7 @@ import torch
 from fastforward.quantization import tiled_tensor
 
 
-def test_tiles_to_rows_and_rows_to_tiles():
+def test_tiles_to_rows_and_rows_to_tiles() -> None:
     a1 = torch.ones(2, 2)
     a2 = torch.ones(2, 2) * 2
     a3 = torch.ones(2, 2) * 3

@@ -52,7 +52,7 @@ def test_optable_alias(op_table: OperatorTable) -> None:
     assert op_table.get("sigmoid") is op_table.get("torch.relu")
 
 
-def test_qualified_name_reference():
+def test_qualified_name_reference() -> None:
     ref = _QualifiedNameReference("collections.defaultdict")
     assert defaultdict is ref.import_()
 

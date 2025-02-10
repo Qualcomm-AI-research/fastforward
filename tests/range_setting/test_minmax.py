@@ -8,7 +8,7 @@ from fastforward.quantization import granularity
 from fastforward.range_setting import estimate_ranges, running_minmax, smoothed_minmax
 
 
-def test_smoothed_minmax_range_setting_per_tensor():
+def test_smoothed_minmax_range_setting_per_tensor() -> None:
     quantizer = LinearQuantizer(num_bits=3)
 
     data = torch.randn(10, 8)
@@ -22,7 +22,7 @@ def test_smoothed_minmax_range_setting_per_tensor():
     assert estimator.max == data_max  # type: ignore[attr-defined]
 
 
-def test_smoothed_minmax_range_setting_per_channel():
+def test_smoothed_minmax_range_setting_per_channel() -> None:
     quantizer = LinearQuantizer(num_bits=3, granularity=granularity.PerChannel(0))
 
     data = torch.randn(10, 8)
@@ -38,7 +38,7 @@ def test_smoothed_minmax_range_setting_per_channel():
     torch.testing.assert_close(estimator_max, data_max)
 
 
-def test_running_minmax_range_setting_per_tensor():
+def test_running_minmax_range_setting_per_tensor() -> None:
     quantizer = LinearQuantizer(num_bits=3)
 
     batch = torch.randn(10, 8)
@@ -61,7 +61,7 @@ def test_running_minmax_range_setting_per_tensor():
     assert estimator.max == data_max  # type: ignore[attr-defined]
 
 
-def test_running_minmax_range_setting_per_channel():
+def test_running_minmax_range_setting_per_channel() -> None:
     quantizer = LinearQuantizer(num_bits=3, granularity=granularity.PerChannel(0))
 
     batch = torch.randn(10, 8)

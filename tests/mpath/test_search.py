@@ -1,6 +1,8 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+from collections.abc import Sequence
+
 import pytest
 import torch
 
@@ -8,7 +10,7 @@ from fastforward import mpath
 
 
 @pytest.fixture()
-def model():
+def model() -> torch.nn.ModuleDict:
     return torch.nn.ModuleDict(
         dict(
             layer1=torch.nn.ModuleList([torch.nn.Linear(10, 10), torch.nn.Linear(20, 20)]),
@@ -18,7 +20,11 @@ def model():
     )
 
 
-def _assert_search_result(module: torch.nn.Module, query: str | mpath.Selector, expected_modules):
+def _assert_search_result(
+    module: torch.nn.Module,
+    query: str | mpath.Selector,
+    expected_modules: Sequence[tuple[str, torch.nn.Module]],
+) -> None:
     results = mpath.search(query, module)
     module_results = [(result.full_name, result.module) for result in results]
 
@@ -26,7 +32,7 @@ def _assert_search_result(module: torch.nn.Module, query: str | mpath.Selector, 
         assert expected_module in module_results
 
 
-def test_search_class_fragment(model):
+def test_search_class_fragment(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "**/[class:torch.nn.Linear]",
@@ -39,7 +45,7 @@ def test_search_class_fragment(model):
     )
 
 
-def test_search_wildcard(model):
+def test_search_wildcard(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "*",
@@ -51,7 +57,7 @@ def test_search_wildcard(model):
     )
 
 
-def test_search_double_wildcard(model):
+def test_search_double_wildcard(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "**",
@@ -69,7 +75,7 @@ def test_search_double_wildcard(model):
     )
 
 
-def test_search_negation(model):
+def test_search_negation(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "*/~[cls:torch.nn.Linear]",
@@ -80,7 +86,7 @@ def test_search_negation(model):
     )
 
 
-def test_search_module_list(model):
+def test_search_module_list(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "**/1",
@@ -99,7 +105,7 @@ def test_search_module_list(model):
     )
 
 
-def test_search_multi_selector(model):
+def test_search_multi_selector(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         "**/{layer1, layer2}/0",
@@ -118,7 +124,7 @@ def test_search_multi_selector(model):
     )
 
 
-def test_regex_extension(model):
+def test_regex_extension(model: torch.nn.Module) -> None:
     _assert_search_result(
         model,
         r"[re:layer[12\]]/1",
@@ -129,7 +135,7 @@ def test_regex_extension(model):
     )
 
 
-def test_mpath_collection_set_operations(model):
+def test_mpath_collection_set_operations(model: torch.nn.Module) -> None:
     results1 = mpath.search("layer1/**", model)
     results2 = mpath.search((mpath.query("layer1") | mpath.query("layer2")) / "**", model)
     results3 = mpath.search("layer3/**", model)

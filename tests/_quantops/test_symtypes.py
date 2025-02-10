@@ -4,7 +4,7 @@
 from fastforward._quantops import symtypes
 
 
-def test_union_replace():
+def test_union_replace() -> None:
     union_type = symtypes.Tensor | symtypes.QuantizedTensor | symtypes.Float
     replaced_union_type = union_type.replace(symtypes.Tensor | symtypes.Float, symtypes.Int)
 
@@ -14,7 +14,7 @@ def test_union_replace():
     assert single_type == symtypes.Float
 
 
-def test_union_order_independent():
+def test_union_order_independent() -> None:
     # Explicitly construct unions to change order of internal repr of parameters.
     # symtypes.Union[] does not support this
     lhs = symtypes._GenericUnionType("Union", (symtypes.Int, symtypes.Float))
@@ -22,7 +22,7 @@ def test_union_order_independent():
     assert lhs == rhs
 
 
-def test_unwrap_optional():
+def test_unwrap_optional() -> None:
     opttype = symtypes.Optional[symtypes.Int]
     opttype2 = symtypes.Optional[symtypes.Int | symtypes.Float]
     nonopttype = symtypes.Float

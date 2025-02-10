@@ -9,20 +9,20 @@ from fastforward._gen import fallback
 
 
 @pytest.fixture
-def quantizer():
+def quantizer() -> ff.nn.LinearQuantizer:
     quantizer = ff.nn.LinearQuantizer(num_bits=4)
     quantizer.quantization_range = (-1, 1)
     return quantizer
 
 
-def test_div(quantizer: ff.nn.LinearQuantizer):
+def test_div(quantizer: ff.nn.LinearQuantizer) -> None:
     input = ff.random.random_quantized((3, 3))
     result = fallback.div(input, 3.0, output_quantizer=quantizer)
 
     assert (result.dequantize() == quantizer(input.dequantize() / 3).dequantize()).all()
 
 
-def test_cat(quantizer: ff.nn.LinearQuantizer):
+def test_cat(quantizer: ff.nn.LinearQuantizer) -> None:
     input_1 = ff.random.random_quantized((3, 3))
     input_2 = ff.random.random_quantized((3, 3))
     input_3 = ff.random.random_quantized((3, 3))

@@ -90,7 +90,7 @@ if torch.__version__ < "2.4":
 def quant_operator(name: str) -> Callable[[Callable[..., Any]], Any]:
     def decorator(func: Callable[..., Any]) -> Any:
         if torch.__version__ >= "2.4":
-            return torch.library.custom_op(name, mutates_args=())(func)  # type: ignore[attr-defined]
+            return torch.library.custom_op(name, mutates_args=())(func)
         else:
             return torch.library.impl(name, ("cpu", "cuda"), func=func)
 
@@ -158,7 +158,7 @@ def quant_dequant_by_tile_grad_impl(
     tile_size: SizeT,
     num_bits: float,
     offset: torch.Tensor | None = None,
-) -> list[torch.Tensor]:
+) -> List[torch.Tensor]:  # noqa: UP006
     param_shape = scale.shape
     scale = scale.reshape(-1)
     offset_is_none = offset is None
@@ -262,7 +262,7 @@ def quantize_by_tile_backward_meta(
     tile_size: SizeT,
     num_bits: float,
     offset: torch.Tensor | None = None,
-) -> list[torch.Tensor]:
+) -> List[torch.Tensor]:  # noqa: UP006
     return [torch.empty(input.shape), torch.empty(scale.shape), torch.empty(scale.shape)]
 
 
