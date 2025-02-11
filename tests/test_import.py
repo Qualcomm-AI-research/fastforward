@@ -8,7 +8,7 @@ import pytest
 from fastforward._import import QualifiedNameReference
 
 
-def test_qualified_name_reference():
+def test_qualified_name_reference() -> None:
     ref = QualifiedNameReference("collections.defaultdict")
     assert defaultdict is ref.import_()
 

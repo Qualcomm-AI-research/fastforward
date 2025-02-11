@@ -2,6 +2,8 @@
 # All Rights Reserved.
 
 
+from collections.abc import Sequence
+
 import libcst
 import libcst.display
 
