@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+
 from collections.abc import Sequence
 
 import libcst as libcst

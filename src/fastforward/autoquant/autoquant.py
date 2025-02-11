@@ -17,6 +17,10 @@ from .cst import passes
 
 
 def default_source_context() -> pysource.SourceContext:
+    """Default source context for Autoquant.
+
+    If no source context is provided, this context is used.
+    """
     return pysource.SourceContext(
         preprocessing_passes=[
             passes.ConvertSemicolonJoinedStatements(),
@@ -28,6 +32,18 @@ def default_source_context() -> pysource.SourceContext:
 
 
 def autoquant(module: torch.nn.Module, operator_table: optable.OperatorTable | None = None) -> None:
+    """Create Python source code for quantized version of `module`.
+
+    Note:
+        This functionality is experimental and currently under active
+        development.
+
+    Args:
+        module: The module to quantize.
+        operator_table: The operator table that defines the non-quantized to
+            quantized operator mapping.
+
+    """
     operator_table = operator_table or optable.OperatorTable.from_yaml(
         alias_extensions=optable.STR_ALIASES_EXTENSIONS
     )

@@ -40,8 +40,9 @@ class Operator:
         return None
 
     def dispatch_qualified_name(self) -> str | None:
-        """Returns the fully qualified name of the dispatch op,
-        if a dispatch op is set. Otherwise results None
+        """Returns the fully qualified name of the dispatch op.
+
+        If no dispatch op is set, returns None
         """
         if not (dispatch_op := self.dispatch_op()):
             return None

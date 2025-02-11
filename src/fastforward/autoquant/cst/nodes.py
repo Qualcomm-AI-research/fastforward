@@ -1,8 +1,10 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""This module implements various CST Nodes. These are used to ease further code
-analysis without destroying any information in the CST.
+"""This module implements various CST Nodes used for code analysis.
+
+These CSTNodes are used to ease further code analysis without destroying any
+information in the CST.
 
 Each of the nodes implemented in this module will cooperate with a 'vanilla'
 CST and can be used during code generation.
@@ -20,8 +22,7 @@ from libcst._nodes.internal import visit_optional, visit_required, visit_sequenc
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class GeneralAssignment(libcst.BaseSmallStatement):
-    """A universal node that wraps different types of assignments which are candidate for
-    further transformation. This step is also called inflation.
+    """A universal node that wraps different types of assignments.
 
     Any transformation is implemented separately and
     this node is only used to 'communicate' between different passes.
@@ -100,8 +101,7 @@ class GeneralAssignment(libcst.BaseSmallStatement):
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class ReplacementCandidate(libcst.BaseExpression):
-    """A marker node that wraps an original BaseExpression that is a candidate for
-    further transformation.
+    """A marker node that wraps an original BaseExpression.
 
     Any transformation is implemented separately and
     this node is only used to 'communicate' between different passes.
@@ -124,8 +124,9 @@ class ReplacementCandidate(libcst.BaseExpression):
 
 @dataclass(slots=True, frozen=True)
 class QuantizedCall(libcst.Call):
-    """A metadata node that carries extra information and wraps a `libcst.Call`
-    node. This wrapper node contains extra information on the quantized
+    """A metadata node that carries extra information and wraps a `libcst.Call`.
+
+    This wrapper node contains extra information on the quantized
     operation that is 'called'. This can be helpful in further analysis.
     """
 

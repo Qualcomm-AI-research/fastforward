@@ -165,6 +165,8 @@ class OperatorTable:
 
         Args:
             source: Path to the yaml file
+            alias_extensions: Sequence of alias extensions that can alter the
+                operator lookup of this table.
             _resolve_dispatch: If `True`, resolve the default dispatch function
                 using standard heuristics.
 

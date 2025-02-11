@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+
 import libcst
 import pytest
 import torch

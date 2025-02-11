@@ -26,7 +26,7 @@ from .nodes import (
 
 
 @runtime_checkable
-class HasLeadingLines(Protocol):
+class _HasLeadingLines(Protocol):
     leading_lines: Sequence[libcst.EmptyLine]
 
 
@@ -36,8 +36,7 @@ _SuiteT = TypeVar("_SuiteT", libcst.IndentedBlock, libcst.Module)
 
 
 class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
-    """Convert multiple statements joined by a semicolon to multiple statements on
-    multiple lines.
+    """Convert semicolon-separated statement into newline-separated statements.
 
     This includes:
         - Convert SimpleStatementSuite to IndentedBlock.
@@ -137,8 +136,10 @@ class WrapAssignments(libcst.CSTTransformer):
 
 
 class MarkReplacementCandidates(libcst.CSTTransformer):
-    """Mark nodes in the CST for replacement by future passes. Marking is performed
-    by wrapping the CST node in a ReplacementCandidate node.
+    """Mark nodes in the CST for replacement by future passes.
+
+    Marking is performed by wrapping the CST node in a ReplacementCandidate
+    node.
     """
 
     @override
@@ -172,8 +173,10 @@ _PositionMap: TypeAlias = dict[_Statement, list[_NodeInsertion]]
 
 @dataclasses.dataclass
 class _Insertions:
-    """Insertion collection. Collects insertions during traversal of a CST and
-    associates each with an insertion point.
+    """Insertion collection.
+
+    Collects insertions during traversal of a CST and associates each with an
+    insertion point.
 
     An insertion is a CST node with extra information that should be added to
     a compound statement (e.g., an IndentedBlock) at a certain position in the
@@ -199,7 +202,7 @@ class _Insertions:
         insertion: libcst.BaseSmallStatement,
         position: _LineStatement,
     ) -> None:
-        """Add an insertion to the collection
+        """Add an insertion to the collection.
 
         Args:
             target: the suite in which to insert.
@@ -223,8 +226,10 @@ class _Insertions:
         self.position_map[position].append(insertion_data)
 
     def clean_target_insertions(self, target: libcst.CSTNode) -> None:
-        """Remove a target from the collection. This will remove the insertions
-        associated with target and any other related data.
+        """Remove a target from the collection.
+
+        This will remove the insertions associated with target and any other
+        related data.
         """
         if target in self.insertions:
             for insertion in self.insertions[target]:
@@ -239,9 +244,11 @@ class _Insertions:
         return self.insertions.get(key, [])
 
     def update_position(self, old_node: _LineStatement, new_node: _LineStatement) -> None:
-        """Update references in the collections to old_node to new_node. This is
-        used when old_node is replaced in the CST by new_node. When this update
-        is omitted, the insertion points of insertions may no longer exist.
+        """Update references in the collections to old_node to new_node.
+
+        This is used when old_node is replaced in the CST by new_node. When
+        this update is omitted, the insertion points of insertions may no
+        longer exist.
         """
         if old_node not in self.position_map:
             return
@@ -252,11 +259,12 @@ class _Insertions:
 
 
 class IsolateReplacementCandidates(libcst.CSTTransformer):
-    """Replacement candidates may occur in compound statements or expressions. To
-    ease further analysis and code rewrites, each candidate is isolated into a
-    separate line on which the result is stored in a temporary variable. The
+    """Replacement candidates may occur in compound statements or expressions.
+
+    To ease further analysis and code rewrites, each candidate is isolated into
+    a separate line on which the result is stored in a temporary variable. The
     expression in the compound statement or expression is replaced by the
-    temporary variable
+    temporary variable.
 
     For example:
 
@@ -293,8 +301,9 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self._count = 1
 
     def parent(self) -> libcst.CSTNode | None:
-        """Parent of the deepest node currently being explored. This is the node
-        at the top of the visit stack.
+        """Parent of the deepest node currently being explored.
+
+        This is the node at the top of the visit stack.
         """
         if self._visit_stack:
             return self._visit_stack[-1]
@@ -333,8 +342,9 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         original_node: _SuiteT,
         suite: _SuiteT,
     ) -> _SuiteT:
-        """Resolve all insertion for original_node. Suite is the updated node in
-        which the insertions are added
+        """Resolve all insertion for original_node.
+
+        Suite is the updated node in which the insertions are added.
         """
         insertions = self._insertions[original_node]
         if len(insertions) == 0:
@@ -350,7 +360,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             # change to the node was also captured in the insertion.
             idx = body.index(cast(_BaseStatements, position))
 
-            if isinstance(position, HasLeadingLines):
+            if isinstance(position, _HasLeadingLines):
                 leading_lines = position.leading_lines
                 body[idx] = body[idx].with_changes(leading_lines=())
                 self._insertions.update_position(position, body[idx])
@@ -366,6 +376,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
     def leave_ReplacementCandidate(
         self, original_node: ReplacementCandidate, updated_node: ReplacementCandidate
     ) -> ReplacementCandidate | libcst.Name:
+        """Leave function for `ReplacementCandidate`."""
         del original_node
 
         parent = self.parent()
@@ -437,10 +448,12 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
     """
 
     def __init__(self, optable: OperatorTable) -> None:
+        super().__init__()
         self._optable = optable
         self._quantized_vars: list[str] = []  # Keeps track of names of quantizer variables
 
     def get_quantized_vars(self) -> tuple[str, ...]:
+        """Sequence of quantized variables introduced by this transformer."""
         return tuple(self._quantized_vars)
 
     def leave_ReplacementCandidate(
@@ -448,6 +461,7 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         original_node: ReplacementCandidate,
         updated_node: ReplacementCandidate,
     ) -> libcst.BaseExpression:
+        """Leave function for `ReplacementCandidate`."""
         del original_node
 
         match updated_node.original:

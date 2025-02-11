@@ -15,8 +15,7 @@ from .pysource import PySource
 def convert_method(
     src: PySource, clsbuilder: ClassBuilder, optable: OperatorTable
 ) -> tuple[FunctionBuilder, tuple[str, ...]]:
-    """Convert existing function.
-    """
+    """Convert existing function."""
     src_cst = src.cst(NodeType=libcst.FunctionDef)
     function_replacement = QuantizedCounterpartReplacer(optable=optable)
 

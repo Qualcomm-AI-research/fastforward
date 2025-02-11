@@ -1,6 +1,6 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
-#
+
 import dataclasses
 import inspect
 import operator as py_operator
@@ -19,11 +19,11 @@ from fastforward._import import QualifiedNameReference, fully_qualified_name
 
 
 class SourceContextError(RuntimeError):
-    pass
+    """General `SourceContext` Exception."""
 
 
 class SourceContextMemberError(AttributeError):
-    pass
+    """Exception for missing member in `SourceContext`."""
 
 
 _PassesT: TypeAlias = Sequence[libcst.CSTTransformer]
@@ -111,7 +111,7 @@ class PySource:
         self._qualified_name = qualified_name
 
     def cst(self, *, NodeType: type[libcst.CSTNodeT] = libcst.CSTNode) -> libcst.CSTNodeT:  # type: ignore[assignment]
-        """Obtain CST for object represented by `self`
+        """Obtain CST for object represented by `self`.
 
         Args:
             NodeType: Node type that is expected. If the resulting node does not
@@ -120,7 +120,7 @@ class PySource:
         return _ensure_type(self._source_context.get_cst(self._qualified_name), NodeType)
 
     def member(self, name: str) -> "PySource":
-        """Obtain a `PySource` object for an attribute of the python object represented by `self`
+        """Obtain a `PySource` object for an attribute of the python object represented by `self`.
 
         Args:
             name: The name of the attribute.
@@ -129,18 +129,15 @@ class PySource:
         return self._source_context.get(qualified_name)
 
     def is_class(self) -> bool:
-        """True if this object represents a class object, False otherwise.
-        """
+        """True if this object represents a class object, False otherwise."""
         return isinstance(self.cst(), libcst.ClassDef)
 
     def is_function(self) -> bool:
-        """True if this object represents a function object, False otherwise.
-        """
+        """True if this object represents a function object, False otherwise."""
         return isinstance(self.cst(), libcst.FunctionDef)
 
     def is_module(self) -> bool:
-        """True if this object represents a module object, False otherwise.
-        """
+        """True if this object represents a module object, False otherwise."""
         return isinstance(self.cst(), libcst.Module)
 
     def module(self) -> "PySource":
@@ -154,8 +151,7 @@ class PySource:
 
     @property
     def qualified_name(self) -> str:
-        """Qualified name of the object referenced by `self`.
-        """
+        """Qualified name of the object referenced by `self`."""
         return self._qualified_name
 
     @override
@@ -270,7 +266,6 @@ class _ResolvedQualifiedName:
 
 
 def _resolve_name(qualified_name: str) -> _ResolvedQualifiedName:
-    """ """
     ref = QualifiedNameReference(qualified_name)
     module, module_name = ref.import_module()
     obj_name = qualified_name.removeprefix(module_name).removeprefix(".")
