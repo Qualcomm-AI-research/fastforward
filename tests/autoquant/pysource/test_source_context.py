@@ -2,11 +2,10 @@ import inspect
 
 from typing import Any
 
+import fastforward as ff
 import libcst
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.autoquant import pysource
 

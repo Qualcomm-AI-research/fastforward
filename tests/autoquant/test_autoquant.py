@@ -2,13 +2,13 @@ import libcst
 import pytest
 import torch
 
-from typing_extensions import override
-
 from fastforward._quantops import optable
 from fastforward.autoquant import pysource
 from fastforward.autoquant.autoquant import _autoquant, default_source_context
 from fastforward.autoquant.cst import passes
 from fastforward.autoquant.pysource import SourceContext
+from typing_extensions import override
+
 from tests.utils.string import assert_strings_match_verbose, dedent_strip
 
 

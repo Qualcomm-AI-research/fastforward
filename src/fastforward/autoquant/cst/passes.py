@@ -36,8 +36,7 @@ _SuiteT = TypeVar("_SuiteT", libcst.IndentedBlock, libcst.Module)
 
 
 class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
-    """
-    Convert multiple statements joined by a semicolon to multiple statements on
+    """Convert multiple statements joined by a semicolon to multiple statements on
     multiple lines.
 
     This includes:
@@ -138,8 +137,7 @@ class WrapAssignments(libcst.CSTTransformer):
 
 
 class MarkReplacementCandidates(libcst.CSTTransformer):
-    """
-    Mark nodes in the CST for replacement by future passes. Marking is performed
+    """Mark nodes in the CST for replacement by future passes. Marking is performed
     by wrapping the CST node in a ReplacementCandidate node.
     """
 
@@ -174,8 +172,7 @@ _PositionMap: TypeAlias = dict[_Statement, list[_NodeInsertion]]
 
 @dataclasses.dataclass
 class _Insertions:
-    """
-    Insertion collection. Collects insertions during traversal of a CST and
+    """Insertion collection. Collects insertions during traversal of a CST and
     associates each with an insertion point.
 
     An insertion is a CST node with extra information that should be added to
@@ -202,8 +199,7 @@ class _Insertions:
         insertion: libcst.BaseSmallStatement,
         position: _LineStatement,
     ) -> None:
-        """
-        Add an insertion to the collection
+        """Add an insertion to the collection
 
         Args:
             target: the suite in which to insert.
@@ -227,8 +223,7 @@ class _Insertions:
         self.position_map[position].append(insertion_data)
 
     def clean_target_insertions(self, target: libcst.CSTNode) -> None:
-        """
-        Remove a target from the collection. This will remove the insertions
+        """Remove a target from the collection. This will remove the insertions
         associated with target and any other related data.
         """
         if target in self.insertions:
@@ -244,8 +239,7 @@ class _Insertions:
         return self.insertions.get(key, [])
 
     def update_position(self, old_node: _LineStatement, new_node: _LineStatement) -> None:
-        """
-        Update references in the collections to old_node to new_node. This is
+        """Update references in the collections to old_node to new_node. This is
         used when old_node is replaced in the CST by new_node. When this update
         is omitted, the insertion points of insertions may no longer exist.
         """
@@ -258,8 +252,7 @@ class _Insertions:
 
 
 class IsolateReplacementCandidates(libcst.CSTTransformer):
-    """
-    Replacement candidates may occur in compound statements or expressions. To
+    """Replacement candidates may occur in compound statements or expressions. To
     ease further analysis and code rewrites, each candidate is isolated into a
     separate line on which the result is stored in a temporary variable. The
     expression in the compound statement or expression is replaced by the
@@ -300,8 +293,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self._count = 1
 
     def parent(self) -> libcst.CSTNode | None:
-        """
-        Parent of the deepest node currently being explored. This is the node
+        """Parent of the deepest node currently being explored. This is the node
         at the top of the visit stack.
         """
         if self._visit_stack:
@@ -341,8 +333,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         original_node: _SuiteT,
         suite: _SuiteT,
     ) -> _SuiteT:
-        """
-        Resolve all insertion for original_node. Suite is the updated node in
+        """Resolve all insertion for original_node. Suite is the updated node in
         which the insertions are added
         """
         insertions = self._insertions[original_node]

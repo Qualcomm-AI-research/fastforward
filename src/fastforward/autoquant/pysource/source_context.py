@@ -31,8 +31,7 @@ _T = TypeVar("_T")
 
 
 class SourceContext:
-    """
-    Context to obtain references to source objects.
+    """Context to obtain references to source objects.
 
     `PySource` objects can be obtained with the `get` method. `SourceContext`
     will load and parse modules only once and takes CSTs from the module CST
@@ -53,8 +52,7 @@ class SourceContext:
         self._modules: dict[ModuleType, _ModuleSource] = {}
 
     def get(self, qualified_name: str) -> "PySource":
-        """
-        Obtain `PySource` object for object referenced by `qualified_name`.
+        """Obtain `PySource` object for object referenced by `qualified_name`.
 
         This method will resolve references, e.g., `fastforward.QuantizedTensor`
         being defined at `fastforward.quantized_tensor.QuantizedTensor`.
@@ -72,8 +70,7 @@ class SourceContext:
         qualified_name: str,
         NodeType: type[libcst.CSTNodeT] = libcst.CSTNode,  # type: ignore[assignment]
     ) -> libcst.CSTNodeT:
-        """
-        Obtain CST for object references by `qualified_name`.
+        """Obtain CST for object references by `qualified_name`.
 
         This method will resolve references, e.g., `fastforward.QuantizedTensor`
         being defined at `fastforward.quantized_tensor.QuantizedTensor`.
@@ -98,8 +95,7 @@ class SourceContext:
 
 
 class PySource:
-    """
-    Represents a reference to the Python source code for a specific object.
+    """Represents a reference to the Python source code for a specific object.
 
     The `PySource` class provides methods to obtain the Concrete Syntax Tree
     (CST) for the referenced object and its attributes, allowing for inspection
@@ -115,8 +111,7 @@ class PySource:
         self._qualified_name = qualified_name
 
     def cst(self, *, NodeType: type[libcst.CSTNodeT] = libcst.CSTNode) -> libcst.CSTNodeT:  # type: ignore[assignment]
-        """
-        Obtain CST for object represented by `self`
+        """Obtain CST for object represented by `self`
 
         Args:
             NodeType: Node type that is expected. If the resulting node does not
@@ -125,8 +120,7 @@ class PySource:
         return _ensure_type(self._source_context.get_cst(self._qualified_name), NodeType)
 
     def member(self, name: str) -> "PySource":
-        """
-        Obtain a `PySource` object for an attribute of the python object represented by `self`
+        """Obtain a `PySource` object for an attribute of the python object represented by `self`
 
         Args:
             name: The name of the attribute.
@@ -135,26 +129,22 @@ class PySource:
         return self._source_context.get(qualified_name)
 
     def is_class(self) -> bool:
-        """
-        True if this object represents a class object, False otherwise.
+        """True if this object represents a class object, False otherwise.
         """
         return isinstance(self.cst(), libcst.ClassDef)
 
     def is_function(self) -> bool:
-        """
-        True if this object represents a function object, False otherwise.
+        """True if this object represents a function object, False otherwise.
         """
         return isinstance(self.cst(), libcst.FunctionDef)
 
     def is_module(self) -> bool:
-        """
-        True if this object represents a module object, False otherwise.
+        """True if this object represents a module object, False otherwise.
         """
         return isinstance(self.cst(), libcst.Module)
 
     def module(self) -> "PySource":
-        """
-        Obtain a `PySource` object for the module of the object references by `self`.
+        """Obtain a `PySource` object for the module of the object references by `self`.
 
         If `self` already references a module, returns `self`.
         """
@@ -164,8 +154,7 @@ class PySource:
 
     @property
     def qualified_name(self) -> str:
-        """
-        Qualified name of the object referenced by `self`.
+        """Qualified name of the object referenced by `self`.
         """
         return self._qualified_name
 

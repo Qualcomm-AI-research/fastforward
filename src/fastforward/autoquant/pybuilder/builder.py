@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""
-Builders are utility objects for building (compound) CST nodes. They keep
+"""Builders are utility objects for building (compound) CST nodes. They keep
 metadata, collections of members, and implement CST Node construction methods.
 This way, they abstract over the actual CST Node construction using libCST.
 """
@@ -17,8 +16,7 @@ import libcst.display
 
 
 class NodeBuilder(abc.ABC, Generic[libcst.CSTNodeT]):
-    """
-    Abstract Node builder class. All builders inherit from this
+    """Abstract Node builder class. All builders inherit from this
     """
 
     @abc.abstractmethod
@@ -26,8 +24,7 @@ class NodeBuilder(abc.ABC, Generic[libcst.CSTNodeT]):
 
 
 class ClassBuilder(NodeBuilder[libcst.ClassDef]):
-    """
-    Builder for classes. Collections methods and other
+    """Builder for classes. Collections methods and other
     methods.
     """
 
@@ -54,8 +51,7 @@ class FunctionBuilderP(Protocol):
 
 
 class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
-    """
-    Builder for FunctionDef
+    """Builder for FunctionDef
     """
 
     def __init__(self, funcdef: libcst.FunctionDef) -> None:
