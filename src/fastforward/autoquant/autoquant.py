@@ -31,7 +31,9 @@ def default_source_context() -> pysource.SourceContext:
     )
 
 
-def autoquant(module: torch.nn.Module, operator_table: optable.OperatorTable | None = None) -> None:
+def autoquantize(
+    module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
+) -> None:
     """Create Python source code for quantized version of `module`.
 
     Note:
