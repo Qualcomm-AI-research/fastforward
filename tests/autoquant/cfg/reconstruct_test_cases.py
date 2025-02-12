@@ -108,8 +108,7 @@ def _complete_testcase(test_case: ReconstructTestCase) -> ReconstructTestCase:
 
 
 def _read_label(line: str) -> str | None:
-    """Helper to read the test case label from a raw line of text.
-    """
+    """Helper to read the test case label from a raw line of text."""
     line = line.strip()
     if not line.startswith("#"):
         return None
@@ -122,7 +121,6 @@ def _read_label(line: str) -> str | None:
 
 
 def _strip_label(line: str) -> str:
-    """Helper to strip the test case label from a raw line of text.
-    """
+    """Helper to strip the test case label from a raw line of text."""
     splits = line.split(":", maxsplit=1)
     return splits[-1].strip() if len(splits) > 1 else ""

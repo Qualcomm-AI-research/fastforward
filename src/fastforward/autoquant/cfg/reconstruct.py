@@ -234,7 +234,7 @@ def apply_node_wrapper(
     not contained in the block itself. During the deconstruction process, these
     wrappers are applied again. This is a general function for applying
     wrappers. Node specific functions can be registered using
-    `apply_node_wrapper.register`
+    `apply_node_wrapper.register`.
 
     Args:
         _wrapper: The CST node to apply or unwrap.

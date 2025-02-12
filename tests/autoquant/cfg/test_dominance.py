@@ -36,8 +36,7 @@ from typing_extensions import Self, override
     ],
 )
 def graph(request: pytest.FixtureRequest) -> "_Graph":
-    """Create `_Graph` from edge list.
-    """
+    """Create `_Graph` from edge list."""
     return _Graph.from_edges(request.param)
 
 

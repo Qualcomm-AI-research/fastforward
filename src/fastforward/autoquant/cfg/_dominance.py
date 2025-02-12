@@ -273,8 +273,7 @@ class _DominatorAccessorProtocol(Protocol):
 
 
 class _DominatorAccessor:
-    """A dominator accessor for  immediate dominators.
-    """
+    """A dominator accessor for  immediate dominators."""
 
     def get(self, block: blocks.Block) -> blocks.Block | None:
         return block.immediate_dominator
@@ -284,8 +283,7 @@ class _DominatorAccessor:
 
 
 class _PostDominatorAccessor:
-    """A dominator accessor for  immediate post-dominators.
-    """
+    """A dominator accessor for  immediate post-dominators."""
 
     def get(self, block: blocks.Block) -> blocks.Block | None:
         return block.immediate_post_dominator

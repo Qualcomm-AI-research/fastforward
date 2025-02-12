@@ -225,7 +225,6 @@ def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.Indente
 
 
 def _set_tails(block: blocks.Block | None, tail: blocks.Block) -> None:
-    """Helper function that sets tails of `block` if `block` is not `None`.
-    """
+    """Helper function that sets tails of `block` if `block` is not `None`."""
     if block:
         block.set_tail(tail)

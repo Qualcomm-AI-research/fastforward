@@ -62,8 +62,7 @@ class Block(abc.ABC):
 
     @property
     def wrappers(self) -> list[libcst.CSTNode]:
-        """A list of stored wrappers on this block.
-        """
+        """A list of stored wrappers on this block."""
         return self._wrappers[:]
 
     def push_wrapper(self, node: libcst.CSTNode) -> None:
@@ -227,7 +226,7 @@ class ExitBlock(Block):
 
 
 def _dominates(maybe_dom: Block, block: Block) -> bool:
-    """True if `maybe_dom` dominates `block`, False otherwise"""
+    """True if `maybe_dom` dominates `block`, False otherwise."""
     dom: Block | None = block
     while dom is not None:
         if maybe_dom is dom:
