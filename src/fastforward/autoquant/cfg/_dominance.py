@@ -12,8 +12,7 @@ OrderIndex = NewType("OrderIndex", int)
 
 
 def infer_immediate_dominators(root: blocks.Block) -> None:
-    """
-    Infer immediate dominators and post-dominators for each block in CFG that
+    """Infer immediate dominators and post-dominators for each block in CFG that
     has `root` as root block.
 
     A dominator of a block A is a block B which is guaranteed to be on every
@@ -79,8 +78,7 @@ def infer_immediate_dominators(root: blocks.Block) -> None:
 
 
 def infer_parents(root: blocks.Block) -> dict[blocks.Block, list[blocks.Block]]:
-    """
-    Infer parents for each block in CFG given by `root`.
+    """Infer parents for each block in CFG given by `root`.
 
     Args:
         root: The root block of the CFG.
@@ -96,8 +94,7 @@ def infer_parents(root: blocks.Block) -> dict[blocks.Block, list[blocks.Block]]:
 
 
 def infer_children(root: blocks.Block) -> dict[blocks.Block, list[blocks.Block]]:
-    """
-    Infer children for each block in CFG given by `root`.
+    """Infer children for each block in CFG given by `root`.
 
     Note that the children are always stored on the `block` directly. This
     function merely produces a dictionary that maps blocks to their children
@@ -123,8 +120,7 @@ def _assign_immediate_dominators(
     dominator_accessor: "_DominatorAccessorProtocol",
     reverse_traversal: bool,
 ) -> None:
-    """
-    Infer dominator for each block in CFG given by `root`.
+    """Infer dominator for each block in CFG given by `root`.
 
     This function implements an iterative algorithm for inferring dominators.
     After convergence the dominator is set correctly, however, during the
@@ -189,8 +185,7 @@ def _most_immediate_common_dominator(
     block_order: dict[blocks.Block, OrderIndex],
     dominator_accessor: "_DominatorAccessorProtocol",
 ) -> blocks.Block:
-    """
-    Given two blocks and a block order, infer the 'closest' block that
+    """Given two blocks and a block order, infer the 'closest' block that
     dominates both `block1` and `block2`.
 
     The dominator selection is given by `dominator_accessor`, making this
@@ -240,8 +235,7 @@ def _processed_parent(
     parents: Sequence[blocks.Block],
     dominator_accessor: "_DominatorAccessorProtocol",
 ) -> blocks.Block:
-    """
-    Returns any parent that has an immediate dominator set.
+    """Returns any parent that has an immediate dominator set.
 
     NB: during dominance assignment, this may not be the actual
         immediate dominator
@@ -253,16 +247,14 @@ def _processed_parent(
 
 
 class _DominatorAccessorProtocol(Protocol):
-    """
-    Protocol for dominator accessors. A dominator accessor returns a specific
+    """Protocol for dominator accessors. A dominator accessor returns a specific
     type of dominator (e.g., immediate dominator or immediate post-dominator)
     such that algorithm implementation gen be generic over a specific type of
     dominator.
     """
 
     def get(self, block: blocks.Block) -> blocks.Block | None:
-        """
-        Return the dominator of `block`.
+        """Return the dominator of `block`.
 
         Args:
             block: The block to obtain the dominator from.
@@ -272,8 +264,7 @@ class _DominatorAccessorProtocol(Protocol):
         """
 
     def set(self, block: blocks.Block, dominator: blocks.Block) -> None:
-        """
-        Set the dominator of `block` to `dominator`.
+        """Set the dominator of `block` to `dominator`.
 
         Args:
             block: The block to set the dominator of.
@@ -282,8 +273,7 @@ class _DominatorAccessorProtocol(Protocol):
 
 
 class _DominatorAccessor:
-    """
-    A dominator accessor for  immediate dominators.
+    """A dominator accessor for  immediate dominators.
     """
 
     def get(self, block: blocks.Block) -> blocks.Block | None:
@@ -294,8 +284,7 @@ class _DominatorAccessor:
 
 
 class _PostDominatorAccessor:
-    """
-    A dominator accessor for  immediate post-dominators.
+    """A dominator accessor for  immediate post-dominators.
     """
 
     def get(self, block: blocks.Block) -> blocks.Block | None:

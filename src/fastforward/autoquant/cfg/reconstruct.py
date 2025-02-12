@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def reconstruct(block: blocks.FunctionBlock) -> libcst.FunctionDef:
-    """
-    Convert a `FunctionBlock` into a CST.
+    """Convert a `FunctionBlock` into a CST.
 
     Args:
         block: The `FunctionBlock` to convert to a CST.
@@ -40,8 +39,7 @@ def reconstruct(block: blocks.FunctionBlock) -> libcst.FunctionDef:
 
 @functools.singledispatch
 def reconstruct_block(block: blocks.Block) -> libcst.IndentedBlock:
-    """
-    Convert `block` into an `IndentedBlock`.
+    """Convert `block` into an `IndentedBlock`.
 
     Specializations for this function that accept a subclass of `blocks.Block`
     can be registered using `reconstruct_block.register`. Each of these
@@ -63,8 +61,7 @@ def reconstruct_block(block: blocks.Block) -> libcst.IndentedBlock:
 
 @reconstruct_block.register
 def reconstruct_SimpleBlock(block: blocks.SimpleBlock) -> libcst.IndentedBlock:
-    """
-    Convert a `SimpleBlock` into an `IndentedBlock`.
+    """Convert a `SimpleBlock` into an `IndentedBlock`.
 
     A `SimpleBlock` has a list of statements and a 'root' wrapper that must be
     an `IndentedBlock`. The CST is reconstructed by replacing the wrapper's
@@ -94,8 +91,7 @@ def reconstruct_SimpleBlock(block: blocks.SimpleBlock) -> libcst.IndentedBlock:
 
 @reconstruct_block.register
 def reconstruct_IfBlock(block: blocks.IfBlock) -> libcst.IndentedBlock:
-    """
-    Convert an `IfBlock` into an `IndentedBlock`.
+    """Convert an `IfBlock` into an `IndentedBlock`.
 
     An `IfBlock` contains a test expression and references blocks for the true
     and false branch. The body of the `libcst.If` is made up of the
@@ -140,8 +136,7 @@ def reconstruct_IfBlock(block: blocks.IfBlock) -> libcst.IndentedBlock:
 
 @reconstruct_block.register
 def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
-    """
-    Construct a CST from an `ExitBlock`.
+    """Construct a CST from an `ExitBlock`.
 
     Since the exit block does not contain any logic this function simply
     returns an empty `IndentedBlock`.
@@ -157,8 +152,7 @@ def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
 
 
 def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.IndentedBlock:
-    """
-    Merge `IndentedBlock` associated with `block` if the immediate
+    """Merge `IndentedBlock` associated with `block` if the immediate
     post-dominator of `block` is dominated by `block`.
 
     Args:
@@ -176,8 +170,7 @@ def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.Ind
 
 
 def _has_tail(block: blocks.Block) -> bool:
-    """
-    Checks if `block` has a 'tail' block that should be processed as part of
+    """Checks if `block` has a 'tail' block that should be processed as part of
     the same `IndentedBlock`.
 
     For example, consider the following code:
@@ -237,8 +230,7 @@ def apply_node_wrapper(
     _node: libcst.CSTNode,
     /,
 ) -> libcst.CSTNode:
-    """
-    Wrappers on `Blocks` are CST nodes that may carry extra information that is
+    """Wrappers on `Blocks` are CST nodes that may carry extra information that is
     not contained in the block itself. During the deconstruction process, these
     wrappers are applied again. This is a general function for applying
     wrappers. Node specific functions can be registered using
@@ -272,8 +264,7 @@ def apply_else_wrapper(
     node: libcst.CSTNode,
     /,
 ) -> libcst.Else | libcst.If:
-    """
-    Turn `node` into an `Else` node.
+    """Turn `node` into an `Else` node.
 
     If node is an `If` node. Wrap it in an `IndentedBlock` before further
     processing. This ensures that an else branch is present in the produced CST
@@ -308,8 +299,7 @@ def apply_indented_block_wrapper(
     node: libcst.CSTNode,
     /,
 ) -> libcst.CSTNode:
-    """
-    Apply an `IndentedBlock` wrapper.
+    """Apply an `IndentedBlock` wrapper.
 
     If `node` is an `IndentedBlock`, update the metadata (but not body) on
     `node` such that the information from `wrapper` is available on `node`.

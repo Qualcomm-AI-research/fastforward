@@ -6,9 +6,8 @@ from collections.abc import Iterator, Sequence
 
 import pytest
 
-from typing_extensions import Self, override
-
 from fastforward.autoquant.cfg import _dominance, blocks
+from typing_extensions import Self, override
 
 
 @pytest.fixture(
@@ -37,8 +36,7 @@ from fastforward.autoquant.cfg import _dominance, blocks
     ],
 )
 def graph(request: pytest.FixtureRequest) -> "_Graph":
-    """
-    Create `_Graph` from edge list.
+    """Create `_Graph` from edge list.
     """
     return _Graph.from_edges(request.param)
 
@@ -97,8 +95,7 @@ def test_dominance(graph: "_Graph") -> None:
 
 @dataclasses.dataclass(eq=False)
 class _TestBlock(blocks.Block):
-    """
-    Test `Block` that can have any number of children.
+    """Test `Block` that can have any number of children.
 
     This `Block` is used for tests since the domination module does not rely
     on a specific type of block. It can hold a variable number of children and
@@ -125,8 +122,7 @@ class _TestBlock(blocks.Block):
 
 @dataclasses.dataclass
 class _Graph:
-    """
-    Graph used for constructing CFG test cases.
+    """Graph used for constructing CFG test cases.
 
     This is a basic graph implementation that can infer domination
     relationships between different nodes in the graph. By inverting the edges,
@@ -140,8 +136,7 @@ class _Graph:
 
     @classmethod
     def from_edges(cls, raw_edges: Sequence[str | tuple[str, str]]) -> Self:
-        """
-        Construct a `_Graph` from a list of edges.
+        """Construct a `_Graph` from a list of edges.
 
         Args:
             raw_edges: A sequence of pairs that represent a directed egde. A
@@ -176,8 +171,7 @@ class _Graph:
         return cls(nodes, edges, nodes_entry.pop(), nodes_exit.pop())
 
     def invert(self) -> Self:
-        """
-        Invert the graph, creating a new graph.
+        """Invert the graph, creating a new graph.
 
         Creates a new graph where all edges are reversed.
 
@@ -193,8 +187,7 @@ class _Graph:
         )
 
     def dominators(self) -> dict[str, set[str]]:
-        """
-        Infer domination relatioship of nodes in graph.
+        """Infer domination relatioship of nodes in graph.
 
         Returns:
             A mapping from node names to the names of its dominators.
@@ -217,8 +210,7 @@ class _Graph:
         return doms
 
     def cfg(self) -> blocks.Block:
-        """
-        Construct a CFG that follows the structure of this graph.
+        """Construct a CFG that follows the structure of this graph.
 
         Returns:
             A CFG created out of `_TestBlock`s that follows the same structure
@@ -239,8 +231,7 @@ class _Graph:
 
 
 def _idom_from_dom(dominators: dict[str, set[str]]) -> dict[str, str | None]:
-    """
-    Given a mapping of dominators, infer immediate dominators.
+    """Given a mapping of dominators, infer immediate dominators.
 
     Args:
         dominators: A mapping from node names to the set of dominator names.
@@ -263,8 +254,7 @@ def _idom_from_dom(dominators: dict[str, set[str]]) -> dict[str, str | None]:
 
 
 def _iterate_test_blocks(block: blocks.Block) -> Iterator[_TestBlock]:
-    """
-    Iteratate over blocks in `block`s subgraph.
+    """Iteratate over blocks in `block`s subgraph.
 
     Assert that `block` is a `_TestBlock` and that all of the blocks in its subgraph
     are also `_TestBlock`s.

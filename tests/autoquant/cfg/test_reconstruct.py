@@ -7,6 +7,7 @@ import libcst
 import pytest
 
 from fastforward.autoquant.cfg import construct, reconstruct
+
 from tests.autoquant.cfg import reconstruct_test_cases
 
 _RECONSTRUCTION_CASES = list(reconstruct_test_cases.test_cases())
@@ -18,8 +19,7 @@ _RECONSTRUCTION_CASES = list(reconstruct_test_cases.test_cases())
     ids=[case.description.replace(" ", "_") for case in _RECONSTRUCTION_CASES],
 )
 def test_reconstruct(input: str, output: str, description: str) -> None:
-    """
-    Load example from `reconstruct_test_case_data.py`.
+    """Load example from `reconstruct_test_case_data.py`.
 
     Examples are separated by CASE, ENDCASE markers. An EXPECT marker
     delineates the input and expected output example. If the expected output of

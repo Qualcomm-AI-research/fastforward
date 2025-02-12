@@ -15,8 +15,7 @@ from . import blocks
 
 
 class _GraphvizPrinter:
-    """
-    Writer object for Graphviz dot format of CFG graphs.
+    """Writer object for Graphviz dot format of CFG graphs.
 
     Each block is added separately through `add_block`. This method will add
     corresponding edges. This may result in dangling edges in the Graphviz
@@ -59,8 +58,7 @@ class _GraphvizPrinter:
             )
 
     def add_block(self, block: blocks.Block) -> None:
-        """
-        Add `block` to the graph.
+        """Add `block` to the graph.
 
         `block` is added by identity, i.e., a copy of the same block will get
         added as a separate block. All outgoing edges are also added, assuming
@@ -103,8 +101,7 @@ class _GraphvizPrinter:
         self._add_node(id(block), "EXIT")
 
     def write(self, writer: TextIO) -> None:
-        """
-        Write the graph.
+        """Write the graph.
 
         Produce a valid Graphviz dot-graph and write to writer, which can be
         any file-like (or TextIO) object.
@@ -120,8 +117,7 @@ class _GraphvizPrinter:
 
 
 def dump_graphviz(root: blocks.Block, writer: TextIO = sys.stdout) -> None:
-    """
-    Create a Graphviz graph for `root` and write to `writer`.
+    """Create a Graphviz graph for `root` and write to `writer`.
 
     Args:
         root: The CFG to create a Graphviz graph for.

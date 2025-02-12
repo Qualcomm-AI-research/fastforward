@@ -20,8 +20,7 @@ RECONSTRUCT_TEST_CASE_FILE = pathlib.Path(__file__).parent / "reconstruct_test_c
 
 
 def test_cases() -> Iterator[ReconstructTestCase]:
-    """
-    Create iterator over CFG reconstruction test cases in
+    """Create iterator over CFG reconstruction test cases in
     `RECONSTRUCT_TEST_CASE_FILE`.
 
     Reads test cases from `RECONSTRUCT_TEST_CASE_FILE` and yields
@@ -34,8 +33,7 @@ def test_cases() -> Iterator[ReconstructTestCase]:
 
 
 def _read_test_cases(filename: pathlib.Path | str) -> Iterator[ReconstructTestCase]:
-    """
-    Read test_cases from `filename`.
+    """Read test_cases from `filename`.
 
     Cases are separated by CASE and ENDCASE markers. An EXPECT marker
     delineates the input and expected output example. If the expected output of
@@ -78,8 +76,7 @@ def _read_test_cases(filename: pathlib.Path | str) -> Iterator[ReconstructTestCa
 
 
 def _complete_testcase(test_case: ReconstructTestCase) -> ReconstructTestCase:
-    """
-    Perform some post-processing on `test_case`.
+    """Perform some post-processing on `test_case`.
 
     Post processing includes the following:
         - Remove any leading and trailing whitespace from input and output
@@ -111,8 +108,7 @@ def _complete_testcase(test_case: ReconstructTestCase) -> ReconstructTestCase:
 
 
 def _read_label(line: str) -> str | None:
-    """
-    Helper to read the test case label from a raw line of text.
+    """Helper to read the test case label from a raw line of text.
     """
     line = line.strip()
     if not line.startswith("#"):
@@ -126,8 +122,7 @@ def _read_label(line: str) -> str | None:
 
 
 def _strip_label(line: str) -> str:
-    """
-    Helper to strip the test case label from a raw line of text.
+    """Helper to strip the test case label from a raw line of text.
     """
     splits = line.split(":", maxsplit=1)
     return splits[-1].strip() if len(splits) > 1 else ""

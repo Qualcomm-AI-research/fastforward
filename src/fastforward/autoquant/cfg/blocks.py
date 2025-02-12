@@ -17,8 +17,7 @@ from typing_extensions import override
 # to the instance id. This way `Block`s are hashable and each block is unique.
 @dataclasses.dataclass(eq=False)
 class Block(abc.ABC):
-    """
-    Base class for blocks of a Control Flow Graph.
+    """Base class for blocks of a Control Flow Graph.
 
     Subclasses of `Block` implement specific types of control flow. Depending
     on the type of control flow, it may have zero or more outgoing edges.
@@ -49,8 +48,7 @@ class Block(abc.ABC):
 
     @abc.abstractmethod
     def set_tail(self, tail: "Block") -> None:
-        """
-        Set a tail block on self and/or its children.
+        """Set a tail block on self and/or its children.
 
         Here, tail means a CFG subgraph, i.e., a CFG that contains one or
         more blocks. This method updates all the dangling edges in this graph
@@ -64,14 +62,12 @@ class Block(abc.ABC):
 
     @property
     def wrappers(self) -> list[libcst.CSTNode]:
-        """
-        A list of stored wrappers on this block.
+        """A list of stored wrappers on this block.
         """
         return self._wrappers[:]
 
     def push_wrapper(self, node: libcst.CSTNode) -> None:
-        """
-        Add a wrapper node.
+        """Add a wrapper node.
 
         A wrapper node can be used to store more CST context on a block. Please
         see the docstring on `Block` for more information.
@@ -79,8 +75,7 @@ class Block(abc.ABC):
         self._wrappers.append(node)
 
     def named_children(self) -> Iterator[tuple[str, "Block"]]:
-        """
-        Yields all direct children of this block.
+        """Yields all direct children of this block.
 
         By default, this will find all members that are a subclass of `Block`
         and yields those. A specific subclass of `Block` may require other
@@ -103,8 +98,7 @@ class Block(abc.ABC):
         *,
         reverse: bool = True,
     ) -> Iterator["Block"]:
-        """
-        Yield all blocks in sub-graph with self as root.
+        """Yield all blocks in sub-graph with self as root.
 
         The blocks are yielded in either reverse post-order or post-order
         depending on `reverse`.
@@ -130,8 +124,7 @@ class Block(abc.ABC):
         yield from block_iter
 
     def is_dominated_by(self, other: "Block") -> bool:
-        """
-        True if `other` dominates `self`, False otherwise.
+        """True if `other` dominates `self`, False otherwise.
 
         Args:
             other: `Block` to test for dominance.
@@ -139,8 +132,7 @@ class Block(abc.ABC):
         return _dominates(other, self)
 
     def dominates(self, other: "Block") -> bool:
-        """
-        True if `self` dominates `other`, False otherwise.
+        """True if `self` dominates `other`, False otherwise.
 
         Args:
             other: `Block` to test for dominance.
@@ -153,8 +145,7 @@ BlockT = TypeVar("BlockT", bound=Block)
 
 @dataclasses.dataclass(eq=False)
 class SimpleBlock(Block):
-    """
-    A block that encodes simple control flow.
+    """A block that encodes simple control flow.
 
     Each statement in `self.statements` is executed in order. After this block
     completes control flow deterministically proceeds to the block pointed to
@@ -177,8 +168,7 @@ class SimpleBlock(Block):
 
 @dataclasses.dataclass(eq=False)
 class BranchingBlock(Block, abc.ABC):
-    """
-    An abstract base class for blocks that represent some form of branching
+    """An abstract base class for blocks that represent some form of branching
     logic, i.e., the control flow does may proceed to different blocks
     depending on runtime evaluation/information.
     """
@@ -186,8 +176,7 @@ class BranchingBlock(Block, abc.ABC):
 
 @dataclasses.dataclass(eq=False)
 class IfBlock(BranchingBlock):
-    """
-    Block that represents an `if` statement.
+    """Block that represents an `if` statement.
 
     The block contains the `test` expression and a `true` and `false` edge.
     Depending on the evaluation of `test`, control flow proceeds with the
@@ -209,8 +198,7 @@ class IfBlock(BranchingBlock):
 
 @dataclasses.dataclass(eq=False)
 class FunctionBlock(Block):
-    """
-    Block that represents a function.
+    """Block that represents a function.
 
     From a control flow perspective, this block is similar to `SimpleBlock`.
     However, each function can only have a single `FunctionBlock` and it stores
@@ -226,8 +214,7 @@ class FunctionBlock(Block):
 
 @dataclasses.dataclass(eq=False)
 class ExitBlock(Block):
-    """
-    Block that represents the exit of a function.
+    """Block that represents the exit of a function.
 
     There can only be a single exit block in a CFG and all paths will end up in
     the exit block. The exit block itself does not represent any further
@@ -250,8 +237,7 @@ def _dominates(maybe_dom: Block, block: Block) -> bool:
 
 
 def _is_block_annotation(cls: type) -> bool:
-    """
-    Test if `cls` is `Block` type.
+    """Test if `cls` is `Block` type.
 
     Also returns True if `cls` is a Union type that includes a `Block`-type.
     """

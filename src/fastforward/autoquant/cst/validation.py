@@ -7,8 +7,7 @@ _T = TypeVar("_T")
 
 
 def ensure_type(node: object, NodeType: type[_T], ExceptionType: type[Exception] = TypeError) -> _T:
-    """
-    Assert that `node` is an instance of `NodeType`.
+    """Assert that `node` is an instance of `NodeType`.
 
     If assertion fails, raise `ExceptionType`.
 

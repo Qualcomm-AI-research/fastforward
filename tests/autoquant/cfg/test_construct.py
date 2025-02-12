@@ -49,8 +49,7 @@ def test_cfg_construction():
 
 
 class _TestBlock:
-    """
-    A test utility to assert the structure of a Control Flow Graph.
+    """A test utility to assert the structure of a Control Flow Graph.
 
     `_TestBlock`s can be used to create a graph structure.
     `assert_cfg_structure` will then assert that the given CFG has the same
@@ -66,8 +65,7 @@ class _TestBlock:
         self._expected_edges: dict[str, _TestBlock] = edges
 
     def assert_cfg_structure(self, block: blocks.Block, *, path: str = "") -> None:
-        """
-        Assert that the given CFG `block` has the same structure as the
+        """Assert that the given CFG `block` has the same structure as the
         `_TestBlock` graph.
 
         The CFG given by `block` must match the `BlockType`s of each

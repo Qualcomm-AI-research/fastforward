@@ -14,8 +14,7 @@ from .exceptions import CFGConstructionError
 
 
 def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
-    """
-    Construct a CFG from a `FunctionDef` CST node.
+    """Construct a CFG from a `FunctionDef` CST node.
 
     Currently, CFG creation is only supported for functions.
 
@@ -32,8 +31,7 @@ def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
 
 @functools.singledispatch
 def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
-    """
-    Convert CST with `node` as root to a CFG.
+    """Convert CST with `node` as root to a CFG.
 
     Specialization for this functions that accept a subclass `libcst.CSTNode`
     can be registered using `_block_from_CSTNode.register`. Each of this
@@ -55,8 +53,7 @@ def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
 
 @_block_from_CSTNode.register
 def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
-    """
-    Convert a `FunctionDef` to a CFG.
+    """Convert a `FunctionDef` to a CFG.
 
     The returned `FunctionBlock` contains the `FunctionDef` node and points to
     a CFG block that represents the function implementation.
@@ -80,8 +77,7 @@ def _block_from_FunctionDef(node: libcst.FunctionDef) -> blocks.FunctionBlock:
 
 @_block_from_CSTNode.register
 def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
-    """
-    Convert an `IndentedBlock` to a CFG.
+    """Convert an `IndentedBlock` to a CFG.
 
     The returned `Block` may be any subclass of `Block` and depends on the
     statements in `node.body`.
@@ -128,8 +124,7 @@ def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
 
 @_block_from_CSTNode.register
 def _block_from_If(node: libcst.If) -> blocks.IfBlock:
-    """
-    Convert `libcst.If` to a CFG.
+    """Convert `libcst.If` to a CFG.
 
     The returned `IfBlock` contains the test expression. The contents of the
     true and false branches are represented by other blocks that are pointed to
@@ -154,8 +149,7 @@ def _block_from_If(node: libcst.If) -> blocks.IfBlock:
 
 @_block_from_CSTNode.register
 def _block_from_Else(node: libcst.Else) -> blocks.Block:
-    """
-    Convert an `Else` node to a CFG.
+    """Convert an `Else` node to a CFG.
 
     An else branch is not represented by a specific block in the CFG. It is
     identified by being the `false` member on an `IfBlock`. As such, it can be
@@ -177,8 +171,7 @@ def _block_from_Else(node: libcst.Else) -> blocks.Block:
 
 
 def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.IndentedBlock]:
-    """
-    Split a single `IndentedBlock` into one or more `IndentedBlock`s that form
+    """Split a single `IndentedBlock` into one or more `IndentedBlock`s that form
     the content of CFG blocks. All returned blocks contain either no branching
     or a single compound statement that branches.
 
@@ -232,8 +225,7 @@ def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.Indente
 
 
 def _set_tails(block: blocks.Block | None, tail: blocks.Block) -> None:
-    """
-    Helper function that sets tails of `block` if `block` is not `None`.
+    """Helper function that sets tails of `block` if `block` is not `None`.
     """
     if block:
         block.set_tail(tail)
