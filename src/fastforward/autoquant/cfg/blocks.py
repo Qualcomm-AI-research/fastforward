@@ -167,9 +167,10 @@ class SimpleBlock(Block):
 
 @dataclasses.dataclass(eq=False)
 class BranchingBlock(Block, abc.ABC):
-    """An abstract base class for blocks that represent some form of branching
-    logic, i.e., the control flow does may proceed to different blocks
-    depending on runtime evaluation/information.
+    """Abstract base class for blocks that represent branching logic.
+
+    Subclasses of `BranchingBlock` represent control flow that may proceed to
+    different blocks depending on runtime evaluation/information.
     """
 
 

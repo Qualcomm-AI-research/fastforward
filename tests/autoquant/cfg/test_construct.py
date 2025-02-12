@@ -26,7 +26,7 @@ from tests.utils.string import dedent_strip
 _funcdef1: libcst.FunctionDef = libcst.parse_module(_src1).body[0]  # type: ignore[assignment]
 
 
-def test_cfg_construction():
+def test_cfg_construction() -> None:
     # Given an expected CFG structure
     tail = _TestSimpleBlock(next_block=_TestExitBlock())
     expected_graph_structure = _TestFunctionBlock(
@@ -65,8 +65,7 @@ class _TestBlock:
         self._expected_edges: dict[str, _TestBlock] = edges
 
     def assert_cfg_structure(self, block: blocks.Block, *, path: str = "") -> None:
-        """Assert that the given CFG `block` has the same structure as the
-        `_TestBlock` graph.
+        """Assert that the given CFG `block` has the same structure as the `_TestBlock` graph.
 
         The CFG given by `block` must match the `BlockType`s of each
         `_TestBlock` and all edges must be present.

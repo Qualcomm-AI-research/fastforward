@@ -20,8 +20,7 @@ RECONSTRUCT_TEST_CASE_FILE = pathlib.Path(__file__).parent / "reconstruct_test_c
 
 
 def test_cases() -> Iterator[ReconstructTestCase]:
-    """Create iterator over CFG reconstruction test cases in
-    `RECONSTRUCT_TEST_CASE_FILE`.
+    """Create iterator over CFG reconstruction test cases in `RECONSTRUCT_TEST_CASE_FILE`.
 
     Reads test cases from `RECONSTRUCT_TEST_CASE_FILE` and yields
     `ReconstructTestCase` instances for each.

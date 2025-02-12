@@ -152,8 +152,18 @@ def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
 
 
 def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.IndentedBlock:
-    """Merge `IndentedBlock` associated with `block` if the immediate
-    post-dominator of `block` is dominated by `block`.
+    """Process the 'tail' of `block` and merge with node if appropriate.
+
+    Consider a `Block` `A` and let its immediate post-dominator be `P`. `A` is
+    considered to have a "tail" iff `A` is the immediate dominator of `P`. In
+    this case, control flow can only reach `P` through `A`. In terms of CST
+    reconstruction, this means that the `IndentedBlock` associated with `A` and
+    `P` can be merged into a single `IndentedBlock`.
+
+    This function merges `node` (the `IndentedBlock` associated with `block`,
+    i.e., `A` in the description above) and the associated (to be constructed)
+    `IndentedBlock` associated with `blocks`s immediate post-dominator if the
+    requirements described above hold. Otherwise, this function returns `node`.
 
     Args:
         block: the `Block` to evaluate.
@@ -170,8 +180,10 @@ def _process_tail(block: blocks.Block, node: libcst.IndentedBlock) -> libcst.Ind
 
 
 def _has_tail(block: blocks.Block) -> bool:
-    """Checks if `block` has a 'tail' block that should be processed as part of
-    the same `IndentedBlock`.
+    """Checks if `block` has a 'tail' block.
+
+    A tail block should be processed to be part of the same `IndentedBlock` as
+    that associated with `block`.
 
     For example, consider the following code:
 
@@ -230,11 +242,16 @@ def apply_node_wrapper(
     _node: libcst.CSTNode,
     /,
 ) -> libcst.CSTNode:
-    """Wrappers on `Blocks` are CST nodes that may carry extra information that is
+    """Dispatcher for wrapper application functions.
+
+    Wrappers on `Blocks` are CST nodes that may carry extra information that is
     not contained in the block itself. During the deconstruction process, these
     wrappers are applied again. This is a general function for applying
     wrappers. Node specific functions can be registered using
     `apply_node_wrapper.register`.
+
+    New specializations for wrapper applications can be registered using the
+    `apply_node_wrapper.register` decorator.
 
     Args:
         _wrapper: The CST node to apply or unwrap.
@@ -273,9 +290,9 @@ def apply_else_wrapper(
     Raises an error if `node` is not an `IndentedBlock` or `If`.
 
     Args:
-        _wrapper: The CST node to apply or unwrap.
-        _block: The block of which the wrapper is stored.
-        _node: The CST node to which to apply the wrapper to.
+        wrapper: The CST node to apply or unwrap.
+        block: The block of which the wrapper is stored.
+        node: The CST node to which to apply the wrapper to.
 
     Returns:
         Processed and 'unwrapped' CST Node.
@@ -307,9 +324,9 @@ def apply_indented_block_wrapper(
     `node`.
 
     Args:
-        _wrapper: The CST node to apply or unwrap.
-        _block: The block of which the wrapper is stored.
-        _node: The CST node to which to apply the wrapper to.
+        wrapper: The CST node to apply or unwrap.
+        _block: The block of which `wrapper` is stored.
+        node: The CST node to which to apply `wrapper` to.
 
     Returns:
         Processed and 'unwrapped' CST Node.

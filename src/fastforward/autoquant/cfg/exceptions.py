@@ -3,12 +3,12 @@
 
 
 class CFGError(Exception):
-    pass
+    """General CFG related Exception."""
 
 
 class CFGConstructionError(CFGError):
-    pass
+    """CFG Construction Exception."""
 
 
 class CFGReconstructionError(CFGError):
-    pass
+    """CFG Reconstruction Exception."""

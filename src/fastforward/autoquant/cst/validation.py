@@ -17,7 +17,7 @@ def ensure_type(node: object, NodeType: type[_T], ExceptionType: type[Exception]
     Args:
         node: The node to check the type of.
         NodeType: The expected node type of `node`.
-        Expcetion: The exception to raise if `node` is not an instance of
+        ExceptionType: The exception to raise if `node` is not an instance of
             `NodeType`.
     """
     if not isinstance(node, NodeType):

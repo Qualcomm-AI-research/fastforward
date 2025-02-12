@@ -5,7 +5,7 @@
 # tests/autoquant/cfg/test_reconstruct.py::test_reconstruct
 
 # CASE: Function with single if statement
-def my_function_1():
+def my_function_1() -> None:
     if test:
         pass
     do_something()
@@ -17,7 +17,7 @@ def my_function_1():
 
 
 # CASE: Function with if/else statement
-def my_function_2():
+def my_function_2() -> None:
     if test:
         pass
     else:  # a comment
@@ -31,7 +31,7 @@ def my_function_2():
 
 
 # CASE: Function with if/elif statement
-def my_function_3():
+def my_function_3() -> None:
     if test:
         pass
     elif test2:
@@ -45,7 +45,7 @@ def my_function_3():
 
 
 # CASE: Function with if/elif/else statement
-def my_function_4():
+def my_function_4() -> None:
     if test:
         pass
     elif test2:
@@ -61,7 +61,7 @@ def my_function_4():
 
 
 # CASE: Function with if/else with single if in else block
-def my_function_5():
+def my_function_5() -> None:
     if test:
         pass
     else:  # a comment
@@ -76,7 +76,7 @@ def my_function_5():
 
 
 # CASE: Function with if statement in clause with a trailing statement
-def my_function_6():
+def my_function_6() -> None:
     if test:
         pass
     else:  # a comment
@@ -95,5 +95,5 @@ test = True
 test2 = False
 
 
-def do_something(): ...
-def do_more(): ...
+def do_something() -> None: ...
+def do_more() -> None: ...

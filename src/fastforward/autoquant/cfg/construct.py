@@ -171,9 +171,15 @@ def _block_from_Else(node: libcst.Else) -> blocks.Block:
 
 
 def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.IndentedBlock]:
-    """Split a single `IndentedBlock` into one or more `IndentedBlock`s that form
-    the content of CFG blocks. All returned blocks contain either no branching
-    or a single compound statement that branches.
+    """Split `IndentedBlock` into multiple `IndentedBlock`s.
+
+    Split a single `IndentedBlock` into one or more `IndentedBlock`s that form
+    the content of `node`. All returned blocks contain either no branching or a
+    single compound statement that branches.
+
+    Note that any of the yielded blocks may still contain IndentedBlocks
+    as successors. These are not processed directly (i.e., recursively) in this
+    function, but may be broken down in subsequent calls.
 
     Args:
         node: `IndentedBlock` to break up into one or more smaller `IndentedBlock`s.
