@@ -25,7 +25,7 @@ def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
         CFG that represents same function as node.
     """
     cfg = _block_from_FunctionDef(node)
-    _dominance.infer_immediate_dominators(cfg)
+    _dominance.set_immediate_dominators(cfg)
     return cfg
 
 
@@ -99,7 +99,7 @@ def _block_from_IndentedBlock(node: libcst.IndentedBlock) -> blocks.Block:
                 # When the first element is a `SimpleStatementLine`, from
                 # `_split_indented_block` we can be sure all elements are
                 # `SimpleStatementLine` and the block does not contain branches
-                statements = cast(list[libcst.SimpleStatementLine], node.body)
+                statements = cast(Sequence[libcst.SimpleStatementLine], node.body)
                 block = blocks.SimpleBlock(statements=statements, next_block=None)
             case _:
                 # If the first element is not a `SimpleStatementLine`, the partial block
