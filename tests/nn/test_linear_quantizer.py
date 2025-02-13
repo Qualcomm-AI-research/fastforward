@@ -96,17 +96,30 @@ def test_linear_quantizer_op_gradients() -> None:
     assert torch.count_nonzero(offset.grad)
 
 
-def test_linear_quantizer_initialisation_behavior() -> None:
+@pytest.mark.parametrize("quantized_dtype", [torch.float16, torch.float32, torch.int16])
+@pytest.mark.parametrize("param_dtype", [torch.float16, torch.float32])
+def test_linear_quantizer_initialisation_behavior(
+    quantized_dtype: torch.dtype, param_dtype: torch.dtype
+) -> None:
     data = torch.rand((32, 14, 17))
     num_bits = 2
-    quantizer = LinearQuantizer(num_bits=num_bits, symmetric=False)
+    quantizer = LinearQuantizer(
+        num_bits=num_bits, symmetric=False, quantized_dtype=quantized_dtype, param_dtype=param_dtype
+    )
 
     with pytest.raises(ValueError):
         quantizer(data)
 
     quantizer.quantization_range = (torch.min(data), torch.max(data))
 
-    assert quantizer(data) is not None
+    quantized = quantizer(data)
+
+    assert quantized is not None
+    assert isinstance(quantized, QuantizedTensor)
+    assert quantized.raw_data.dtype == quantized_dtype
+
+    for parameter in quantizer.parameters():
+        assert parameter.dtype == param_dtype
 
 
 def test_linear_quantizer_quantisation_range_setter() -> None:
