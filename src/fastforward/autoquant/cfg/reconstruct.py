@@ -2,7 +2,6 @@
 # All Rights Reserved.
 
 import functools
-import logging
 
 from typing import overload
 
@@ -12,8 +11,6 @@ from ..cst import node_manipulation
 from ..cst.validation import ensure_type
 from . import blocks
 from .exceptions import CFGReconstructionError
-
-logger = logging.getLogger(__name__)
 
 
 def reconstruct(block: blocks.FunctionBlock) -> libcst.FunctionDef:
@@ -25,11 +22,10 @@ def reconstruct(block: blocks.FunctionBlock) -> libcst.FunctionDef:
     Returns:
         CST that represents same code as the CFG with `block` as root.
     """
-    logger.debug("start reconstruct CFG")
     wrappers = block.wrappers
     if len(wrappers) != 1 or not isinstance(wrappers[0], libcst.FunctionDef):
         raise CFGReconstructionError(
-            "Expected function block to have exactly one FunctionDef associated node"
+            "Expected a single FunctionDef node associated with the function block"
         )
 
     node = wrappers[0].with_changes(body=reconstruct_block(block.body))
@@ -77,7 +73,6 @@ def reconstruct_SimpleBlock(block: blocks.SimpleBlock) -> libcst.IndentedBlock:
     Returns:
             CST representation of `block` with `IndentedBlock` as root node.
     """
-    logger.debug("Reconstruct SimpleBlock")
     node = block.wrappers[0].with_changes(body=block.statements)
     if not isinstance(node, libcst.IndentedBlock):
         raise TypeError(
@@ -114,14 +109,12 @@ def reconstruct_IfBlock(block: blocks.IfBlock) -> libcst.IndentedBlock:
     Returns:
             CST representation of `block` with `IndentedBlock` as root node.
     """
-    logger.debug("Reconstruct IfBlock")
     if block.false is None:
         raise ValueError("Encountered IfBlock withing dangling 'else' edge")
 
     true_branch = reconstruct_block(block.true)
     false_branch: libcst.If | libcst.IndentedBlock | None = None
     if block.immediate_post_dominator is not block.false:
-        logger.debug(f"Reconstruct False branch from {type(block.false).__name__}")
         false_branch = reconstruct_block(block.false)
         false_branch = node_manipulation.unwrap_single_statement(false_branch, libcst.If)
         false_branch = _apply_wrappers(false_branch, block.false)  # type: ignore[assignment]
@@ -147,7 +140,6 @@ def reconstruct_ExitBlock(_block: blocks.ExitBlock) -> libcst.IndentedBlock:
     Returns:
             CST representation of `block` with `IndentedBlock` as root node.
     """
-    logger.debug("Reconstruct ExitBlock")
     return libcst.IndentedBlock(body=())
 
 
@@ -283,7 +275,7 @@ def apply_else_wrapper(
 ) -> libcst.Else | libcst.If:
     """Turn `node` into an `Else` node.
 
-    If node is an `If` node. Wrap it in an `IndentedBlock` before further
+    If node is an `If` node, wrap it in an `IndentedBlock` before further
     processing. This ensures that an else branch is present in the produced CST
     if it was in the original.
 
@@ -297,8 +289,6 @@ def apply_else_wrapper(
     Returns:
         Processed and 'unwrapped' CST Node.
     """
-    logger.debug(f"apply Else wrapper on {type(node).__name__}")
-
     if isinstance(node, libcst.If):
         node = libcst.IndentedBlock(body=(node,))
     if isinstance(node, libcst.IndentedBlock):
@@ -331,7 +321,6 @@ def apply_indented_block_wrapper(
     Returns:
         Processed and 'unwrapped' CST Node.
     """
-    logger.debug("apply IndentedBlock wrapper")
     match node:
         case libcst.IndentedBlock():
             return node_manipulation.flatten_indented_blocks(wrapper, node)
