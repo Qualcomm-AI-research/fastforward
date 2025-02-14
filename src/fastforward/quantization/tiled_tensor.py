@@ -100,9 +100,9 @@ def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) 
 def rows_to_tiles(
     tiled_data: torch.Tensor, data_size: SizeT, tile_size: SizeT | Literal["data_shape"]
 ) -> torch.Tensor:
-    """Reshape and permute tiled_data.
+    """Reshape and permute `tiled_data`.
 
-    Reshape and permute tiled_data to a tensor of data_size tiled by tile_size where each row
+    Reshape and permute `tiled_data` to a tensor of `data_size` tiled by `tile_size` where each row
     in tiled_data corresponds to a single tile.
 
     Args:
@@ -117,7 +117,7 @@ def rows_to_tiles(
 
     Raises:
     ------
-        ValueEerror: Tiled_data's size does not correspond to data_size and tile_size.
+        ValueError: `tiled_data`'s size does not correspond to `data_size` and `tile_size`.
     """
     if tiled_data.numel() == 0:
         return tiled_data.reshape(data_size)

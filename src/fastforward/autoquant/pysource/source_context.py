@@ -185,7 +185,7 @@ class _ModuleSource:
         if relative_qualified_name not in self._members:
             raise SourceContextMemberError(
                 f"'{relative_qualified_name}' is not recorded as a member of {self._py_module}. "
-                + "Currently only function and class defintions are recorded as members."
+                + "Currently only function and class definitions are recorded as members."
             )
         return self._members[relative_qualified_name]
 
@@ -193,7 +193,7 @@ class _ModuleSource:
         if relative_qualified_name not in self._members:
             raise SourceContextMemberError(
                 f"'{relative_qualified_name}' is not recorded as a member of {self._py_module}. "
-                + "Currently only function and class defintions are recorded as members."
+                + "Currently only function and class definitions are recorded as members."
             )
 
         qualified_name = _join_qualified_names(self.qualified_name(), relative_qualified_name)

@@ -43,9 +43,6 @@ class RangeSettable(Protocol):
         using which quantization parameters. Examples of granularities are
         per-tensor and per-channel.
 
-        Note:
-            Granularities will soon be replaced by tile specifications.
-
         Returns:
             quantization granulirity
         """

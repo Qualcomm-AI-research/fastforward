@@ -141,7 +141,7 @@ class _Graph:
         """Construct a `_Graph` from a list of edges.
 
         Args:
-            raw_edges: A sequence of pairs that represent a directed egde. A
+            raw_edges: A sequence of pairs that represent a directed edge. A
                 pair can either be string of two characters or a tuple of two
                 strings.
 
@@ -189,7 +189,7 @@ class _Graph:
         )
 
     def dominators(self) -> dict[str, set[str]]:
-        """Infer domination relatioship of nodes in graph.
+        """Infer domination relationship of nodes in graph.
 
         Returns:
             A mapping from node names to the names of its dominators.

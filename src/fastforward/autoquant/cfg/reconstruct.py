@@ -110,7 +110,7 @@ def reconstruct_IfBlock(block: blocks.IfBlock) -> libcst.IndentedBlock:
             CST representation of `block` with `IndentedBlock` as root node.
     """
     if block.false is None:
-        raise ValueError("Encountered IfBlock withing dangling 'else' edge")
+        raise ValueError("Encountered IfBlock within dangling 'else' edge")
 
     true_branch = reconstruct_block(block.true)
     false_branch: libcst.If | libcst.IndentedBlock | None = None

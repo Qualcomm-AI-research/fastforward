@@ -58,7 +58,7 @@ class QualifiedNameReference:
     def _import_module(
         self, *, _remainder: tuple[str, ...] = ()
     ) -> tuple[ModuleType, str, tuple[str, ...]]:
-        # If we reach a root refence, the import must have failed
+        # If we reach a root reference, the import must have failed
         if len(self._parts) == 0:
             raise ImportError(f"Cannot import '{'.'.join(_remainder)}'")
 

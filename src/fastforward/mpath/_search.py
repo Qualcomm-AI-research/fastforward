@@ -129,7 +129,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return [func(*named_module) for named_module in self.named_modules()]
 
     def named_modules(self) -> Iterator[tuple[str, torch.nn.Module]]:
-        """Returns An iterator with name and modules of all modules in the collection.
+        """Returns an iterator with name and modules of all modules in the collection.
 
         The name is relative with respect to the root module, i.e., the module that
         was queried to produce this collection.
