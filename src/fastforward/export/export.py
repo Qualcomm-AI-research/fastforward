@@ -413,8 +413,10 @@ def export(
     output_directory: str,
     model_name: str,
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
-) -> None:
-    """The main export function for retrieving artifacts that can be passed to QNN.
+    model_kwargs: None | dict[str, Any] = None,
+) -> pathlib.Path:
+    """
+    The main export function for retrieving artifacts that can be passed to QNN.
 
     This function takes an user-defined torch model (which can contain fastforward layers
     and quantizers). It then performs three processing steps:
@@ -445,6 +447,9 @@ def export(
         graph_preprocessors: Optionally pass a list of operations that can take place before the
             standard export graph operations required by QNN (parameter logging, removal of
             quantization/dequantization operations).
+        model_kwargs: kwargs passed to the model during export.
+    Returns:
+        _: the path to the output directory where the encodings and ONNX files are stored.
     """
     output_path = pathlib.Path(output_directory) / model_name
     output_path.mkdir(exist_ok=True, parents=True)
@@ -464,7 +469,7 @@ def export(
     graph_operators = [*graph_preprocessors, *default_graph_operators]
 
     with export_mode(True):
-        dynamo_exported_program = torch.export.export(model, args=data)
+        dynamo_exported_program = torch.export.export(model, args=data, kwargs=model_kwargs)
         dynamo_exported_program = dynamo_exported_program.run_decompositions({})
 
     dynamo_exported_program, new_old_input_spec_mapping, raw_logs = process_dynamo_program(
@@ -503,3 +508,5 @@ def export(
         all_tensors_to_one_file=False,
         location="filename",
     )
+
+    return output_path

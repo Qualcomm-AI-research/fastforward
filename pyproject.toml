@@ -13,7 +13,7 @@ dependencies = [
   "optree",
   "packaging",
   "setuptools<70",
-  "torch-onnx==0.1.16",
+  "torch-onnx==0.1.25",
   "typing-extensions",
 ]
 

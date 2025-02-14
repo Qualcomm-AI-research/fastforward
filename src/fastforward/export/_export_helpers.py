@@ -4,6 +4,7 @@
 import logging
 
 from typing import Any, Sequence, TypedDict
+from typing_extensions import NotRequired
 
 import torch
 
@@ -31,6 +32,14 @@ class QNNEncodingEntry(TypedDict):
 class QNNEncoding(TypedDict):
     activation_encodings: dict[str, list[QNNEncodingEntry]]
     param_encodings: dict[str, list[QNNEncodingEntry]]
+
+
+class QuantParametersDict(TypedDict):
+    scale: torch.Tensor | float
+    offset: torch.Tensor | float | int | None
+    num_bits: float | int
+    tile_size: NotRequired[tuple[int]]
+    output_dtype: NotRequired[torch.dtype]
 
 
 def get_input_spec_new_old_mapping(
@@ -204,6 +213,53 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     return int(value)
 
 
+def create_qnn_encoding_entry(
+    encoding_value: QuantParametersDict,
+) -> list[QNNEncodingEntry]:
+    """
+    Conversion of an encoding value dictionary to a QNNEncodingEntry
+
+    Args:
+        encoding_value: dictionary containing quantization parameters.
+    Returns:
+        encoding: list of QNNEncodingEntry dictionaries.
+    """
+    scale = encoding_value["scale"]
+    offset = encoding_value.get("offset")
+    bitwidth = encoding_value["num_bits"]
+    int_min = integer_minimum(bitwidth)
+
+    int_min = _strict_cast_to_int(int_min, "int_min")
+    bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
+
+    if isinstance(offset, torch.Tensor):
+        offset = torch.round(offset)
+
+    qnn_offset = offset - 2 ** (bitwidth - 1)
+    if not isinstance(qnn_offset, torch.Tensor):
+        qnn_offset = torch.tensor(qnn_offset)
+
+    min_range, max_range = quantization_range(scale, offset, bitwidth)
+    min_range = ensure_tensor(min_range)
+    max_range = ensure_tensor(max_range)
+
+    encoding = []
+
+    for s, o, oo, min_r, max_r in zip(scale, qnn_offset, offset, min_range, max_range):
+        output_entry: QNNEncodingEntry = {
+            "bitwidth": int(bitwidth),
+            "dtype": "int",
+            "is_symmetric": "True" if not oo else "False",
+            "min": min_r.item(),
+            "max": max_r.item(),
+            "offset": int(o),
+            "scale": s.item(),
+        }
+        encoding.append(output_entry)
+
+    return encoding
+
+
 def generate_qnn_encodings_dictionary(
     inputs: set[str],
     activations: set[str],
@@ -217,38 +273,7 @@ def generate_qnn_encodings_dictionary(
     activations_and_inputs = activations | inputs
 
     for key, value in quantization_logs.items():
-        scale = value["scale"]
-        offset = value.get("offset")
-        bitwidth = value["num_bits"]
-        int_min = integer_minimum(bitwidth)
-
-        int_min = _strict_cast_to_int(int_min, "int_min")
-        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
-
-        if isinstance(offset, torch.Tensor):
-            offset = torch.round(offset)
-
-        qnn_offset = offset - 2 ** (bitwidth - 1)
-        if not isinstance(qnn_offset, torch.Tensor):
-            qnn_offset = torch.tensor(qnn_offset)
-
-        min_range, max_range = quantization_range(scale, offset, bitwidth)
-        min_range = ensure_tensor(min_range)
-        max_range = ensure_tensor(max_range)
-
-        encoding = []
-
-        for s, o, oo, min_r, max_r in zip(scale, qnn_offset, offset, min_range, max_range):
-            output_entry: QNNEncodingEntry = {
-                "bitwidth": int(bitwidth),
-                "dtype": "int",
-                "is_symmetric": "True" if not oo else "False",
-                "min": min_r.item(),
-                "max": max_r.item(),
-                "offset": int(o),
-                "scale": s.item(),
-            }
-            encoding.append(output_entry)
+        encoding = create_qnn_encoding_entry(value)
 
         if key in activations_and_inputs:
             activation_encodings[key] = encoding
