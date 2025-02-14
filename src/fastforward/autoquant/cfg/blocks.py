@@ -97,13 +97,13 @@ class Block(abc.ABC):
         *,
         reverse: bool = True,
     ) -> Iterator["Block"]:
-        """Yield all blocks in sub-graph with self as root.
+        """Traverse graph and yield blocks in (reversed) post-order.
 
-        The blocks are yielded in either reverse post-order or post-order
-        depending on `reverse`.
+        In post-order traversal, the children of a node are traversed before
+        the node itself is visited/yielded.
 
         Args:
-            reverse: yield blocks in reverse post order if True, otherwise
+            reverse: yield blocks in reversed order if True, otherwise
                 yield blocks in post order.
         """
         visited: set["Block"] = set()
