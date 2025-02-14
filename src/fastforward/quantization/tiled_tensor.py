@@ -71,7 +71,7 @@ def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) 
     """Reshape and permute data.
 
     Reshape and permute data to a tensor in which the elements per tile are
-    layed out per row, following tile_size.
+    laid out per row, following tile_size.
 
     Args:
     ----
@@ -117,7 +117,7 @@ def rows_to_tiles(
 
     Raises:
     ------
-        ValuEerror: Tiled_data's size does not correspond to data_size and tile_size.
+        ValueEerror: Tiled_data's size does not correspond to data_size and tile_size.
     """
     if tiled_data.numel() == 0:
         return tiled_data.reshape(data_size)

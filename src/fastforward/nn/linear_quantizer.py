@@ -67,7 +67,7 @@ class AbstractAffineQuantizer(Quantizer, abc.ABC, Generic[QuantParams_co]):
 
     @property
     def has_uninitialized_params(self) -> bool:
-        """Check if there any quantization parameters that are unitialized."""
+        """Check if there any quantization parameters that are uninitialized."""
         Uninitialized = torch.nn.parameter.UninitializedParameter
         return any(isinstance(p, Uninitialized) for p in self.parameters())
 

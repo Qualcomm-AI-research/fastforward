@@ -94,7 +94,7 @@ def test_disable_quantization_override_context() -> None:
     )
 
 
-def test_disable_quantzation_quantizer_attachement() -> None:
+def test_disable_quantization_quantizer_attachment() -> None:
     # DisableQuantizationOverride.attach_to must only attach to quantizers that
     # are passed to `attach_to`.
     #

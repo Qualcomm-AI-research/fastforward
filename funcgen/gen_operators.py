@@ -242,7 +242,9 @@ def _single_param_quantization_guard(param: operator.Parameter) -> list[libcst.B
         elif always_quantized_if_tensor:
             cond = f"isinstance({param.name}, torch.Tensor) and not isinstance({param.name}, QuantizedTensor)"
         else:
-            raise NotImplementedError(f"QuantiationGuard for {param.param_type} is not implemented")
+            raise NotImplementedError(
+                f"QuantizationGuard for {param.param_type} is not implemented"
+            )
 
         quant_check.append(
             _simple_if(

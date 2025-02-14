@@ -221,7 +221,7 @@ def find_quantizers(
         query: Mpath.Selector or str that represent the filter query.
             Please see the documentation of `fastforward.mpath.query` and
             `fastforward.mpath.search` for more details.
-        aliases: Aliases to consider in the query. Any occurence of `&<alias>`
+        aliases: Aliases to consider in the query. Any occurrence of `&<alias>`
             is replaced by the corresponding query in aliases.
     """
     if isinstance(query, str):

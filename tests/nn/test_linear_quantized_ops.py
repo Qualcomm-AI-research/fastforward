@@ -128,7 +128,7 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     Test implementation for quantized tensors for which the following holds:
 
         - Per-Tensor quantized
-        - Either dynamically or staticly quantized
+        - Either dynamically or statically quantized
             (i.e., fastforward.affine or fastforward.dynamic)
     """
     # Given: A quantized and non-quantized tensor that represent the same values

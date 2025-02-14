@@ -21,7 +21,7 @@ from fastforward.quantized_tensor import QuantizedTensor
 class QuantizationParameters:
     """Container for quantization parameters.
 
-    Each quantization expects a specific `QuantizationParamers`.
+    Each quantization expects a specific `QuantizationParameters`.
     """
 
     def with_changes(self, **changes: Any) -> Self:

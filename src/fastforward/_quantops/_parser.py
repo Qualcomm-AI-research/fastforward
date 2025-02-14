@@ -90,7 +90,7 @@ class _Lexer:
             "}": TokenKind.RightBrace,
         }
 
-    def _emit_punctiation(self) -> Token:
+    def _emit_punctuation(self) -> Token:
         position = self._position
         self._position += 1
         char = self._src[position]
@@ -135,7 +135,7 @@ class _Lexer:
                 self._position += 2
                 continue
             if char in self._puncmap:
-                yield self._emit_punctiation()
+                yield self._emit_punctuation()
                 continue
             if char.isidentifier():
                 yield self._emit_identifier()
@@ -413,7 +413,7 @@ class Parser:
         else:
             # This parse expression part failed. We report the latest observed
             # error to the user as this corresponds to the longest failing
-            # parse. Update error information if this error occured later in
+            # parse. Update error information if this error occurred later in
             # the input string than any previous error.
             error_checkpoint, _, _ = self._latest_error
             if error_checkpoint < (cp := self._checkpoint()):

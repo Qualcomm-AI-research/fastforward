@@ -58,7 +58,7 @@ class ConcurrentExecOrchestrator:
     """Orchestrator to run target function repeatedly in a configurable order.
 
     Multiple execution for a single input can communicate between
-    different executions. This can be useful to implement local emperical error
+    different executions. This can be useful to implement local empirical error
     minimizations between two different execution contexts.
 
     The orchestration occurs over two axes called batches and stages. Batches
@@ -112,7 +112,7 @@ class ConcurrentExecOrchestrator:
     the synchronize call and orchestrator hooks. In particular,
     `ConcurrentExecOrchestrator.synchronize` accepts an optional `data`
     argument. This data is stored in the `batch_data` attribute on the
-    orchestrator and is accessable to all executions for a given batch. Note
+    orchestrator and is accessible to all executions for a given batch. Note
     that this is thread local storage and can not be used from the main thread.
     The data stored in `batch_data` may be altered by any execution for the
     same batch. `synchronize` will return the updated value when the execution
@@ -136,7 +136,7 @@ class ConcurrentExecOrchestrator:
     ==============
     If and error occurs during one of the executions, all other executions are
     stopped. Once all executions have terminated a RuntimeError is raised on
-    the main thread that references the caught execption in the execution.
+    the main thread that references the caught exception in the execution.
 
     Hooks
     =====
@@ -272,7 +272,7 @@ class ConcurrentExecOrchestrator:
         stage = self._local.stage
 
         # Some context: the orchestator uses an execution order, this is a list[tuple[int, ...]]
-        # A single tuple in the execution order is refered to as execution block or exec_block.
+        # A single tuple in the execution order is referred to as execution block or exec_block.
 
         # Find the current execution block that the current stage is part of.
         exec_block_idx = 0
@@ -467,7 +467,7 @@ class ConcurrentExecOrchestrator:
         if self._thread_exc is not None:
             batch, stage = self._thread_exc.batch, self._thread_exc.stage
             msg = (
-                f"An uncaught error occured for batch {batch} at stage {stage}. "
+                f"An uncaught error occurred for batch {batch} at stage {stage}. "
                 "See the error report above for more information."
             )
             raise RuntimeError(msg) from self._thread_exc.exc_value

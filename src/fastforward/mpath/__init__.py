@@ -24,7 +24,7 @@ decoder, i.e., the attribute name of the module in the parent module. The
 result of `search()` is an `MPathCollection` which is a collection of search
 results and metadata. This collection behaves like a set, i.e., union,
 intersection and other set operation are supported. Moreover, it can be used to
-perform batch updates to the orignal model. See the documentation of
+perform batch updates to the original model. See the documentation of
 `MPathCollection` for more details.
 """
 

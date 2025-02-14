@@ -127,11 +127,11 @@ class LocalErrorMethod(abc.ABC):
     def propagate(
         self, __replay_value: torch.Tensor, /
     ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
-        """Propagate data from replay stage to default and alterantive stage.
+        """Propagate data from replay stage to default and alternative stage.
 
         Given the value obtained in the replay stage, generate new activation
         value for default and alternative stage. Return None to 'propagate' the
-        actual values from the default and alterantive stage.
+        actual values from the default and alternative stage.
         """
 
     @abc.abstractmethod

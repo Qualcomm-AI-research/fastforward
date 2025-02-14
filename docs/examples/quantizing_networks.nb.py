@@ -137,7 +137,7 @@ quantized_data
 # %% [markdown]
 # # 3. Quantized Modules
 #
-# `Quantizers` typically don't exist in isolation. Instead, we would often like to quantize an entire model. In this section we show how to turn a module into a quantized module and what is happening under the hood. In the next section we show how to use convience methods for easier quantization of bigger models.
+# `Quantizers` typically don't exist in isolation. Instead, we would often like to quantize an entire model. In this section we show how to turn a module into a quantized module and what is happening under the hood. In the next section we show how to use convenience methods for easier quantization of bigger models.
 #
 #
 # ⏩ We start with a simple unquantized linear layer
@@ -171,7 +171,7 @@ print(quantized_linear)
 # ⏩ We can see that our QuantizedLinear has the same representation as the Linear, but instead there are four quantizer children added.
 #   - In this case the bias_quantizer is `None` since this layer does not have a bias.
 #
-# ⏩ Observe that all quantizers are set to be `QuantizerStub`s. These are no-op placeholders that can be repaced with quantizers if desired.
+# ⏩ Observe that all quantizers are set to be `QuantizerStub`s. These are no-op placeholders that can be replaced with quantizers if desired.
 #
 # ⏩ Let's try to push data trough our `QuantizedLinear`.
 
@@ -321,7 +321,7 @@ print(f"{quantized_output=}")
 # A quantization rule consists of two components:
 #
 #  1. A `query` determines to which layers the rule should be applied. Filtering is done using the `ff.mpath` library. Please see the tutorial on MPath for more information.
-#  2. A quantizer class or factory. This determines how the quantizer is created. In the case of a Quantizer class, for each match a quantizer of that class is initialized using the provided kwargs. In the case of a factory function, the function receives the full name of the quantizer and the current quantizer at that location. This function is expected to return an intiailized quantizer.
+#  2. A quantizer class or factory. This determines how the quantizer is created. In the case of a Quantizer class, for each match a quantizer of that class is initialized using the provided kwargs. In the case of a factory function, the function receives the full name of the quantizer and the current quantizer at that location. This function is expected to return an initialized quantizer.
 #
 # If multiple rules match a single quantizer, the rule that was added last takes priority.
 #
@@ -493,7 +493,7 @@ class MyQuantizedSelfAttentionLayer(MySelfAttentionLayer, ff.nn.quantized_module
 # %% [markdown]
 # ⏩ Notice that we made two changes to the model:
 #   1. We have re-implemented the forward pass, replacing all operations from torch.nn.functional with their FastForward quantized equivalent.
-#      1. ❌ Untill autoquant is implemented in FastForward, this means we manually need to duplicate the code from the forward pass.
+#      1. ❌ Until autoquant is implemented in FastForward, this means we manually need to duplicate the code from the forward pass.
 #      2. ⚠️ NOTE: Some of the functionals might be hidden inside a function that is called in your forward pass, make sure to also rewrite those cases.
 #      3. ⚠️ If you are adopting a 3rd party class, you will need to copy-paste the code from the forward pass. Make sure to also freeze the dependency so that your rewritten module will not diverge once the package is updated!
 #      4. In order to use the quantized functionals, we have added Quantizers to the model:

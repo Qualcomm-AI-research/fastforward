@@ -71,7 +71,7 @@ def test_quantization_quantizer_collection_initialize(model: torch.nn.Module) ->
         ff.find_quantizers(model, "layer1/**").initialize(_MockQuantizer2, overwrite_policy="error")
 
 
-def test_quantization_config_presedence(model: torch.nn.Module) -> None:
+def test_quantization_config_precedence(model: torch.nn.Module) -> None:
     config = (
         ff.QuantizationConfig()
         .add_rule("layer1/**", _MockQuantizer2)

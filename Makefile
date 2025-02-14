@@ -51,7 +51,7 @@ run: $(BOOT_DEPENDENCIES)
 sshd: $(BOOT_DEPENDENCIES)
 	docker run -e MY_ENV=test $(DETACHED_MODE_FLAGS) $(COMMON_FLAGS) sh /usr/local/bin/run_sshd -o AuthorizedKeysFile=$$HOME/.ssh/authorized_keys -o Port=$(SSH_PORT) -D
 
-# Verify your code befor a commit for example
+# Verify your code before a commit for example
 test: $(BOOT_DEPENDENCIES) $(CRAD_DOCKER_CONF_FILE)
 	docker run $(COMMON_FLAGS) scripts/verify $(VERIFY_TARGET)
 

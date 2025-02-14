@@ -70,7 +70,7 @@ def parameters_for_range(
         num_bits: The quantization bitwidth.
         symmetric: `True` if the quantizer is symmetric, `False` otherwise.
         allow_one_sided: If `True`, infer a parameter range between zero and a
-            maximum value if `min_range` is non-negative. This is sometimes refered
+            maximum value if `min_range` is non-negative. This is sometimes referred
             to as an unsigned quantizer.
 
     Returns:

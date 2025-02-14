@@ -137,7 +137,7 @@ def _default_search_grid(
 class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator], torch.nn.Module):
     min_threshold: torch.Tensor
     max_threshold: torch.Tensor
-    cummulative_error: torch.Tensor
+    cumulative_error: torch.Tensor
 
     def __init__(
         self,
@@ -214,7 +214,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
     Args:
         error_fn: The error function `(quantized_data, non_quantized_data)
             -> real-valued error` that is minimized
-        num_canidates: The size of the search grid
+        num_candidates: The size of the search grid
         search_grid_generator: Callable that defines search grid
         update_range_policy: Callable that defines whether quantizers
             should be updated per step.
@@ -265,7 +265,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
     def split_module(self, module: torch.nn.Module) -> Iterator[Quantizer]:
         """Yields all quantizers in `module`.
 
-        Each is set up for min error range estimation seperately.
+        Each is set up for min error range estimation separately.
         """
         for _, quantizer in named_quantizers(module, recurse=True):
             if (

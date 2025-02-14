@@ -227,7 +227,7 @@ def test_quantized_tensor_dispatches() -> None:
     @contextmanager
     def _mock_dispatcher_function(dispatch_key: str, dispatch_pos: int) -> Any:
         # Temporarily mock dispatch item, ideally we would directly mock the
-        # funtion that is being dispatched to, but that does not seem to be
+        # function that is being dispatched to, but that does not seem to be
         # possible as the dispatches are already registered when the
         # QuantizedTensor is imported.
 
@@ -358,7 +358,7 @@ def test_contiguous() -> None:
     assert contiguous_tensor.quant_args().offset.is_contiguous()  # type: ignore[attr-defined]
 
 
-def test_not_implemented_registation() -> None:
+def test_not_implemented_registration() -> None:
     quantized_data = random_quantized((3, 3))
     with pytest.raises(NotImplementedError):
         reversed(quantized_data)

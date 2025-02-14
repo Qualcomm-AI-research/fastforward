@@ -90,7 +90,7 @@ class RequestNode(NodeVisitor[list[Node]]):
 
     Args:
         op_type: The type of operation that is of interest. The types of operations
-            correspond to the `op` propety of the torch.fx nodes.
+            correspond to the `op` property of the torch.fx nodes.
         target_name: The name of the target graph operation. The underlying operation
             that a torch.fx node invokes when performing a forward pass. For example,
             for the fastforward operation `quantize_by_tile` the target name will
@@ -153,7 +153,7 @@ class RemoveFunction(NodeVisitor[None]):
 
     Args:
         op_type: The type of operation that is of interest. The types of operations
-            correspond to the `op` propety of the torch.fx nodes.
+            correspond to the `op` property of the torch.fx nodes.
         target_name: The name of the target graph operation. The underlying operation
             that a torch.fx node invokes when performing a forward pass. For example,
             for the fastforward operation `quantize_by_tile` the target name will
@@ -230,7 +230,7 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
 
     Args:
         op_type: The type of operation that is of interest. The types of operations
-            correspond to the `op` propety of the torch.fx nodes.
+            correspond to the `op` property of the torch.fx nodes.
         target_name: The name of the target graph operation. The underlying operation
             that a torch.fx node invokes when performing a forward pass. For example,
             for the fastforward operation `quantize_by_tile` the target name will
@@ -348,7 +348,7 @@ class GraphWrapper:
         self.graph_exported_program = graph_exported_program
 
     def visit(self, visitor: NodeVisitor[_T]) -> _T:
-        """Method to itterate through the nodes of the instance's graph.
+        """Method to iterate through the nodes of the instance's graph.
 
         Given a NodeVisitor object check if a given node matches the visitor's
         criteria and if so perform the visitor-defined operations.

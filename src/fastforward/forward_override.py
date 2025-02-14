@@ -27,8 +27,8 @@ class OverrideFn(Protocol[T]):
         """Generic call signature.
 
         Args:
-            __context: The quantizer that is overriden by this override function
-            __overriden_fn: The function that is overriden, this may the
+            __context: The quantizer that is overridden by this override function
+            __overridden_fn: The function that is overridden, this may the
                 forward method of a quantizer, or a reference to another override.
                 This should be called instead of the forward method on __context
                 in order for an override to cooperate with other overrides.
@@ -108,7 +108,7 @@ def apply_overrides(
         context: An object related to overridden fn that may store
             contextual data that is passed into the function overrides.
         overridden_fn: The function to override.
-        override_map: A mapping from int to overides. The overrides are applied
+        override_map: A mapping from int to overrides. The overrides are applied
             in order of the key.
 
     Returns:

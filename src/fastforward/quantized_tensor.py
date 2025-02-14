@@ -113,7 +113,7 @@ _remove_default_implementation(torch.Tensor._autocast_to_full_precision)
 _remove_default_implementation(torch.Tensor._autocast_to_reduced_precision)
 
 
-# Remove all in-place operations on QuantizedTensor. A QuantizedTenosr specific implementation
+# Remove all in-place operations on QuantizedTensor. A QuantizedTensor specific implementation
 # can still be registered through the dispatcher.
 for attr in dir(torch.Tensor):
     if attr.endswith("_") and not attr.endswith("__"):
@@ -143,7 +143,7 @@ def _set_no_dispatch(attr_name: str, silent: bool = False) -> None:
     except AttributeError:
         if not silent:
             warnings.warn(
-                f"Tried to set the atribute '{attr_name}' as a no dispatch attribute for "
+                f"Tried to set the attribute '{attr_name}' as a no dispatch attribute for "
                 f"QuantizedTensor, but '{attr_name}' is not an attribute of torch.Tensor"
             )
         return
@@ -282,7 +282,7 @@ class QuantizedTensor(torch.Tensor):
     representation of the data or act on the integer data directly.
 
     Args:
-        data: Raw quantized data, e.g., the integer repsentation obtained
+        data: Raw quantized data, e.g., the integer representation obtained
             from `quantization_context.quantization_fn.quantize`.
         quantization_context: The quantization context used to
             produce data.

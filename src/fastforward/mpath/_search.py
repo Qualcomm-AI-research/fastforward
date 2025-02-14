@@ -129,7 +129,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
         return [func(*named_module) for named_module in self.named_modules()]
 
     def named_modules(self) -> Iterator[tuple[str, torch.nn.Module]]:
-        """Returns An interator with name and modules of all modules in the collection.
+        """Returns An iterator with name and modules of all modules in the collection.
 
         The name is relative with respect to the root module, i.e., the module that
         was queried to produce this collection.
@@ -248,7 +248,7 @@ def search(
     *,
     aliases: dict[str, selector.BaseSelector] | None = None,
 ) -> MPathCollection:
-    """Search/filter all submodules of `root` that satsify query.
+    """Search/filter all submodules of `root` that satisfy query.
 
     See `mpath.query` for more details on the string syntax for query or manually create
     a query `Selector` by combinding multiple fragments (e.g., from mpath.fragments).
@@ -257,7 +257,7 @@ def search(
         query: Query to specify included/excluded submodules
         root: Root module, all submodules of the root module are considered for inclusion
             in the result set. root itself is never part of the result set.
-        aliases: Aliases to consider in the query. Any occurence of `&<alias>`
+        aliases: Aliases to consider in the query. Any occurrence of `&<alias>`
             is replaced by the corresponding query in aliases.
 
     Returns:

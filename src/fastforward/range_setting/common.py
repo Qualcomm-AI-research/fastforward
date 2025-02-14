@@ -45,7 +45,7 @@ class RangeSettable(Protocol):
         per-tensor and per-channel.
 
         Note:
-            Granularities will soon be replaced by tile specificiations.
+            Granularities will soon be replaced by tile specifications.
 
         Returns:
             quantization granulirity
@@ -128,9 +128,9 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
     afterwards.
 
     Since many range estimation methods operate 'locally' on leaf modules for
-    which seperate prepare and cleanup steps are appropriate, `split_module`
+    which separate prepare and cleanup steps are appropriate, `split_module`
     may take a particular module and yield child modules for which `prepare`
-    and `cleanup` is called seperately.
+    and `cleanup` is called separately.
     """
 
     @abc.abstractmethod
@@ -168,7 +168,7 @@ class RangeEstimator(abc.ABC, Generic[_T, _Module]):
         """Split the module into one or more submodules.
 
         For each module yielded from this function, prepare and cleanup are
-        called seperately. If only a single prepare and cleanup should be
+        called separately. If only a single prepare and cleanup should be
         performed from module, only yield module once.
 
         Yields:

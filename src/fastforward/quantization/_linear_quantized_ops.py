@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-"""Linear quantizer operattion.
+"""Linear quantizer operation.
 
 This file holds temporary implementations for view-like operations that test
 for linear quantizers. It should be refactord to use a more robust dispatching
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 def _is_affine_per_tensor(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
-    # As part of the predicate we verify input is acutally a QuantizedTensor
+    # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
 
@@ -48,7 +48,7 @@ affine_per_tensor_predicate = Predicate(_is_affine_per_tensor)
 
 
 def _is_affine_per_channel(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
-    # As part of the predicate we verify input is acutally a QuantizedTensor
+    # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
 
@@ -73,7 +73,7 @@ def _affine_params(tensor: QuantizedTensor) -> "StaticAffineQuantParams":
 
 
 def _is_affine(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
-    # As part of the predicate we verify input is acutally a QuantizedTensor
+    # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
 
@@ -167,7 +167,7 @@ def scalar_multiply(
 ) -> QuantizedTensor:
     """Multiply quantized `input` tensor by a scalar.
 
-    Mutliplication by a scalar is a special case for affine quanitzed tensors
+    Multiplication by a scalar is a special case for affine quantized tensors
     since it can be implemented by only multiplying the scaling factor.
     """
     quant_params = _affine_params(input)

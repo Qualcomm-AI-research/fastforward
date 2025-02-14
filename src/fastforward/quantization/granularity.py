@@ -48,7 +48,7 @@ class Granularity(abc.ABC):
     def tile_size(self, data_shape: torch.Size) -> torch.Size | Literal["data_shape"]:
         """Retrieve the tile size that will be applied over the input data.
 
-        The tile functions (fastforward.quantization.affine) brodcast the
+        The tile functions (fastforward.quantization.affine) broadcast the
         dimensions with a size of 1 over the data shape. For example, given an
         input data shape of (2, 4, 6) and the requested granularity is per
         channel quantization over dimension zero, the tile size will be (1, 4,
@@ -57,7 +57,7 @@ class Granularity(abc.ABC):
         raise NotImplementedError
 
     def parameter_dimensionality(self, data_shape: torch.Size) -> int:
-        """The dimensionality of the quantizer parameters  to porcess the input data.
+        """The dimensionality of the quantizer parameters  to process the input data.
 
         This is computed by dividing the number of elements of the original
         data shape over the number of elements of the tile size. For example,

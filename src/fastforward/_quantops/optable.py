@@ -83,7 +83,7 @@ class _QualifiedNameReference:
     def import_(self, *, _remainder: str | None = None) -> Any:
         _remainder = _remainder or ""
 
-        # If we reach a root refence, the import must have failed
+        # If we reach a root reference, the import must have failed
         if len(self._parts) == 0:
             raise ImportError(f"Cannot import '{_remainder[:-1]}'")
 
@@ -122,7 +122,7 @@ class OperatorTable:
         The operator _must_ have a non-empty metadata field.
 
         If the `operator.metadata.dispatch_op` field is None, a dispatch_op is
-        infered from `fastforward.nn.functional` based on the operator
+        inferred from `fastforward.nn.functional` based on the operator
         identifier. An error is raised if this operator does not exist.
 
         A default lookup alias is added based on the `operator.metadata.fallback`.
@@ -256,7 +256,7 @@ class OperatorTable:
             spec_idx = self._py_op_index[key]
         except KeyError as e:
             name = alias or str(key)
-            raise KeyError(f"{type(self).__name__} constains no operator for {name}") from e
+            raise KeyError(f"{type(self).__name__} contains no operator for {name}") from e
 
         return self._operator_specs[spec_idx]
 

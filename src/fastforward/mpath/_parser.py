@@ -207,7 +207,7 @@ def register_mpath_query_extension(
         tag: Name of the query extension and tag it's made available under in
             MPath query strings.
         extension: The extension to register
-        override: Boolean indicating wheter an existing extensions by the same
+        override: Boolean indicating whether an existing extensions by the same
             name may be overridden.
     """
     if tag in Parser.fragment_extensions and not override:
@@ -239,7 +239,7 @@ def mpath_query_extension(
     Args:
         tag: Name of the query extension and tag it's made available under in
             MPath query strings.
-        override: Boolean indicating wheter an existing extensions by the same
+        override: Boolean indicating whether an existing extensions by the same
             name may be overridden.
     """
 

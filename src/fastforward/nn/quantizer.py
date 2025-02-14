@@ -267,7 +267,7 @@ class Quantizer(torch.nn.Module):
 
         This override will be called instead of `self.quantizer`. The quantizer
         and self.quantizer is passed into the overwrite and can be called. If
-        multiple overrides are registered, calling the overwriten function from
+        multiple overrides are registered, calling the overwritten function from
         an override will trigger the 'next' override.
 
         Args:

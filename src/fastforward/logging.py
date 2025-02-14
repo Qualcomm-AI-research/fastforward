@@ -21,12 +21,12 @@ class DuplicateLogFilter:
     """
 
     def __init__(self, levels: Sequence[int] = ()) -> None:
-        self._supressed_levels: tuple[int, ...] = tuple(levels)
+        self._suppressed_levels: tuple[int, ...] = tuple(levels)
         self._logged_warnings: set[tuple[int, str]] = set()
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Filter record for duplicate log messages."""
-        if record.levelno not in self._supressed_levels:
+        if record.levelno not in self._suppressed_levels:
             return True
 
         log = (record.levelno, record.msg)

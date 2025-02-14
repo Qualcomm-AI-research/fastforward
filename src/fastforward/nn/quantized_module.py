@@ -286,7 +286,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         yield from named_quantizers(self, prefix, recurse, remove_duplicate, skip_stubs=skip_stubs)
 
     def quantizers(self, recurse: bool = True, skip_stubs: bool = True) -> Iterator[Quantizer]:
-        """Iteartor over quantizers.
+        """Iterator over quantizers.
 
         Return an iterator over `QuantizedModule`s in the network. Yields only
         direct children if `recurse` is False.

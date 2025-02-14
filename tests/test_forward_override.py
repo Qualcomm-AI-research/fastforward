@@ -26,7 +26,7 @@ def test_function_override() -> None:
     mock_override2 = unittest.mock.Mock(override2, wraps=override2)
     mock_override_noop = unittest.mock.Mock(override_noop, wraps=override_noop)
 
-    # Test if overrides are called and 'correct' overrided output is returned
+    # Test if overrides are called and 'correct' overridden output is returned
     context_object = {"c": 10}
     override_map = {
         2: mock_override2,
@@ -47,7 +47,7 @@ def test_function_override() -> None:
     mock_override2.reset_mock()
 
     # Test if overrides are called, except override1 as there is a higher
-    # precendence override (override_noop) that doesn't call up the override
+    # precedence override (override_noop) that doesn't call up the override
     # stack.
     override_map = {
         3: mock_override2,

@@ -31,7 +31,7 @@ def run(root: pathlib.Path, header: str) -> None:
     Reports on:
     - Files that where changed
     - Files that already included the header and where not changed
-    - Files that includee the header but voiolate the 'top-of-file' placement.
+    - Files that include the header but voiolate the 'top-of-file' placement.
     """
     violations: list[pathlib.Path] = []
     for file in _src_files(root, filter=_py_filter):

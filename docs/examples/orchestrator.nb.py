@@ -32,7 +32,7 @@
 # ## Introduction
 #
 # For various training methods of neural networks, especially for quantized neural networks,
-# algorithms may require to run network in a non-sequantial manner. The
+# algorithms may require to run network in a non-sequential manner. The
 # `ConcurrentExecOrchestrator` is a utility to help implement these types of algorithms.
 # To illustrate this, let's consider the following function:
 
@@ -136,7 +136,7 @@ orchestrator.start()
 # # ## Terminology
 # In our example above, we used a simple function that waited for other
 # executions before completing. This is a use-case of the `ConcurrentExecOrchestrator`, but it
-# is more versatile. To keep things organized, let's first introduce some termonology. For this
+# is more versatile. To keep things organized, let's first introduce some terminology. For this
 # we use the following example function:
 #
 # ```python
@@ -150,10 +150,10 @@ orchestrator.start()
 # ```
 #
 # A __target function__ is the function that is executed by the orchestrator. The function acts
-# as an entry point, and for each invocation a seperate thread is created.
+# as an entry point, and for each invocation a separate thread is created.
 #
 # The target function above is separated in three partition. We consider a __partition__
-# _any code that runs between two calls to `synchonize()` or between
+# _any code that runs between two calls to `synchronize()` or between
 # `synchronize()` and the start/end of the target function_
 #
 # As shown in the introduction, the input to each invocation of the target function is registered
@@ -235,13 +235,13 @@ exec_results = [execution_order_example(3, exec_order) for exec_order in exec_or
 tabulate_exec_order_outputs(list(map(str, exec_orders)), exec_results)
 # %% [markdown]
 # It is still the case that for
-# each execution a seperate thread is created. For example, when using 3 batches and 4 stages, 12
+# each execution a separate thread is created. For example, when using 3 batches and 4 stages, 12
 # threads are created.
 #
 # ## Error Handling
 # If an error occurs during one of the executions, all other executions are
 # stopped. Once all executions have terminated a RuntimeError is raised on
-# the main thread that references the caught execption in the execution.
+# the main thread that references the caught exception in the execution.
 #
 # ## Hooks
 # Hooks can be used to change the behaviour of `ConcurrentExecOrchestrator`.
