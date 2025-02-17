@@ -3,6 +3,7 @@
 
 import abc
 import dataclasses
+import itertools
 
 from collections.abc import Iterator, Sequence
 from types import UnionType
@@ -223,6 +224,23 @@ class FunctionBlock(Block):
     @override
     def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
         return visitor.visit_FunctionBlock(self)
+
+    def params(self) -> Iterator[str]:
+        """Yields names of all parameters of function."""
+        funcdef = self.wrappers[0]
+        assert isinstance(funcdef, libcst.FunctionDef)
+
+        parameters = funcdef.params
+        for param in itertools.chain(
+            parameters.params, parameters.kwonly_params, parameters.posonly_params
+        ):
+            yield param.name.value
+
+        if isinstance(parameters.star_arg, libcst.Param):
+            yield parameters.star_arg.name.value
+
+        if (star_kwarg := parameters.star_kwarg) is not None:
+            yield star_kwarg.name.value
 
 
 @dataclasses.dataclass(eq=False)
