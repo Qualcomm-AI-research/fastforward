@@ -44,10 +44,16 @@ def autoquant(module: torch.nn.Module, operator_table: optable.OperatorTable | N
             quantized operator mapping.
 
     """
+    print(_autoquant_with_defaults(module, operator_table))
+
+
+def _autoquant_with_defaults(
+    module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
+) -> str:
     operator_table = operator_table or optable.OperatorTable.from_yaml(
         alias_extensions=optable.STR_ALIASES_EXTENSIONS
     )
-    print(_autoquant(module, default_source_context(), operator_table))
+    return _autoquant(module, default_source_context(), operator_table)
 
 
 def _autoquant(

@@ -7,7 +7,11 @@ import torch
 
 from fastforward._quantops import optable
 from fastforward.autoquant import pysource
-from fastforward.autoquant.autoquant import _autoquant, default_source_context
+from fastforward.autoquant.autoquant import (
+    _autoquant,
+    _autoquant_with_defaults,
+    default_source_context,
+)
 from fastforward.autoquant.cst import passes
 from fastforward.autoquant.pysource import SourceContext
 from typing_extensions import override
@@ -125,3 +129,26 @@ def test_autoquant_introduces_quantization_method(
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
     assert_strings_match_verbose(expected_output, actual_output.strip())
+
+
+class ExampleExpression(torch.nn.Module):
+    def forward(self) -> None:
+        print("This is not a quantized function.")
+
+
+EXPECTED_OUTPUT = """
+class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpression):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+    def forward(self) -> None:
+        print("This is not a quantized function.")
+"""
+
+
+def test_expressions_not_quantized() -> None:
+    """Tests that expressions are not quantized (fixes #80)."""
+    actual = _autoquant_with_defaults(
+        ExampleExpression(),
+    )
+    (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
+    assert_strings_match_verbose(expected_output, actual.strip())

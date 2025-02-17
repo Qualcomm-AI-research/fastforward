@@ -394,6 +394,10 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
                 # If the replacement candidate is the expression in a return or yield
                 # statement, we don't have to move it.
                 return updated_node
+            case libcst.Expr():
+                # If the replacement candidate is part of an Expression (whose result is
+                # unassigned / unused, e.g., in a `print` statement), we skip it.
+                return updated_node
             case _:
                 pass
 
