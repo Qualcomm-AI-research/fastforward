@@ -4,6 +4,7 @@
 import collections
 import json
 import pathlib
+import pickle
 
 from typing import Any, Callable, Sequence
 
@@ -11,7 +12,7 @@ import onnxruntime
 import torch
 
 from fastforward.export import export
-from fastforward.export._export_helpers import create_qnn_encoding_entry, QuantParametersDict
+from fastforward.export._export_helpers import QuantParametersDict, create_qnn_encoding_entry
 from fastforward.mpath._search import MPathCollection
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
@@ -82,8 +83,24 @@ def export_modules(
         )
         paths[module_name] = exported_path
         maybe_extend_encodings_file(module_name, paths[module_name], quantizer_settings)
+        store_registry(input_output_registry[module_name], module_name, exported_path)
 
     return paths
+
+
+def store_registry(module_registry: dict[str, Any], module_name: str, path: pathlib.Path) -> None:
+    """
+    Helper to store input/output dictionary as pickle file.
+
+    Args:
+        module_registry: Dictionary containing inputs/kwargs/outputs for a module.
+        module_name: The name of the module.
+        path: The path to the module stored artifacts directory.
+    """
+    input_output_location = path / f"{module_name}_input_output.pickle"
+
+    with open(input_output_location, "wb") as fp:
+        pickle.dump(module_registry, fp)
 
 
 def maybe_extend_encodings_file(
@@ -237,7 +254,8 @@ def _change_keys_to_result_registry(
 
 
 def _add_hooks(
-    modules: Sequence[torch.nn.modules.Module], hook: Callable[[Any], None],
+    modules: Sequence[torch.nn.modules.Module],
+    hook: Callable[[Any], None],
 ) -> list[torch.utils.hooks.RemovableHandle]:
     """
     Helper function for registering hooks.

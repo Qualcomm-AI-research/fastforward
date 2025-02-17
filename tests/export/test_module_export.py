@@ -3,6 +3,7 @@
 
 import json
 import pathlib
+import pickle
 
 from typing import Any, TypeAlias
 
@@ -87,6 +88,24 @@ def test_module_export(simple_model) -> None:
 
         assert "input" in encodings_dictionary["activation_encodings"]
 
+    def check_module_input_output_has_been_stored(path: pathlib.Path, module_name: str) -> None:
+        input_output_location = path / f"{module_name}_input_output.pickle"
+        expected_keys = ["input", "output", "kwargs"]
+
+        with open(input_output_location, "rb") as fp:
+            input_output_dictionary = pickle.load(fp)
+
+        assert isinstance(input_output_dictionary, dict)
+        assert all([key in input_output_dictionary for key in expected_keys])
+
+        assert len(input_output_dictionary["input"]) == 1
+        assert len(input_output_dictionary["output"]) == 1
+        assert len(input_output_dictionary["kwargs"]) == 0
+
+        assert isinstance(input_output_dictionary["input"][0], torch.Tensor)
+        assert isinstance(input_output_dictionary["output"][0], torch.Tensor)
+        assert input_output_dictionary["kwargs"] == {}
+
     # GIVEN: a model with quantizer quantizers and a collection of modules of interest
     # (in this case linear and relu)
     data = torch.randn(2, 32, 10)
@@ -107,9 +126,11 @@ def test_module_export(simple_model) -> None:
     # THEN: the individual modules should be have been exported (ie there
     # exist ONNX file and encodings files for each of them) and inputs
     # encodings should have been added to the modules that did not have
-    # a set input quantizer.
+    # a set input quantizer. Also, pickle files containing inputs/outputs/kwargs
+    # gathered from torch hooks should be present and have a set structure.
     for module, path in zip(modules, paths):
         check_module_files(paths[path], module.full_name)
+        check_module_input_output_has_been_stored(paths[path], module.full_name)
 
         if module.full_name != "fc1":
             check_input_encodings_have_been_added(paths[path], module.full_name)

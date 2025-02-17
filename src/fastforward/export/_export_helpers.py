@@ -4,13 +4,13 @@
 import logging
 
 from typing import Any, Sequence, TypedDict
-from typing_extensions import NotRequired
 
 import torch
 
 from onnx.onnx_ml_pb2 import ModelProto
 from onnxscript.ir import Model
 from torch.export.graph_signature import InputSpec
+from typing_extensions import NotRequired
 
 from fastforward.common import ensure_tensor
 from fastforward.exceptions import ExportError
