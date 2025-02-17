@@ -31,6 +31,14 @@ def default_source_context() -> pysource.SourceContext:
     )
 
 
+def default_optable() -> optable.OperatorTable:
+    """Default operator table for autoquant.
+
+    If no operator table is provided this table is used.
+    """
+    return optable.OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
+
+
 def autoquantize(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
 ) -> None:
@@ -52,9 +60,7 @@ def autoquantize(
 def _autoquant_with_defaults(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
 ) -> str:
-    operator_table = operator_table or optable.OperatorTable.from_yaml(
-        alias_extensions=optable.STR_ALIASES_EXTENSIONS
-    )
+    operator_table = operator_table or default_optable()
     return _autoquant(module, default_source_context(), operator_table)
 
 
