@@ -6,14 +6,16 @@
 # This file is generated based on 'src/fastforward/_quantops/quantized_operators.yaml'.
 #
 
-from typing import Optional, Sequence, TypeAlias, Union
+from typing import TYPE_CHECKING, Optional, Sequence, TypeAlias, Union, cast
 
 import torch
 
 import fastforward
 
 from fastforward.dispatcher import dispatch
+from fastforward.exceptions import QuantizationError
 from fastforward.nn.quantizer import Quantizer
+from fastforward.quantized_tensor import QuantizedTensor
 
 from . import fallback
 
@@ -38,9 +40,21 @@ __all__ = [
     "mm",
     "bmm",
     "add",
+    "sub",
     "mul",
     "div",
+    "pow",
     "sum",
+    "bitwise_not",
+    "negative",
+    "positive",
+    "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor",
+    "floor_divide",
+    "bitwise_left_shift",
+    "bitwise_right_shift",
+    "remainder",
     "silu",
     "gelu",
     "scaled_dot_product_attention",
@@ -723,7 +737,37 @@ def add(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:58
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:60
+def sub(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    alpha: float = 1.0,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "sub",
+        input=input,
+        other=other,
+        alpha=alpha,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.sub
+    return selected_op(
+        input=input,
+        other=other,
+        alpha=alpha,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:63
 def mul(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -750,7 +794,7 @@ def mul(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:61
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:66
 def div(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -777,7 +821,34 @@ def div(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:64
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:69
+def pow(
+    input: torch.Tensor,
+    exponent: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "pow",
+        input=input,
+        exponent=exponent,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.pow
+    return selected_op(
+        input=input,
+        exponent=exponent,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:72
 def sum(
     input: torch.Tensor,
     dim: int | None = None,
@@ -804,7 +875,262 @@ def sum(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:67
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:75
+def bitwise_not(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_not",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_not
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:78
+def negative(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "negative",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.negative
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:81
+def positive(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "positive",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.positive
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:84
+def bitwise_and(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_and",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_and
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:87
+def bitwise_or(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_or",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_or
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:90
+def bitwise_xor(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_xor",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_xor
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:93
+def floor_divide(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "floor_divide",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.floor_divide
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:96
+def bitwise_left_shift(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_left_shift",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_left_shift
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:99
+def bitwise_right_shift(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "bitwise_right_shift",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.bitwise_right_shift
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:102
+def remainder(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "remainder",
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.remainder
+    return selected_op(
+        input=input,
+        other=other,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:105
 def silu(
     input: torch.Tensor,
     *,
@@ -826,7 +1152,7 @@ def silu(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:70
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:108
 def gelu(
     input: torch.Tensor,
     *,
@@ -848,7 +1174,7 @@ def gelu(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:73
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:111
 def scaled_dot_product_attention(
     query: torch.Tensor,
     key: torch.Tensor,
@@ -890,7 +1216,7 @@ def scaled_dot_product_attention(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:76
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:114
 def dropout(
     input: torch.Tensor,
     p: float = 0.5,
@@ -923,7 +1249,7 @@ def dropout(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:79
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:117
 def permute(
     input: torch.Tensor,
     dims: tuple[int, ...],
@@ -950,7 +1276,7 @@ def permute(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:82
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:120
 def cat(
     tensors: Sequence[torch.Tensor],
     dim: int = 0,
@@ -977,7 +1303,7 @@ def cat(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:85
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:123
 def index_add(
     input: torch.Tensor,
     dim: int,
@@ -1013,7 +1339,7 @@ def index_add(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:88
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:126
 def cumsum(
     input: torch.Tensor,
     dim: int,

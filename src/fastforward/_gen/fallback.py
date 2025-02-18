@@ -6,12 +6,17 @@
 # This file is generated based on 'src/fastforward/_quantops/quantized_operators.yaml'.
 #
 
-from typing import TYPE_CHECKING, Optional, Sequence, TypeAlias, Union
+from typing import TYPE_CHECKING, Optional, Sequence, TypeAlias, Union, cast
 
 import torch
 
+import fastforward
+
+from fastforward.dispatcher import dispatch
 from fastforward.exceptions import QuantizationError
 from fastforward.quantized_tensor import QuantizedTensor
+
+from . import fallback
 
 if TYPE_CHECKING:
     from fastforward.nn.quantizer import Quantizer
@@ -36,9 +41,21 @@ __all__ = [
     "mm",
     "bmm",
     "add",
+    "sub",
     "mul",
     "div",
+    "pow",
     "sum",
+    "bitwise_not",
+    "negative",
+    "positive",
+    "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor",
+    "floor_divide",
+    "bitwise_left_shift",
+    "bitwise_right_shift",
+    "remainder",
     "silu",
     "gelu",
     "scaled_dot_product_attention",
@@ -64,8 +81,7 @@ def linear(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -73,8 +89,7 @@ def linear(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -108,8 +123,7 @@ def conv1d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -117,8 +131,7 @@ def conv1d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -160,8 +173,7 @@ def conv2d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -169,8 +181,7 @@ def conv2d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -212,8 +223,7 @@ def conv3d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -221,8 +231,7 @@ def conv3d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -260,8 +269,7 @@ def softmax(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -285,8 +293,7 @@ def relu(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -310,8 +317,7 @@ def sigmoid(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -342,8 +348,7 @@ def conv_transpose1d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -351,8 +356,7 @@ def conv_transpose1d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -396,8 +400,7 @@ def conv_transpose2d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -405,8 +408,7 @@ def conv_transpose2d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -450,8 +452,7 @@ def conv_transpose3d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -459,8 +460,7 @@ def conv_transpose3d(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -502,8 +502,7 @@ def avg_pool1d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -539,8 +538,7 @@ def avg_pool2d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -576,8 +574,7 @@ def avg_pool3d(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -614,8 +611,7 @@ def embedding(
 
     if strict_quantization and not isinstance(weight, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'weight' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(weight, QuantizedTensor):
@@ -651,8 +647,7 @@ def layer_norm(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -661,8 +656,7 @@ def layer_norm(
     if weight is not None:
         if strict_quantization and not isinstance(weight, QuantizedTensor):
             raise QuantizationError(
-                "Expected 'weight' to be an instance of 'QuantizedTensor' "
-                "because strict_quantization=True."
+                "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
             )
 
         if isinstance(weight, QuantizedTensor):
@@ -693,8 +687,7 @@ def matmul(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -702,8 +695,7 @@ def matmul(
 
     if strict_quantization and not isinstance(other, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'other' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(other, QuantizedTensor):
@@ -728,8 +720,7 @@ def mm(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -737,8 +728,7 @@ def mm(
 
     if strict_quantization and not isinstance(mat2, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'mat2' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'mat2' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(mat2, QuantizedTensor):
@@ -763,8 +753,7 @@ def bmm(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -772,8 +761,7 @@ def bmm(
 
     if strict_quantization and not isinstance(mat2, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'mat2' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'mat2' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(mat2, QuantizedTensor):
@@ -799,8 +787,7 @@ def add(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -812,8 +799,7 @@ def add(
         and not isinstance(other, QuantizedTensor)
     ):
         raise QuantizationError(
-            "Expected 'other' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(other, QuantizedTensor):
@@ -825,7 +811,45 @@ def add(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:58
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:60
+def sub(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    alpha: float = 1.0,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(other, torch.Tensor)
+        and not isinstance(other, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.sub(input=input, other=other, alpha=alpha)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:63
 def mul(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -838,8 +862,7 @@ def mul(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -851,8 +874,7 @@ def mul(
         and not isinstance(other, QuantizedTensor)
     ):
         raise QuantizationError(
-            "Expected 'other' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(other, QuantizedTensor):
@@ -864,7 +886,7 @@ def mul(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:61
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:66
 def div(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -877,8 +899,7 @@ def div(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -890,8 +911,7 @@ def div(
         and not isinstance(other, QuantizedTensor)
     ):
         raise QuantizationError(
-            "Expected 'other' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(other, QuantizedTensor):
@@ -903,7 +923,44 @@ def div(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:64
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:69
+def pow(
+    input: torch.Tensor,
+    exponent: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(exponent, torch.Tensor)
+        and not isinstance(exponent, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'exponent' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(exponent, QuantizedTensor):
+        exponent = exponent.dequantize()
+
+    output = torch.pow(input=input, exponent=exponent)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:72
 def sum(
     input: torch.Tensor,
     dim: int | None = None,
@@ -916,8 +973,7 @@ def sum(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -929,7 +985,326 @@ def sum(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:67
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:75
+def bitwise_not(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.bitwise_not(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:78
+def negative(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.negative(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:81
+def positive(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.positive(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:84
+def bitwise_and(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if strict_quantization and not isinstance(other, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.bitwise_and(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:87
+def bitwise_or(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if strict_quantization and not isinstance(other, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.bitwise_or(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:90
+def bitwise_xor(
+    input: torch.Tensor,
+    other: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if strict_quantization and not isinstance(other, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.bitwise_xor(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:93
+def floor_divide(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(other, torch.Tensor)
+        and not isinstance(other, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.floor_divide(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:96
+def bitwise_left_shift(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(other, torch.Tensor)
+        and not isinstance(other, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.bitwise_left_shift(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:99
+def bitwise_right_shift(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(other, torch.Tensor)
+        and not isinstance(other, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.bitwise_right_shift(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:102
+def remainder(
+    input: torch.Tensor,
+    other: Union[float, torch.Tensor],
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if (
+        strict_quantization
+        and isinstance(other, torch.Tensor)
+        and not isinstance(other, QuantizedTensor)
+    ):
+        raise QuantizationError(
+            "Expected 'other' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(other, QuantizedTensor):
+        other = other.dequantize()
+
+    output = torch.remainder(input=input, other=other)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:105
 def silu(
     input: torch.Tensor,
     *,
@@ -941,8 +1316,7 @@ def silu(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -954,7 +1328,7 @@ def silu(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:70
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:108
 def gelu(
     input: torch.Tensor,
     *,
@@ -966,8 +1340,7 @@ def gelu(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -979,7 +1352,7 @@ def gelu(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:73
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:111
 def scaled_dot_product_attention(
     query: torch.Tensor,
     key: torch.Tensor,
@@ -997,8 +1370,7 @@ def scaled_dot_product_attention(
 
     if strict_quantization and not isinstance(query, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'query' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'query' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(query, QuantizedTensor):
@@ -1006,8 +1378,7 @@ def scaled_dot_product_attention(
 
     if strict_quantization and not isinstance(key, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'key' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'key' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(key, QuantizedTensor):
@@ -1015,8 +1386,7 @@ def scaled_dot_product_attention(
 
     if strict_quantization and not isinstance(value, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'value' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'value' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(value, QuantizedTensor):
@@ -1036,7 +1406,7 @@ def scaled_dot_product_attention(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:76
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:114
 def dropout(
     input: torch.Tensor,
     p: float = 0.5,
@@ -1051,8 +1421,7 @@ def dropout(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -1064,7 +1433,7 @@ def dropout(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:79
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:117
 def permute(
     input: torch.Tensor,
     dims: tuple[int, ...],
@@ -1077,8 +1446,7 @@ def permute(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -1090,7 +1458,7 @@ def permute(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:82
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:120
 def cat(
     tensors: Sequence[torch.Tensor],
     dim: int = 0,
@@ -1105,8 +1473,7 @@ def cat(
     for elem__ in tensors:
         if strict_quantization and not isinstance(elem__, QuantizedTensor):
             raise QuantizationError(
-                "Expected 'elem__' to be an instance of 'QuantizedTensor' "
-                "because strict_quantization=True."
+                "Expected 'elem__' to be an instance of 'QuantizedTensor' because strict_quantization=True."
             )
 
         if isinstance(elem__, QuantizedTensor):
@@ -1120,7 +1487,7 @@ def cat(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:85
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:123
 def index_add(
     input: torch.Tensor,
     dim: int,
@@ -1136,8 +1503,7 @@ def index_add(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
@@ -1145,8 +1511,7 @@ def index_add(
 
     if strict_quantization and not isinstance(source, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'source' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'source' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(source, QuantizedTensor):
@@ -1158,7 +1523,7 @@ def index_add(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:88
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:126
 def cumsum(
     input: torch.Tensor,
     dim: int,
@@ -1171,8 +1536,7 @@ def cumsum(
 
     if strict_quantization and not isinstance(input, QuantizedTensor):
         raise QuantizationError(
-            "Expected 'input' to be an instance of 'QuantizedTensor' "
-            "because strict_quantization=True."
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
         )
 
     if isinstance(input, QuantizedTensor):
