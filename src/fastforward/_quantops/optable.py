@@ -6,6 +6,7 @@ import pathlib
 
 from typing import Any, Callable, Hashable, Iterator, TypeAlias, overload
 
+import libcst
 import torch
 import yaml
 
@@ -269,3 +270,28 @@ class OperatorTable:
         if isinstance(py_op, str):
             py_op = self._resolve_alias(py_op)
         self._py_op_aliases[alias] = py_op
+
+
+UNARY_OPS_LIBCST_TO_TORCH_MAPPING = {
+    libcst.BitInvert: torch.bitwise_not,
+    libcst.Minus: torch.negative,
+    libcst.Plus: torch.positive,
+}
+
+BINARY_OPS_LIBCST_TO_TORCH_MAPPING = {
+    libcst.Add: torch.add,
+    libcst.BitAnd: torch.bitwise_and,
+    libcst.BitOr: torch.bitwise_or,
+    libcst.BitXor: torch.bitwise_xor,
+    libcst.Divide: torch.div,
+    libcst.FloorDivide: torch.floor_divide,
+    libcst.LeftShift: torch.bitwise_left_shift,
+    libcst.MatrixMultiply: torch.matmul,
+    libcst.Modulo: torch.remainder,
+    libcst.Multiply: torch.mul,
+    libcst.Power: torch.pow,
+    libcst.RightShift: torch.bitwise_right_shift,
+    libcst.Subtract: torch.sub,
+}
+
+OPS_LIBCST_TO_TORCH_MAPPING = UNARY_OPS_LIBCST_TO_TORCH_MAPPING | BINARY_OPS_LIBCST_TO_TORCH_MAPPING

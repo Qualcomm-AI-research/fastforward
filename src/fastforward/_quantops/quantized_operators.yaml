@@ -54,6 +54,9 @@
 
 - op: "add(input: Quantized, other: Quantized | float, alpha: float = 1.0) -> Quantized"
   fallback: torch.add
+  
+- op: "sub(input: Quantized, other: Quantized | float, alpha: float = 1.0) -> Quantized"
+  fallback: torch.sub
 
 - op: "mul(input: Quantized, other: Quantized | float) -> Quantized"
   fallback: torch.mul
@@ -61,8 +64,41 @@
 - op: "div(input: Quantized, other: Quantized | float) -> Quantized"
   fallback: torch.div
 
+- op: "pow(input: Quantized, exponent: Quantized | float) -> Quantized"
+  fallback: torch.pow
+
 - op: "sum(input: Quantized, dim: Optional[int] = None) -> Quantized"
   fallback: torch.sum
+
+- op: "bitwise_not(input: Quantized) -> Quantized"
+  fallback: torch.bitwise_not
+
+- op: "negative(input: Quantized) -> Quantized"
+  fallback: torch.negative
+
+- op: "positive(input: Quantized) -> Quantized"
+  fallback: torch.positive
+
+- op: "bitwise_and(input: Quantized, other: Quantized) -> Quantized"
+  fallback: torch.bitwise_and
+
+- op: "bitwise_or(input: Quantized, other: Quantized) -> Quantized"
+  fallback: torch.bitwise_or
+
+- op: "bitwise_xor(input: Quantized, other: Quantized) -> Quantized"
+  fallback: torch.bitwise_xor
+
+- op: "floor_divide(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.floor_divide
+
+- op: "bitwise_left_shift(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.bitwise_left_shift
+
+- op: "bitwise_right_shift(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.bitwise_right_shift
+
+- op: "remainder(input: Quantized, other: Quantized | float) -> Quantized"
+  fallback: torch.remainder
 
 - op: "silu(input: Quantized) -> Quantized"
   fallback: torch.nn.functional.silu
