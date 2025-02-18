@@ -4,15 +4,20 @@
 import dataclasses
 
 from collections.abc import Sequence
-from typing import Protocol, TypeAlias, TypeVar, cast, runtime_checkable
+from typing import Any, Callable, Protocol, TypeAlias, TypeVar, cast, runtime_checkable
 
 import libcst
 import libcst.helpers
 import libcst.matchers as m
+import torch
 
 from typing_extensions import override
 
 from fastforward._quantops import OperatorTable
+from fastforward._quantops.optable import (
+    BINARY_OPS_LIBCST_TO_TORCH_MAPPING,
+    OPS_LIBCST_TO_TORCH_MAPPING,
+)
 from fastforward.autoquant.cst.node_creation import (
     get_next_output_quantizer_kw_arg_and_name,
     get_quantized_function_counterpart,
@@ -155,6 +160,15 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
         self,
         original_node: libcst.BinaryOperation,
         updated_node: libcst.BinaryOperation,
+    ) -> libcst.BaseExpression:
+        del original_node
+        return ReplacementCandidate(updated_node)
+
+    @override
+    def leave_UnaryOperation(
+        self,
+        original_node: libcst.UnaryOperation,
+        updated_node: libcst.UnaryOperation,
     ) -> libcst.BaseExpression:
         del original_node
         return ReplacementCandidate(updated_node)
@@ -449,6 +463,11 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
     For example, torch.sigmoid(*args, **kwargs) is replaced with
     ff.nn.functional.sigmoid(*args, output_quantizer=self.quantizer_sigmoid_1).
     The new name quantizer_sigmoid_1 variable is tracked in `quantized_vars`.
+
+    Similarly, binary operators are replaced:
+    a + b is replaced with
+    ff.nn.functional.add(a, b, output_quantizer=self.quantizer_add_1).
+    The new name quantizer_add_1 variable is also tracked in `quantized_vars`.
     """
 
     def __init__(self, optable: OperatorTable) -> None:
@@ -468,36 +487,57 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         """Leave function for `ReplacementCandidate`."""
         del original_node
 
-        match updated_node.original:
+        existing_args: Sequence[libcst.Arg]
+        match orig := updated_node.original:
+            case libcst.UnaryOperation():
+                original_name, func_name = _get_name_and_torch_name_for_operation(orig)
+                existing_args = (libcst.Arg(orig.expression),)
             case libcst.BinaryOperation():
-                # Binary operations not yet implemented
-                return updated_node
+                original_name, func_name = _get_name_and_torch_name_for_operation(orig)
+                existing_args = (libcst.Arg(orig.left), libcst.Arg(orig.right))
             case libcst.Call():
-                func_name = libcst.helpers.get_full_name_for_node(updated_node.original)
-                # We cannot determine the name of the function called, skip it.
-                if func_name is None:
-                    return updated_node
-
-                # We don't have a quantized replacement for this function, skip it.
-                if func_name not in self._optable:
-                    return updated_node
-
-                func, operator = get_quantized_function_counterpart(
-                    optable=self._optable, func_name=func_name
-                )
-                num_quantized_vars = len(self.get_quantized_vars())
-                arg, quantizer_var_name = get_next_output_quantizer_kw_arg_and_name(
-                    func_name=func_name,
-                    current_num_quantized_vars=num_quantized_vars,
-                )
-                self._quantized_vars.append(quantizer_var_name)
-
-                # Unwrap call
-                return QuantizedCall(
-                    func=func,
-                    args=(*updated_node.original.args, arg),
-                    original_name=func_name,
-                    operator=operator,
-                )
+                func_name = libcst.helpers.get_full_name_for_node(orig)
+                existing_args = orig.args
+                original_name = func_name
             case _:
                 return updated_node
+        # We cannot determine the name of the function called, skip it.
+        if func_name is None or original_name is None:
+            return updated_node
+
+        # We don't have a quantized replacement for this function, skip it.
+        if func_name not in self._optable:
+            return updated_node
+
+        func, operator = get_quantized_function_counterpart(
+            optable=self._optable, func_name=func_name
+        )
+        num_quantized_vars = len(self.get_quantized_vars())
+        arg, quantizer_var_name = get_next_output_quantizer_kw_arg_and_name(
+            func_name=func_name,
+            current_num_quantized_vars=num_quantized_vars,
+        )
+        self._quantized_vars.append(quantizer_var_name)
+
+        return QuantizedCall(
+            func=func,
+            args=(*existing_args, arg),
+            original_name=original_name,
+            operator=operator,
+        )
+
+
+def _get_name_and_torch_name_for_operation(
+    node: libcst.UnaryOperation | libcst.BinaryOperation,
+) -> tuple[str, str] | tuple[None, None]:
+    """Maps a BinaryOperation node to its corresponding common name and torch name.
+
+    Examples:
+        - libcst.Add() -> "add", "torch.add"
+        - libcst.Expr() -> None, None
+    """
+    op = OPS_LIBCST_TO_TORCH_MAPPING.get(type(node.operator))
+    if op is None:
+        return None, None
+
+    return op.__name__, f"{op.__module__}.{op.__name__}"
