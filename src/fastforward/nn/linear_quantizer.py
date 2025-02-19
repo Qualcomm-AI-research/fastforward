@@ -319,8 +319,6 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         """
         try:
             min, max = (ensure_tensor(t, device=self.scale.device) for t in quant_range)
-            if self.has_uninitialized_params:
-                self._initialize_parameters(min.numel())
         except ValueError as e:
             raise ValueError(
                 f"Tried to set quantization range with {len(quant_range)}-tuple. "
@@ -330,6 +328,8 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
             raise ValueError(
                 "Tried to set quantization range with a single value. A 2-tuple is expected"
             ) from e
+        if self.has_uninitialized_params:
+            self._initialize_parameters(min.numel())
 
         with torch.no_grad():
             scale, offset = self._parameters_for_range(min, max)
