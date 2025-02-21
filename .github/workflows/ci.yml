@@ -118,7 +118,7 @@ jobs:
       - run: |
           . /etc/profile.d/conda.sh
           python3 -m pip install "$(find wheelhouse -name '*.whl')[test]"
-          python3 -m pytest
+          python3 -m pytest --include-slow
 
   verify:
     if: github.server_url != 'https://github.com'
