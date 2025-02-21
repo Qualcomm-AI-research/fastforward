@@ -454,6 +454,8 @@ def export(
     output_path = pathlib.Path(output_directory) / model_name
     output_path.mkdir(exist_ok=True, parents=True)
     artifact_location = output_path / model_name
+    onnx_location = pathlib.Path(str(artifact_location) + ".onnx")
+    encodings_location = pathlib.Path(str(artifact_location) + ".encodings")
 
     if not graph_preprocessors:
         graph_preprocessors = []
@@ -486,7 +488,7 @@ def export(
         dynamo_exported_program
     )
     proto = onnxscript.ir.to_proto(torch_onnx_model)
-    onnx.save(proto, artifact_location.with_suffix(".onnx"))
+    onnx.save(proto, onnx_location)
 
     used_inputs, unused_inputs = get_inputs(
         torch_onnx_model, quantization_logs, new_old_input_spec_mapping
@@ -498,7 +500,7 @@ def export(
         used_inputs, used_activations, used_parameters, quantization_logs
     )
 
-    with open(artifact_location.with_suffix(".encodings"), "w") as fp:
+    with open(encodings_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)
 
     onnx.save(

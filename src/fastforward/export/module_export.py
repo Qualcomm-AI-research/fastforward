@@ -22,8 +22,8 @@ input_output_registry: dict[str | torch.nn.Module, dict[str, Any]]
 
 def export_modules(
     model: torch.nn.Module,
-    data: torch.Tensor,
-    module_collection: MPathCollection,
+    data: None | torch.Tensor,
+    module_or_module_collection: torch.nn.Module | MPathCollection,
     model_name: str,
     kwargs: None | dict[str, Any] = None,
 ) -> dict[str, pathlib.Path]:
@@ -59,18 +59,21 @@ def export_modules(
         paths: a dictionary of module names to exported paths (location where the encodings
             and ONNX files are stored).
     """
+
+    assert data is not None or (data is None and kwargs is not None)
+
     # The dictionary is set to global in order to store the inputs/kwargs/outputs from
     # the torch hooks.
     global input_output_registry
     input_output_registry = {}
-    modules = {module.full_name: module.module for module in module_collection}
+    modules = {module.full_name: module.module for module in module_or_module_collection} if isinstance(module_or_module_collection, MPathCollection) else {model_name: module_or_module_collection}
     paths = {}
 
-    if not kwargs:
+    if kwargs is None:
         kwargs = {}
 
     _populate_input_output_data_registry(
-        model, data, list(modules.values()), log_input_output_hook, kwargs
+        model, model_name, data, list(modules.values()), log_input_output_hook, kwargs
     )
 
     for module_name, module in modules.items():
@@ -232,7 +235,7 @@ def log_input_output_hook(
 
 
 def _change_keys_to_result_registry(
-    model: torch.nn.Module, input_output_registry: dict[torch.nn.Module | str, dict[str, Any]]
+    model: torch.nn.Module, input_output_registry: dict[torch.nn.Module | str, dict[str, Any]], model_name: str
 ) -> None:
     """
     Change the key from module object, to be the module object's name.
@@ -246,11 +249,20 @@ def _change_keys_to_result_registry(
         model: the torch model for which modules are exported.
         input_output_registry: dictionary containing the inputs/kwargs/outputs
             for all modules of interest.
+        model_name: name given to the torch model.
     """
     for name, module in model.named_modules():
         if module in input_output_registry:
             result = input_output_registry.pop(module)
             input_output_registry[name] = result
+
+    # In the case we are peforming inference to the whole model
+    # then the results will be stored under an empty string dictionary
+    # key (this appears to be because torch does not assign a name to
+    # the root module). We just replace this with the name of the model
+    # to make storing easier.
+    if "" in input_output_registry:
+        input_output_registry[model_name] = input_output_registry.pop("")
 
 
 def _add_hooks(
@@ -274,7 +286,8 @@ def _add_hooks(
 
 def _populate_input_output_data_registry(
     model: torch.nn.Module,
-    input_data: torch.Tensor,
+    model_name: str,
+    input_data: None | torch.Tensor,
     modules: Sequence[torch.nn.Module],
     hook: Callable[[Any], None],
     kwargs: None | dict[str, Any],
@@ -285,8 +298,9 @@ def _populate_input_output_data_registry(
     Function for adding hooks, running model inference and cleaning up.
 
     Args:
-        model: torch model to run inference
-        input_data: data to infer on
+        model: torch model to run inference.
+        model_name: name given to the torch model.
+        input_data: data to infer on.
         modules: collection of modules for which the inputs/kwargs/outputs will be captured.
         hook: torch hook to apply to modules of interest.
         kwargs: any additional kwargs required for inference.
@@ -296,8 +310,11 @@ def _populate_input_output_data_registry(
         kwargs = {}
 
     hooks = _add_hooks(modules=modules, hook=hook)
-    model(input_data, **kwargs)
+    if input_data is not None:
+        model(input_data, **kwargs)
+    else:
+        model(**kwargs)
 
-    _change_keys_to_result_registry(model, input_output_registry)
+    _change_keys_to_result_registry(model, input_output_registry, model_name)
     for h in hooks:
         h.remove()
