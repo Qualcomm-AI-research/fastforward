@@ -6,7 +6,8 @@ import json
 import pathlib
 import pickle
 
-from typing import Any, Callable, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import onnxruntime
 import torch
@@ -18,6 +19,34 @@ from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
 input_output_registry: dict[str | torch.nn.Module, dict[str, Any]]
+
+
+class RegistryHook:
+    """
+    Helper class to provide helper functions and state for torch hook.
+
+    The class provides the main hook to be used for logging inputs/outputs/kwargs.
+    It also includes translation of module to module name.
+    """
+    def __init__(self, model, model_name):
+        self.input_output_registry = {}
+        self.model = model
+        self.model_name = model_name
+
+    def hook_fn(self, module, input_, kwargs, output_):
+        module_name = self._get_module_name(module)
+        self.input_output_registry[module_name] = {}
+        self.input_output_registry[module_name]["input"] = input_ if isinstance(input_, tuple) else (input_,)
+        self.input_output_registry[module_name]["kwargs"] = kwargs
+        self.input_output_registry[module_name]["output"] = output_ if isinstance(output_, tuple) else (output_,)
+
+    def _get_module_name(self, target_module):
+        if self.model is target_module:
+            return self.model_name
+        for name, module in self.model.named_modules():
+            if module is target_module:
+                return name
+        raise AttributeError(f"Target module: {target_module} is not a submodule of model: {self.model}")
 
 
 def export_modules(
@@ -52,7 +81,7 @@ def export_modules(
     Args:
         model: a torch model from which modules will be exported.
         data: the input data to the torch model.
-        module_collection: a mpath collection of modules to be individually exported.
+        module_or_module_collection: a mpath collection of modules to be individually exported.
         model_name: the name of the model, the output directory will be named after it.
         kwargs: the kwargs used at inference for the torch model
     Returns:
@@ -60,21 +89,27 @@ def export_modules(
             and ONNX files are stored).
     """
 
-    assert data is not None or (data is None and kwargs is not None)
+    if data is None and kwargs is None:
+        msg = "Both data and kwargs cannot be None at the same time"
+        raise ValueError(msg)
 
-    # The dictionary is set to global in order to store the inputs/kwargs/outputs from
-    # the torch hooks.
-    global input_output_registry
-    input_output_registry = {}
-    modules = {module.full_name: module.module for module in module_or_module_collection} if isinstance(module_or_module_collection, MPathCollection) else {model_name: module_or_module_collection}
+    registry_hook = RegistryHook(model, model_name)
+
+    modules = (
+        {module.full_name: module.module for module in module_or_module_collection}
+        if isinstance(module_or_module_collection, MPathCollection)
+        else {model_name: module_or_module_collection}
+    )
     paths = {}
 
     if kwargs is None:
         kwargs = {}
 
     _populate_input_output_data_registry(
-        model, model_name, data, list(modules.values()), log_input_output_hook, kwargs
+        model, data, list(modules.values()), registry_hook.hook_fn, kwargs
     )
+
+    input_output_registry = registry_hook.input_output_registry
 
     for module_name, module in modules.items():
         quantizer_settings = maybe_dequantize_tensors(input_output_registry[module_name])
@@ -189,7 +224,7 @@ def maybe_dequantize_tensors(
             from any `QuantizedTensor`s found in the `input_output_registry`.
     """
     keys_of_interest = ["input", "output"]
-    quantizer_settings = collections.defaultdict(list)
+    quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]] = collections.defaultdict(list)
 
     for key in keys_of_interest:
         assert key in input_output_registry
@@ -213,58 +248,6 @@ def maybe_dequantize_tensors(
     return quantizer_settings
 
 
-def log_input_output_hook(
-    module: torch.nn.Module,
-    input_: torch.Tensor | tuple[torch.Tensor],
-    kwargs: dict[str, Any],
-    output_: torch.Tensor | tuple[torch.Tensor],
-) -> None:
-    """
-    Simple hook for logging inputs/kwargs/outputs of modules.
-
-    Args:
-        module: the module to which the hook is applied.
-        input_: input tensors to the module.
-        kwargs: any kwargs passed to the module.
-        output_: output tensors from the module.
-    """
-    input_output_registry[module] = {}
-    input_output_registry[module]["input"] = input_ if isinstance(input_, tuple) else (input_,)
-    input_output_registry[module]["kwargs"] = kwargs
-    input_output_registry[module]["output"] = output_ if isinstance(output_, tuple) else (output_,)
-
-
-def _change_keys_to_result_registry(
-    model: torch.nn.Module, input_output_registry: dict[torch.nn.Module | str, dict[str, Any]], model_name: str
-) -> None:
-    """
-    Change the key from module object, to be the module object's name.
-
-    The population of the dictionary is happening in the hook mechanism, while
-    we have access to the module itself, we do not have access to the module's name.
-    Therefore we need to iterate through the model's modules and replace the key
-    from the module object to the module name.
-
-    Args:
-        model: the torch model for which modules are exported.
-        input_output_registry: dictionary containing the inputs/kwargs/outputs
-            for all modules of interest.
-        model_name: name given to the torch model.
-    """
-    for name, module in model.named_modules():
-        if module in input_output_registry:
-            result = input_output_registry.pop(module)
-            input_output_registry[name] = result
-
-    # In the case we are peforming inference to the whole model
-    # then the results will be stored under an empty string dictionary
-    # key (this appears to be because torch does not assign a name to
-    # the root module). We just replace this with the name of the model
-    # to make storing easier.
-    if "" in input_output_registry:
-        input_output_registry[model_name] = input_output_registry.pop("")
-
-
 def _add_hooks(
     modules: Sequence[torch.nn.modules.Module],
     hook: Callable[[Any], None],
@@ -286,7 +269,6 @@ def _add_hooks(
 
 def _populate_input_output_data_registry(
     model: torch.nn.Module,
-    model_name: str,
     input_data: None | torch.Tensor,
     modules: Sequence[torch.nn.Module],
     hook: Callable[[Any], None],
@@ -299,7 +281,6 @@ def _populate_input_output_data_registry(
 
     Args:
         model: torch model to run inference.
-        model_name: name given to the torch model.
         input_data: data to infer on.
         modules: collection of modules for which the inputs/kwargs/outputs will be captured.
         hook: torch hook to apply to modules of interest.
@@ -315,6 +296,5 @@ def _populate_input_output_data_registry(
     else:
         model(**kwargs)
 
-    _change_keys_to_result_registry(model, input_output_registry, model_name)
     for h in hooks:
         h.remove()

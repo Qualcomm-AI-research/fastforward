@@ -110,6 +110,7 @@ def test_module_export(simple_model) -> None:
     # (in this case linear and relu)
     data = torch.randn(2, 32, 10)
     model, activation_quantizers, parameter_quantizers = simple_model
+    model_name = "test_linear_model"
 
     activate_quantizers(model, data, activation_quantizers, parameter_quantizers)
 
@@ -117,7 +118,8 @@ def test_module_export(simple_model) -> None:
     relu_modules = ff.mpath.search("**/[cls:torch.nn.ReLU]", model)
 
     modules = linear_modules | relu_modules
-    paths = export_modules(model, data, modules, "test_linear_model")
+    paths = export_modules(model, data, modules, model_name)
+    model_path = export_modules(model, data, model, model_name)[model_name]
 
     # THEN: the number of exported modules paths should match the number
     # of modules of interest.
@@ -134,3 +136,9 @@ def test_module_export(simple_model) -> None:
 
         if module.full_name != "fc1":
             check_input_encodings_have_been_added(paths[path], module.full_name)
+
+    # THEN: the above checks should also work when exporting the full model.
+    # NB: Input encodings are not altered, since the full model has an input
+    # quantizer, so no need to check that.
+    check_module_files(model_path, model_name)
+    check_module_input_output_has_been_stored(model_path, model_name)
