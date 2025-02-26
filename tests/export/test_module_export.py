@@ -7,10 +7,9 @@ import pickle
 
 from typing import Any, TypeAlias
 
+import fastforward as ff
 import pytest
 import torch
-
-import fastforward as ff
 
 from fastforward.export.module_export import export_modules
 from fastforward.nn.quantizer import Quantizer
@@ -23,8 +22,10 @@ QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, Q
 @pytest.fixture
 def simple_model() -> QuantizedModelFixture:
     class FFNet(torch.nn.Module):
+        """Simple FF model with quantized linear/relu modules."""
+
         def __init__(self) -> None:
-            super(FFNet, self).__init__()
+            super().__init__()
             self.fc1 = ff.nn.QuantizedLinear(10, 10)
             self.relu1 = ff.nn.QuantizedRelu()
             self.fc2 = ff.nn.QuantizedLinear(10, 10)
@@ -49,10 +50,39 @@ def simple_model() -> QuantizedModelFixture:
     return quant_model, activation_quantizers, parameter_quantizers
 
 
-def initialize_quantizers(
-    quantizers: QuantizerCollection, quantizer: type[Quantizer], **quantizer_params: Any
-) -> None:
-    quantizers.initialize(quantizer, **quantizer_params)
+def check_module_files(path: pathlib.Path, module_name: str) -> None:
+    encodings_file = path / f"{module_name}.encodings"
+    onnx_file = path / f"{module_name}.onnx"
+
+    assert encodings_file.is_file() and encodings_file.stat().st_size > 0
+    assert onnx_file.is_file() and onnx_file.stat().st_size > 0
+
+
+def check_input_encodings_have_been_added(path: pathlib.Path, module_name: str) -> None:
+    encodings_file = path / f"{module_name}.encodings"
+
+    with open(encodings_file) as fp:
+        encodings_dictionary = json.load(fp)
+
+    assert "input" in encodings_dictionary["activation_encodings"]
+
+
+def check_module_input_output_has_been_stored(path: pathlib.Path, module_name: str) -> None:
+    input_output_location = path / f"{module_name}_input_output.pickle"
+    expected_keys = ["input", "output", "kwargs"]
+
+    with open(input_output_location, "rb") as fp:
+        input_output_dictionary = pickle.load(fp)
+
+    assert isinstance(input_output_dictionary, dict)
+    assert set(expected_keys) <= set(input_output_dictionary.keys())
+
+    assert len(input_output_dictionary["input"]) == 1
+    assert len(input_output_dictionary["output"]) == 1
+
+    assert isinstance(input_output_dictionary["input"][0], torch.Tensor)
+    assert isinstance(input_output_dictionary["output"][0], torch.Tensor)
+    assert input_output_dictionary["kwargs"] == {}
 
 
 def activate_quantizers(
@@ -62,9 +92,9 @@ def activate_quantizers(
     parameter_quantizers: QuantizerCollection,
     param_granularity: Granularity = ff.PerTensor(),
 ) -> None:
-    initialize_quantizers(activation_quantizers, ff.nn.LinearQuantizer, num_bits=8)
-    initialize_quantizers(
-        parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
+    activation_quantizers.initialize(ff.nn.LinearQuantizer, num_bits=8)
+    parameter_quantizers.initialize(
+        ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
     )
 
     with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
@@ -72,41 +102,8 @@ def activate_quantizers(
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_module_export(simple_model) -> None:
-    def check_module_files(path: pathlib.Path, module_name: str) -> None:
-        encodings_file = path / f"{module_name}.encodings"
-        onnx_file = path / f"{module_name}.onnx"
-
-        assert encodings_file.is_file() and encodings_file.stat().st_size > 0
-        assert onnx_file.is_file() and onnx_file.stat().st_size > 0
-
-    def check_input_encodings_have_been_added(path: pathlib.Path, module_name: str) -> None:
-        encodings_file = path / f"{module_name}.encodings"
-
-        with open(encodings_file) as fp:
-            encodings_dictionary = json.load(fp)
-
-        assert "input" in encodings_dictionary["activation_encodings"]
-
-    def check_module_input_output_has_been_stored(path: pathlib.Path, module_name: str) -> None:
-        input_output_location = path / f"{module_name}_input_output.pickle"
-        expected_keys = ["input", "output", "kwargs"]
-
-        with open(input_output_location, "rb") as fp:
-            input_output_dictionary = pickle.load(fp)
-
-        assert isinstance(input_output_dictionary, dict)
-        assert all([key in input_output_dictionary for key in expected_keys])
-
-        assert len(input_output_dictionary["input"]) == 1
-        assert len(input_output_dictionary["output"]) == 1
-        assert len(input_output_dictionary["kwargs"]) == 0
-
-        assert isinstance(input_output_dictionary["input"][0], torch.Tensor)
-        assert isinstance(input_output_dictionary["output"][0], torch.Tensor)
-        assert input_output_dictionary["kwargs"] == {}
-
-    # GIVEN: a model with quantizer quantizers and a collection of modules of interest
+def test_module_export(simple_model: QuantizedModelFixture) -> None:
+    # GIVEN: a model with quantizers and a collection of modules of interest
     # (in this case linear and relu)
     data = torch.randn(2, 32, 10)
     model, activation_quantizers, parameter_quantizers = simple_model
@@ -114,6 +111,7 @@ def test_module_export(simple_model) -> None:
 
     activate_quantizers(model, data, activation_quantizers, parameter_quantizers)
 
+    # WHEN: exporting the individual modules AND the entire model.
     linear_modules = ff.mpath.search("**/[cls:torch.nn.Linear]", model)
     relu_modules = ff.mpath.search("**/[cls:torch.nn.ReLU]", model)
 
@@ -125,10 +123,10 @@ def test_module_export(simple_model) -> None:
     # of modules of interest.
     assert len(modules) == len(paths)
 
-    # THEN: the individual modules should be have been exported (ie there
-    # exist ONNX file and encodings files for each of them) and inputs
+    # THEN: the individual modules should be have been exported (i.e. there
+    # exists an ONNX file and an encodings file for each of them) and input
     # encodings should have been added to the modules that did not have
-    # a set input quantizer. Also, pickle files containing inputs/outputs/kwargs
+    # an activated input quantizer. Also, pickle files containing inputs/outputs/kwargs
     # gathered from torch hooks should be present and have a set structure.
     for module, path in zip(modules, paths):
         check_module_files(paths[path], module.full_name)
@@ -138,7 +136,7 @@ def test_module_export(simple_model) -> None:
             check_input_encodings_have_been_added(paths[path], module.full_name)
 
     # THEN: the above checks should also work when exporting the full model.
-    # NB: Input encodings are not altered, since the full model has an input
-    # quantizer, so no need to check that.
+    # NB: Input encodings are not altered, since the full model has an activated
+    # input quantizer, so no need to check that.
     check_module_files(model_path, model_name)
     check_module_input_output_has_been_stored(model_path, model_name)

@@ -18,35 +18,26 @@ from fastforward.mpath._search import MPathCollection
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
-input_output_registry: dict[str | torch.nn.Module, dict[str, Any]]
 
+class IOCaptureHook:
+    """Provides functionality for logging inputs/outputs/kwargs."""
 
-class RegistryHook:
-    """
-    Helper class to provide helper functions and state for torch hook.
+    def __init__(self, module: torch.nn.Module, module_name: str):
+        self.input_output_registry: dict[str, Any] = {}
+        self.module = module
+        self.module_name = module_name
 
-    The class provides the main hook to be used for logging inputs/outputs/kwargs.
-    It also includes translation of module to module name.
-    """
-    def __init__(self, model, model_name):
-        self.input_output_registry = {}
-        self.model = model
-        self.model_name = model_name
-
-    def hook_fn(self, module, input_, kwargs, output_):
-        module_name = self._get_module_name(module)
-        self.input_output_registry[module_name] = {}
-        self.input_output_registry[module_name]["input"] = input_ if isinstance(input_, tuple) else (input_,)
-        self.input_output_registry[module_name]["kwargs"] = kwargs
-        self.input_output_registry[module_name]["output"] = output_ if isinstance(output_, tuple) else (output_,)
-
-    def _get_module_name(self, target_module):
-        if self.model is target_module:
-            return self.model_name
-        for name, module in self.model.named_modules():
-            if module is target_module:
-                return name
-        raise AttributeError(f"Target module: {target_module} is not a submodule of model: {self.model}")
+    def __call__(
+        self,
+        _: torch.nn.Module,
+        input_: torch.Tensor | tuple[torch.Tensor],
+        kwargs: dict[str, Any],
+        output_: torch.Tensor | tuple[torch.Tensor],
+    ) -> None:
+        """Logs inputs/outputs/kwargs in dictionary."""
+        self.input_output_registry["input"] = input_ if isinstance(input_, tuple) else (input_,)
+        self.input_output_registry["kwargs"] = kwargs
+        self.input_output_registry["output"] = output_ if isinstance(output_, tuple) else (output_,)
 
 
 def export_modules(
@@ -56,14 +47,12 @@ def export_modules(
     model_name: str,
     kwargs: None | dict[str, Any] = None,
 ) -> dict[str, pathlib.Path]:
-    """
-    Export a collection of modules from a given model.
+    """Export a collection of modules from a given model.
 
-    Main helper function for facilitating module level export. Given
-    a model, data, kwargs and a collection of modules, the function will apply
-    hooks for capturing the inputs/outputs for the modules of interest in the
-    model. It will then use the captured inputs for exporting the individual
-    modules (using the FF `export` function).
+    Main function for module level export. Given a model, data, kwargs and a collection
+    of modules, the function will apply hooks for capturing the inputs/outputs for the
+    modules of interest in the model. It will then use the captured inputs for exporting
+    the individual modules (using `ff.export.export` function).
 
     NB: Because this is a quantized model, it is likely that some of the tensors
     forwarded through the different layers will not require quantization. For example
@@ -71,7 +60,7 @@ def export_modules(
 
     input -> input_quantization -> layer1 -> output_quantization -> layer2 -> output_quantization
 
-    Here the first layer has an input quantizer, which will be captured in the encodings json,
+    Here the first layer has an input quantizer, which will be captured in the encodings JSON,
     but the second layer does not, because it relies on the first layer's output quantization.
     In order to capture this information and correctly quantize inputs/outputs of all modules
     we extend (when this is necessary) the encodings file of the different modules (if that is
@@ -79,66 +68,61 @@ def export_modules(
     information.
 
     Args:
-        model: a torch model from which modules will be exported.
-        data: the input data to the torch model.
-        module_or_module_collection: a mpath collection of modules to be individually exported.
-        model_name: the name of the model, the output directory will be named after it.
-        kwargs: the kwargs used at inference for the torch model
+        model: A torch model from which modules will be exported.
+        data: The input data to the torch model.
+        module_or_module_collection: A mpath collection of modules to be individually exported.
+        model_name: The name of the model, the output directory will be named after it.
+        kwargs: The kwargs used at inference for the torch model
     Returns:
-        paths: a dictionary of module names to exported paths (location where the encodings
+        paths: A dictionary of module names to exported paths (location where the encodings
             and ONNX files are stored).
     """
-
-    if data is None and kwargs is None:
+    if data is None and (kwargs is None or kwargs == {}):
         msg = "Both data and kwargs cannot be None at the same time"
         raise ValueError(msg)
-
-    registry_hook = RegistryHook(model, model_name)
-
-    modules = (
-        {module.full_name: module.module for module in module_or_module_collection}
-        if isinstance(module_or_module_collection, MPathCollection)
-        else {model_name: module_or_module_collection}
-    )
-    paths = {}
 
     if kwargs is None:
         kwargs = {}
 
-    _populate_input_output_data_registry(
-        model, data, list(modules.values()), registry_hook.hook_fn, kwargs
-    )
+    if isinstance(module_or_module_collection, MPathCollection):
+        modules = {mod.full_name: mod.module for mod in module_or_module_collection}
+    else:
+        modules = {model_name: module_or_module_collection}
 
-    input_output_registry = registry_hook.input_output_registry
+    hook_instances = {}
+    hooks = []
+    for module_name, module in modules.items():
+        hook = IOCaptureHook(module, module_name)
+        hook_instances[module_name] = hook
+        hooks.append(module.register_forward_hook(hook=hook, with_kwargs=True))
+
+    if data is not None:
+        model(data, **kwargs)
+    else:
+        model(**kwargs)
+
+    for h in hooks:
+        h.remove()
+
+    paths = {}
 
     for module_name, module in modules.items():
-        quantizer_settings = maybe_dequantize_tensors(input_output_registry[module_name])
-        module_input_data = input_output_registry[module_name]["input"]
-        module_input_kwargs = input_output_registry[module_name]["kwargs"]
+        input_output_registry = hook_instances[module_name].input_output_registry
+        quantizer_settings = maybe_dequantize_tensors(input_output_registry)
+        module_input_data = input_output_registry["input"]
+        module_input_kwargs = input_output_registry["kwargs"]
 
         exported_path = export(
             module, module_input_data, model_name, module_name, model_kwargs=module_input_kwargs
         )
         paths[module_name] = exported_path
         maybe_extend_encodings_file(module_name, paths[module_name], quantizer_settings)
-        store_registry(input_output_registry[module_name], module_name, exported_path)
+
+        input_output_location = exported_path / f"{module_name}_input_output.pickle"
+        with open(input_output_location, "wb") as fp:
+            pickle.dump(input_output_registry, fp)
 
     return paths
-
-
-def store_registry(module_registry: dict[str, Any], module_name: str, path: pathlib.Path) -> None:
-    """
-    Helper to store input/output dictionary as pickle file.
-
-    Args:
-        module_registry: Dictionary containing inputs/kwargs/outputs for a module.
-        module_name: The name of the module.
-        path: The path to the module stored artifacts directory.
-    """
-    input_output_location = path / f"{module_name}_input_output.pickle"
-
-    with open(input_output_location, "wb") as fp:
-        pickle.dump(module_registry, fp)
 
 
 def maybe_extend_encodings_file(
@@ -146,22 +130,20 @@ def maybe_extend_encodings_file(
     path: pathlib.Path,
     quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]],
 ) -> None:
-    """
-    Conditional extension of the QNN encodings file.
+    """Extends the QNN encodings file.
 
     As detailed in the `export_modules` function docstring there are
-    cases when quantization is implicit (the tensor traveling in the
+    cases when quantization is implicit (the tensor passed to the
     operation is already quantized) and it cannot be captured in the
-    encodings file. This function performs a takes a dictionary of
-    quantization settings and appends them to the encodings file of
-    the given module.
+    encodings file. This function takes a dictionary of quantization
+    settings and appends them to the encodings file of the given module.
 
     NB: the function only looks at inputs/outputs of modules, no other
     activations or parameters.
 
     Args:
         module_name: Name of the module.
-        path: path where the module output directory is stored.
+        path: Path where the module output directory is stored.
         quantizer_settings: The quantizer settings gathered during inference.
     """
     encodings_file_location = path / f"{module_name}.encodings"
@@ -205,8 +187,7 @@ def maybe_extend_encodings_file(
 def maybe_dequantize_tensors(
     input_output_registry: dict[str, Any],
 ) -> collections.defaultdict[str, list[QuantParametersDict]]:
-    """
-    Conditional dequantization of tensors.
+    """Dequantizes input/output tensors.
 
     The output tensors of quantized modules will usually be returned
     as `QuantizedTensor`s. As these are custom tensors they cannot be
@@ -217,14 +198,17 @@ def maybe_dequantize_tensors(
     file.
 
     Args:
-        input_output_registry: dictionary containing the input/kwargs/output
+        input_output_registry: Dictionary containing the input/kwargs/output
             data capture of a single module.
+
     Returns:
-        quantizer_settings: dictionary containing the quantizer parameters
+        quantizer_settings: Dictionary containing the quantizer parameters
             from any `QuantizedTensor`s found in the `input_output_registry`.
     """
     keys_of_interest = ["input", "output"]
-    quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]] = collections.defaultdict(list)
+    quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]] = (
+        collections.defaultdict(list)
+    )
 
     for key in keys_of_interest:
         assert key in input_output_registry
@@ -246,55 +230,3 @@ def maybe_dequantize_tensors(
         input_output_registry[key] = tuple(updated_tensors)
 
     return quantizer_settings
-
-
-def _add_hooks(
-    modules: Sequence[torch.nn.modules.Module],
-    hook: Callable[[Any], None],
-) -> list[torch.utils.hooks.RemovableHandle]:
-    """
-    Helper function for registering hooks.
-
-    Args:
-        modules: List of modules to which the hook will be applied.
-        hook: The hook to be applied to the modules of interest.
-    Returns:
-        hooks: List of hooks applied to the modules of interest.
-    """
-    hooks = []
-    for module in modules:
-        hooks.append(module.register_forward_hook(hook=hook, with_kwargs=True))
-    return hooks
-
-
-def _populate_input_output_data_registry(
-    model: torch.nn.Module,
-    input_data: None | torch.Tensor,
-    modules: Sequence[torch.nn.Module],
-    hook: Callable[[Any], None],
-    kwargs: None | dict[str, Any],
-) -> None:
-    """
-    Population of the dictionary with data gathered from torch hooks.
-
-    Function for adding hooks, running model inference and cleaning up.
-
-    Args:
-        model: torch model to run inference.
-        input_data: data to infer on.
-        modules: collection of modules for which the inputs/kwargs/outputs will be captured.
-        hook: torch hook to apply to modules of interest.
-        kwargs: any additional kwargs required for inference.
-    """
-
-    if kwargs is None:
-        kwargs = {}
-
-    hooks = _add_hooks(modules=modules, hook=hook)
-    if input_data is not None:
-        model(input_data, **kwargs)
-    else:
-        model(**kwargs)
-
-    for h in hooks:
-        h.remove()

@@ -415,8 +415,7 @@ def export(
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
     model_kwargs: None | dict[str, Any] = None,
 ) -> pathlib.Path:
-    """
-    The main export function for retrieving artifacts that can be passed to QNN.
+    """The main export function for retrieving artifacts that can be passed to QNN.
 
     This function takes an user-defined torch model (which can contain fastforward layers
     and quantizers). It then performs three processing steps:
@@ -448,8 +447,9 @@ def export(
             standard export graph operations required by QNN (parameter logging, removal of
             quantization/dequantization operations).
         model_kwargs: kwargs passed to the model during export.
+
     Returns:
-        _: the path to the output directory where the encodings and ONNX files are stored.
+        output_path: the path to the output directory where the encodings and ONNX files are stored.
     """
     output_path = pathlib.Path(output_directory) / model_name
     output_path.mkdir(exist_ok=True, parents=True)

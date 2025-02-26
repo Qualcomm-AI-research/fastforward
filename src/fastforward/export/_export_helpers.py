@@ -216,16 +216,16 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
 def create_qnn_encoding_entry(
     encoding_value: QuantParametersDict,
 ) -> list[QNNEncodingEntry]:
-    """
-    Conversion of an encoding value dictionary to a QNNEncodingEntry
+    """Converts an encoding value dictionary to a QNNEncodingEntry.
 
     Args:
         encoding_value: dictionary containing quantization parameters.
+
     Returns:
         encoding: list of QNNEncodingEntry dictionaries.
     """
     scale = encoding_value["scale"]
-    offset = encoding_value.get("offset")
+    offset = encoding_value["offset"]
     bitwidth = encoding_value["num_bits"]
     int_min = integer_minimum(bitwidth)
 
@@ -257,6 +257,7 @@ def create_qnn_encoding_entry(
         }
         encoding.append(output_entry)
 
+    breakpoint()
     return encoding
 
 
