@@ -14,6 +14,7 @@ from typing_extensions import NotRequired
 
 from fastforward.common import ensure_tensor
 from fastforward.exceptions import ExportError
+from fastforward.quantization._quantizer_impl import _infer_offset
 from fastforward.quantization.affine import integer_minimum, quantization_range
 
 logger = logging.getLogger(__name__)
@@ -213,6 +214,12 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     return int(value)
 
 
+def _cast_float_or_int_to_tensor(value: float | int | torch.Tensor) -> torch.Tensor:
+    if not isinstance(value, torch.Tensor):
+        return torch.tensor(value)
+    return value
+
+
 def create_qnn_encoding_entry(
     encoding_value: QuantParametersDict,
 ) -> list[QNNEncodingEntry]:
@@ -229,11 +236,14 @@ def create_qnn_encoding_entry(
     bitwidth = encoding_value["num_bits"]
     int_min = integer_minimum(bitwidth)
 
+    scale = _cast_float_or_int_to_tensor(scale)
+    if offset is None:
+        offset = _infer_offset(offset, scale)
+    offset = _cast_float_or_int_to_tensor(offset)
+    offset = torch.round(offset)
+
     int_min = _strict_cast_to_int(int_min, "int_min")
     bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
-
-    if isinstance(offset, torch.Tensor):
-        offset = torch.round(offset)
 
     qnn_offset = offset - 2 ** (bitwidth - 1)
     if not isinstance(qnn_offset, torch.Tensor):
@@ -257,7 +267,6 @@ def create_qnn_encoding_entry(
         }
         encoding.append(output_entry)
 
-    breakpoint()
     return encoding
 
 

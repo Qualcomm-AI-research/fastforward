@@ -449,7 +449,7 @@ def export(
         model_kwargs: kwargs passed to the model during export.
 
     Returns:
-        output_path: the path to the output directory where the encodings and ONNX files are stored.
+        The path to the output directory where the encodings and ONNX files are stored.
     """
     output_path = pathlib.Path(output_directory) / model_name
     output_path.mkdir(exist_ok=True, parents=True)

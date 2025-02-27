@@ -6,10 +6,9 @@ import json
 import pathlib
 import pickle
 
-from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any
 
-import onnxruntime
+import onnxruntime  # type: ignore[import-untyped]
 import torch
 
 from fastforward.export import export
@@ -19,13 +18,14 @@ from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-class IOCaptureHook:
+class ModuleIOCaptureHandle:
     """Provides functionality for logging inputs/outputs/kwargs."""
 
     def __init__(self, module: torch.nn.Module, module_name: str):
         self.input_output_registry: dict[str, Any] = {}
         self.module = module
         self.module_name = module_name
+        self.handle: None | torch.utils.hooks.RemovableHandle = None
 
     def __call__(
         self,
@@ -39,10 +39,24 @@ class IOCaptureHook:
         self.input_output_registry["kwargs"] = kwargs
         self.input_output_registry["output"] = output_ if isinstance(output_, tuple) else (output_,)
 
+    def attach(self) -> None:
+        """Assign handle to object instance."""
+        if self.handle is not None:
+            msg = f"Handle: {self.handle} is already attached. Cannot attach a new one."
+            raise AttributeError(msg)
+        self.handle = self.module.register_forward_hook(hook=self, with_kwargs=True)
+
+    def detach(self) -> None:
+        """Remove handle from object instance."""
+        if self.handle is None:
+            msg = f"There is no handle to detach."
+            raise AttributeError(msg)
+        self.handle.remove()
+
 
 def export_modules(
     model: torch.nn.Module,
-    data: None | torch.Tensor,
+    args: None | tuple[torch.Tensor] | tuple[()],
     module_or_module_collection: torch.nn.Module | MPathCollection,
     model_name: str,
     kwargs: None | dict[str, Any] = None,
@@ -69,7 +83,7 @@ def export_modules(
 
     Args:
         model: A torch model from which modules will be exported.
-        data: The input data to the torch model.
+        args: The input args to the torch model.
         module_or_module_collection: A mpath collection of modules to be individually exported.
         model_name: The name of the model, the output directory will be named after it.
         kwargs: The kwargs used at inference for the torch model
@@ -77,37 +91,39 @@ def export_modules(
         paths: A dictionary of module names to exported paths (location where the encodings
             and ONNX files are stored).
     """
-    if data is None and (kwargs is None or kwargs == {}):
-        msg = "Both data and kwargs cannot be None at the same time"
-        raise ValueError(msg)
+    args = args or ()
+    kwargs = kwargs or {}
 
-    if kwargs is None:
-        kwargs = {}
+    if args == () and kwargs == {}:
+        msg = "Both args and kwargs cannot be None at the same time"
+        raise ValueError(msg)
 
     if isinstance(module_or_module_collection, MPathCollection):
         modules = {mod.full_name: mod.module for mod in module_or_module_collection}
     else:
         modules = {model_name: module_or_module_collection}
 
-    hook_instances = {}
-    hooks = []
+    handles = []
     for module_name, module in modules.items():
-        hook = IOCaptureHook(module, module_name)
-        hook_instances[module_name] = hook
-        hooks.append(module.register_forward_hook(hook=hook, with_kwargs=True))
+        handle = ModuleIOCaptureHandle(module, module_name)
+        handle.attach()
+        handles.append(handle)
 
-    if data is not None:
-        model(data, **kwargs)
+    if args != ():
+        model(*args, **kwargs)
     else:
         model(**kwargs)
 
-    for h in hooks:
-        h.remove()
+    for handle in handles:
+        handle.detach()
 
-    paths = {}
+    paths: dict[str, pathlib.Path] = {}
 
-    for module_name, module in modules.items():
-        input_output_registry = hook_instances[module_name].input_output_registry
+    for handle in handles:
+        input_output_registry = handle.input_output_registry
+        module = handle.module
+        module_name = handle.module_name
+
         quantizer_settings = maybe_dequantize_tensors(input_output_registry)
         module_input_data = input_output_registry["input"]
         module_input_kwargs = input_output_registry["kwargs"]
@@ -216,11 +232,12 @@ def maybe_dequantize_tensors(
 
         for tensor in input_output_registry[key]:
             if isinstance(tensor, QuantizedTensor):
-                quant_args: StaticAffineQuantParams = tensor.quant_args()
+                quant_args: StaticAffineQuantParams = tensor.quant_args() # type: ignore[assignment]
+                scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
                 tensor_quant_args: QuantParametersDict = {
-                    "scale": quant_args.scale,
-                    "offset": quant_args.offset,
-                    "num_bits": quant_args.num_bits,
+                    "scale": scale,
+                    "offset": offset,
+                    "num_bits": num_bits,
                 }
                 quantizer_settings[key].append(tensor_quant_args)
                 updated_tensors.append(tensor.dequantize())
