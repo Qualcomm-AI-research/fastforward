@@ -232,7 +232,7 @@ def maybe_dequantize_tensors(
 
         for tensor in input_output_registry[key]:
             if isinstance(tensor, QuantizedTensor):
-                quant_args: StaticAffineQuantParams = tensor.quant_args() # type: ignore[assignment]
+                quant_args: StaticAffineQuantParams = tensor.quant_args()  # type: ignore[assignment]
                 scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
                 tensor_quant_args: QuantParametersDict = {
                     "scale": scale,

@@ -31,8 +31,8 @@ class QNNEncodingEntry(TypedDict):
 
 
 class QNNEncoding(TypedDict):
-    activation_encodings: dict[str, list[QNNEncodingEntry]]
-    param_encodings: dict[str, list[QNNEncodingEntry]]
+    activation_encodings: dict[str, tuple[QNNEncodingEntry, ...]]
+    param_encodings: dict[str, tuple[QNNEncodingEntry, ...]]
 
 
 class QuantParametersDict(TypedDict):
@@ -222,14 +222,14 @@ def _cast_float_or_int_to_tensor(value: float | int | torch.Tensor) -> torch.Ten
 
 def create_qnn_encoding_entry(
     encoding_value: QuantParametersDict,
-) -> list[QNNEncodingEntry]:
+) -> tuple[QNNEncodingEntry, ...]:
     """Converts an encoding value dictionary to a QNNEncodingEntry.
 
     Args:
         encoding_value: dictionary containing quantization parameters.
 
     Returns:
-        encoding: list of QNNEncodingEntry dictionaries.
+        tuple containing QNNEncodingEntry dictionaries.
     """
     scale = encoding_value["scale"]
     offset = encoding_value["offset"]
@@ -267,7 +267,7 @@ def create_qnn_encoding_entry(
         }
         encoding.append(output_entry)
 
-    return encoding
+    return tuple(encoding)
 
 
 def generate_qnn_encodings_dictionary(
@@ -276,8 +276,8 @@ def generate_qnn_encodings_dictionary(
     parameters: set[str],
     quantization_logs: dict[str, Any],
 ) -> QNNEncoding:
-    param_encodings: dict[str, list[QNNEncodingEntry]] = {}
-    activation_encodings: dict[str, list[QNNEncodingEntry]] = {}
+    param_encodings: dict[str, tuple[QNNEncodingEntry, ...]] = {}
+    activation_encodings: dict[str, tuple[QNNEncodingEntry, ...]] = {}
 
     # Inputs are also included in the activation encodings for QNN
     activations_and_inputs = activations | inputs
