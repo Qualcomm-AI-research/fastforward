@@ -42,9 +42,21 @@ class Tag:
             cls._tags[symbol] = tag
         return cls._tags[symbol]
 
+    def __deepcopy__(self, memo: dict[Any, Any]) -> Self:
+        # Since there can only exist a single tag with the same name, we do not
+        # deepcopy here.
+        return self
+
+    def __copy__(self) -> Self:
+        # Since there can only exist a single tag with the same name, we do not
+        # copy here.
+        return self
+
+    @typing_override
     def __str__(self) -> str:
         return f"#{self._symbol}"
 
+    @typing_override
     def __repr__(self) -> str:
         return f"{self._symbol}"
 
@@ -163,6 +175,12 @@ class QuantizerMetadata:
             self.add_tag(default_tags.input_quantizer)
         if output_quantizer:
             self.add_tag(default_tags.output_quantizer)
+
+    def __getstate__(self) -> dict[str, Any]:
+        return self.__dict__.copy()
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
 
     def add_tag(self, tag: Tag | str) -> None:
         """Add a tag to the metadata.

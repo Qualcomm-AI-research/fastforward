@@ -1,12 +1,14 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+import copy
+
 from typing import Any, Callable
 
 import pytest
 import torch
 
-from fastforward.nn.quantizer import Quantizer
+from fastforward.nn.quantizer import Quantizer, QuantizerMetadata, Tag
 
 
 def test_register_override() -> None:
@@ -40,3 +42,24 @@ def test_register_override() -> None:
     # implementation of Quantizer.quantizer raises NotImplementedError.
     with pytest.raises(NotImplementedError):
         quantizer(torch.rand(10))
+
+
+def test_tag_copy() -> None:
+    # GIVEN a tag
+    tag = Tag("tag")
+
+    # WHEN the tag is copied or deep copied
+    # THEN the resulting tag is the same as the original
+    assert copy.copy(tag) is tag
+    assert copy.deepcopy(tag) is tag
+
+
+def test_quantizermetadata_copy() -> None:
+    # GIVEN a metadata object
+    metadata = QuantizerMetadata()
+
+    # WHEN the metadata is copied or deep copied
+    # THEN the resulting metadata is a new object
+    #      and copying does not fail
+    assert copy.copy(metadata) is not metadata
+    assert copy.deepcopy(metadata) is not metadata
