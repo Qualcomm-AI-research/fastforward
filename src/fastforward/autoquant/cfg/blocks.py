@@ -227,6 +227,9 @@ class FunctionBlock(Block):
 
     def params(self) -> Iterator[str]:
         """Yields names of all parameters of function."""
+        if not self.wrappers:
+            return
+
         funcdef = self.wrappers[0]
         assert isinstance(funcdef, libcst.FunctionDef)
 
@@ -241,6 +244,12 @@ class FunctionBlock(Block):
 
         if (star_kwarg := parameters.star_kwarg) is not None:
             yield star_kwarg.name.value
+
+    @override
+    def push_wrapper(self, node: libcst.CSTNode) -> None:
+        if len(self.wrappers) == 0 and not isinstance(node, libcst.FunctionDef):
+            raise ValueError(f"The root wrapper type of {type(self).__name__} must be FunctionDef.")
+        super().push_wrapper(node)
 
 
 @dataclasses.dataclass(eq=False)
