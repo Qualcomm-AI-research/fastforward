@@ -44,8 +44,8 @@ sudo mkdir -p /run/sshd\n\
 sudo /usr/sbin/sshd "$@"\n\
 ' > /usr/local/bin/run_sshd
 
-RUN curl -L "https://github.com/neovim/neovim/releases/download/v0.10.0/nvim-linux64.tar.gz" | tar --preserve-permissions --directory /usr/local/ --strip-components=1 -x -z -f - \
-    && curl -L "https://github.com/jesseduffield/lazygit/releases/download/v0.43.1/lazygit_0.43.1_Linux_x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/bin -x -z -f - lazygit
+RUN curl -L "https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/ --strip-components=1 -x -z -f - \
+    && curl -L "https://github.com/jesseduffield/lazygit/releases/download/v0.47.2/lazygit_0.47.2_Linux_x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/bin -x -z -f - lazygit
 
 ARG VER_PYTHON=3.10 \
     VER_TORCH=2.4.0 \
