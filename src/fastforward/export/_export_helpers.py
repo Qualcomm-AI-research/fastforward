@@ -214,12 +214,6 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     return int(value)
 
 
-def _cast_float_or_int_to_tensor(value: float | int | torch.Tensor) -> torch.Tensor:
-    if not isinstance(value, torch.Tensor):
-        return torch.tensor(value)
-    return value
-
-
 def create_qnn_encoding_entry(
     encoding_value: QuantParametersDict,
 ) -> tuple[QNNEncodingEntry, ...]:
@@ -236,10 +230,10 @@ def create_qnn_encoding_entry(
     bitwidth = encoding_value["num_bits"]
     int_min = integer_minimum(bitwidth)
 
-    scale = _cast_float_or_int_to_tensor(scale)
+    scale = ensure_tensor(scale)
     if offset is None:
         offset = _infer_offset(offset, scale)
-    offset = _cast_float_or_int_to_tensor(offset)
+    offset = ensure_tensor(offset)
     offset = torch.round(offset)
 
     int_min = _strict_cast_to_int(int_min, "int_min")
@@ -259,7 +253,7 @@ def create_qnn_encoding_entry(
         output_entry: QNNEncodingEntry = {
             "bitwidth": int(bitwidth),
             "dtype": "int",
-            "is_symmetric": "True" if not oo else "False",
+            "is_symmetric": "True" if oo == 0 else "False",
             "min": min_r.item(),
             "max": max_r.item(),
             "offset": int(o),

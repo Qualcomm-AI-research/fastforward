@@ -18,14 +18,20 @@ from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
 
-class ModuleIOCaptureHandle:
+class ModuleIOCaptureRecorder:
     """Provides functionality for logging inputs/outputs/kwargs."""
 
     def __init__(self, module: torch.nn.Module, module_name: str):
-        self.input_output_registry: dict[str, Any] = {}
         self.module = module
         self.module_name = module_name
         self.handle: None | torch.utils.hooks.RemovableHandle = None
+
+        self.input: tuple[torch.Tensor, ...]
+        self.output: tuple[torch.Tensor, ...]
+        self.kwargs: dict[str, Any]
+
+        self.input_quantizer_settings: tuple[QuantParametersDict, ...]
+        self.output_quantizer_settings: tuple[QuantParametersDict, ...]
 
     def __call__(
         self,
@@ -35,14 +41,20 @@ class ModuleIOCaptureHandle:
         output_: torch.Tensor | tuple[torch.Tensor],
     ) -> None:
         """Logs inputs/outputs/kwargs in dictionary."""
-        self.input_output_registry["input"] = input_ if isinstance(input_, tuple) else (input_,)
-        self.input_output_registry["kwargs"] = kwargs
-        self.input_output_registry["output"] = output_ if isinstance(output_, tuple) else (output_,)
+        self.input = input_ if isinstance(input_, tuple) else (input_,)
+        self.kwargs = kwargs
+        self.output = output_ if isinstance(output_, tuple) else (output_,)
+
+        self.input, self.input_quantizer_settings = self.maybe_dequantize_tensors(self.input)
+        self.output, self.output_quantizer_settings = self.maybe_dequantize_tensors(self.output)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} for module {self.module_name}:\n{self.module}"
 
     def attach(self) -> None:
         """Assign handle to object instance."""
         if self.handle is not None:
-            msg = f"Handle: {self.handle} is already attached. Cannot attach a new one."
+            msg = f"Handle for module: {self} is already attached. Cannot attach a new one."
             raise AttributeError(msg)
         self.handle = self.module.register_forward_hook(hook=self, with_kwargs=True)
 
@@ -52,6 +64,59 @@ class ModuleIOCaptureHandle:
             msg = f"There is no handle to detach."
             raise AttributeError(msg)
         self.handle.remove()
+
+    @staticmethod
+    def maybe_dequantize_tensors(
+        tensors: tuple[torch.Tensor],
+    ) -> tuple[tuple[torch.Tensor, ...], tuple[QuantParametersDict, ...]]:
+        """Dequantizes tensors.
+
+        The output tensors of quantized modules will usually be returned
+        as `QuantizedTensor`s. As these are custom tensors they cannot be
+        used in that form for exporting, and need to be dequantized. This
+        function performs this dequantization in the case a `QuantizedTensor`
+        is found on the input/output module capture, and it also stores
+        its quantization settings, so these can be appended to the encodings
+        file.
+
+        Args:
+            tensors: A tuple of tensors, where some of these may be
+                `QuantizedTensor`s.
+
+        Returns:
+            The (maybe) dequantized tensors, and the quantizer settings for
+            each of those.
+        """
+        output_tensors: list[torch.Tensor] = []
+        quantizer_settings: list[QuantParametersDict] = []
+
+        for tensor in tensors:
+            if isinstance(tensor, QuantizedTensor):
+                quant_args: StaticAffineQuantParams = tensor.quant_args()  # type: ignore[assignment]
+                scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
+                tensor_quant_args: QuantParametersDict = {
+                    "scale": scale,
+                    "offset": offset,
+                    "num_bits": num_bits,
+                }
+
+                quantizer_settings.append(tensor_quant_args)
+                output_tensors.append(tensor.dequantize())
+            else:
+                output_tensors.append(tensor)
+
+        return tuple(output_tensors), tuple(quantizer_settings)
+
+    def store_io_as_dict(self, location: pathlib.Path) -> None:
+        """Store inputs/outputs/kwargs as a pickle dictionary."""
+        input_output_registry = {
+            "input": self.input,
+            "output": self.output,
+            "kwargs": self.kwargs,
+        }
+
+        with open(location, "wb") as fp:
+            pickle.dump(input_output_registry, fp)
 
 
 def export_modules(
@@ -103,40 +168,42 @@ def export_modules(
     else:
         modules = {model_name: module_or_module_collection}
 
-    handles = []
+    module_io_recorders = []
     for module_name, module in modules.items():
-        handle = ModuleIOCaptureHandle(module, module_name)
-        handle.attach()
-        handles.append(handle)
+        module_io_recorder = ModuleIOCaptureRecorder(module, module_name)
+        module_io_recorders.append(module_io_recorder)
+        module_io_recorder.attach()
 
-    if args != ():
-        model(*args, **kwargs)
-    else:
-        model(**kwargs)
+    model(*args, **kwargs)
 
-    for handle in handles:
-        handle.detach()
+    for module_io_recorder in module_io_recorders:
+        module_io_recorder.detach()
 
     paths: dict[str, pathlib.Path] = {}
 
-    for handle in handles:
-        input_output_registry = handle.input_output_registry
-        module = handle.module
-        module_name = handle.module_name
+    for module_io_recorder in module_io_recorders:
+        module = module_io_recorder.module
+        module_name = module_io_recorder.module_name
 
-        quantizer_settings = maybe_dequantize_tensors(input_output_registry)
-        module_input_data = input_output_registry["input"]
-        module_input_kwargs = input_output_registry["kwargs"]
+        module_input_data = module_io_recorder.input
+        module_input_kwargs = module_io_recorder.kwargs
 
         exported_path = export(
             module, module_input_data, model_name, module_name, model_kwargs=module_input_kwargs
         )
-        paths[module_name] = exported_path
-        maybe_extend_encodings_file(module_name, paths[module_name], quantizer_settings)
+
+        module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
+        module_output_quantizer_settings = module_io_recorder.output_quantizer_settings
+        quantizer_settings = {
+            "input": module_input_quantizer_settings,
+            "output": module_output_quantizer_settings,
+        }
+        maybe_extend_encodings_file(module_name, exported_path, quantizer_settings)
 
         input_output_location = exported_path / f"{module_name}_input_output.pickle"
-        with open(input_output_location, "wb") as fp:
-            pickle.dump(input_output_registry, fp)
+        module_io_recorder.store_io_as_dict(input_output_location)
+
+        paths[module_name] = exported_path
 
     return paths
 
@@ -144,7 +211,7 @@ def export_modules(
 def maybe_extend_encodings_file(
     module_name: str,
     path: pathlib.Path,
-    quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]],
+    quantizer_settings: dict[str, tuple[QuantParametersDict, ...]],
 ) -> None:
     """Extends the QNN encodings file.
 
@@ -198,52 +265,3 @@ def maybe_extend_encodings_file(
 
     with open(encodings_file_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)
-
-
-def maybe_dequantize_tensors(
-    input_output_registry: dict[str, Any],
-) -> collections.defaultdict[str, list[QuantParametersDict]]:
-    """Dequantizes input/output tensors.
-
-    The output tensors of quantized modules will usually be returned
-    as `QuantizedTensor`s. As these are custom tensors they cannot be
-    used in that form for exporting, and need to be dequantized. This
-    function performs this dequantization in the case a `QuantizedTensor`
-    is found on the input/output module capture, and it also stores
-    its quantization settings, so these can be appended to the encodings
-    file.
-
-    Args:
-        input_output_registry: Dictionary containing the input/kwargs/output
-            data capture of a single module.
-
-    Returns:
-        quantizer_settings: Dictionary containing the quantizer parameters
-            from any `QuantizedTensor`s found in the `input_output_registry`.
-    """
-    keys_of_interest = ["input", "output"]
-    quantizer_settings: collections.defaultdict[str, list[QuantParametersDict]] = (
-        collections.defaultdict(list)
-    )
-
-    for key in keys_of_interest:
-        assert key in input_output_registry
-        updated_tensors = []
-
-        for tensor in input_output_registry[key]:
-            if isinstance(tensor, QuantizedTensor):
-                quant_args: StaticAffineQuantParams = tensor.quant_args()  # type: ignore[assignment]
-                scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
-                tensor_quant_args: QuantParametersDict = {
-                    "scale": scale,
-                    "offset": offset,
-                    "num_bits": num_bits,
-                }
-                quantizer_settings[key].append(tensor_quant_args)
-                updated_tensors.append(tensor.dequantize())
-            else:
-                updated_tensors.append(tensor)
-
-        input_output_registry[key] = tuple(updated_tensors)
-
-    return quantizer_settings

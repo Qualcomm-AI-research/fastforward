@@ -409,7 +409,7 @@ def process_dynamo_program(
 
 def export(
     model: torch.nn.Module,
-    data: tuple[torch.Tensor],
+    data: tuple[torch.Tensor, ...],
     output_directory: str,
     model_name: str,
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
