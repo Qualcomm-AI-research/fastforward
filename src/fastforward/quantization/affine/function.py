@@ -95,8 +95,8 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         as the QuantizedTensor. For this reason this function performs
         quantization, followed immediately by dequantization.
         """
-        if isinstance(params, DynamicAffineQuantParams):
-            raise ExportError("Export does not support dynamic quantization.")
+        if not isinstance(params, StaticAffineQuantParams):
+            raise ExportError("Export supports only static affine quantization.")
 
         tile_size = params.granularity.tile_size(data.shape)
         quantized_data = quantize_affine(

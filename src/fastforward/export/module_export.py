@@ -54,18 +54,16 @@ class ModuleIORecorder:
         return f"{self.__class__.__name__} for module {self.module_name}"
 
     def attach(self) -> None:
-        """Assign handle to object instance."""
+        """Attach recorder to tracked module."""
         if self.handle is not None:
             msg = f"Handle for {self} is already attached. Cannot attach a new one."
             raise RuntimeError(msg)
         self.handle = self.module.register_forward_hook(hook=self, with_kwargs=True)
 
     def detach(self) -> None:
-        """Remove handle from object instance."""
-        if self.handle is None:
-            msg = f"There is no handle to detach."
-            raise AttributeError(msg)
-        self.handle.remove()
+        """Remove recorder from tracked module."""
+        if self.handle is not None:
+            self.handle.remove()
 
     def store_io_as_dict(self, location: pathlib.Path) -> None:
         """Store inputs/outputs/kwargs as a pickle dictionary."""
@@ -268,7 +266,8 @@ def maybe_dequantize_tensors(
 
     for tensor in tensors:
         if isinstance(tensor, QuantizedTensor):
-            quant_args: StaticAffineQuantParams = tensor.quant_args()  # type: ignore[assignment]
+            quant_args = tensor.quant_args()
+            assert isinstance(quant_args, StaticAffineQuantParams)
             scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
             tensor_quant_args: QuantParametersDict = {
                 "scale": scale,
