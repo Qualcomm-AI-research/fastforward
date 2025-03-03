@@ -249,15 +249,17 @@ def create_qnn_encoding_entry(
 
     encoding = []
 
-    for s, o, oo, min_r, max_r in zip(scale, qnn_offset, offset, min_range, max_range):
+    for scale_entry, offset_entry, original_offset_entry, min_range_entry, max_range_entry in zip(
+        scale, qnn_offset, offset, min_range, max_range
+    ):
         output_entry: QNNEncodingEntry = {
             "bitwidth": int(bitwidth),
             "dtype": "int",
-            "is_symmetric": "True" if oo == 0 else "False",
-            "min": min_r.item(),
-            "max": max_r.item(),
-            "offset": int(o),
-            "scale": s.item(),
+            "is_symmetric": "True" if original_offset_entry == 0 else "False",
+            "min": min_range_entry.item(),
+            "max": max_range_entry.item(),
+            "offset": int(offset_entry),
+            "scale": scale_entry.item(),
         }
         encoding.append(output_entry)
 

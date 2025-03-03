@@ -14,7 +14,7 @@ from typing_extensions import override
 
 from fastforward.export import export
 from fastforward.export._export_helpers import QuantParametersDict, create_qnn_encoding_entry
-from fastforward.mpath._search import MPathCollection
+from fastforward.mpath import MPathCollection
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
