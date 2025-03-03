@@ -72,15 +72,14 @@ def _autoquant(
     ModuleType = type(module)
     src_class = source_context.get(fully_qualified_name(ModuleType))
 
-    dst_class = pybuilder.ClassBuilder(
+    dst_class = pybuilder.QuantizedModuleBuilder(
         f"Quantized{ModuleType.__name__}",
-        bases=("fastforward.nn.QuantizedModule", ModuleType.__name__),
+        bases=(ModuleType.__name__,),
     )
 
     forward_src = src_class.member("forward")
-    quantized_forward, quantizer_collection = convert_method(forward_src, dst_class, operator_table)
+    quantized_forward = convert_method(forward_src, dst_class, operator_table)
 
-    dst_class.add_method(InitQuantizationMethod(quantizer_collection))
     dst_class.add_method(quantized_forward)
 
     return libcst.Module([dst_class.build()]).code

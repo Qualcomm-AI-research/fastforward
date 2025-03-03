@@ -35,7 +35,7 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
 
     def __init__(self, name: str, bases: Sequence[str]) -> None:
         self._name = name
-        self._bases = bases
+        self._bases = tuple(bases)
         self._methods: list[_FunctionBuilderP] = []
 
     def add_method(self, funcbuilder: "_FunctionBuilderP") -> None:
@@ -44,12 +44,37 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
 
     @override
     def build(self) -> libcst.ClassDef:
-        bases = ", ".join(self._bases)
+        return self.build_class(bases=self._bases, methods=self._methods)
+
+    def build_class(
+        self, bases: Sequence[str], methods: Sequence["_FunctionBuilderP"]
+    ) -> libcst.ClassDef:
+        """Create ClassDef from collected metadata."""
+        bases = ", ".join(bases)
         base_def: libcst.ClassDef = libcst.parse_statement(f"class {self._name}({bases}): pass")  # type: ignore[assignment]
 
-        return base_def.with_changes(
-            body=libcst.IndentedBlock([func.build() for func in self._methods])
-        )
+        return base_def.with_changes(body=libcst.IndentedBlock([func.build() for func in methods]))
+
+
+class QuantizedModuleBuilder(ClassBuilder):
+    """Builder for QuantizedModules."""
+
+    def __init__(self, name: str, bases: Sequence[str]) -> None:
+        super().__init__(name=name, bases=bases)
+        self._quantizers: list[str] = []
+
+    def add_quantizer(self, name: str) -> None:
+        """Add a quantizer to this class."""
+        if name in self._quantizers:
+            msg = f"Quantizer with name '{name}' was already added"
+            raise ValueError(msg)
+        self._quantizers.append(name)
+
+    @override
+    def build(self) -> libcst.ClassDef:
+        bases = ("fastforward.nn.QuantizedModule",) + self._bases
+        methods = [InitQuantizationMethod(self._quantizers)] + self._methods
+        return self.build_class(bases=bases, methods=methods)
 
 
 @runtime_checkable
