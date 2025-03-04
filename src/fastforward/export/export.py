@@ -32,6 +32,7 @@ from fastforward.export._export_helpers import (
     get_inputs,
     get_parameters,
 )
+from fastforward.export.export_tools import DynamoGraphTraverser
 from fastforward.flags import export_mode
 
 _T = TypeVar("_T")
@@ -554,6 +555,11 @@ def export(
     encodings_dictionary = generate_qnn_encodings_dictionary(
         used_inputs, used_activations, used_parameters, quantization_logs
     )
+
+    dynamo_graph_traverser = DynamoGraphTraverser(dynamo_exported_program.graph, encodings_dictionary)
+    extended_dictionary = dynamo_graph_traverser()
+    encodings_dictionary["activation_encodings"].update(extended_dictionary)
+
 
     with open(encodings_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)
