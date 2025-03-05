@@ -2,17 +2,17 @@
 # All Rights Reserved.
 
 
-from typing import Any, cast
+from typing import Any
 
 import libcst
 import pytest
 
-from fastforward._quantops.optable import OperatorTable
-from fastforward.autoquant import autoquant
-from fastforward.autoquant.cfg import blocks, construct, variable_tracking
-from fastforward.autoquant.cst.passes import QuantizedCounterpartReplacer, WrapAssignments
+from fastforward.autoquant.cfg import blocks, variable_tracking
+from fastforward.autoquant.cst.passes import WrapAssignments
 from fastforward.autoquant.pysource import SourceContext
 from typing_extensions import override
+
+from tests.autoquant.cfg.cfg_test import CFGTest
 
 
 @pytest.fixture()
@@ -182,69 +182,155 @@ def test_ordered_set() -> None:
     assert ordered_set.pop(-1) == -1
 
 
-@pytest.fixture(scope="module")
-def source_context() -> SourceContext:
-    source_context = SourceContext(preprocessing_passes=(WrapAssignments(),))
-    return source_context
+class TestVariableReachability(CFGTest):
+    @pytest.fixture(scope="class")
+    def source_context(self) -> SourceContext:
+        """Overwrite default `source_context`.
 
+        Apply `WrapAssignments` to every case when creating CSTs.
+        """
+        return SourceContext(preprocessing_passes=(WrapAssignments(),))
 
-@pytest.fixture(scope="module")
-def optable() -> OperatorTable:
-    return autoquant.default_optable()
+    def test_variable_reachability(self, cfg: blocks.Block) -> None:
+        """Test if reachability analysis on top of CFG is correct.
 
+        This test function is mostly a runner for the test cases that are defined
+        at the bottom of this file.
+        """
+        # GIVEN a CFG for a function that contains reachability assertions.
 
-@pytest.fixture(
-    scope="module",
-    params=[
-        "__test_case_if_statement1",
-        "__test_case_if_statement2",
-        "__test_case_if_statement3",
-        "__test_case_if_statement4",
-        "__test_case_if_statement5",
-    ],
-)
-def example_function_name(request: pytest.FixtureRequest) -> str:
-    return request.param  # type: ignore[no-any-return]
+        # WHEN dataflow analysis is performed on top of the CFG.
+        block_vars = variable_tracking.infer_block_dataflow(cfg)
 
+        # THEN the obtained set of incoming (vars_in) and outgoing (vars_out)
+        # variables must agree with the reachability assertions for each block.
+        # Please see the comment block labeled "TEST CASES" below for more context.
+        for block in cfg.blocks():
+            if not isinstance(block, blocks.SimpleBlock):
+                continue
+            vars_in = block_vars[block].vars_in
+            vars_out = block_vars[block].vars_out
+            visitor = _ReachabilityAssertionVisitor(
+                vars_in,
+                vars_out,
+            )
+            for line in block.statements:
+                _ = line.visit(visitor)
 
-@pytest.fixture
-def cfg(
-    example_function_name: str, source_context: SourceContext, optable: OperatorTable
-) -> blocks.Block:
-    cst = source_context.get_cst(
-        qualified_name=f"{__name__}.{example_function_name}",
-        NodeType=libcst.FunctionDef,
-    )
-    function_replacement = QuantizedCounterpartReplacer(optable)
-    cst = cast(libcst.FunctionDef, cst.visit(function_replacement))
-    return construct(cst)
+    # --------------------------------------------------------------------------
+    #                                TEST CASES
+    # --------------------------------------------------------------------------
+    # The following functions are not executed, but will be parsed into a CFG.
+    # The function names and what they do are irrelevant; only the control flow
+    # matters.
+    #
+    # These functions contain `assert_reaches` and `assert_not_reaches` calls.
+    # These calls serve as labels to a Visitor to trigger a check if a
+    # particular version of a variable can reach or does not reach the point
+    # where the call is made. They cannot be used to verify the creation of a
+    # new variable version within a block.
+    #
+    # Note: The exact version numbers of variables are an implementation detail
+    # and might change due to implementation updates. Therefore, the tests
+    # below include comments indicating the expected version number for each
+    # assignment. It's recommended to verify these annotations when a test
+    # fails. To assist with this, `assert_provides` assertions are included in
+    # the test cases. These assertions confirm that the block produces the
+    # expected variable versions. If a test fails on one of these assertions,
+    # updating the version numbers to match the actual values assigned by the
+    # implementation should likely fix the issue.
+    # --------------------------------------------------------------------------
 
+    def case_if_statement1(ant: int, bat: int) -> None:  # type: ignore[misc]
+        """All parameters of a function must reach the exit block for a function without a body."""
+        assert_reaches(ant, 0)
+        assert_reaches(bat, 0)
 
-def test_variable_reachability(cfg: blocks.Block) -> None:
-    """Test if reachability analysis on top of CFG is correct.
+    def case_if_statement2(ant: int, bat: int) -> None:  # type: ignore[misc]
+        if ant > bat:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            cat = ant  # cat:0
+            assert_provides(cat, 0)
+        else:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            dog = bat  # dog:0
+            assert_provides(dog, 0)
+        assert_reaches(ant, 0)
+        assert_reaches(bat, 0)
+        assert_reaches(cat, 0)  # possibly unbound, but can be used for CFG-based evaluation
+        assert_reaches(dog, 0)  # possibly unbound, but can be used for CFG-based evaluation
 
-    This test function is mostly a runner for the test cases that are defined
-    at the bottom of this file.
-    """
-    # GIVEN a CFG for a function that contains reachability assertions.
+    def case_if_statement3(ant: int, bat: int) -> None:  # type: ignore[misc]
+        if ant > bat:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            ant = bat  # ant:1
+            assert_provides(ant, 1)
+        else:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            ant = ant * 2  # ant:2
+            assert_provides(ant, 2)
+        assert_reaches(ant, 1)
+        assert_reaches(ant, 2)
+        assert_reaches(bat, 0)
+        assert_not_reaches(ant, 0)
 
-    # WHEN dataflow analysis is performed on top of the CFG.
-    block_vars = variable_tracking.infer_block_dataflow(cfg)
+    def case_if_statement4(ant: int, bat: int) -> None:  # type: ignore[misc]
+        if ant > bat:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            ant = bat  # ant:1
+            assert_provides(ant, 1)
+        else:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            bat = ant  # bat:1
+            assert_provides(bat, 1)
+        assert_reaches(ant, 0)
+        assert_reaches(bat, 0)
+        assert_reaches(ant, 1)
+        assert_reaches(bat, 1)
 
-    # THEN the obtained set of incoming (vars_in) and outgoing (vars_out)
-    # variables must agree with the reachability assertions for each block.
-    # Please see the comment block labeled "TEST CASES" below for more context.
-    for block in cfg.blocks():
-        if not isinstance(block, blocks.SimpleBlock):
-            continue
-        vars_in = block_vars[block].vars_in
-        vars_out = block_vars[block].vars_out
-        visitor = _ReachabilityAssertionVisitor(
-            vars_in,
-            vars_out,
-        )
-        for line in block.statements:
-            _ = line.visit(visitor)
+    def case_if_statement5(ant: int, bat: int, flag: bool) -> None:  # type: ignore[misc]
+        if ant > bat:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            ant = bat  # ant:1
+            assert_provides(ant, 1)
+        elif bat > ant:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            ant, bat = bat, ant  # ant:3, bat:2
+            assert_provides(ant, 3)
+            assert_provides(bat, 2)
+        else:
+            assert_reaches(ant, 0)
+            assert_reaches(bat, 0)
+            bat = ant  # bat:3
+            assert_provides(bat, 3)
+        assert_reaches(ant, 0)
+        assert_reaches(ant, 1)
+        assert_reaches(ant, 3)
+        assert_reaches(bat, 0)
+        assert_reaches(bat, 2)
+        assert_reaches(bat, 3)
+        ant, bat = bat, ant  #  ant:2, bat:1
+        assert_provides(ant, 2)
+        assert_provides(bat, 1)
+        if flag:  # Included to force the creation of new blocks.
+            assert_reaches(ant, 2)
+            assert_reaches(bat, 1)
+            assert_not_reaches(ant, 0)
+            assert_not_reaches(ant, 1)
+            assert_not_reaches(ant, 3)
+        assert_reaches(ant, 2)
+        assert_reaches(bat, 1)
+        assert_not_reaches(ant, 0)
+        assert_not_reaches(ant, 1)
+        assert_not_reaches(ant, 3)
 
 
 class _ReachabilityAssertionVisitor(libcst.CSTVisitor):
@@ -326,31 +412,6 @@ class _ReachabilityAssertionVisitor(libcst.CSTVisitor):
         )
 
 
-# ------------------------------------------------------------------------------
-#                                TEST CASES
-# ------------------------------------------------------------------------------
-# The following functions are not executed, but will be parsed into a CFG. The
-# function names and what they do are irrelevant; only the control flow
-# matters.
-#
-# These functions contain `assert_reaches` and `assert_not_reaches` calls.
-# These calls serve as labels to a Visitor to trigger a check if a particular
-# version of a variable can reach or does not reach the point where the call is
-# made. They cannot be used to verify the creation of a new variable version
-# within a block.
-#
-# Note: The exact version numbers of variables are an implementation detail and
-# might change due to implementation updates. Therefore, the tests below
-# include comments indicating the expected version number for each assignment.
-# It's recommended to verify these annotations when a test fails. To assist
-# with this, `assert_provides` assertions are included in the test cases. These
-# assertions confirm that the block produces the expected variable versions. If
-# a test fails on one of these assertions, updating the version numbers to
-# match the actual values assigned by the implementation should likely fix the
-# issue.
-# ------------------------------------------------------------------------------
-
-
 def assert_reaches(_var: Any, _version: int, /) -> None:
     """Serves as a label to `_ReachabilityAssertionVisitor` to assert variable reachability.
 
@@ -382,99 +443,3 @@ def assert_provides(_var: Any, _version: int, /) -> None:
     This function is a no-op and the assert is performed on top of the CFG of
     the function of the call site.
     """
-
-
-def __test_case_if_statement1(ant: int, bat: int) -> None:
-    """All parameters of a function must reach the exit block for a function without a body."""
-    assert_reaches(ant, 0)
-    assert_reaches(bat, 0)
-
-
-def __test_case_if_statement2(ant: int, bat: int) -> None:
-    if ant > bat:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        cat = ant  # cat:0
-        assert_provides(cat, 0)
-    else:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        dog = bat  # dog:0
-        assert_provides(dog, 0)
-    assert_reaches(ant, 0)
-    assert_reaches(bat, 0)
-    assert_reaches(cat, 0)  # possibly unbound, but can be used for CFG-based evaluation
-    assert_reaches(dog, 0)  # possibly unbound, but can be used for CFG-based evaluation
-
-
-def __test_case_if_statement3(ant: int, bat: int) -> None:
-    if ant > bat:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        ant = bat  # ant:1
-        assert_provides(ant, 1)
-    else:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        ant = ant * 2  # ant:2
-        assert_provides(ant, 2)
-    assert_reaches(ant, 1)
-    assert_reaches(ant, 2)
-    assert_reaches(bat, 0)
-    assert_not_reaches(ant, 0)
-
-
-def __test_case_if_statement4(ant: int, bat: int) -> None:
-    if ant > bat:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        ant = bat  # ant:1
-        assert_provides(ant, 1)
-    else:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        bat = ant  # bat:1
-        assert_provides(bat, 1)
-    assert_reaches(ant, 0)
-    assert_reaches(bat, 0)
-    assert_reaches(ant, 1)
-    assert_reaches(bat, 1)
-
-
-def __test_case_if_statement5(ant: int, bat: int, flag: bool) -> None:
-    if ant > bat:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        ant = bat  # ant:1
-        assert_provides(ant, 1)
-    elif bat > ant:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        ant, bat = bat, ant  # ant:3, bat:2
-        assert_provides(ant, 3)
-        assert_provides(bat, 2)
-    else:
-        assert_reaches(ant, 0)
-        assert_reaches(bat, 0)
-        bat = ant  # bat:3
-        assert_provides(bat, 3)
-    assert_reaches(ant, 0)
-    assert_reaches(ant, 1)
-    assert_reaches(ant, 3)
-    assert_reaches(bat, 0)
-    assert_reaches(bat, 2)
-    assert_reaches(bat, 3)
-    ant, bat = bat, ant  #  ant:2, bat:1
-    assert_provides(ant, 2)
-    assert_provides(bat, 1)
-    if flag:  # Included to force the creation of new blocks.
-        assert_reaches(ant, 2)
-        assert_reaches(bat, 1)
-        assert_not_reaches(ant, 0)
-        assert_not_reaches(ant, 1)
-        assert_not_reaches(ant, 3)
-    assert_reaches(ant, 2)
-    assert_reaches(bat, 1)
-    assert_not_reaches(ant, 0)
-    assert_not_reaches(ant, 1)
-    assert_not_reaches(ant, 3)
