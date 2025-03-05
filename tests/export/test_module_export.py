@@ -50,8 +50,9 @@ def simple_model() -> QuantizedModelFixture:
     return quant_model, activation_quantizers, parameter_quantizers
 
 
+@pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_module_export(simple_model: QuantizedModelFixture) -> None:
+def test_module_export(simple_model: QuantizedModelFixture, tmp_path: pathlib.Path) -> None:
     # GIVEN: a model with quantizers and a collection of modules of interest
     # (in this case linear and relu)
     data = torch.randn(2, 32, 10)
@@ -65,8 +66,8 @@ def test_module_export(simple_model: QuantizedModelFixture) -> None:
     relu_modules = ff.mpath.search("**/[cls:torch.nn.ReLU]", model)
 
     modules = linear_modules | relu_modules
-    paths = export_modules(model, (data,), modules, model_name)
-    model_path = export_modules(model, (data,), model, model_name)[model_name]
+    paths = export_modules(model, (data,), modules, model_name, tmp_path)
+    model_path = export_modules(model, (data,), model, model_name, tmp_path)[model_name]
 
     # THEN: the number of exported modules paths should match the number
     # of modules of interest.

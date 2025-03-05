@@ -82,6 +82,7 @@ def export_modules(
     args: None | tuple[torch.Tensor] | tuple[()],
     module_or_module_collection: torch.nn.Module | MPathCollection,
     model_name: str,
+    output_path: pathlib.Path,
     kwargs: None | dict[str, Any] = None,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
@@ -110,12 +111,15 @@ def export_modules(
         module_or_module_collection: A mpath collection of modules to be individually exported.
         model_name: The name of the model, the output directory will be named after it.
         kwargs: The kwargs used at inference for the torch model
+        output_path: Path to the exported artifacts.
+
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
             and ONNX files are stored).
     """
     args = args or ()
     kwargs = kwargs or {}
+    output_path = output_path / model_name
 
     if args == () and kwargs == {}:
         msg = "Both args and kwargs cannot be None at the same time"
@@ -147,7 +151,11 @@ def export_modules(
         module_input_kwargs = module_io_recorder.kwargs
 
         exported_path = export(
-            module, module_input_data, model_name, module_name, model_kwargs=module_input_kwargs
+            module,
+            module_input_data,
+            str(output_path),
+            module_name,
+            model_kwargs=module_input_kwargs,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
