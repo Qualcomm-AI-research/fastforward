@@ -4,7 +4,7 @@
 import dataclasses
 import pathlib
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from fastforward._quantops import symtypes
 

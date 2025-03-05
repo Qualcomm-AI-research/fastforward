@@ -5,14 +5,13 @@ import json
 import pathlib
 import pickle
 
-from typing import Any, TypeAlias
+from typing import TypeAlias
 
 import fastforward as ff
 import pytest
 import torch
 
 from fastforward.export.module_export import export_modules
-from fastforward.nn.quantizer import Quantizer
 from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 

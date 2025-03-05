@@ -5,7 +5,7 @@ import os
 import pathlib
 import textwrap
 
-from typing import Any, Optional, Protocol, Sequence, cast
+from typing import Any, Protocol, Sequence, cast
 
 import libcst
 import libcst.helpers

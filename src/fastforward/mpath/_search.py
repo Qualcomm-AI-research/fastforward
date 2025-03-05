@@ -4,7 +4,7 @@
 import dataclasses
 
 from collections import abc
-from typing import Callable, Iterable, Iterator, Optional, TypeVar, overload
+from typing import Callable, Iterable, Iterator, TypeVar, overload
 
 import torch
 

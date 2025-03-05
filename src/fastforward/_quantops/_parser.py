@@ -11,7 +11,6 @@ from typing import (
     Iterable,
     Iterator,
     NewType,
-    Optional,
     Sequence,
     TypeAlias,
     TypeVar,

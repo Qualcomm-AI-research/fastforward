@@ -12,7 +12,6 @@ from typing import (
     Generator,
     Generic,
     Iterator,
-    Optional,
     Protocol,
     Sequence,
     TypeVar,

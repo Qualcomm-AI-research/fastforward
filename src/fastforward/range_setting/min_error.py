@@ -15,7 +15,7 @@ Attributes:
 import logging
 
 from math import floor, sqrt
-from typing import Callable, Iterator, Optional, Protocol, TypedDict
+from typing import Callable, Iterator, Protocol, TypedDict
 
 import torch
 

@@ -12,7 +12,7 @@ import json
 import pathlib
 
 from operator import attrgetter
-from typing import Any, Generic, Optional, Sequence, TypeVar
+from typing import Any, Generic, Sequence, TypeVar
 
 import onnx
 import onnxscript
@@ -490,11 +490,11 @@ def export(
     proto = onnxscript.ir.to_proto(torch_onnx_model)
     onnx.save(proto, onnx_location)
 
-    used_inputs, unused_inputs = get_inputs(
+    used_inputs, _unused_inputs = get_inputs(
         torch_onnx_model, quantization_logs, new_old_input_spec_mapping
     )
-    used_activations, unused_activations = get_activations(proto, quantization_logs)
-    used_parameters, unused_parameters = get_parameters(torch_onnx_model, quantization_logs)
+    used_activations, _unused_activations = get_activations(proto, quantization_logs)
+    used_parameters, _unused_parameters = get_parameters(torch_onnx_model, quantization_logs)
 
     encodings_dictionary = generate_qnn_encodings_dictionary(
         used_inputs, used_activations, used_parameters, quantization_logs

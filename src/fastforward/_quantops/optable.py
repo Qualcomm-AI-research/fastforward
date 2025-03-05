@@ -5,7 +5,7 @@ import dataclasses
 import importlib
 import pathlib
 
-from typing import Any, Callable, Hashable, Iterator, Optional, TypeAlias, overload
+from typing import Any, Callable, Hashable, Iterator, TypeAlias, overload
 
 import yaml
 

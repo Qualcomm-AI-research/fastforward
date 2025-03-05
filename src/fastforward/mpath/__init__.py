@@ -28,7 +28,7 @@ perform batch updates to the original model. See the documentation of
 `MPathCollection` for more details.
 """
 
-from typing import Any, NewType, Optional, cast
+from typing import Any, NewType, cast
 
 from . import _parser, fragments, selector
 from ._search import FilterResult as FilterResult

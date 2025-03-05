@@ -3,7 +3,7 @@
 
 import dataclasses
 
-from typing import Any, Callable, Iterable, Literal, Optional, TypeAlias, cast
+from typing import Any, Callable, Iterable, Literal, TypeAlias, cast
 
 import torch
 

@@ -4,7 +4,7 @@
 import collections
 
 from types import SimpleNamespace
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator
 
 import torch
 

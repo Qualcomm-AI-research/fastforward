@@ -8,7 +8,7 @@ import argparse
 import os
 import pathlib
 
-from typing import Callable, Iterator, Optional
+from typing import Callable, Iterator
 
 HEADER = "# Copyright (c) 2024 Qualcomm Technologies, Inc.\n# All Rights Reserved."
 

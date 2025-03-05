@@ -8,7 +8,6 @@
 import logging  # noqa: I001
 import math
 
-from typing import Optional, Tuple
 
 import torch
 

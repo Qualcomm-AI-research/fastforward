@@ -12,7 +12,6 @@ from typing import (
     Callable,
     Generator,
     Iterator,
-    Optional,
     Protocol,
     Sequence,
     TypeAlias,

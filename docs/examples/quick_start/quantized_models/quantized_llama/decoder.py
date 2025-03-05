@@ -7,8 +7,6 @@
 
 import logging
 
-from typing import Optional, Tuple
-
 import fastforward.nn.functional as FFF
 import torch
 

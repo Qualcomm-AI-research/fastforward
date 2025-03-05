@@ -5,7 +5,7 @@ import logging
 import textwrap
 import warnings
 
-from typing import Any, Iterator, Optional, TypeAlias, Union, cast
+from typing import Any, Iterator, TypeAlias, Union, cast
 
 import torch
 

@@ -8,7 +8,7 @@ import inspect
 import typing
 
 from collections import defaultdict
-from typing import Any, Callable, Generic, Optional, ParamSpec, Protocol
+from typing import Any, Callable, Generic, ParamSpec, Protocol
 
 import torch
 

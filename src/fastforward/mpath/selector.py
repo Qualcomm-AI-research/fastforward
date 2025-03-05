@@ -7,7 +7,7 @@ import functools
 import itertools
 
 from operator import truediv
-from typing import TYPE_CHECKING, Iterator, Optional, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Iterator, TypeAlias, TypeVar, overload
 
 import torch
 

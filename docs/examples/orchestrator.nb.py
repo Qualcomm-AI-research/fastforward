@@ -38,7 +38,7 @@
 
 
 # %%
-from typing import Any, Optional
+from typing import Any
 
 from fastforward._orchestration.concurrent_execution import ConcurrentExecOrchestrator
 from IPython.display import Markdown, display

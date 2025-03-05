@@ -6,7 +6,7 @@ import itertools
 import threading
 
 from collections import OrderedDict
-from typing import Any, Callable, NamedTuple, Optional, ParamSpec, Sequence, TypeAlias, TypeVar
+from typing import Any, Callable, NamedTuple, ParamSpec, Sequence, TypeAlias, TypeVar
 
 from torch.utils.hooks import RemovableHandle
 

@@ -4,7 +4,7 @@
 # pylint: disable=missing-function-docstring
 import math
 
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 import fastforward
 import pytest

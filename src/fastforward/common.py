@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-from typing import Any, Callable, Optional, Sequence, TypeVar, overload
+from typing import Any, Callable, Sequence, TypeVar, overload
 
 import torch
 
