@@ -18,4 +18,4 @@ jobs:
           curl -k -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L $(curl -k -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"  -L "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts" | jq -r '.artifacts[] | select( .workflow_run.id == ${{ github.event.workflow_run.id }} and .name == "matrix" ) | .archive_download_url') | bsdtar -xvf-
 
       - name: Delete temp docker image
-        run: set -x ; curl -k -H "Authorization:Bearer ${{ secrets.DOCKER_CREDENTIALS }}" -X DELETE -L $(jq -r -c '.include[] | select(.IMAGE_TAG != "latest") | ("https://" + (.IMAGE_NAME | split("/") | .[0] + "/v2/" + (.[1:] | join("/"))) + "/manifests/" + .IMAGE_TAG)' matrix.json) || true
+        run: set -x ; curl -k -H "Authorization:Bearer ${{ secrets.DOCKER_CREDENTIALS }}" -X DELETE -L $(jq -r -c '.[] | select(.IMAGE_TAG != "latest") | ("https://" + (.IMAGE_NAME | split("/") | .[0] + "/v2/" + (.[1:] | join("/"))) + "/manifests/" + .IMAGE_TAG)' matrix.json) || true

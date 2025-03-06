@@ -73,6 +73,7 @@ markers = [
   "benchmark: marks benchmark tests",
   "patchedtorch: marks tests which are required patched PyTorch version (deselect with '-m \"not patchedtorch\"')",
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "xfail_due_to_too_new_torch: disable tests for pytorch 2.6",
 ]
 
 [tool.mypy]

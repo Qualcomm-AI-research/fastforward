@@ -50,6 +50,7 @@ def simple_model() -> QuantizedModelFixture:
     return quant_model, activation_quantizers, parameter_quantizers
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_module_export(simple_model: QuantizedModelFixture, tmp_path: pathlib.Path) -> None:

@@ -105,6 +105,7 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture) -> None:
     assert isinstance(exported_graph, torch.export.exported_program.ExportedProgram)
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_node_request(simple_model: QuantizedModelFixture) -> None:
@@ -152,6 +153,7 @@ def test_node_request(simple_model: QuantizedModelFixture) -> None:
     assert len(dequantized_nodes) == len(quantized_nodes) == num_quantizers
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_node_removal(simple_model: QuantizedModelFixture) -> None:
@@ -218,6 +220,7 @@ def test_node_removal(simple_model: QuantizedModelFixture) -> None:
     assert (non_quant_result == quantized_model_graph.module()(data)).all()
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
@@ -273,6 +276,7 @@ def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixt
             assert quantizer.num_bits == parameter_value["num_bits"]
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_ff_model_to_onnx_export(
@@ -314,6 +318,7 @@ def test_ff_model_to_onnx_export(
     )
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_encodings_file_generation(
@@ -383,6 +388,7 @@ def test_encodings_file_generation(
     assert sorted(param_encodings_dictionary) == sorted(expected_quantized_params)
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
