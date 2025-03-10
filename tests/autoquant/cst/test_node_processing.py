@@ -2,8 +2,7 @@
 # All Rights Reserved.
 
 
-from collections.abc import Iterator, Sequence
-from typing import Any
+from collections.abc import Sequence
 
 import libcst
 import pytest

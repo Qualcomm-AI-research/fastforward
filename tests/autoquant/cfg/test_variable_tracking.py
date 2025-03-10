@@ -1,9 +1,7 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
-import sys
 
-from collections.abc import Iterator
 from typing import Any, cast
 
 import libcst
@@ -53,7 +51,7 @@ def test_variable_set_not_contains(
     if name not in ("ant", "bat"):  # 'ant' and 'bat' are members, so skip this assertion
         assert not variable_set.contains(name)
     assert not variable_set.contains(name, version)
-    assert not variable_tracking.Variable(name, version) in variable_set
+    assert variable_tracking.Variable(name, version) not in variable_set
     assert not variable_set.contains(variable_tracking.Variable(name, version))
 
 

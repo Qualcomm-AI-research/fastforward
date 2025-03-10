@@ -6,17 +6,12 @@
 # This file is generated based on 'src/fastforward/_quantops/quantized_operators.yaml'.
 #
 
-from typing import TYPE_CHECKING, Optional, Sequence, TypeAlias, Union, cast
+from typing import TYPE_CHECKING, Optional, Sequence, TypeAlias, Union
 
 import torch
 
-import fastforward
-
-from fastforward.dispatcher import dispatch
 from fastforward.exceptions import QuantizationError
 from fastforward.quantized_tensor import QuantizedTensor
-
-from . import fallback
 
 if TYPE_CHECKING:
     from fastforward.nn.quantizer import Quantizer

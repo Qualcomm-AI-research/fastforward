@@ -4,7 +4,8 @@
 import dataclasses
 import pathlib
 
-from typing import Any, Callable, Hashable, Iterator, TypeAlias, overload
+from collections.abc import Sequence
+from typing import Any, Callable, Hashable, Iterator, TypeAlias
 
 import libcst
 import torch

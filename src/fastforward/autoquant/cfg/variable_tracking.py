@@ -223,7 +223,7 @@ class VariableSet(Set[Variable]):
         else:
             name = var_or_name
 
-        if not name in self._variables:
+        if name not in self._variables:
             return False
         return version is None or version in self._variables[name]
 

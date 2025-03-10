@@ -4,18 +4,16 @@
 import dataclasses
 
 from collections.abc import Sequence
-from typing import Any, Callable, Protocol, TypeAlias, TypeVar, cast, runtime_checkable
+from typing import Protocol, TypeAlias, TypeVar, cast, runtime_checkable
 
 import libcst
 import libcst.helpers
 import libcst.matchers as m
-import torch
 
 from typing_extensions import override
 
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
-    BINARY_OPS_LIBCST_TO_TORCH_MAPPING,
     OPS_LIBCST_TO_TORCH_MAPPING,
 )
 from fastforward.autoquant.cst.node_creation import (
