@@ -414,6 +414,8 @@ def export(
     model_name: str,
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
     model_kwargs: None | dict[str, Any] = None,
+    input_names: None | list[str] = None,
+    output_names: None | list[str] = None,
 ) -> pathlib.Path:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -447,6 +449,8 @@ def export(
             standard export graph operations required by QNN (parameter logging, removal of
             quantization/dequantization operations).
         model_kwargs: kwargs passed to the model during export.
+        input_names: Replace the default graph input names with user defined ones.
+        output_names: Replace the default graph output names with user defined ones.
 
     Returns:
         The path to the output directory where the encodings and ONNX files are stored.
@@ -477,7 +481,6 @@ def export(
     dynamo_exported_program, new_old_input_spec_mapping, raw_logs = process_dynamo_program(
         dynamo_exported_program, graph_operators
     )
-
     # We only care about the logs from the first operation (LogQuantizationParameter) in the
     # hardcoded graph operations (which will always take place when exporting for QNN).
     # Given that the users could have defined additional operations that happen before these,
@@ -487,6 +490,39 @@ def export(
     torch_onnx_model: onnxscript.ir.Model = torch_onnx.exported_program_to_ir(
         dynamo_exported_program
     )
+
+    torch_onnx_inputs = torch_onnx_model.graph.inputs
+    torch_onnx_outputs = torch_onnx_model.graph.outputs
+
+    if input_names is None:
+        input_names = []
+        for entry in torch_onnx_inputs:
+            assert entry.name is not None
+            input_names.append(entry.name)
+
+    if output_names is None:
+        output_names = []
+        for entry in torch_onnx_outputs:
+            assert entry.name is not None
+            output_names.append(entry.name)
+
+    assert len(torch_onnx_inputs) == len(input_names)
+    assert len(torch_onnx_outputs) == len(output_names)
+
+    for old_input, new_input_name in zip(torch_onnx_inputs, input_names):
+        old_input_name = old_input.name
+        old_input.name = new_input_name
+        if old_input_name in new_old_input_spec_mapping:
+            new_old_input_spec_mapping[new_input_name] = new_old_input_spec_mapping.pop(
+                old_input_name
+            )
+
+    for old_output, new_output_name in zip(torch_onnx_outputs, output_names):
+        old_output_name = old_output.name
+        old_output.name = new_output_name
+        if old_output_name in quantization_logs:
+            quantization_logs[new_output_name] = quantization_logs.pop(old_output_name)
+
     proto = onnxscript.ir.to_proto(torch_onnx_model)
     onnx.save(proto, onnx_location)
 
