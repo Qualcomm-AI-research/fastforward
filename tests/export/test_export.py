@@ -460,13 +460,11 @@ def test_encodings_file_generation(
     "names",
     [
         (None, None),
-        (["input_1", "input_2"], ["output_1", "output_2", "output_3"]),
-        (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2"]),
         (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2", "output_3"]),
     ],
 )
 @ff.flags.context(ff.strict_quantization, False)
-def test_graph_io_renaming(
+def test_graph_io_renaming_valid(
     multi_input_output_model: QuantizedModelFixture,
     tmp_path: pathlib.Path,
     names: tuple[None, ...] | tuple[list[str], ...],
@@ -479,9 +477,6 @@ def test_graph_io_renaming(
 
     input_names, output_names = names
 
-    num_inputs = 4
-    num_outputs = 3
-
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
     activate_quantizers(
         quant_model,
@@ -491,26 +486,11 @@ def test_graph_io_renaming(
         kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
     )
 
-    # WHEN exporting the model without overriding its inputs/outputs names
     model_name = "test_model"
     output_directory = tmp_path
     output_model_directory = pathlib.Path(output_directory) / model_name
 
-    if (input_names is not None and len(input_names) < num_inputs) or (
-        output_names is not None and len(output_names) < num_outputs
-    ):
-        with pytest.raises(ValueError):
-            export(
-                quant_model,
-                (data_x, data_y),
-                output_directory,
-                model_name,
-                model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
-                input_names=input_names,
-                output_names=output_names,
-            )
-        return
-
+    # WHEN exporting the model with new (valid) input/output names or when these are set to None.
     export(
         quant_model,
         (data_x, data_y),
@@ -521,7 +501,6 @@ def test_graph_io_renaming(
         output_names=output_names,
     )
 
-    # THEN the onnx names should NOT be altered
     onnx_artifact_location = (pathlib.Path(output_model_directory) / model_name).with_suffix(
         ".onnx"
     )
@@ -532,14 +511,66 @@ def test_graph_io_renaming(
     graph_inputs = [input_.name for input_ in ort_session.get_inputs()]
     graph_outputs = [output_.name for output_ in ort_session.get_outputs()]
 
+    # WHEN the input/output names are not user defined (None is passed to the `export` function)
+    # we hardcode the input/output names to assert the result.
     if input_names is None:
         input_names = ["x", "y", "subtract_from_x", "add_to_y"]
 
     if output_names is None:
         output_names = ["add_1", "addmm", "addmm_1"]
 
+    # THEN the graph input/output names should match the user defined input/output names.
     assert graph_inputs == input_names
     assert graph_outputs == output_names
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "names",
+    [
+        (["input_1", "input_2"], ["output_1", "output_2", "output_3"]),
+        (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2"]),
+    ],
+)
+@ff.flags.context(ff.strict_quantization, False)
+def test_graph_io_renaming_invalid(
+    multi_input_output_model: QuantizedModelFixture,
+    tmp_path: pathlib.Path,
+    names: tuple[None, ...] | tuple[list[str], ...],
+) -> None:
+    # GIVEN a quantized model with multiple inputs/outputs
+    data_x = torch.randn(32, 10)
+    data_y = torch.randn(32, 10)
+    subtract_from_x = torch.ones(32, 10)
+    add_to_y = torch.ones(32, 10)
+
+    input_names, output_names = names
+
+    quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
+    activate_quantizers(
+        quant_model,
+        (data_x, data_y),
+        activation_quantizers,
+        parameter_quantizers,
+        kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+    )
+
+    # WHEN exporting the model overriding its input/output names with invalid ones.
+    model_name = "test_model"
+    output_directory = tmp_path
+
+    # THEN the export function should raise an error since the number of user defined
+    # inputs/outputs do not match the number of graph inputs/outputs.
+    with pytest.raises(ValueError):
+        export(
+            quant_model,
+            (data_x, data_y),
+            output_directory,
+            model_name,
+            model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+            input_names=input_names,
+            output_names=output_names,
+        )
 
 
 @ff.flags.context(ff.strict_quantization, False)
