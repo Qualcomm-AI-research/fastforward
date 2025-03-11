@@ -55,6 +55,7 @@ def assert_close(actual: Any, expected: Any, extra_dtype: torch.dtype | None = N
     torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
@@ -85,6 +86,7 @@ def test_quantize_per_tensor(
     assert_close(offset_grad, offset.grad, output_dtype)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
@@ -123,6 +125,7 @@ def test_quantize_per_channel(
     assert_close(offset_grad, offset.grad, output_dtype)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
@@ -175,6 +178,7 @@ def test_quantize_per_block(
     assert_close(scale_grad, scale.grad, output_dtype)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
@@ -217,6 +221,7 @@ def test_quantize_by_tile(
     assert_close(offset_grad, offset.grad, output_dtype)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize(

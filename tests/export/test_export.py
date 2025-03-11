@@ -454,6 +454,7 @@ def test_encodings_file_generation(
     assert sorted(param_encodings_dictionary) == sorted(expected_quantized_params)
 
 
+@pytest.mark.slow
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -574,6 +575,7 @@ def test_graph_io_renaming_invalid(
         )
 
 
+@pytest.mark.slow
 @pytest.mark.xfail_due_to_too_new_torch
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])

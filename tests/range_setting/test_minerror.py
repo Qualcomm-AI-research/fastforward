@@ -11,6 +11,7 @@ from fastforward.range_setting import estimate_ranges
 from fastforward.range_setting.min_error import _default_search_grid, mse_grid
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("symmetric", [True, False])
 @pytest.mark.parametrize("negative_data", [True, False])
 @pytest.mark.parametrize(

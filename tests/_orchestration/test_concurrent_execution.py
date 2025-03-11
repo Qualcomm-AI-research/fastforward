@@ -29,6 +29,7 @@ def _create_orchestrator(
     return orchestrator
 
 
+@pytest.mark.slow
 def test_orchestrator_ordered_run() -> None:
     run_list: list[tuple[int, ...]] = []
     num_partitions = 6

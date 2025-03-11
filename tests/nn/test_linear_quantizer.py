@@ -308,6 +308,7 @@ def test_linear_quantizer_asymmetric_per_channel_gradients() -> None:
     assert torch.count_nonzero(quantizer.offset.grad)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("tile_step", [1, 2, 4, 8])
 def test_linear_quantizer_asymmetric_per_tile(tile_step: int, _seed_prngs: int) -> None:
     batch_size = 16

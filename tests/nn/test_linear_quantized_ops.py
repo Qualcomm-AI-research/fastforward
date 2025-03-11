@@ -31,6 +31,7 @@ def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
                 yield slice(start, end, step)  # case x[start:end:step]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("data_shape", [(3, 3), (), (1, 3), (3, 1), (1, 0, 2), (3,)])
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
 def test_getitem(
@@ -145,6 +146,7 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     torch.testing.assert_close(quantized_expanded.dequantize(), expanded, rtol=0, atol=0)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "granularity",
     [
