@@ -63,7 +63,15 @@ def multi_input_output_model() -> QuantizedModelFixture:
             self.fc1 = ff.nn.QuantizedLinear(10, 10)
             self.fc2 = ff.nn.QuantizedLinear(10, 10)
 
-        def forward(self, x: torch.Tensor, y: torch.Tensor) -> tuple[torch.Tensor, ...]:
+        def forward(
+            self,
+            x: torch.Tensor,
+            y: torch.Tensor,
+            add_to_y: torch.Tensor,
+            subtract_from_x: torch.Tensor,
+        ) -> tuple[torch.Tensor, ...]:
+            x = torch.subtract(x, subtract_from_x)
+            y = torch.add(y, add_to_y)
             add_x_y = torch.add(x, y)
             linear_x = self.fc1(x)
             linear_y = self.fc2(y)
@@ -87,21 +95,24 @@ def initialize_quantizers(
 
 def activate_quantizers(
     quant_model: torch.nn.Module,
-    data: torch.Tensor | tuple[torch.Tensor, ...],
+    args: torch.Tensor | tuple[torch.Tensor, ...],
     activation_quantizers: QuantizerCollection,
     parameter_quantizers: QuantizerCollection,
     param_granularity: Granularity = ff.PerTensor(),
+    kwargs: None | dict[str, Any] = None,
 ) -> None:
     initialize_quantizers(activation_quantizers, ff.nn.LinearQuantizer, num_bits=8)
     initialize_quantizers(
         parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
     )
 
-    if not isinstance(data, tuple):
-        data = (data,)
+    kwargs = kwargs or {}
+
+    if not isinstance(args, tuple):
+        args = (args,)
 
     with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
-        quant_model(*data)
+        quant_model(*args, **kwargs)
 
 
 @pytest.mark.slow
@@ -331,7 +342,7 @@ def test_ff_model_to_onnx_export(
     export(
         quant_model,
         (data,),
-        str(output_directory),
+        output_directory,
         model_name,
         input_names=["new_x"],
         output_names=["new_output"],
@@ -412,7 +423,7 @@ def test_encodings_file_generation(
     export(
         quant_model,
         (data,),
-        str(output_directory),
+        output_directory,
         model_name,
         input_names=new_input_names,
         output_names=new_output_names,
@@ -445,21 +456,70 @@ def test_encodings_file_generation(
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    "names",
+    [
+        (None, None),
+        (["input_1", "input_2"], ["output_1", "output_2", "output_3"]),
+        (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2"]),
+        (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2", "output_3"]),
+    ],
+)
 @ff.flags.context(ff.strict_quantization, False)
 def test_graph_io_renaming(
-    multi_input_output_model: QuantizedModelFixture, tmp_path: pathlib.Path
+    multi_input_output_model: QuantizedModelFixture,
+    tmp_path: pathlib.Path,
+    names: tuple[None, ...] | tuple[list[str], ...],
 ) -> None:
     # GIVEN a quantized model with multiple inputs/outputs
     data_x = torch.randn(32, 10)
     data_y = torch.randn(32, 10)
+    subtract_from_x = torch.ones(32, 10)
+    add_to_y = torch.ones(32, 10)
+
+    input_names, output_names = names
+
+    num_inputs = 4
+    num_outputs = 3
+
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
-    activate_quantizers(quant_model, (data_x, data_y), activation_quantizers, parameter_quantizers)
+    activate_quantizers(
+        quant_model,
+        (data_x, data_y),
+        activation_quantizers,
+        parameter_quantizers,
+        kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+    )
 
     # WHEN exporting the model without overriding its inputs/outputs names
-    model_name = "no_renaming"
+    model_name = "test_model"
     output_directory = tmp_path
     output_model_directory = pathlib.Path(output_directory) / model_name
-    export(quant_model, (data_x, data_y), str(output_directory), model_name)
+
+    if (input_names is not None and len(input_names) < num_inputs) or (
+        output_names is not None and len(output_names) < num_outputs
+    ):
+        with pytest.raises(ValueError):
+            export(
+                quant_model,
+                (data_x, data_y),
+                output_directory,
+                model_name,
+                model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+                input_names=input_names,
+                output_names=output_names,
+            )
+        return
+
+    export(
+        quant_model,
+        (data_x, data_y),
+        output_directory,
+        model_name,
+        model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+        input_names=input_names,
+        output_names=output_names,
+    )
 
     # THEN the onnx names should NOT be altered
     onnx_artifact_location = (pathlib.Path(output_model_directory) / model_name).with_suffix(
@@ -471,61 +531,15 @@ def test_graph_io_renaming(
 
     graph_inputs = [input_.name for input_ in ort_session.get_inputs()]
     graph_outputs = [output_.name for output_ in ort_session.get_outputs()]
-    assert graph_inputs == ["x", "y"]
-    assert graph_outputs == ["add", "addmm", "addmm_1"]
 
-    # WHEN the new input names are less than the number of graph inputs
-    less_input_names = ["new_x"]
-    # THEN an assertion error is raised.
-    with pytest.raises(AssertionError):
-        export(
-            quant_model,
-            (data_x, data_y),
-            str(output_directory),
-            model_name,
-            input_names=less_input_names,
-        )
+    if input_names is None:
+        input_names = ["x", "y", "subtract_from_x", "add_to_y"]
 
-    # WHEN the new output names are less than the number of graph outputs
-    less_output_names = ["add_x_y", "linear_x"]
-    # THEN an assertion error is raised.
-    with pytest.raises(AssertionError):
-        export(
-            quant_model,
-            (data_x, data_y),
-            str(output_directory),
-            model_name,
-            output_names=less_output_names,
-        )
+    if output_names is None:
+        output_names = ["add_1", "addmm", "addmm_1"]
 
-    # WHEN exporting the model without overriding its inputs/outputs names
-    new_input_names = ["new_x", "new_y"]
-    new_output_names = ["add_x_y", "linear_x", "linear_y"]
-
-    model_name = "renaming"
-    output_directory = tmp_path
-    output_model_directory = pathlib.Path(output_directory) / model_name
-    export(
-        quant_model,
-        (data_x, data_y),
-        str(output_directory),
-        model_name,
-        input_names=new_input_names,
-        output_names=new_output_names,
-    )
-
-    # THEN the onnx names should match the user define new inputs/outputs
-    onnx_artifact_location = (pathlib.Path(output_model_directory) / model_name).with_suffix(
-        ".onnx"
-    )
-    ort_session = onnxruntime.InferenceSession(
-        onnx_artifact_location, providers=["CPUExecutionProvider"]
-    )
-
-    graph_inputs = [input_.name for input_ in ort_session.get_inputs()]
-    graph_outputs = [output_.name for output_ in ort_session.get_outputs()]
-    assert graph_inputs == new_input_names
-    assert graph_outputs == new_output_names
+    assert graph_inputs == input_names
+    assert graph_outputs == output_names
 
 
 @ff.flags.context(ff.strict_quantization, False)
@@ -547,7 +561,7 @@ def test_export_function(
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     # WHEN exporting the quantized model
-    export(quant_model, (data,), str(output_directory), model_name)
+    export(quant_model, (data,), output_directory, model_name)
     onnx_file_path = (output_model_directory / model_name).with_suffix(".onnx")
     encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 

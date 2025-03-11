@@ -153,7 +153,7 @@ def export_modules(
         exported_path = export(
             module,
             module_input_data,
-            str(output_path),
+            output_path,
             module_name,
             model_kwargs=module_input_kwargs,
         )

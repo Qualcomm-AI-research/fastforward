@@ -410,7 +410,7 @@ def process_dynamo_program(
 def export(
     model: torch.nn.Module,
     data: tuple[torch.Tensor, ...],
-    output_directory: str,
+    output_directory: pathlib.Path,
     model_name: str,
     graph_preprocessors: None | Sequence[NodeVisitor[Any]] = None,
     model_kwargs: None | dict[str, Any] = None,
@@ -455,7 +455,7 @@ def export(
     Returns:
         The path to the output directory where the encodings and ONNX files are stored.
     """
-    output_path = pathlib.Path(output_directory) / model_name
+    output_path = output_directory / model_name
     output_path.mkdir(exist_ok=True, parents=True)
     artifact_location = output_path / model_name
     onnx_location = pathlib.Path(str(artifact_location) + ".onnx")
@@ -497,17 +497,24 @@ def export(
     if input_names is None:
         input_names = []
         for entry in torch_onnx_inputs:
+            # The input node should always have a name,
+            # otherwise something is wrong with the graph.
             assert entry.name is not None
             input_names.append(entry.name)
 
     if output_names is None:
         output_names = []
         for entry in torch_onnx_outputs:
+            # The output node should always have a name,
+            # otherwise something is wrong with the graph.
             assert entry.name is not None
             output_names.append(entry.name)
 
-    assert len(torch_onnx_inputs) == len(input_names)
-    assert len(torch_onnx_outputs) == len(output_names)
+    if len(torch_onnx_inputs) != len(input_names) or len(torch_onnx_outputs) != len(output_names):
+        msg = f"""The number of user-define inputs/outputs ({len(input_names)},
+        {len(output_names)}) do not match the number of graph inputs/outputs
+        ({len(torch_onnx_inputs), len(torch_onnx_outputs)})"""
+        raise ValueError(msg)
 
     for old_input, new_input_name in zip(torch_onnx_inputs, input_names):
         old_input_name = old_input.name
