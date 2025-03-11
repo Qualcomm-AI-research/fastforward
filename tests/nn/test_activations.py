@@ -6,7 +6,7 @@ import torch
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_relu_module() -> None:
+def test_quantized_relu_module(_seed_prngs: int) -> None:
     input_data = torch.randn(10, 10)
     relu_module = ff.nn.QuantizedRelu()
 
@@ -17,7 +17,7 @@ def test_quantized_relu_module() -> None:
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_silu_module() -> None:
+def test_quantized_silu_module(_seed_prngs: int) -> None:
     input_data = torch.randn(10, 10)
     silu_module = ff.nn.QuantizedSilu()
 

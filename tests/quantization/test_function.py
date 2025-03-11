@@ -35,7 +35,7 @@ def quant_context() -> QuantizationContext[StaticAffineQuantParams]:
 
 
 def test_quantization_function_attach(
-    quant_context: QuantizationContext[AffineQuantParams],
+    quant_context: QuantizationContext[AffineQuantParams], _seed_prngs: int
 ) -> None:
     data = torch.randn((3, 3))
     quant_data = quant_context.attach(data)

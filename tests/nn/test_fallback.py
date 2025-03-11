@@ -470,7 +470,7 @@ def test_quantized_functionals(  # type: ignore[no-untyped-def]
 #         ff_functional(None, ff_output_quantizer=None)
 
 
-def test_dequantization_fallback_grad() -> None:
+def test_dequantization_fallback_grad(_seed_prngs: int) -> None:
     num_bits = 3
 
     scale = torch.tensor(0.1)

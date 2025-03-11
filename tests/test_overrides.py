@@ -8,7 +8,7 @@ from fastforward.overrides import DisableQuantizationOverride, disable_quantizat
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_DisableQuantizationOverride() -> None:
+def test_DisableQuantizationOverride(_seed_prngs: int) -> None:
     # Setup of non quantized and quantized module using the same weight
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)
@@ -59,7 +59,7 @@ def test_DisableQuantizationOverride() -> None:
     )
 
 
-def test_disable_quantization_override_context() -> None:
+def test_disable_quantization_override_context(_seed_prngs: int) -> None:
     # Setup of non quantized and quantized module using the same weight
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)

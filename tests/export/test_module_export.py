@@ -53,7 +53,9 @@ def simple_model() -> QuantizedModelFixture:
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_module_export(simple_model: QuantizedModelFixture, tmp_path: pathlib.Path) -> None:
+def test_module_export(
+    simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
     # GIVEN: a model with quantizers and a collection of modules of interest
     # (in this case linear and relu)
     data = torch.randn(2, 32, 10)

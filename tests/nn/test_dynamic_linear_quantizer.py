@@ -19,7 +19,9 @@ import torch
         ff.PerTile((2, 16)),
     ],
 )
-def test_dynamic_linear_quantizer(granularity: ff.granularity.Granularity) -> None:
+def test_dynamic_linear_quantizer(
+    granularity: ff.granularity.Granularity, _seed_prngs: int
+) -> None:
     num_bits = 4
     static_quantizer = ff.nn.LinearQuantizer(
         num_bits=num_bits, granularity=granularity, symmetric=False

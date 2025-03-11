@@ -1,6 +1,9 @@
 # Copyright (c) 2024 Qualcomm Technologies, Inc.
 # All Rights Reserved.
 
+import random
+
+import numpy as np
 import torch
 
 
@@ -11,3 +14,11 @@ def is_close_to_rounding(tensor: torch.Tensor, eps: float = 0.0001) -> bool:
     """
     frac = torch.frac(tensor)
     return bool(torch.any(torch.abs(frac - 0.5) < eps))
+
+
+def seed_prngs(random_seed: int) -> None:
+    """Seeds the common PRNGs."""
+    assert 0 <= random_seed <= 2**64
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed % 2**32)
+    random.seed(random_seed)

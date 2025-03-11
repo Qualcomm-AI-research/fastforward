@@ -7,7 +7,7 @@ import torch
 from fastforward.quantization import ste
 
 
-def test_ste_wrapper() -> None:
+def test_ste_wrapper(_seed_prngs: int) -> None:
     x = torch.randn((2, 2), requires_grad=True)
 
     def multiply(data: torch.Tensor, scale: float) -> torch.Tensor:
@@ -23,7 +23,7 @@ def test_ste_wrapper() -> None:
     torch.testing.assert_close(x.grad, expected_grad)
 
 
-def test_ste_ensure_shapes() -> None:
+def test_ste_ensure_shapes(_seed_prngs: int) -> None:
     x = torch.randn(3)
 
     # Define a function that changes the shape of the input

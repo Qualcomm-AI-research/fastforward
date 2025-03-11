@@ -33,7 +33,9 @@ def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
 
 @pytest.mark.parametrize("data_shape", [(3, 3), (), (1, 3), (3, 1), (1, 0, 2), (3,)])
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
-def test_getitem(data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
+def test_getitem(
+    data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor], _seed_prngs: int
+) -> None:
     # Given: a quantized and dequantized tensor
     torch.randn(data_shape)
     qx = quantfunc(data_shape)
@@ -154,7 +156,7 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
         ff.PerChannel((0, 2)),
     ],
 )
-def test_getitem_perchannel(granularity: ff.granularity.Granularity) -> None:
+def test_getitem_perchannel(granularity: ff.granularity.Granularity, _seed_prngs: int) -> None:
     # Given: a quantized and dequantized tensor
     data_shape = (3, 2, 2)
     x_in = torch.randn(data_shape)

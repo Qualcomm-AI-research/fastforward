@@ -23,7 +23,10 @@ from fastforward.range_setting.min_error import _default_search_grid, mse_grid
     ],
 )
 def test_mse_grid_estimator_decreasing_error_by_num_candidates(
-    symmetric: bool, negative_data: bool, quant_granularity: Granularity
+    symmetric: bool,
+    negative_data: bool,
+    quant_granularity: Granularity,
+    _seed_prngs: int,
 ) -> None:
     # The search grids (the size of which is defined by the num_cadidates argument)
     # need to display coherence, ie the larger grid needs to contain all the points

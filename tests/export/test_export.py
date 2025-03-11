@@ -79,7 +79,7 @@ def activate_quantizers(
 
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_export_quantized_model(simple_model: QuantizedModelFixture) -> None:
+def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a model with quantizer stubs.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -108,7 +108,7 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture) -> None:
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_request(simple_model: QuantizedModelFixture) -> None:
+def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a quantized model and its exported dynamo graph.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -156,7 +156,7 @@ def test_node_request(simple_model: QuantizedModelFixture) -> None:
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
-def test_node_removal(simple_model: QuantizedModelFixture) -> None:
+def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -224,7 +224,9 @@ def test_node_removal(simple_model: QuantizedModelFixture) -> None:
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
-def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixture) -> None:
+def test_node_logging(
+    granularity: Granularity, simple_model: QuantizedModelFixture, _seed_prngs: int
+) -> None:
     # GIVEN a quantized model
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
@@ -280,7 +282,7 @@ def test_node_logging(granularity: Granularity, simple_model: QuantizedModelFixt
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_ff_model_to_onnx_export(
-    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
 ) -> None:
     # GIVEN a model and its initial non-quantized result.
     data = torch.randn(32, 10)
@@ -322,7 +324,7 @@ def test_ff_model_to_onnx_export(
 @pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_encodings_file_generation(
-    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
 ) -> None:
     # GIVEN a quantized model and its exported encodings file path.
     data = torch.randn(32, 10)
@@ -392,7 +394,10 @@ def test_encodings_file_generation(
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
-    tmp_path: pathlib.Path, granularity: Granularity, simple_model: QuantizedModelFixture
+    tmp_path: pathlib.Path,
+    granularity: Granularity,
+    simple_model: QuantizedModelFixture,
+    _seed_prngs: int,
 ) -> None:
     # GIVEN a quantized model.
     data = torch.randn(32, 10)

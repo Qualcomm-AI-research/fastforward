@@ -71,7 +71,7 @@ def test_predicate_or() -> None:
     m2.assert_called_once()
 
 
-def test_dispatch() -> None:
+def test_dispatch(_seed_prngs: int) -> None:
     predicate = make_mock(lambda input, dim: input.dtype == torch.int8)
     kernel = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
     register("softmax", Predicate(predicate), kernel)
@@ -87,7 +87,7 @@ def test_dispatch() -> None:
     kernel.assert_called_once()
 
 
-def test_dispatch_order() -> None:
+def test_dispatch_order(_seed_prngs: int) -> None:
     p1 = make_mock(lambda input, dim: input.dtype == torch.int8)
     k1 = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
     register("softmax", Predicate(p1), k1)
@@ -114,7 +114,7 @@ def test_dispatch_order() -> None:
     k1.assert_not_called()
 
 
-def test_dispatch_registration_hook() -> None:
+def test_dispatch_registration_hook(_seed_prngs: int) -> None:
     predicate = make_mock(lambda input, dim: input.dtype == torch.int8)
     kernel = make_mock(lambda input, dim: torch.softmax(input.to(torch.float), dim))
 

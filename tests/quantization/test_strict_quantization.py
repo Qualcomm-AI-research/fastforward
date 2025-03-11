@@ -44,7 +44,7 @@ def test_strict_quantization() -> None:
         _ = a + b
 
 
-def test_module_strict_quantization() -> None:
+def test_module_strict_quantization(_seed_prngs: int) -> None:
     strict_results: list[bool] = []
 
     class MockModule(torch.nn.Module):

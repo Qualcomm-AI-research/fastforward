@@ -241,7 +241,7 @@ def test_linear_quantizer_asymmetric_per_tensor_gradients() -> None:
 
 
 @pytest.mark.parametrize("axis", [0, 1])
-def test_linear_quantizer_asymmetric_per_channel(axis: int) -> None:
+def test_linear_quantizer_asymmetric_per_channel(axis: int, _seed_prngs: int) -> None:
     batch_size = 16
     num_features = 32
     num_bits = 3
@@ -278,7 +278,7 @@ def test_linear_quantizer_asymmetric_per_channel_gradients() -> None:
     num_features = 3
     num_bits = 3
 
-    data = torch.randn(batch_size, num_features)
+    data = torch.linspace(-2.0, 2.0, batch_size * num_features).reshape(batch_size, num_features)
     offset = torch.arange(num_features) - num_features / 2
     scale = torch.linspace(0.1, 0.3, num_features)
 
@@ -309,7 +309,7 @@ def test_linear_quantizer_asymmetric_per_channel_gradients() -> None:
 
 
 @pytest.mark.parametrize("tile_step", [1, 2, 4, 8])
-def test_linear_quantizer_asymmetric_per_tile(tile_step: int) -> None:
+def test_linear_quantizer_asymmetric_per_tile(tile_step: int, _seed_prngs: int) -> None:
     batch_size = 16
     num_features = 32
     num_bits = 3
@@ -350,7 +350,7 @@ def test_linear_quantizer_asymmetric_per_tile(tile_step: int) -> None:
     torch.testing.assert_close(output, expected_output)
 
 
-def test_linear_quantizer_asymmetric_per_tile_gradients() -> None:
+def test_linear_quantizer_asymmetric_per_tile_gradients(_seed_prngs: int) -> None:
     batch_size = 2
     num_features = 4
     num_bits = 3
@@ -358,7 +358,7 @@ def test_linear_quantizer_asymmetric_per_tile_gradients() -> None:
     tile_size = (batch_size // 2, num_features // 2)
     gran = granularity.PerTile(tile_size)
 
-    data = torch.randn(batch_size, num_features)
+    data = torch.linspace(-1.5, 1.5, batch_size * num_features).reshape(batch_size, num_features)
     offset = torch.arange(num_features) - num_features / 2
     scale = torch.linspace(0.1, 0.3, num_features)
 

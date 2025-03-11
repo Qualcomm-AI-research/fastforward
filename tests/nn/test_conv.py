@@ -6,7 +6,7 @@ import torch
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_conv1d_module() -> None:
+def test_quantized_conv1d_module(_seed_prngs: int) -> None:
     input_data = torch.randn(10, 2, 4)
     conv1d_module = ff.nn.QuantizedConv1d(2, 2, 2, 1)
     weight = conv1d_module.weight
@@ -19,7 +19,7 @@ def test_quantized_conv1d_module() -> None:
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_conv2d_module() -> None:
+def test_quantized_conv2d_module(_seed_prngs: int) -> None:
     input_data = torch.randn(10, 2, 4, 4)
     conv2d_module = ff.nn.QuantizedConv2d(2, 2, 2, 1)
     weight = conv2d_module.weight

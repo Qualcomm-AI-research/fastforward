@@ -31,7 +31,7 @@ class _MockQuantizationFunction(QuantizationFunction[StaticAffineQuantParams]):
         return data / params.scale
 
 
-def test_quantize_dequantize() -> None:
+def test_quantize_dequantize(_seed_prngs: int) -> None:
     """Assert that quantize and dequant _transform_ data."""
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
@@ -51,7 +51,7 @@ def test_quantize_dequantize() -> None:
     "dtype",
     "double,float,half,bfloat16,long,int,short,char,cdouble,cfloat,chalf,bool,byte".split(","),
 )
-def test_dtype_methods(dtype: str) -> None:
+def test_dtype_methods(dtype: str, _seed_prngs: int) -> None:
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
 
@@ -87,7 +87,7 @@ def test_dtype_methods(dtype: str) -> None:
         torch.uint8,
     ],
 )
-def test_to_dtype(dtype: torch.dtype) -> None:
+def test_to_dtype(dtype: torch.dtype, _seed_prngs: int) -> None:
     torch.manual_seed(7480)
     data = torch.randn(10, 10)
     params = StaticAffineQuantParams(scale=1.0, offset=None, num_bits=3, granularity=ff.PerTensor())
@@ -96,7 +96,7 @@ def test_to_dtype(dtype: torch.dtype) -> None:
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_cpu_cuda() -> None:
+def test_quantized_tensor_cpu_cuda(_seed_prngs: int) -> None:
     """Test `Tensor.cpu` and `Tensor.cuda`.
 
     Test if quantized tensor and associated tensor quantization parameters are moved between
@@ -142,7 +142,7 @@ def test_quantized_tensor_cpu_cuda() -> None:
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_to() -> None:
+def test_quantized_tensor_to(_seed_prngs: int) -> None:
     """Test `Tensor.cuda` and `Tensor.cpu`.
 
     Test if quantized tensor and associated tensor quantization parameters are moved between
@@ -194,7 +194,7 @@ def test_quantized_tensor_to() -> None:
     )
 
 
-def test_quantized_tensor_grad_backward() -> None:
+def test_quantized_tensor_grad_backward(_seed_prngs: int) -> None:
     """Test if graph is properly created and gradient are accumulated using backward."""
     torch.manual_seed(7480)
     scale = torch.tensor(3.0, requires_grad=True)
@@ -276,7 +276,7 @@ def test_quantized_tensor_dispatches() -> None:
         )
 
 
-def test_quantized_tensor_detach() -> None:
+def test_quantized_tensor_detach(_seed_prngs: int) -> None:
     data = torch.randn((2, 2), requires_grad=True)
     scale = torch.tensor([0.01])
     quantized_data = quantize_per_tensor(data, scale, None, 3)
@@ -288,7 +288,7 @@ def test_quantized_tensor_detach() -> None:
 
 
 @ff.flags.context(ff.strict_quantization, False)
-def test_quantized_tensor_clone() -> None:
+def test_quantized_tensor_clone(_seed_prngs: int) -> None:
     data = torch.randn((2, 2)).clamp(-2.5, 3)
     scale = torch.tensor([1.0])
     data.requires_grad_()
@@ -338,7 +338,7 @@ def test_deepcopy() -> None:
             assert original_arg == copied_arg, f"{arg_key} is not equal"
 
 
-def test_contiguous() -> None:
+def test_contiguous(_seed_prngs: int) -> None:
     # Construct a quantized tensor with non contiguous data and parameters
     scale = torch.randn(3, 3)[:, 0]
     offset = torch.ones((3, 3))[:, 0]
@@ -374,12 +374,12 @@ class TestView:
         return 1, 1, 1, 64
 
     @pytest.fixture
-    def qx_per_channel(self, shape: torch.Size) -> QuantizedTensor:
+    def qx_per_channel(self, shape: torch.Size, _seed_prngs: int) -> QuantizedTensor:
         scale = torch.randn(shape[-1])
         return ff.random.random_quantized(shape, scale=scale, granularity=ff.PerChannel(-1))
 
     @pytest.fixture
-    def qx_per_tensor(self, shape: torch.Size) -> QuantizedTensor:
+    def qx_per_tensor(self, shape: torch.Size, _seed_prngs: int) -> QuantizedTensor:
         scale = torch.randn(1)
         return ff.random.random_quantized(shape, scale=scale, granularity=ff.PerTensor())
 

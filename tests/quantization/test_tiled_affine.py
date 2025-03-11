@@ -59,7 +59,7 @@ def assert_close(actual: Any, expected: Any, extra_dtype: torch.dtype | None = N
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 def test_quantize_per_tensor(
-    device: torch.device, num_bits: int, output_dtype: torch.dtype
+    device: torch.device, num_bits: int, output_dtype: torch.dtype, _seed_prngs: int
 ) -> None:
     data = torch.randn(8, 4, 2, device=device, requires_grad=True)
     scale = torch.tensor([0.38], device=device, requires_grad=True)
@@ -90,7 +90,7 @@ def test_quantize_per_tensor(
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize("channel", [0, 1, 2])
 def test_quantize_per_channel(
-    device: torch.device, num_bits: int, output_dtype: torch.dtype, channel: int
+    device: torch.device, num_bits: int, output_dtype: torch.dtype, channel: int, _seed_prngs: int
 ) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
     scale = torch.randn(data.shape[channel], device=device) * 0.5 + 0.3
@@ -136,6 +136,7 @@ def test_quantize_per_block(
     channel_idx: int,
     block_axis: int,
     block_size: int,
+    _seed_prngs: int,
 ) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
 
@@ -179,7 +180,11 @@ def test_quantize_per_block(
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize("tile_size", [(16, 8, 4), (8, 16, 2)])
 def test_quantize_by_tile(
-    device: torch.device, num_bits: int, output_dtype: torch.dtype, tile_size: Sequence[int]
+    device: torch.device,
+    num_bits: int,
+    output_dtype: torch.dtype,
+    tile_size: Sequence[int],
+    _seed_prngs: int,
 ) -> None:
     data = torch.randn(32, 16, 8, device=device, requires_grad=True)
 
