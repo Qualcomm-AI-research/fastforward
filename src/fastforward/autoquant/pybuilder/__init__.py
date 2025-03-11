@@ -3,3 +3,4 @@
 
 from .builder import ClassBuilder as ClassBuilder
 from .builder import FunctionBuilder as FunctionBuilder
+from .builder import QuantizedModuleBuilder as QuantizedModuleBuilder

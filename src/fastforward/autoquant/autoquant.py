@@ -9,7 +9,6 @@ import torch
 
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
-from fastforward.autoquant.pybuilder.builder import InitQuantizationMethod
 
 from . import pybuilder, pysource
 from .convert import convert_method

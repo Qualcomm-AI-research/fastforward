@@ -19,6 +19,8 @@ import libcst
 
 from libcst._nodes.internal import visit_optional, visit_required, visit_sequence
 
+from fastforward._quantops.operator import Operator
+
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class GeneralAssignment(libcst.BaseSmallStatement):
@@ -131,4 +133,4 @@ class QuantizedCall(libcst.Call):
     """
 
     original_name: str = dataclasses.field(kw_only=True)
-    operator: Any = dataclasses.field(kw_only=True)
+    operator: Operator = dataclasses.field(kw_only=True)

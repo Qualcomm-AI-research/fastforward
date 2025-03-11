@@ -3,6 +3,7 @@
 
 import copy
 import dataclasses
+import enum
 
 from collections.abc import Hashable, Iterable, Iterator, Set
 from types import EllipsisType
@@ -12,7 +13,8 @@ import libcst
 
 from typing_extensions import Self, override
 
-from . import _dominance, block_assignments, blocks
+from ..cst import nodes
+from . import _dominance, block_node_elems, blocks
 
 
 def infer_block_dataflow(cfg: blocks.Block) -> dict[blocks.Block, "BlockTracker"]:
@@ -95,31 +97,46 @@ class _VariableTrackerVisitor:
             if child not in self.trackers:
                 child.visit(self)
 
-    def _process_assignments(self, block: blocks.Block) -> None:
-        assert block not in self.trackers
-        tracker = self.trackers[block] = BlockTracker()
-
-        for assignment in block_assignments.assignments_in_block(block):
+    def _process_assignments(self, block: blocks.Block, tracker: "BlockTracker") -> None:
+        for assignment, statement in block_node_elems.assignments_in_block(block):
+            quantization_status = _get_quantization_status(assignment.value)
             for target in assignment.targets:
                 if isinstance(target, libcst.Name):
                     name = target.value
-                    var = self.variable_collection.get(name=name, declaration_block=block)
+                    var = self.variable_collection.get(
+                        name=name,
+                        quantization_status=quantization_status,
+                        declaration_block=block,
+                        declaration_node=statement,
+                    )
                     tracker.vars_gen.remove(name)
                     tracker.vars_gen.add(var)
 
         self._visit_children(block)
 
-    def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> None:
-        self._process_assignments(block)
-
-    def visit_IfBlock(self, block: blocks.IfBlock) -> None:
-        self._process_assignments(block)
-
-    def visit_FunctionBlock(self, block: blocks.FunctionBlock) -> None:
+    def _create_tracker(self, block: blocks.Block) -> "BlockTracker":
         assert block not in self.trackers
         tracker = self.trackers[block] = BlockTracker()
+        return tracker
+
+    def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> None:
+        tracker = self._create_tracker(block)
+        self._process_assignments(block, tracker)
+
+    def visit_IfBlock(self, block: blocks.IfBlock) -> None:
+        tracker = self._create_tracker(block)
+        self._process_assignments(block, tracker)
+
+    def visit_FunctionBlock(self, block: blocks.FunctionBlock) -> None:
+        tracker = self._create_tracker(block)
         for param in block.params():
-            var = self.variable_collection.get(name=param, declaration_block=block)
+            # We always assume that function inputs are not quantized. This
+            # ensures that an input quantizer is created if required.
+            var = self.variable_collection.get(
+                name=param,
+                declaration_block=block,
+                quantization_status=QuantizationStatus.NotQuantized,
+            )
             tracker.vars_gen.add(var)
         self._visit_children(block)
 
@@ -129,15 +146,34 @@ class _VariableTrackerVisitor:
         self._visit_children(block)
 
 
+class QuantizationStatus(enum.Enum):
+    """Enum encoding quantization status of a variable."""
+
+    NotQuantized = enum.auto()
+    Quantized = enum.auto()
+    Unknown = enum.auto()
+
+
 @dataclasses.dataclass(frozen=True)
 class Variable:
     """Represents a variable and its version."""
 
     name: str
     version: int | None
+    quantized: QuantizationStatus = dataclasses.field(
+        default=QuantizationStatus.Unknown, repr=True, compare=False, hash=False
+    )
     declaration_block: blocks.Block | None = dataclasses.field(
         repr=False, compare=False, hash=False, default=None
     )
+    declaration_node: libcst.SimpleStatementLine | libcst.BaseExpression | None = dataclasses.field(
+        repr=False, compare=False, hash=False, default=None
+    )
+
+    def mark_quantized(self, quantized=True) -> None:
+        """Set quantized status."""
+        status = QuantizationStatus.Quantized if quantized else QuantizationStatus.NotQuantized
+        object.__setattr__(self, "quantized", status)
 
 
 class VariableCollection:
@@ -150,12 +186,21 @@ class VariableCollection:
     def __init__(self) -> None:
         self._variables: dict[str, list[Variable]] = {}
 
-    def get(self, name: str, declaration_block: blocks.Block) -> Variable:
+    def get(
+        self,
+        name: str,
+        quantization_status: QuantizationStatus,
+        declaration_block: blocks.Block,
+        declaration_node: libcst.SimpleStatementLine | libcst.BaseExpression | None = None,
+    ) -> Variable:
         """Get a new version of a variable with name `name`.
 
         Args:
             name: The name of the variable.
+            quantization_status: Flag that indicates if variable is quantized,
+                not quantized or if the status is unknown.
             declaration_block: The block in which the variable is declared.
+            declaration_node: The statement in which the variable is declared.
 
         Returns:
             A new `Variable` instance for `name`.
@@ -165,7 +210,9 @@ class VariableCollection:
             Variable(
                 name=name,
                 version=len(variables),
+                quantized=quantization_status,
                 declaration_block=declaration_block,
+                declaration_node=declaration_node,
             )
         )
         return variables[-1]
@@ -194,6 +241,9 @@ class VariableSet(Set[Variable]):
             version_set = self._variables[var.name] = {}
         if var.version not in version_set:
             version_set[var.version] = var
+
+    def __getitem__(self, name: str) -> Iterator[Variable]:
+        yield from self._variables.get(name, {}).values()
 
     def __copy__(self) -> Self:
         instance = type(self)()
@@ -395,3 +445,12 @@ class _OrderedSet(Generic[_T]):
     def __repr__(self) -> str:
         elems = ", ".join(repr(e) for e in self)
         return f"{type(self).__name__}({{{elems}}})"
+
+
+def _get_quantization_status(expr: libcst.BaseExpression) -> QuantizationStatus:
+    if not isinstance(expr, nodes.QuantizedCall):
+        return QuantizationStatus.NotQuantized
+    if expr.operator.returns_quantized:
+        return QuantizationStatus.Quantized
+    else:
+        return QuantizationStatus.NotQuantized
