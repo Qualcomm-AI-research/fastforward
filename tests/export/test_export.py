@@ -375,7 +375,7 @@ def test_encodings_file_generation(
     simple_model: QuantizedModelFixture,
     new_input_names: None | list[str],
     new_output_names: None | list[str],
-    _seed_prngs: int
+    _seed_prngs: int,
 ) -> None:
     # GIVEN a quantized model and its exported encodings file path.
     data = torch.randn(32, 10)
@@ -524,6 +524,7 @@ def test_graph_io_renaming_valid(
     assert graph_outputs == output_names
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "names",
@@ -573,6 +574,7 @@ def test_graph_io_renaming_invalid(
         )
 
 
+@pytest.mark.xfail_due_to_too_new_torch
 @ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
