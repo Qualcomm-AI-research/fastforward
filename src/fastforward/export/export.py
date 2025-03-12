@@ -431,10 +431,20 @@ def export(
         b) remove any quantization operations as these are not required by QNN. This is done in
             sequence, first removing `dequantize_by_tile`, connecting its output to its parent
             `quantize_by_tile` node. Then `quantize_by_tile` operations are removed and their
-            output is connected their respective parent node.
+            output is connected their respective parent node. __ATTENTION__: in the case the user
+            defines a graph preprocessor targeting a `quantize_by_tile` or `dequantize_by_tile`
+            operation, they need to be aware that these will ultimately be removed from the graph.
+            In addition, it is possible that some `dequantize_by_tile` nodes are output nodes of
+            the graph. Our node removal process accommodates for that, but when designing bespoke
+            graph preprocessors targeting these nodes, this behaviour needs to be taken into account.
     3) The processed dynamo graph is exported to ONNX, using the `torch_onnx` library, and the
         names of inputs/activations/parameters are mapped between dynamo and ONNX. Based on this
         information the encodings file required for QNN is generated.
+    4) In the case that the `input_names` and/or `output_names` arguments are used then the inputs/
+        outputs of the ONNX model are renamed accordingly. __ATTENTION__: the renaming operation takes
+        place in the ONNX level, __NOT__ the dynamo level. This means that if the user defines
+        any graph preprocessor operations that target the dynamo input/output nodes, there will
+        be a name mismatch between the dynamo input/output names and the ONNX input/output names.
 
     Finally the function will store the model in the user-defined `output_directory`, using the
     user-defined `model_name`.
@@ -449,8 +459,8 @@ def export(
             standard export graph operations required by QNN (parameter logging, removal of
             quantization/dequantization operations).
         model_kwargs: kwargs passed to the model during export.
-        input_names: Replace the default graph input names with user defined ones.
-        output_names: Replace the default graph output names with user defined ones.
+        input_names: Replace the default ONNX artifact input names with user defined ones.
+        output_names: Replace the default ONNX artifact output names with user defined ones.
 
     Returns:
         The path to the output directory where the encodings and ONNX files are stored.
@@ -511,10 +521,12 @@ def export(
             output_names.append(entry.name)
 
     if len(torch_onnx_inputs) != len(input_names) or len(torch_onnx_outputs) != len(output_names):
-        msg = f"""The number of user-define inputs/outputs ({len(input_names)}, {len(output_names)})
-        do not match the number of graph inputs/outputs ({len(torch_onnx_inputs), len(torch_onnx_outputs)})
-        """
-        raise ValueError(" ".join(line.strip() for line in msg.splitlines()))
+        msg = (
+            f"The number of user-defined inputs/outputs ({len(input_names)}, {len(output_names)}) "
+            + "does not match the number of graph inputs/outputs "
+            + f"({len(torch_onnx_inputs)}, {len(torch_onnx_outputs)})"
+        )
+        raise ValueError(msg)
 
     for old_input, new_input_name in zip(torch_onnx_inputs, input_names):
         old_input_name = old_input.name
