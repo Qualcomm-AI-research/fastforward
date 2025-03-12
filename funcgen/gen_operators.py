@@ -274,11 +274,11 @@ def _fallback_op(op: operator.Operator) -> libcst.FunctionDef:
     if op.metadata is None:
         raise ValueError("Cannot create fallback op without metadata")
 
-    return_type = op.return_type
-    has_output_quantizer = return_type is not None and symtypes.QuantizedTensor in return_type
+    if op.num_output_quantizers > 1:
+        raise ValueError("funcgen does not support operators with multiple quantized outputs")
 
     extra_params: list[libcst.Param] = []
-    if has_output_quantizer:
+    if op.returns_quantized:
         quantizer_param = _parameter(operator.Parameter(OptQuantizer, "output_quantizer", "None"))
         extra_params.append(quantizer_param)
     extra_params.append(
@@ -289,7 +289,7 @@ def _fallback_op(op: operator.Operator) -> libcst.FunctionDef:
     body: list[libcst.BaseStatement] = []
 
     # Check if output quantizer is given when required
-    if has_output_quantizer:
+    if op.returns_quantized:
         body.append(
             _simple_if(
                 f"{STRICT_QUANTIZATION_PARAM} and output_quantizer is None",

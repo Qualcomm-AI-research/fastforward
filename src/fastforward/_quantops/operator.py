@@ -4,6 +4,7 @@
 import dataclasses
 import pathlib
 
+from collections.abc import Iterator
 from typing import Any, Callable
 
 from fastforward._import import fully_qualified_name
@@ -16,6 +17,10 @@ class Parameter:
     param_type: symtypes.Type
     name: str
     default_value: str | None
+
+    @property
+    def quantized(self) -> bool:
+        return symtypes.QuantizedTensor in self.param_type
 
 
 @dataclasses.dataclass
@@ -49,3 +54,12 @@ class Operator:
         if getattr(functional, dispatch_op.__name__, None) == dispatch_op:
             return f"fastforward.nn.functional.{dispatch_op.__name__}"
         return fully_qualified_name(dispatch_op)
+
+    @property
+    def returns_quantized(self) -> bool:
+        return_type = self.return_type
+        return return_type is not None and symtypes.QuantizedTensor in return_type
+
+    @property
+    def num_output_quantizers(self) -> int:
+        return 1 if self.returns_quantized else 0
