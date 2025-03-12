@@ -339,3 +339,49 @@ class BlockVisitor(Protocol[_VT]):
             __block: The block that is visisted.
         """
         raise NotImplementedError
+
+
+def insert_block_between(
+    source: Block,
+    target: Block,
+    new_block: Block | None = None,
+    child_attr: str | None = None,
+) -> None:
+    """Insert `new_block` between `source` and `target` blocks.
+
+    `target` must be a child of `source`. `new_block` is inserted in between
+    `source` and `target`, making `new_block` a child of `source` and `target`
+    a child of `new_block`. Dominator information on all blocks is updated
+    appropriately.
+
+    If `new_block` is None, a new `SimpleBlock` is created. Otherwise the
+    provided `new_block` is used. When a `new_block` is provided, `child_attr`
+    must be provided which indicates the attribute to which `target` must be
+    assigned to on `new_block`.
+    """
+    if new_block is not None and child_attr is None:
+        raise ValueError("'child_attr' cannot be 'None' if 'new_block' is provided.")
+
+    if new_block is None:
+        new_block = SimpleBlock(next_block=target, statements=[])
+        new_block.push_wrapper(libcst.IndentedBlock(body=()))
+    else:
+        if child_attr is None:
+            raise ValueError("'child_attr' cannot be 'None' if 'new_block' is provided.")
+        setattr(new_block, child_attr, target)
+
+    for name, child in source.named_children():
+        if child is target:
+            setattr(source, name, new_block)
+            break
+    else:
+        raise ValueError("'target' is not a child of 'source'")
+
+    if target.immediate_dominator is source:
+        target.immediate_dominator = new_block
+
+    if source.immediate_post_dominator is target:
+        source.immediate_post_dominator = new_block
+
+    new_block.immediate_dominator = source
+    new_block.immediate_post_dominator = target
