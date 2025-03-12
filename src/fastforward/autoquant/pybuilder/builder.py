@@ -63,12 +63,15 @@ class QuantizedModuleBuilder(ClassBuilder):
         super().__init__(name=name, bases=bases)
         self._quantizers: list[str] = []
 
-    def add_quantizer(self, name: str) -> None:
+    def add_quantizer(self, name: str, add_count_suffix: bool = True) -> str:
         """Add a quantizer to this class."""
+        if add_count_suffix:
+            name = f"{name}_{len(self._quantizers) + 1}"
         if name in self._quantizers:
             msg = f"Quantizer with name '{name}' was already added"
             raise ValueError(msg)
         self._quantizers.append(name)
+        return name
 
     @override
     def build(self) -> libcst.ClassDef:

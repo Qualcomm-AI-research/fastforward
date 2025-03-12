@@ -17,7 +17,7 @@ from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
 )
 from fastforward.autoquant.cst.node_creation import (
-    get_next_output_quantizer_kw_arg_and_name,
+    get_output_quantizer_kwarg,
     get_quantized_function_counterpart,
 )
 
@@ -455,27 +455,33 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         return self._resolve_insertions(original_node, updated_node)
 
 
+class _QuantizerList(Protocol):
+    def add_quantizer(self, name: str) -> str:
+        """Add quantizer to the collection."""
+        raise NotImplementedError
+
+
 class QuantizedCounterpartReplacer(libcst.CSTTransformer):
     """Replaces function calls with their quantized counterparts in the CST.
 
     For example, torch.sigmoid(*args, **kwargs) is replaced with
     ff.nn.functional.sigmoid(*args, output_quantizer=self.quantizer_sigmoid_1).
-    The new name quantizer_sigmoid_1 variable is tracked in `quantized_vars`.
 
     Similarly, binary operators are replaced:
     a + b is replaced with
     ff.nn.functional.add(a, b, output_quantizer=self.quantizer_add_1).
-    The new name quantizer_add_1 variable is also tracked in `quantized_vars`.
     """
 
-    def __init__(self, optable: OperatorTable) -> None:
+    def __init__(
+        self,
+        optable: OperatorTable,
+        quantizer_list: _QuantizerList,
+        quantizer_prefix: str = "quantizer_",
+    ) -> None:
         super().__init__()
         self._optable = optable
-        self._quantized_vars: list[str] = []  # Keeps track of names of quantizer variables
-
-    def get_quantized_vars(self) -> tuple[str, ...]:
-        """Sequence of quantized variables introduced by this transformer."""
-        return tuple(self._quantized_vars)
+        self._quantizers = quantizer_list
+        self.quantizer_prefix = quantizer_prefix
 
     def leave_ReplacementCandidate(
         self,
@@ -510,12 +516,10 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func, operator = get_quantized_function_counterpart(
             optable=self._optable, func_name=func_name
         )
-        num_quantized_vars = len(self.get_quantized_vars())
-        arg, quantizer_var_name = get_next_output_quantizer_kw_arg_and_name(
-            func_name=func_name,
-            current_num_quantized_vars=num_quantized_vars,
+        quantizer_var_name = self._quantizers.add_quantizer(
+            f"{self.quantizer_prefix}{func_name.split('.')[-1]}"
         )
-        self._quantized_vars.append(quantizer_var_name)
+        arg = get_output_quantizer_kwarg(quantizer_var_name)
 
         return QuantizedCall(
             func=func,

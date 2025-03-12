@@ -7,31 +7,21 @@ from fastforward._quantops import OperatorTable
 from fastforward._quantops.operator import Operator
 
 
-def get_next_output_quantizer_kw_arg_and_name(
-    func_name: str, current_num_quantized_vars: int
-) -> tuple[libcst.Arg, str]:
-    """Constructs a keyword argument node for an output quantizer related to the function name.
-
-    For example, for `func_name=torch.sigmoid` and `current_num_quantized_vars=5`, the
-    returned value is a `libcst.Arg`-node of keyword type which generates the code
-    `output_quantizer=self.quantizer_sigmoid_6`.
+def get_output_quantizer_kwarg(quantizer_var_name: str) -> libcst.Arg:
+    """Constructs a keyword argument node for a quantizer with name `quantizer_var_name`.
 
     Args:
-    func_name: The name of the function for which to generate the output quantizer.
-    current_num_quantized_vars: The current number of quantized variables.
+        quantizer_var_name: The name of the quantizer.
 
     Returns:
-        A tuple containing
-        - a keyword argument node for the output quantizer,
-        - the name of the new quantizer variable.
+        A keyword argument node for the output quantizer.
     """
-    quantized_var_name = f"quantizer_{func_name.split('.')[-1]}_{current_num_quantized_vars + 1}"
     dummy_arg = libcst.parse_expression(
-        f"dummy_fn(dummy_var, output_quantizer=self.{quantized_var_name})"
+        f"dummy_fn(dummy_var, output_quantizer=self.{quantizer_var_name})"
     )
     assert isinstance(dummy_arg, libcst.Call)
     quantizer_args = dummy_arg.args[-1]
-    return quantizer_args, quantized_var_name
+    return quantizer_args
 
 
 def get_quantized_function_counterpart(

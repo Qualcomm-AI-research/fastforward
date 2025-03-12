@@ -34,10 +34,7 @@ def convert_method(
 def _rewrite_quantized_operators(
     cst: libcst.FunctionDef, clsbuilder: QuantizedModuleBuilder, optable: OperatorTable
 ) -> libcst.FunctionDef:
-    function_replacement = QuantizedCounterpartReplacer(optable=optable)
+    function_replacement = QuantizedCounterpartReplacer(optable=optable, quantizer_list=clsbuilder)
     new_cst = cast(libcst.FunctionDef, cst.visit(function_replacement))
-
-    for var in function_replacement.get_quantized_vars():
-        clsbuilder.add_quantizer(var)
 
     return new_cst
