@@ -75,8 +75,10 @@ class QuantizedExampleModule1(fastforward.nn.QuantizedModule, ExampleModule1):
         super().__init_quantization__()
         self.quantizer_sigmoid_1 = fastforward.nn.QuantizerStub()
         self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_3 = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        x = self.quantizer_x_3(x)
         y = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid_1)
         return self.z, fastforward.nn.functional.relu(y, output_quantizer=self.quantizer_relu_2)
 """
@@ -97,7 +99,9 @@ class QuantizedExampleModule2(fastforward.nn.QuantizedModule, ExampleModule2):
         super().__init_quantization__()
         self.quantizer_conv2d_1 = fastforward.nn.QuantizerStub()
         self.quantizer_linear_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_3 = fastforward.nn.QuantizerStub()
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x_3(x)
         y = fastforward.nn.functional.conv2d(x, x, output_quantizer=self.quantizer_conv2d_1)
         return fastforward.nn.functional.linear(y, y, output_quantizer=self.quantizer_linear_2)
 """
@@ -139,7 +143,11 @@ class QuantizedExampleModule3(fastforward.nn.QuantizedModule, ExampleModule3):
         self.quantizer_pow_10 = fastforward.nn.QuantizerStub()
         self.quantizer_bitwise_right_shift_11 = fastforward.nn.QuantizerStub()
         self.quantizer_sub_12 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_13 = fastforward.nn.QuantizerStub()
+        self.quantizer_y_14 = fastforward.nn.QuantizerStub()
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y = self.quantizer_y_14(y)
+        x = self.quantizer_x_13(x)
         s = fastforward.nn.functional.add(x, y, output_quantizer=self.quantizer_add_1)
         s = fastforward.nn.functional.bitwise_or(x, y, output_quantizer=self.quantizer_bitwise_or_2)
         s = fastforward.nn.functional.bitwise_xor(x, y, output_quantizer=self.quantizer_bitwise_xor_3)
@@ -174,7 +182,9 @@ class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
         self.quantizer_positive_1 = fastforward.nn.QuantizerStub()
         self.quantizer_negative_2 = fastforward.nn.QuantizerStub()
         self.quantizer_bitwise_not_3 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_4 = fastforward.nn.QuantizerStub()
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x_4(x)
         s = fastforward.nn.functional.positive(x, output_quantizer=self.quantizer_positive_1)
         s = fastforward.nn.functional.negative(x, output_quantizer=self.quantizer_negative_2)
         s = fastforward.nn.functional.bitwise_not(x, output_quantizer=self.quantizer_bitwise_not_3)

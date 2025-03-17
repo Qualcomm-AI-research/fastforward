@@ -99,7 +99,7 @@ class _VariableTrackerVisitor:
 
     def _process_assignments(self, block: blocks.Block, tracker: "BlockTracker") -> None:
         for assignment, statement in block_node_elems.assignments_in_block(block):
-            quantization_status = _get_quantization_status(assignment.value)
+            quantization_status = get_quantization_status(assignment.value)
             for target in assignment.targets:
                 if isinstance(target, libcst.Name):
                     name = target.value
@@ -163,14 +163,14 @@ class Variable:
     quantized: QuantizationStatus = dataclasses.field(
         default=QuantizationStatus.Unknown, repr=True, compare=False, hash=False
     )
-    declaration_block: blocks.Block | None = dataclasses.field(
-        repr=False, compare=False, hash=False, default=None
+    declaration_block: blocks.Block = dataclasses.field(
+        repr=False, compare=False, hash=False, kw_only=True
     )
     declaration_node: libcst.SimpleStatementLine | libcst.BaseExpression | None = dataclasses.field(
         repr=False, compare=False, hash=False, default=None
     )
 
-    def mark_quantized(self, quantized=True) -> None:
+    def mark_quantized(self, quantized: bool = True) -> None:
         """Set quantized status."""
         status = QuantizationStatus.Quantized if quantized else QuantizationStatus.NotQuantized
         object.__setattr__(self, "quantized", status)
@@ -447,7 +447,19 @@ class _OrderedSet(Generic[_T]):
         return f"{type(self).__name__}({{{elems}}})"
 
 
-def _get_quantization_status(expr: libcst.BaseExpression) -> QuantizationStatus:
+def get_quantization_status(expr: libcst.BaseExpression) -> QuantizationStatus:
+    """Quantization status for the result of an expression.
+
+    All expressions that are not a `QuantizedCall` have an implied quantization
+    status `NotQuantized`. For a quantized call, the quantization status
+    depends on the return type of the function.
+
+    Args:
+        expr: The expr to infer the quantization status of.
+
+    Returns:
+        `QauntizationStatus` of `expr`.
+    """
     if not isinstance(expr, nodes.QuantizedCall):
         return QuantizationStatus.NotQuantized
     if expr.operator.returns_quantized:

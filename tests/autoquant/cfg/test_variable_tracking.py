@@ -15,12 +15,18 @@ from typing_extensions import override
 from tests.autoquant.cfg.cfg_test import CFGTest
 
 
+def _variable(name: str, version: int) -> variable_tracking.Variable:
+    """Create a variable with `name` and `version`."""
+    block = blocks.ExitBlock()
+    return variable_tracking.Variable(name=name, version=version, declaration_block=block)
+
+
 @pytest.fixture()
 def variable_set() -> variable_tracking.VariableSet:
     """Create a variable set with two members: ant:2, bat:0."""
     var_set = variable_tracking.VariableSet()
-    var_set.add(variable_tracking.Variable(name="ant", version=2))
-    var_set.add(variable_tracking.Variable(name="bat", version=0))
+    var_set.add(_variable(name="ant", version=2))
+    var_set.add(_variable(name="bat", version=0))
     return var_set
 
 
@@ -35,8 +41,8 @@ def test_variable_set_contains(
     # methods for member testing.
     assert variable_set.contains(name)
     assert variable_set.contains(name, version)
-    assert variable_tracking.Variable(name, version) in variable_set
-    assert variable_set.contains(variable_tracking.Variable(name, version))
+    assert _variable(name, version) in variable_set
+    assert variable_set.contains(_variable(name, version))
 
 
 @pytest.mark.parametrize("name,version", [("ant", 0), ("bat", 3), ("cat", 0)])
@@ -51,8 +57,8 @@ def test_variable_set_not_contains(
     if name not in ("ant", "bat"):  # 'ant' and 'bat' are members, so skip this assertion
         assert not variable_set.contains(name)
     assert not variable_set.contains(name, version)
-    assert variable_tracking.Variable(name, version) not in variable_set
-    assert not variable_set.contains(variable_tracking.Variable(name, version))
+    assert _variable(name, version) not in variable_set
+    assert not variable_set.contains(_variable(name, version))
 
 
 def test_variable_set_remove(variable_set: variable_tracking.VariableSet) -> None:
@@ -60,10 +66,10 @@ def test_variable_set_remove(variable_set: variable_tracking.VariableSet) -> Non
     assert len(variable_set) == 2
 
     # WHEN a variable is removed from the variable set
-    variable_set.remove(variable_tracking.Variable("ant", 2))
+    variable_set.remove(_variable("ant", 2))
 
     # THEN it must no longer be a member of the variable set
-    assert variable_tracking.Variable("ant", 2) not in variable_set
+    assert _variable("ant", 2) not in variable_set
 
     # WHEN a variable is removed from the variable set
     variable_set.remove("bat")
@@ -80,10 +86,10 @@ def test_variable_set_union() -> None:
     varset1 = variable_tracking.VariableSet()
     varset2 = variable_tracking.VariableSet()
 
-    varset1.add(var1 := variable_tracking.Variable("ant", 0))
-    varset1.add(var2 := variable_tracking.Variable("bat", 2))
-    varset2.add(variable_tracking.Variable("ant", 0))
-    varset2.add(var3 := variable_tracking.Variable("cat", 1))
+    varset1.add(var1 := _variable("ant", 0))
+    varset1.add(var2 := _variable("bat", 2))
+    varset2.add(_variable("ant", 0))
+    varset2.add(var3 := _variable("cat", 1))
 
     # WHEN a union between both variable sets is created
     union = varset1.union(varset2)
@@ -100,10 +106,10 @@ def test_variable_set_subtract() -> None:
     varset1 = variable_tracking.VariableSet()
     varset2 = variable_tracking.VariableSet()
 
-    varset1.add(variable_tracking.Variable("ant", 0))
-    varset1.add(remaining_var := variable_tracking.Variable("bat", 2))
-    varset2.add(variable_tracking.Variable("ant", 0))
-    varset2.add(variable_tracking.Variable("cat", 1))
+    varset1.add(_variable("ant", 0))
+    varset1.add(remaining_var := _variable("bat", 2))
+    varset2.add(_variable("ant", 0))
+    varset2.add(_variable("cat", 1))
 
     # WHEN a the second set is subtracted from the first
     subtraction = varset1.subtract(varset2)
@@ -118,11 +124,11 @@ def test_variable_set_subtract_all_versions() -> None:
     varset1 = variable_tracking.VariableSet()
     varset2 = variable_tracking.VariableSet()
 
-    varset1.add(variable_tracking.Variable("ant", 0))
-    varset1.add(variable_tracking.Variable("ant", 5))
-    varset1.add(remaining_var := variable_tracking.Variable("bat", 2))
-    varset2.add(variable_tracking.Variable("ant", 0))
-    varset2.add(variable_tracking.Variable("cat", 1))
+    varset1.add(_variable("ant", 0))
+    varset1.add(_variable("ant", 5))
+    varset1.add(remaining_var := _variable("bat", 2))
+    varset2.add(_variable("ant", 0))
+    varset2.add(_variable("cat", 1))
 
     # WHEN a the second set is subtracted from the first, ignoring versions
     subtraction = varset1.subtract(varset2, all_versions=True)
@@ -139,12 +145,12 @@ def test_variable_set_eq() -> None:
     varset2 = variable_tracking.VariableSet()
     varset3 = variable_tracking.VariableSet()
 
-    varset1.add(variable_tracking.Variable("ant", 0))
-    varset1.add(variable_tracking.Variable("bat", 2))
-    varset2.add(variable_tracking.Variable("ant", 0))
-    varset2.add(variable_tracking.Variable("bat", 2))
-    varset3.add(variable_tracking.Variable("ant", 0))
-    varset3.add(variable_tracking.Variable("cat", 1))
+    varset1.add(_variable("ant", 0))
+    varset1.add(_variable("bat", 2))
+    varset2.add(_variable("ant", 0))
+    varset2.add(_variable("bat", 2))
+    varset3.add(_variable("ant", 0))
+    varset3.add(_variable("cat", 1))
 
     # THEN the resulting set equality must follow normal expectations
     assert varset1 == varset2
