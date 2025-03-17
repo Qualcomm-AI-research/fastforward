@@ -1,0 +1,18 @@
+name: Free Form
+description: Issue template for the impatient. Generally, we prefer bug reports or feature requests.
+title: "[Issue]: "
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this issue report!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What is the issue?
+      description: A description of the issue. 
+      placeholder: In FastForward, I observed  ...
+    validations:
+      required: true

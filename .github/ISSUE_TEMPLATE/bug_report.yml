@@ -1,0 +1,61 @@
+name: Bug Report
+description: Report a bug to help us improve FastForward. Please search for a similar bug report before filing a new report to avoid duplication.
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this bug!
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Observed behavior. 
+      placeholder: Let us know what happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What should have happened instead?
+      description: Describe the expected behavior or outcome.
+      placeholder: Please explain what you expected to happen.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output (stdout/stderr)
+      description: Paste any relevant output, such as error messages or logs.
+      render: text 
+
+  - type: input
+    id: version
+    attributes:
+      label: FastForward version used
+      description: Please provide the version of FastForward you were using (e.g., v0.2.3) or the commit hash (e.g., d3adb33f).
+      placeholder: Version or commit hash
+
+  - type: textarea
+    id: minimal-example
+    attributes:
+      label: Can you reproduce the issue? (optional)
+      description: If you have a minimal example that reproduces the issue, please provide it, along with the environment in which to observe it.
+      render: text 
+      placeholder: |
+          Checkout my commit at https://some_git/some_project/blob/58c07a829ca126e9bd685fc0e5fedee93b731485/some_subdir/some_func.py
+
+          Set up the environment via ...
+
+          Run this command: ...
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to contribute a fix?
+      description: Are you willing and able to contribute a fix for this issue?
+      options:
+        - label: Yes, I'd like to contribute a fix.
