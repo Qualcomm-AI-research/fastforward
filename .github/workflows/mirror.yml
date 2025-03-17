@@ -8,10 +8,31 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.server_url != 'https://github.com' }}
+    if: ${{ github.server_url != 'https://github.com' && github.ref == github.event.repository.default_branch }}
     runs-on: ubuntu-latest
+    env:
+      CHECKOUT_DIR: "_mirror"
+      MIRROR_REFS: "refs/heads/main" # to extend, add further refs separated by blanks
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Clone default branch with git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: ${{ github.event.repository.html_url }}
+        run: |
+          repo_url_with_token="${REPO_URL/https:\/\//https://x-access-token:${GITHUB_TOKEN}@}"
+          git clone --mirror --no-checkout "${repo_url_with_token}" "${CHECKOUT_DIR}"
+      - name: Set up SSH deploy key
+        env:
+          PRIVATE_KEY: ${{ secrets.FF_EXTERNAL_DEPLOY }}
+          SERVER_URL: ${{ github.server_url }}
+        run: | 
+          mkdir -p ~/.ssh
+          github_server="${SERVER_URL#https://}"
+          ssh-keyscan "${github_server}" >> ~/.ssh/known_hosts
+          echo "${PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 0600 ~/.ssh/id_rsa
+      - name: Push code to external repository
+        env:
+          DEST_REPO: git@github.com:Qualcomm-AI-research/fastforward.git
+        run: |
+          git -C "${CHECKOUT_DIR}" push "${DEST_REPO}" ${MIRROR_REFS}
