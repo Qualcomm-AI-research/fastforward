@@ -32,7 +32,7 @@ from fastforward.export._export_helpers import (
     get_inputs,
     get_parameters,
 )
-from fastforward.export.export_tools import DynamoGraphTraverser
+from fastforward.export.graph_operations import PropagateEncodingsOperation
 from fastforward.flags import export_mode
 
 _T = TypeVar("_T")
@@ -417,6 +417,7 @@ def export(
     model_kwargs: None | dict[str, Any] = None,
     input_names: None | list[str] = None,
     output_names: None | list[str] = None,
+    propagate_encodings: bool = False,
 ) -> pathlib.Path:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -446,6 +447,8 @@ def export(
         place in the ONNX level, __NOT__ the dynamo level. This means that if the user defines
         any graph preprocessor operations that target the dynamo input/output nodes, there will
         be a name mismatch between the dynamo input/output names and the ONNX input/output names.
+    5) In the case where the `propagate_encodings` argument is set to `True` a graph traversal
+        mechanism is invoked, assigning encodings to any operations where these can be inferred.
 
     Finally the function will store the model in the user-defined `output_directory`, using the
     user-defined `model_name`.
@@ -462,6 +465,8 @@ def export(
         model_kwargs: kwargs passed to the model during export.
         input_names: Replace the default ONNX artifact input names with user defined ones.
         output_names: Replace the default ONNX artifact output names with user defined ones.
+        propogate_encodings: Option to propagate the quantization encodings through as many operations
+            in the graph as possible.
 
     Returns:
         The path to the output directory where the encodings and ONNX files are stored.
@@ -497,6 +502,12 @@ def export(
     # Given that the users could have defined additional operations that happen before these,
     # we keep track of it location in the list.
     quantization_logs = raw_logs[log_quantization_parameter_operation_location]
+
+    if propagate_encodings:
+        propagate_encodings_op = PropagateEncodingsOperation(dynamo_exported_program, quantization_logs)
+        propagated_encodings_dict = propagate_encodings_op.process()
+        quantization_logs.update(propagated_encodings_dict)
+
 
     torch_onnx_model: onnxscript.ir.Model = torch_onnx.exported_program_to_ir(
         dynamo_exported_program
@@ -555,11 +566,6 @@ def export(
     encodings_dictionary = generate_qnn_encodings_dictionary(
         used_inputs, used_activations, used_parameters, quantization_logs
     )
-
-    dynamo_graph_traverser = DynamoGraphTraverser(dynamo_exported_program.graph, encodings_dictionary)
-    extended_dictionary = dynamo_graph_traverser()
-    encodings_dictionary["activation_encodings"].update(extended_dictionary)
-
 
     with open(encodings_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)
