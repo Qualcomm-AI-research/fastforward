@@ -13,6 +13,7 @@ import torch
 from fastforward.autoquant import pysource
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "name,object_",
     [
@@ -69,6 +70,7 @@ def test_source_context_get(
     assert module_cst.code == object_source
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "name,expected_type",
     [

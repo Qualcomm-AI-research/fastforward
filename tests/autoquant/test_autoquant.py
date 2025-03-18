@@ -33,6 +33,7 @@ class _AssertNoAssignments(libcst.CSTVisitor):
         assert False, "CST contains AnnAssign node"
 
 
+@pytest.mark.slow
 def test_default_source_context_wraps_assignment_nodes() -> None:
     # GIVEN the default source context
     source_context = default_source_context()
@@ -181,6 +182,7 @@ class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
 """
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module, expected_codegen",
     [
@@ -189,6 +191,7 @@ class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
         (FLOAT_MODULE_3, AUTOQUANTIZED_MODULE_OUT_3),
         (FLOAT_MODULE_4, AUTOQUANTIZED_MODULE_OUT_4),
     ],
+    ids=[f"case-{i}" for i in range(1, 5)],
 )
 def test_autoquant_introduces_quantization_method(
     input_module: torch.nn.Module, expected_codegen: str
