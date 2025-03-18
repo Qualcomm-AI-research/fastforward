@@ -192,6 +192,40 @@ class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
 """
 
 
+# Example with local variable re-assignment with non-quantized functions
+class ExampleModule5(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.relu(x)
+        x = self.do_something(x)
+        x = self.do_something(x)
+        x = torch.sigmoid(x)
+        return x
+
+    def do_something(self, x: torch.Tensor) -> torch.Tensor:
+        return x
+
+
+FLOAT_MODULE_5 = ExampleModule5()
+
+AUTOQUANTIZED_MODULE_OUT_5 = """
+class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_3 = fastforward.nn.QuantizerStub()
+        self.quantizer_x_4 = fastforward.nn.QuantizerStub()
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x_3(x)
+        x = fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu_1)
+        x = self.do_something(x)
+        x = self.do_something(x)
+        x = self.quantizer_x_4(x)
+        x = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid_2)
+        return x
+"""
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module, expected_codegen",
@@ -200,8 +234,9 @@ class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
         (FLOAT_MODULE_2, AUTOQUANTIZED_MODULE_OUT_2),
         (FLOAT_MODULE_3, AUTOQUANTIZED_MODULE_OUT_3),
         (FLOAT_MODULE_4, AUTOQUANTIZED_MODULE_OUT_4),
+        (FLOAT_MODULE_5, AUTOQUANTIZED_MODULE_OUT_5),
     ],
-    ids=[f"case-{i}" for i in range(1, 5)],
+    ids=[f"case-{i}" for i in range(1, 6)],
 )
 def test_autoquant_introduces_quantization_method(
     input_module: torch.nn.Module, expected_codegen: str
@@ -218,6 +253,7 @@ def test_autoquant_introduces_quantization_method(
     source_context = pysource.SourceContext(
         preprocessing_passes=[
             passes.MarkReplacementCandidates(),
+            passes.WrapAssignments(),
         ]
     )
 

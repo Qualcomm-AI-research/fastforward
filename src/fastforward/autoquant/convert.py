@@ -82,17 +82,63 @@ def _add_input_quantizers(cfg: blocks.FunctionBlock, clsbuilder: QuantizedModule
 
     for block in cfg.blocks():
         active_vars = copy.copy(block_trackers[block].vars_in)
-        for _, assign_or_call in block_node_elems.extract_nodes_from_block(
+        vars_local = block_trackers[block].vars_local
+        vars_gen = block_trackers[block].vars_gen
+        vars_all_gen = vars_local.union(vars_gen)
+        for decl_node, assign_or_call in block_node_elems.extract_nodes_from_block(
             block, node_types=(nodes.GeneralAssignment, libcst.Call), include_subclasses=True
         ):
             match assign_or_call:
                 case nodes.GeneralAssignment():
-                    # Update `active_vars` based on assignments in block (#132)
-                    pass
+                    _process_assignments(
+                        assign=assign_or_call,
+                        active_vars=active_vars,
+                        local_vars=vars_all_gen,
+                        declaration_node=decl_node,
+                    )
                 case nodes.QuantizedCall():
                     _process_quantized_call(assign_or_call, active_vars, clsbuilder)
                 case _:
                     pass
+
+
+def _process_assignments(
+    assign: nodes.GeneralAssignment,
+    active_vars: variable_tracking.VariableSet,
+    local_vars: variable_tracking.VariableSet,
+    declaration_node: libcst.CSTNode,
+) -> None:
+    """Process assignment node `assign` and update `active_vars`.
+
+    Block trackers represent the variable state at the start and conclusion of a block,
+    however, during execution the variable state also changes. This function updates
+    the `active_vars` set to represent new assignments during the execution of a block.
+
+    Args:
+        assign: The CST node that represents the assignment.
+        active_vars: Variable set that contains active variables.
+        local_vars: A set of variables that is assigned in the current block.
+        declaration_node: The node that represents the line on which the
+            assignment took place. This is used as `declaration_node` for variables
+            in the variable sets and can be used for lookups.
+    """
+    for target in assign.targets:
+        if isinstance(target, libcst.Name):
+            name = target.value
+            found_variable = False
+            for var in local_vars.find_variables_for_node(declaration_node):
+                if var.name == target.value:
+                    _ = active_vars.remove(name)
+                    active_vars.add(var)
+                    found_variable = True
+
+            if not found_variable:
+                msg = (
+                    "There is no corresponding variable in 'local_vars' for assignment 'assign' "
+                    "This can happen when the assignment was added after the variable tracking sets "
+                    "were created. This is not supported."
+                )
+                raise RuntimeError(msg)
 
 
 def _process_quantized_call(

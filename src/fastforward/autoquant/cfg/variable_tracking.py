@@ -109,7 +109,8 @@ class _VariableTrackerVisitor:
                         declaration_block=block,
                         declaration_node=statement,
                     )
-                    tracker.vars_gen.remove(name)
+                    for cur_var in tracker.vars_gen.remove(name):
+                        tracker.vars_local.add(cur_var)
                     tracker.vars_gen.add(var)
 
         self._visit_children(block)
@@ -290,11 +291,11 @@ class VariableSet(Set[Variable]):
         yield from self._variables[name]
 
     @overload
-    def remove(self, var: Variable, /, version: None = None) -> None: ...
+    def remove(self, var: Variable, /, version: None = None) -> list[Variable]: ...
     @overload
-    def remove(self, name: str, /, version: int | None = None) -> None: ...
+    def remove(self, name: str, /, version: int | None = None) -> list[Variable]: ...
 
-    def remove(self, var_or_name: Variable | str, /, version: int | None = None) -> None:
+    def remove(self, var_or_name: Variable | str, /, version: int | None = None) -> list[Variable]:
         """Remove variable from set.
 
         Args:
@@ -302,6 +303,9 @@ class VariableSet(Set[Variable]):
             version: If `var_or_name` is a `str`, the version of the variable
                 to remove. Remove all variables that match a name if `version`
                 is None.
+
+        Returns:
+            A list of variables removed from this set.
         """
         if isinstance(var_or_name, Variable):
             name = var_or_name.name
@@ -309,14 +313,23 @@ class VariableSet(Set[Variable]):
         else:
             name = var_or_name
 
+        # Collect removed variables in list instead of yielding to ensure that
+        # the entire remove operation is executed -- even when the result is not
+        # consumed.
+        removed_vars: list[Variable] = []
         try:
             if version is None:
+                for var in self._variables[name].values():
+                    removed_vars.append(var)
                 del self._variables[name]
             else:
+                removed_vars.append(self._variables[name][version])
                 del self._variables[name][version]
         except KeyError:
             # Variable is not part of set
             pass
+
+        return removed_vars
 
     def subtract(self, other: "VariableSet", all_versions: bool = False) -> Self:
         """Create a new set that contains all elements in `self` that or not in `other`.
@@ -362,6 +375,12 @@ class VariableSet(Set[Variable]):
         )
         return f"{{{', '.join(names)}}}"
 
+    def find_variables_for_node(self, node: libcst.CSTNode) -> Iterator[Variable]:
+        """Yield all variables that define `node` as `declaration_node`."""
+        for var in self:
+            if var.declaration_node is node:
+                yield var
+
 
 @dataclasses.dataclass
 class BlockTracker:
@@ -374,12 +393,15 @@ class BlockTracker:
           associated block.
         - `vars_gen`: Variables that are assigned in the associated block.
         - `vars_kill` Variables that are deleted in the associated block.
+        - `vars_local` Variables that assigned in the associated block but are
+            overridden or deleted before the end of the block.
     """
 
     vars_in: VariableSet = dataclasses.field(default_factory=VariableSet)
     vars_out: VariableSet = dataclasses.field(default_factory=VariableSet)
     vars_gen: VariableSet = dataclasses.field(default_factory=VariableSet)
     vars_kill: VariableSet = dataclasses.field(default_factory=VariableSet)
+    vars_local: VariableSet = dataclasses.field(default_factory=VariableSet)
 
 
 _T = TypeVar("_T", bound=Hashable)
