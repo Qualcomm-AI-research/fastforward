@@ -1,5 +1,5 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # This file contains test examples used in
 # tests/autoquant/cfg/test_reconstruct.py::test_reconstruct
