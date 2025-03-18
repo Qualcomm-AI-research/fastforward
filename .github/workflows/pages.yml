@@ -29,11 +29,12 @@ jobs:
         with:
           ref: "${{ env.PAGES_BRANCH }}"
       - uses: actions/checkout@v4
-      - run: curl -L https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 -o jq && chmod +x ./jq
+      - run: |
+          apt update -qq && apt install -y jq rsync
       - name: Generate docs
         run: |
           export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-          export DOCS_SITE_URL="$(curl -k -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages | ./jq -r '.html_url')"
+          export DOCS_SITE_URL="$(curl -k -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages | jq -r '.html_url')"
           python3 -m pip install ".[docs]"
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
@@ -47,6 +48,23 @@ jobs:
         uses: actions/upload-pages-artifact@v2
         with:
           path: "${{ env.PAGES_PREFIX }}"
+      - name: Generate public docs
+        run: |
+          git clean -xdf
+          git fetch --force
+          git switch gh-pages
+          git checkout $PAGES_BRANCH -- $PAGES_PREFIX
+          rsync -av $PAGES_PREFIX/index.html $PAGES_PREFIX/../index.html
+          find $PAGES_PREFIX -maxdepth 1 -type d  -name 'main' -o -name 'latest' -o -regex '.*/[0-9]+.[0-9]+.[0-9]+' | xargs -i -n 1 sh -c 'rsync -av {} $(readlink -f {}) $PAGES_PREFIX/..'
+          jq --arg versions "$(find $PAGES_PREFIX/.. -mindepth 1 -maxdepth 1 -type d -printf '%f ')" '[.[] | select(.version | IN($versions | split(" ") | .[]))]' $PAGES_PREFIX/versions.json > $PAGES_PREFIX/../versions.json
+          rm -rf $PAGES_PREFIX
+          grep -rl "https://github\..*/fastforward" --exclude-dir=.git . | xargs sed -i 's|https://github\..*/fastforward|https://github.com/Qualcomm-AI-research/fastforward|g'
+          git add --all .
+          if [ -n "$(git status --porcelain)" ] ; then
+            git status
+            git commit --reuse-message=$PAGES_BRANCH
+            git push origin gh-pages:gh-pages
+          fi
 
   deploy:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed'
