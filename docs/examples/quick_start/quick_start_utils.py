@@ -1,5 +1,5 @@
-# Copyright (c) 2024 Qualcomm Technologies, Inc.
-# All Rights Reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 # Code adapted from https://github.com/huggingface/transformers
 # Copyright 2018- The Hugging Face team. All rights reserved. Licensed under the Apache License, Version 2.0

@@ -150,13 +150,15 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F403"]
+[tool.ruff.lint.flake8-copyright]
+notice-rgx = "Copyright \\(c\\) Qualcomm Technologies, Inc. and/or its subsidiaries.(?:#|\\s)*SPDX-License-Identifier: BSD-3-Clause-Clear"
 
 [tool.ruff.lint.isort]
 lines-between-types = 1
 known-local-folder = ["funcgen"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F403"]
 
 [tool.basedpyright]
 reportAny = false
