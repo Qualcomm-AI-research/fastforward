@@ -5,10 +5,12 @@ on:
     workflows: ["CI Pipeline"]
     types:
       - completed
+    branches:
+      - 'main'
 
 jobs:
   deploy:
-    if: ${{ github.server_url != 'https://github.com' && github.ref == github.event.repository.default_branch }}
+    if: ${{ github.server_url != 'https://github.com' }}
     runs-on: ubuntu-latest
     env:
       CHECKOUT_DIR: "_mirror"
