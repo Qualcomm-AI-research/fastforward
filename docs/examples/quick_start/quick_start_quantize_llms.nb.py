@@ -131,7 +131,7 @@ print(
 # ### Step 4: Convert to a Quantization-Ready Model
 # First, we need to convert our model into a _quantization-ready_ one. This type of model, called a `QuantizedModule`, allows us to fully or partially quantize the model easily. These modules work like standard `PyTorch` modules but have extra features for seamless interaction with `FastForward` APIs.
 #
-# Currently, converting a model into a quantized module is semi-automatic and requires a custom implementation of all the PyTorch modules involved. If you want to create a custom QuantizedModule, check out [the tutorial on manually quantizing custom modules](https://compression.morpheus-gitlab-pages.qualcomm.com/fastforward/latest/examples/quantizing_networks.nb/#43-quantizing-custom-modules-manual-quantization). However, for this tutorial, we will use pre-provided modules to quantize the Llama model.
+# Currently, converting a model into a quantized module is semi-automatic and requires a custom implementation of all the PyTorch modules involved. If you want to create a custom QuantizedModule, check out [the tutorial on manually quantizing custom modules](examples/quantizing_networks.nb/#43-quantizing-custom-modules-manual-quantization). However, for this tutorial, we will use pre-provided modules to quantize the Llama model.
 
 # +
 
@@ -182,7 +182,7 @@ model.to(device)
 # In this case, we merged two collections simply using the `|` operator.
 #
 # For more information about **mpath** and its full range of functionalities,
-# we recommend reading the [**MPath tutorial**](https://compression.morpheus-gitlab-pages.qualcomm.com/fastforward/latest/examples/mpath.nb/).
+# we recommend reading the [**MPath tutorial**](../../mpath.nb/).
 #
 
 # ## Calibrate Weight-Quantized Model
@@ -283,7 +283,7 @@ print(f" - W+A Quantized model:  {wa_quant_perplexity:.4f}  (W{w_bits}A{a_bits})
 #
 # FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules.
 #
-# For more information on how to quantize a model from scratch, check out the tutorial:[Getting Started: Quantizing a LLM from scratch](https://compression.morpheus-gitlab-pages.qualcomm.com/fastforward/latest/examples/quantizing_networks.nb/).
+# For more information on how to quantize a model from scratch, check out the tutorial:[Getting Started: Quantizing a LLM from scratch](examples/quantizing_networks.nb/).
 
 # %% [markdown]
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
