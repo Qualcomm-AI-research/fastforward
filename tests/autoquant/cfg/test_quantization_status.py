@@ -30,7 +30,7 @@ class TestQuantizationStatus(CFGTest):
         var_status: dict[str, QuantizationStatus] = {}
         for tracker in block_trackers.values():
             for var in tracker.vars_gen:
-                var_status[f"{var.name}:{var.version}"] = var.quantized
+                var_status[f"{var.name}:{var.version}"] = var.quantization_status
 
         for name, status in expected_status.items():
             assert var_status[name] is status

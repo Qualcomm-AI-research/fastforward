@@ -160,7 +160,7 @@ class Variable:
 
     name: str
     version: int | None
-    quantized: QuantizationStatus = dataclasses.field(
+    quantization_status: QuantizationStatus = dataclasses.field(
         default=QuantizationStatus.Unknown, repr=True, compare=False, hash=False
     )
     declaration_block: blocks.Block = dataclasses.field(
@@ -173,7 +173,7 @@ class Variable:
     def mark_quantized(self, quantized: bool = True) -> None:
         """Set quantized status."""
         status = QuantizationStatus.Quantized if quantized else QuantizationStatus.NotQuantized
-        object.__setattr__(self, "quantized", status)
+        object.__setattr__(self, "quantization_status", status)
 
 
 class VariableCollection:
@@ -210,7 +210,7 @@ class VariableCollection:
             Variable(
                 name=name,
                 version=len(variables),
-                quantized=quantization_status,
+                quantization_status=quantization_status,
                 declaration_block=declaration_block,
                 declaration_node=declaration_node,
             )

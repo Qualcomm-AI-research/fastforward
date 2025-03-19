@@ -149,7 +149,7 @@ def _ensure_quantized(
         clsbuilder: The builder object for the quantized class.
     """
     for var in active_vars[name]:
-        if var.quantized is not variable_tracking.QuantizationStatus.Quantized:
+        if var.quantization_status is not variable_tracking.QuantizationStatus.Quantized:
             _insert_quantizer_for(var, clsbuilder)
 
 
