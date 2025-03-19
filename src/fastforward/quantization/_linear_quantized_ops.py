@@ -89,8 +89,6 @@ def _is_affine(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
 affine_predicate = Predicate(_is_affine)
 
 
-# See https://morpheus-gitlab.qualcomm.com/compression/fastforward/-/issues/67
-# for why the type: ignore[arg-type] is required
 @register("contiguous", None)  # type: ignore[arg-type]
 def contiguous(input: QuantizedTensor) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.contiguous(), input)
@@ -120,8 +118,6 @@ def transpose(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.transpose(*args), input)
 
 
-# See https://morpheus-gitlab.qualcomm.com/compression/fastforward/-/issues/67
-# for why the type: ignore[arg-type] is required
 @register("ones_like", None)  # type: ignore[arg-type]
 def ones_like(input: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
     return torch.ones_like(input.raw_data, **{"dtype": torch.float, **kwargs})
