@@ -26,15 +26,13 @@ jobs:
       - name: Set up SSH deploy key
         env:
           PRIVATE_KEY: ${{ secrets.FF_EXTERNAL_DEPLOY }}
-          SERVER_URL: ${{ github.server_url }}
         run: | 
           mkdir -p ~/.ssh
-          github_server="${SERVER_URL#https://}"
-          ssh-keyscan "${github_server}" >> ~/.ssh/known_hosts
           echo "${PRIVATE_KEY}" > ~/.ssh/id_rsa
           chmod 0600 ~/.ssh/id_rsa
       - name: Push code to external repository
         env:
           DEST_REPO: git@github.com:Qualcomm-AI-research/fastforward.git
+          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
         run: |
           git -C "${CHECKOUT_DIR}" push "${DEST_REPO}" ${MIRROR_REFS}
