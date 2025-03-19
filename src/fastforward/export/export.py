@@ -447,8 +447,8 @@ def export(
         place in the ONNX level, __NOT__ the dynamo level. This means that if the user defines
         any graph preprocessor operations that target the dynamo input/output nodes, there will
         be a name mismatch between the dynamo input/output names and the ONNX input/output names.
-    5) In the case where the `propagate_encodings` argument is set to `True` a graph traversal
-        mechanism is invoked, assigning encodings to any operations where these can be inferred.
+    5) In the case where the `propagate_encodings` argument is set to `True encodings will be
+        automatically inferred to any operations where that is possible.
 
     Finally the function will store the model in the user-defined `output_directory`, using the
     user-defined `model_name`.
