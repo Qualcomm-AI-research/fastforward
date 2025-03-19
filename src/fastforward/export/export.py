@@ -465,7 +465,7 @@ def export(
         model_kwargs: kwargs passed to the model during export.
         input_names: Replace the default ONNX artifact input names with user defined ones.
         output_names: Replace the default ONNX artifact output names with user defined ones.
-        propogate_encodings: Option to propagate the quantization encodings through as many operations
+        propagate_encodings: Option to propagate the quantization encodings through as many operations
             in the graph as possible.
 
     Returns:
@@ -504,10 +504,11 @@ def export(
     quantization_logs = raw_logs[log_quantization_parameter_operation_location]
 
     if propagate_encodings:
-        propagate_encodings_op = PropagateEncodingsOperation(dynamo_exported_program, quantization_logs)
+        propagate_encodings_op = PropagateEncodingsOperation(
+            dynamo_exported_program, quantization_logs
+        )
         propagated_encodings_dict = propagate_encodings_op.process()
         quantization_logs.update(propagated_encodings_dict)
-
 
     torch_onnx_model: onnxscript.ir.Model = torch_onnx.exported_program_to_ir(
         dynamo_exported_program

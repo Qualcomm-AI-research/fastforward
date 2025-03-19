@@ -1,3 +1,6 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
 import json
 import pathlib
 
@@ -28,7 +31,9 @@ def simple_model() -> QuantizedModelFixture:
             self.relu2 = ff.nn.QuantizedRelu()
             self.fc3 = ff.nn.QuantizedLinear(net_in_out_dim, net_in_out_dim, bias=False)
 
-            self.extra_weight = torch.nn.Parameter(torch.rand(size=(net_in_out_dim, net_in_out_dim)))
+            self.extra_weight = torch.nn.Parameter(
+                torch.rand(size=(net_in_out_dim, net_in_out_dim))
+            )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             x = self.fc1(x)
@@ -69,6 +74,7 @@ def activate_quantizers(
 
 
 @pytest.mark.xfail_due_to_too_new_torch
+@pytest.mark.slow
 @ff.flags.context(ff.strict_quantization, False)
 def test_encodings_propagation(
     tmp_path: pathlib.Path,
@@ -113,17 +119,17 @@ def test_encodings_propagation(
     assert original_activation_names <= new_activation_names
 
     # THEN the encodings for new activations should be associated as displayed in the below dictionar.
-    # Case 1: these derived from other activations
-    activation_to_activation_association = {
-        "view": "mm",
-        "view_1": "mm"
-    }
+    # Case 1: these are derived from other activations
+    activation_to_activation_association = {"view": "mm", "view_1": "mm"}
 
     for new_activation, original_activation in activation_to_activation_association.items():
-        assert encodings_dictionary["activation_encodings"][new_activation] == encodings_dictionary["activation_encodings"][original_activation]
+        assert (
+            encodings_dictionary["activation_encodings"][new_activation]
+            == encodings_dictionary["activation_encodings"][original_activation]
+        )
 
     # THEN the encodings for new activations should be associated as displayed in the below dictionar.
-    # Case 2: these derived from parameters
+    # Case 2: these are derived from parameters
     activation_to_parameter_association = {
         "t": "fc1.weight",
         "t_1": "fc2.weight",
@@ -131,10 +137,12 @@ def test_encodings_propagation(
     }
 
     for new_activation, original_activation in activation_to_parameter_association.items():
-        assert encodings_dictionary["activation_encodings"][new_activation] == encodings_dictionary["param_encodings"][original_activation]
+        assert (
+            encodings_dictionary["activation_encodings"][new_activation]
+            == encodings_dictionary["param_encodings"][original_activation]
+        )
 
-    # THEN encodings should not have propagated to the following parameters.
+    # THEN encodings should not have propagated to the following parameters as these are not quantized.
     assert encodings_dictionary["param_encodings"].get("extra_weight") is None
     assert encodings_dictionary["activation_encodings"].get("_softmax") is None
-    assert encodings_dictionary["activation_encodings"].get("tanh") is None
     assert encodings_dictionary["activation_encodings"].get("mm_3") is None

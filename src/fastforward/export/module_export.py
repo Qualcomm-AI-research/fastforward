@@ -113,7 +113,7 @@ def export_modules(
         model_name: The name of the model, the output directory will be named after it.
         kwargs: The kwargs used at inference for the torch model
         output_path: Path to the exported artifacts.
-        propogate_encodings: Option to propagate the quantization encodings through as many
+        propagate_encodings: Option to propagate the quantization encodings through as many
             operations as possible for each exported graph.
 
     Returns:
@@ -159,7 +159,7 @@ def export_modules(
             output_path,
             module_name,
             model_kwargs=module_input_kwargs,
-            propagate_encodings=propagate_encodings
+            propagate_encodings=propagate_encodings,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings

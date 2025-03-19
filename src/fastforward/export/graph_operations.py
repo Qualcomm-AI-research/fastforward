@@ -1,3 +1,6 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
 import abc
 import collections
 
@@ -11,26 +14,61 @@ _T = TypeVar("_T")
 
 
 class GraphOperation(abc.ABC, Generic[_T]):
-    """Base class for interacting with a torch fx graoh."""
+    """Base class for interacting with a torch fx graph."""
+
     @abc.abstractmethod
     def process(self) -> _T:
-        """Method for performing some operation in the graph"""
+        """Method for performing some operation in the graph."""
         ...
 
 
 class PropagateEncodingsOperation(GraphOperation[dict[str, QuantParametersDict]]):
-    def __init__(self, exported_program: torch.export.exported_program.ExportedProgram, quantization_logs: dict[QuantParametersDict]) -> None:
+    """Graph operation for propagating encodings.
+
+    Args:
+        exported_program: The dynamo generated ExportedProgram where the propagation will happen.
+        quantization_logs: The dictionary of quantization parameters that has been gathered through
+            the NodeVisitor process.
+    """
+
+    def __init__(
+        self,
+        exported_program: torch.export.exported_program.ExportedProgram,
+        quantization_logs: dict[str, QuantParametersDict],
+    ) -> None:
         self.exported_program = exported_program
 
         self.input_spec_to_type: dict[str, torch.export.graph_signature.InputKind] = {
-            input_spec.arg.name: input_spec.kind for input_spec in self.exported_program.graph_signature.input_specs
+            input_spec.arg.name: input_spec.kind
+            for input_spec in self.exported_program.graph_signature.input_specs
         }
 
-        self.dynamo_graph = exported_program.graph
-        self.graph_nodes = {node.name: node for node in self.dynamo_graph.nodes}
+        self.dynamo_graph: torch.fx.graph.Graph = exported_program.graph
+        self.graph_nodes: dict[str, torch.fx.node.Node] = {
+            node.name: node for node in self.dynamo_graph.nodes
+        }
         self.quantization_logs = quantization_logs
 
-    def get_node_and_encodings_fron_name(self, name: str) -> tuple[torch.fx.node.Node, QuantParametersDict]:
+    def get_node_and_encodings_fron_name(
+        self, name: str
+    ) -> tuple[torch.fx.node.Node | None, QuantParametersDict | None]:
+        """Retrieve the node object and encodings given a potential node name.
+
+        Operation to retrieve the node and encodings from a given node name, based on whether
+        this is presented as a node on the graph, and encodings associated with it on the quantization
+        logs. NB: The parameter nodes in the graph have a different name structure to signify them
+        as parameters, than how they appear in the torch model. For example, say there is a weight
+        parameter on the first linear layer of a model. This would usually appear as "fc1.weight". However,
+        the node name for this is `p_fc1_weight`. For this reason we have some additional logic to convert
+        a potential node name to the expected graph node name.
+
+        Args:
+            name: The name of the node to look up. This is meant to follow the naming paradigm of the nodes
+                in the quantization logs.
+
+        Returns:
+            The node object and its corresponding parameters.
+        """
         node = self.graph_nodes.get(name)
         encodings = self.quantization_logs.get(name)
         if node is None:
@@ -41,14 +79,50 @@ class PropagateEncodingsOperation(GraphOperation[dict[str, QuantParametersDict]]
         return (node, encodings)
 
     def process(self) -> dict[str, QuantParametersDict]:
+        """Main process for propagating quantization encodings to other nodes.
+
+        The following logic is followed for encoding propagation:
+
+        1) For all the nodes found in the quantization_logs dictionary we propagate the
+            encodings to their children (where this is possible). This is the simpler pass
+            as we consider that the encodings can be propagated to children only if the
+            child node is a view-type operation.
+        2) For all the nodes in the quantization_logs dictionary we propagate the encodings
+            to their parents (where this is possible). Consider a linear layer with the
+            following visual representation:
+
+            input -> reshape -> matmul -> reshape_1 -> softmax
+                                  ^
+                                  |
+            weight -> transpose --
+
+            Due to the usage of the `linear` function in torch, the `matmul` operation is
+            followed by a view-type operation `reshape_1`. The logic for acquiring the quantization
+            encodings is to look up the operation that came before a quantization/dequantization operation.
+            In a simplified graph, this looks like this:
+
+            input -> quant -> dequant -> linear -> quant -> dequant
+
+            Therefore the quant/dequant operations will be attribute to the `reshape_1` node instead of
+            the `matmul` node. To address this we iterate through the quantization encodings and we attempt
+            to propagate any encodings to its parent only if our starting node is a view-type operation and
+            its preceeding node is either a non-view-type op that does not have encodings, or a view-type
+            operation that either does not have encodings or for which the encodings have not been propagated
+            during step 1.
+
+        3) As we are storing the quantization parameters to the nodes we perform a final collection step
+            during which we iterate through all the nodes in the graph and we collect the quantization
+            parameters to a dictionary. This can be then used to update our initial quantization_logs
+            dictionary.
+        """
         for node_name in self.quantization_logs:
             node, encodings = self.get_node_and_encodings_fron_name(node_name)
-            if node is not None:
+            if node is not None and encodings is not None:
                 self.propagate_to_children(node, encodings)
 
         for node_name in self.quantization_logs:
             node, encodings = self.get_node_and_encodings_fron_name(node_name)
-            if node is not None:
+            if node is not None and encodings is not None:
                 self.propagate_to_parents(node, encodings)
 
         propagated_encodings = {}
@@ -60,10 +134,33 @@ class PropagateEncodingsOperation(GraphOperation[dict[str, QuantParametersDict]]
 
         return propagated_encodings
 
-    def assign_quantization_encodings_to_node(self, node: torch.fx.node.Node, node_encodings: QuantParametersDict):
+    def assign_quantization_encodings_to_node(
+        self, node: torch.fx.node.Node, node_encodings: QuantParametersDict
+    ) -> None:
+        """Way of marking a node as being visited, and storing quantization parameters in its `meta` dictionary.
+
+        Args:
+            node: The node object to which encodings will be assigned.
+            node_encodings: The encodings to be assigned to the `node` object.
+        """
         node.meta["quantization_encodings"] = node_encodings
 
-    def propagate_to_children(self, start_node: torch.fx.node.Node, start_node_encodings: QuantParametersDict) -> None:
+    def propagate_to_children(
+        self, start_node: torch.fx.node.Node, start_node_encodings: QuantParametersDict
+    ) -> None:
+        """Propagation of encodings parameters from a starting node to its children.
+
+        Given a node and its corresponding enclodings, propagate the encodings through its children
+        where that is possible. In this case the following rules are considered:
+
+            1) The child should have been already visited, ie it has already been assigned quantization encodings.
+            2) The encodings can only be propagated from parent to child, if the child is a view-type operation,
+                meaning that it should have the same quantization encodings as the parent.
+
+        Args:
+            start_node: The node object to start traversing from.
+            start_node_encodings: The corresponding encodings to the `start_node`.
+        """
         self.assign_quantization_encodings_to_node(start_node, start_node_encodings)
         queue = collections.deque([start_node])
 
@@ -73,12 +170,30 @@ class PropagateEncodingsOperation(GraphOperation[dict[str, QuantParametersDict]]
 
             for child_node in child_nodes:
                 is_child_visited = child_node.meta.get("quantization_encodings") is not None
-                if not is_child_visited and is_node_view_op(child_node): 
+                if not is_child_visited and is_node_view_op(child_node):
                     queue.append(child_node)
                     self.assign_quantization_encodings_to_node(child_node, start_node_encodings)
-                    print(f"Current node: {start_node}, propagating to child node: {child_node}")
 
-    def propagate_to_parents(self, start_node: torch.fx.node.Node, start_node_encodings: QuantParametersDict) -> None:
+    def propagate_to_parents(
+        self, start_node: torch.fx.node.Node, start_node_encodings: QuantParametersDict
+    ) -> None:
+        """Propagation of encodings parameters from a starting node to its parents.
+
+        Given a node and its corresponding enclodings, propagate the encodings through its parents
+        where that is possible. In this case the following rules are considered:
+
+            1) The encodings are not propagated if the starting node is not a view operation. In this
+                case the traversal stops at the starting node.
+            2) In the case the parent already has quantization encodings then the encodings are not
+                propagated and traversal stops.
+            3) In the case the parent is a view operation with no encodings attached to it, we can
+                propagate the encodings. This is also the only case when we can continue propagating
+                to its respective parents.
+
+        Args:
+            start_node: The node object to start traversing from.
+            start_node_encodings: The corresponding encodings to the `start_node`.
+        """
         self.assign_quantization_encodings_to_node(start_node, start_node_encodings)
         if not is_node_view_op(start_node):
             return
@@ -93,20 +208,26 @@ class PropagateEncodingsOperation(GraphOperation[dict[str, QuantParametersDict]]
                 is_parent_visited = parent_node.meta.get("quantization_encodings") is not None
                 if not is_parent_visited:
                     self.assign_quantization_encodings_to_node(parent_node, start_node_encodings)
-                    print(f"Current node: {start_node}, propagating to parent node: {parent_node}")
                     if is_node_view_op(parent_node):
                         queue.append(parent_node)
 
     def is_node_parameter_node(self, node: torch.fx.node.Node) -> bool:
-        return self.input_spec_to_type.get(node.name, False)
+        """Checks if node is mapped to a model input parameter.
+
+        Args:
+            node: The node object to check
+        Returns:
+            A boolean of whether the node is a parameter node.
+        """
+        return self.input_spec_to_type.get(node.name) is not None
 
 
 def is_node_view_op(node: torch.fx.node.Node) -> bool:
-    """
-    Check if a node is a view-type operation.
+    """Check if a node is a view-type operation.
 
     Args:
         node: The node that needs to be checked.
+
     Returns:
         A boolean of whether the node is a view-type operation or not.
     """
