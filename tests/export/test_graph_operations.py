@@ -35,7 +35,7 @@ def test_encodings_propagation(
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     # GIVEN the exported artifacts from that model and its original encodings file.
-    export(quant_model, (data,), output_directory, model_name, propagate_encodings=False)
+    export(quant_model, (data,), output_directory, model_name, enable_encodings_propagation=False)
     encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
     with open(encodings_file_path, "r") as file:
@@ -45,7 +45,7 @@ def test_encodings_propagation(
     original_activation_names = encodings_dictionary["activation_encodings"].keys()
 
     # WHEN exporting the same model with encoding propagation.
-    export(quant_model, (data,), output_directory, model_name, propagate_encodings=True)
+    export(quant_model, (data,), output_directory, model_name, enable_encodings_propagation=True)
     encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
     with open(encodings_file_path, "r") as file:

@@ -84,7 +84,7 @@ def export_modules(
     model_name: str,
     output_path: pathlib.Path,
     kwargs: None | dict[str, Any] = None,
-    propagate_encodings: bool = False,
+    enable_encodings_propagation: bool = False,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -113,7 +113,7 @@ def export_modules(
         model_name: The name of the model, the output directory will be named after it.
         kwargs: The kwargs used at inference for the torch model
         output_path: Path to the exported artifacts.
-        propagate_encodings: Option to propagate the quantization encodings through as many
+        enable_encodings_propagation: Option to propagate the quantization encodings through as many
             operations as possible for each exported graph.
 
     Returns:
@@ -159,7 +159,7 @@ def export_modules(
             output_path,
             module_name,
             model_kwargs=module_input_kwargs,
-            propagate_encodings=propagate_encodings,
+            enable_encodings_propagation=enable_encodings_propagation,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
