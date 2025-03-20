@@ -24,7 +24,6 @@
 # 2. **Quantizers**: `Quantizers` are `torch.nn.Modules` that turn floating point tensors into `QuantizedTensors` and can learn from data.
 # 3. **Quantized Modules**: Quantizing a module consists of three steps: 1) Changing the module to a `QuantizedModule`, 2. inserting desired quantizers, and 3. estimating the ranges for each quantizers.
 # 4. **Quantized Models**: How to automate the first steps described above using 1) the `quantize_model` function and 2) the `QuantizationConfig`. This section also shows how to manually quantize custom and 3rd party modules.
-# 5. **Quantizing 3rd Party models**: We show how we applied all of the above to quantize the huggingface OPT model.
 
 # %%
 import copy
@@ -541,40 +540,6 @@ my_quantized_layer
 #   2. The class of our module is changed from `MySelfAttentionLayer` to `MyQuantizedSelfAttentionLayer`.
 #   3. `MyQuantizedSelfAttentionLayer.__init_quantization__` is still called, inserting the quantizer stubs into the previously unquantized layer.
 #   4. The children modules are also converted to their quantized counterparts by calling `MyQuantizedSelfAttentionLayer.quantize_children`.
-
-# %% [markdown]
-# # 5. Quantizing 3rd party models (Huggingface OPT)
-# Based on the tutorial above you should be able to manually quantize any model. We will now show how we quantized the OPT model in our
-# [fast-models benchmark repository](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models)
-#
-# The process of adopting the model consists of the following steps (which are explained in the notebook above):
-#
-# 1. **Downloading the existing model code** from the huggingface library.
-#
-#    1. ⚠️ Because we will both be using huggingface as a library, but also copy-paste huggingface code we need to freeze our huggingface dependency so that it matches the version we copied the code from.
-#    2. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/ab1a10783f54ce3fc78f17f8884ff64f12705489) to see how we conducted this step.
-#
-# 2. **Cleaning the existing model code**
-#
-#    1. We remove everything except the modules that are used in the (OPT) model we aim to quantize.
-#    2. Of those modules, we only keep the forward pass.
-#    3. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/2d6150b7c6144d26b0cdf8565de2f2e9a4da926d) to see how we conducted this step.
-#
-# 3. **Modifying the existing model code**
-#    1. We change all the functionals in the forward pass to their quantized counterparts.
-#
-#    ⚠️ NOTE: Sometimes the functionals might be hidden inside a function (such as the `quantized_masked_attention` function in the OPT example), take care to also detect and convert those.
-#
-#    2. We add an `__init_quantization__` method that adds the required quantizers which are used in the quantized functionals.
-#    3. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/9c9b6d2bf25b468004e7208ebaddde5b81c61e5e) to see how we conducted this step.
-#
-# 5. Adding code to insert the QuantizerStubs by adding a `QuantizationConfig`
-#    1. We make a `QuantizationConfig` that determines where to insert quantizers based on our experiment settings.
-#    2. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/adaac7a74fde8f4a8c27c35fc7047f54637a8051) to see how we conducted this step.
-#
-# 6. Running the full benchmark experiments
-#    1. ⏩ Have a look at [this commit](https://morpheus-gitlab.qualcomm.com/jpeters/fast-models/-/commit/33e70bd8c690c7bca9a81f7f0a2e10f8d2a6b583) to see how we conducted this step.
-
 
 # %% [markdown]
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
