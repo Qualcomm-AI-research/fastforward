@@ -4,8 +4,6 @@
 import json
 import pathlib
 
-from typing import Any, TypeAlias
-
 import fastforward as ff
 import numpy as np
 import onnxruntime  # type: ignore[import-untyped]
@@ -19,100 +17,11 @@ from fastforward.export.export import (
     RequestNode,
     export,
 )
-from fastforward.nn.quantizer import Quantizer
 from fastforward.quantization.granularity import Granularity
-from fastforward.quantization.quant_init import QuantizerCollection
-
-QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
-
-
-@pytest.fixture
-def simple_model() -> QuantizedModelFixture:
-    class FFNet(torch.nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.fc1 = ff.nn.QuantizedLinear(10, 10)
-            self.relu1 = ff.nn.QuantizedRelu()
-            self.fc2 = ff.nn.QuantizedLinear(10, 10)
-            self.relu2 = ff.nn.QuantizedRelu()
-            self.fc3 = ff.nn.QuantizedLinear(10, 10)
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x = self.fc1(x)
-            x = self.relu1(x)
-            x = self.fc2(x)
-            x = self.relu2(x)
-            x = self.fc3(x)
-
-            return x
-
-    quant_model = FFNet()
-
-    activation_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:activation/output]")
-    activation_quantizers |= ff.find_quantizers(quant_model, "fc1/[quantizer:activation/input]")
-    parameter_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:parameter]")
-
-    return quant_model, activation_quantizers, parameter_quantizers
-
-
-@pytest.fixture
-def multi_input_output_model() -> QuantizedModelFixture:
-    class FFNet(torch.nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.fc1 = ff.nn.QuantizedLinear(10, 10)
-            self.fc2 = ff.nn.QuantizedLinear(10, 10)
-
-        def forward(
-            self,
-            x: torch.Tensor,
-            y: torch.Tensor,
-            add_to_y: torch.Tensor,
-            subtract_from_x: torch.Tensor,
-        ) -> tuple[torch.Tensor, ...]:
-            x = torch.subtract(x, subtract_from_x)
-            y = torch.add(y, add_to_y)
-            add_x_y = torch.add(x, y)
-            linear_x = self.fc1(x)
-            linear_y = self.fc2(y)
-
-            return add_x_y, linear_x, linear_y
-
-    quant_model = FFNet()
-
-    activation_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:activation/output]")
-    activation_quantizers |= ff.find_quantizers(quant_model, "fc1/[quantizer:activation/input]")
-    parameter_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:parameter]")
-
-    return quant_model, activation_quantizers, parameter_quantizers
-
-
-def initialize_quantizers(
-    quantizers: QuantizerCollection, quantizer: type[Quantizer], **quantizer_params: Any
-) -> None:
-    quantizers.initialize(quantizer, **quantizer_params)
-
-
-def activate_quantizers(
-    quant_model: torch.nn.Module,
-    args: torch.Tensor | tuple[torch.Tensor, ...],
-    activation_quantizers: QuantizerCollection,
-    parameter_quantizers: QuantizerCollection,
-    param_granularity: Granularity = ff.PerTensor(),
-    kwargs: None | dict[str, Any] = None,
-) -> None:
-    initialize_quantizers(activation_quantizers, ff.nn.LinearQuantizer, num_bits=8)
-    initialize_quantizers(
-        parameter_quantizers, ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
-    )
-
-    kwargs = kwargs or {}
-
-    if not isinstance(args, tuple):
-        args = (args,)
-
-    with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
-        quant_model(*args, **kwargs)
+from tests.export.export_utils import (
+    QuantizedModelFixture,
+    activate_quantizers,
+)
 
 
 @pytest.mark.slow

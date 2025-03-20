@@ -5,49 +5,12 @@ import json
 import pathlib
 import pickle
 
-from typing import TypeAlias
-
 import fastforward as ff
 import pytest
 import torch
 
 from fastforward.export.module_export import export_modules
-from fastforward.quantization.granularity import Granularity
-from fastforward.quantization.quant_init import QuantizerCollection
-
-QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
-
-
-@pytest.fixture
-def simple_model() -> QuantizedModelFixture:
-    class FFNet(torch.nn.Module):
-        """Simple FF model with quantized linear/relu modules."""
-
-        def __init__(self) -> None:
-            super().__init__()
-            net_in_out_dim = 10
-            self.fc1 = ff.nn.QuantizedLinear(net_in_out_dim, net_in_out_dim)
-            self.relu1 = ff.nn.QuantizedRelu()
-            self.fc2 = ff.nn.QuantizedLinear(net_in_out_dim, net_in_out_dim)
-            self.relu2 = ff.nn.QuantizedRelu()
-            self.fc3 = ff.nn.QuantizedLinear(net_in_out_dim, net_in_out_dim)
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x = self.fc1(x)
-            x = self.relu1(x)
-            x = self.fc2(x)
-            x = self.relu2(x)
-            x = self.fc3(x)
-
-            return x
-
-    quant_model = FFNet()
-
-    activation_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:activation/output]")
-    activation_quantizers |= ff.find_quantizers(quant_model, "fc1/[quantizer:activation/input]")
-    parameter_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:parameter]")
-
-    return quant_model, activation_quantizers, parameter_quantizers
+from tests.export.export_utils import QuantizedModelFixture, activate_quantizers
 
 
 @pytest.mark.xfail_due_to_too_new_torch
@@ -93,22 +56,6 @@ def test_module_export(
     # input quantizer, so no need to check that.
     _check_module_files(model_path, model_name)
     _check_module_input_output_has_been_stored(model_path, model_name)
-
-
-def activate_quantizers(
-    quant_model: torch.nn.Module,
-    data: torch.Tensor,
-    activation_quantizers: QuantizerCollection,
-    parameter_quantizers: QuantizerCollection,
-    param_granularity: Granularity = ff.PerTensor(),
-) -> None:
-    activation_quantizers.initialize(ff.nn.LinearQuantizer, num_bits=8)
-    parameter_quantizers.initialize(
-        ff.nn.LinearQuantizer, num_bits=8, granularity=param_granularity
-    )
-
-    with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
-        quant_model(data)
 
 
 def _check_module_files(path: pathlib.Path, module_name: str) -> None:
