@@ -465,8 +465,8 @@ def export(
         model_kwargs: kwargs passed to the model during export.
         input_names: Replace the default ONNX artifact input names with user defined ones.
         output_names: Replace the default ONNX artifact output names with user defined ones.
-        enable_encodings_propagation: Option to propagate the quantization encodings through as many operations
-            in the graph as possible.
+        enable_encodings_propagation: Option to propagate the quantization encodings through as many
+            view-type operations in the graph as possible.
 
     Returns:
         The path to the output directory where the encodings and ONNX files are stored.

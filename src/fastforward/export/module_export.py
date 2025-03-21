@@ -114,7 +114,7 @@ def export_modules(
         kwargs: The kwargs used at inference for the torch model
         output_path: Path to the exported artifacts.
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
-            operations as possible for each exported graph.
+            view-type operations as possible for each exported graph.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
