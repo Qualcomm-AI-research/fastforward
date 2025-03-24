@@ -24,3 +24,15 @@ def test_dynamic_quantizer(num_bits: int, device: torch.device | str, _seed_prng
     expected_out = quantizer(x).dequantize()
 
     assert (out - expected_out).max() == 0
+
+
+def test_quantized_value_precision_loss() -> None:
+    """Test that exception is raised when output_dtype is too small to keep the quantized value perprecisely."""
+    # GIVEN a tensor
+    data = torch.tensor([1.0], dtype=torch.float32)
+
+    # WHEN the tensor is dynamically quantized to a bitwidth that cannot be
+    # represented in the provided output_dtype
+    # THEN a RuntimeError is raised
+    with pytest.raises(RuntimeError):
+        dynamic.quantize_per_tensor(data, 16, output_dtype=torch.bfloat16)

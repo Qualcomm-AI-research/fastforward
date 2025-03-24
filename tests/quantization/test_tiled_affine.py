@@ -344,3 +344,21 @@ def _quantize_per_element_impl(
     torch.testing.assert_close(data_grad, data.grad, atol=0.005, rtol=0.01)
     torch.testing.assert_close(offset_grad, offset.grad, atol=0.05, rtol=0.01)
     torch.testing.assert_close(scale_grad, scale.grad, atol=0.05, rtol=0.01)
+
+
+def test_quantized_value_precision_loss() -> None:
+    """Test that exception is raised when output_dtype is too small to keep the quantized value perprecisely."""
+    # GIVEN a tensor
+    data = torch.tensor([257.0], dtype=torch.float32)
+
+    # WHEN the tensor is quantized to a bitwidth that cannot be represented in the provided output_dtype
+    # THEN a RuntimeError is raised
+    with pytest.raises(RuntimeError):
+        affine.quantize_by_tile(
+            data,
+            torch.tensor([1.0]),
+            torch.tensor([0.0]),
+            torch.Size((1,)),
+            16,
+            output_dtype=torch.bfloat16,
+        )

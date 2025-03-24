@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import functools
+import logging
 
 from typing import Any, Callable, List, ParamSpec, Sequence, TypeAlias, TypeVar
 
@@ -38,6 +39,34 @@ def conditional_compile(func: Callable[_P, _T]) -> Callable[_P, _T]:
         return func(*args, **kwargs)
 
     return wrapper
+
+
+@functools.lru_cache(maxsize=10)
+def can_support_bitwidth(dtype: torch.dtype, num_bits: float) -> bool:
+    """Check if dtype can store a quantized value without precision loss."""
+    available_precision_bits: float
+    if dtype.is_complex or dtype.is_floating_point:
+        match torch.finfo(dtype).dtype:
+            case "bfloat16":
+                available_precision_bits = 7
+            case "float16":
+                available_precision_bits = 10
+            case "float32":
+                available_precision_bits = 23
+            case "float64":
+                available_precision_bits = 52
+            case "float8_e4m3fn" | "float8_e4m3fnuz":
+                available_precision_bits = 3
+            case "float8_e5m2" | "float8_e5m2fnuz":
+                available_precision_bits = 2
+            case _:
+                available_precision_bits = num_bits
+                logging.getLogger(__name__).warning(
+                    f"Unknown mantissa size for {dtype}; precision loss possible."
+                )
+    else:
+        available_precision_bits = torch.iinfo(dtype).bits
+    return available_precision_bits >= num_bits
 
 
 if torch.__version__ < "2.4":
@@ -124,7 +153,11 @@ def quantize_by_tile_impl(
     quantized = round_ste(row_representation / scale[:, None] - offset[:, None])
     quantized = torch.clamp(quantized, min_threshold, max_threshold)
     result = tiled_tensor.rows_to_tiles(quantized, data.shape, tile_size)
-    result = result.to(output_dtype or result.dtype)
+    output_dtype = output_dtype or result.dtype
+    if not can_support_bitwidth(output_dtype, num_bits):
+        msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
+        raise RuntimeError(msg)
+    result = result.to(output_dtype)
     return result
 
 
@@ -227,7 +260,11 @@ def quantize_dynamic_by_tile_impl(
     quantized = torch.round(row_representation / scale[:, None] - offset[:, None])
     quantized = torch.clamp(quantized, min_threshold, max_threshold)
     result = tiled_tensor.rows_to_tiles(quantized, data.shape, tile_size)
-    result = result.to(output_dtype or result.dtype)
+    output_dtype = output_dtype or result.dtype
+    if not can_support_bitwidth(output_dtype, num_bits):
+        msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
+        raise RuntimeError(msg)
+    result = result.to(output_dtype)
     return result, scale, offset
 
 
