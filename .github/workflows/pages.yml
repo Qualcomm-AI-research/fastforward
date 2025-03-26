@@ -1,6 +1,9 @@
 name: Generate docs
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types:
       - closed
@@ -9,13 +12,16 @@ on:
       - synchronize
     branches:
       - main
-      - "docs/**"
+
 env:
   PAGES_BRANCH: "pages"
   PAGES_PREFIX: public
   HF_HUB_OFFLINE: ${{ vars.HF_HUB_OFFLINE }}
   HF_HUB_CACHE: ${{ vars.HF_HUB_CACHE }}
   HF_DATASETS_CACHE: ${{ vars.HF_DATASETS_CACHE }}
+
+concurrency:
+  group: ${{ github.workflow }}
 
 jobs:
   docs:
@@ -28,9 +34,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: "${{ env.PAGES_BRANCH }}"
+
       - uses: actions/checkout@v4
+
       - run: |
           apt update -qq && apt install -y jq rsync
+
       - name: Generate docs
         run: |
           export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
@@ -40,15 +49,38 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export PYTHONPATH="$PYTHONPATH:$PWD/docs/examples/quick_start"
-          mike deploy --push --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $( echo "${{ github.event.pull_request.head.ref }}" | sed 's/^docs\///' ) $([ \"${{ github.ref_type }}\" = \"tag\" ] && echo "latest")
-          mike set-default --push --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH latest
+          mike deploy --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $( echo "${{ github.event.pull_request.head.ref }}" | sed 's/^docs\///' ) $([ \"${{ github.ref_type }}\" = \"tag\" ] && echo "latest")
+      - name: Save changes docs
+        if: github.ref_name == 'main' || startsWith(github.head_ref, 'docs/')
+        run: |
+          git clean -xdf
+          git fetch --force
           git switch $PAGES_BRANCH
-      - name: Upload static files as artifact
-        id: deployment
-        uses: actions/upload-pages-artifact@v2
+          git pull --rebase
+          git push $PAGES_BRANCH:$PAGES_BRANCH
+
+  deploy:
+    if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed' && (github.ref_name == 'main' || startsWith(github.head_ref, 'docs/'))
+    runs-on: ubunut-latest
+    needs: docs
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "${{ env.PAGES_BRANCH }}"
+      - uses: actions/upload-pages-artifact@v2
         with:
           path: "${{ env.PAGES_PREFIX }}"
-      - name: Generate public docs
+      - uses: actions/deploy-pages@v3
+        id: deployment
+
+      - name: Deploy public docs
+        if: github.ref_name == 'main'
         run: |
           git clean -xdf
           git fetch --force
@@ -66,24 +98,8 @@ jobs:
             git push origin gh-pages:gh-pages
           fi
 
-  deploy:
-    if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed'
-    runs-on: ubuntu-latest
-    needs: docs
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v3
-
   cleanup:
-    if: github.server_url != 'https://github.com' && github.event.pull_request.state == 'closed' && github.ref_name != github.event.repository.default_branch
+    if: github.server_url != 'https://github.com' && github.event.pull_request.state == 'closed' && startsWith(github.head_ref, 'docs/')
     runs-on: ubuntu-latest
     container:
       image: python:3.12
@@ -100,7 +116,7 @@ jobs:
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mike delete --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH --push $( echo "${{ github.event.pull_request.head.ref }}" | sed 's/^docs\///' )
+          mike delete --push --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $( echo "${{ github.head_ref }}" | sed 's/^docs\///' )
           git switch $PAGES_BRANCH
       - uses: actions/upload-pages-artifact@v2
         with:
