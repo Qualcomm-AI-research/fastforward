@@ -49,7 +49,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export PYTHONPATH="$PYTHONPATH:$PWD/docs/examples/quick_start"
-          mike deploy --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $( echo "${{ github.event.pull_request.head.ref }}" | sed 's/^docs\///' ) $([ \"${{ github.ref_type }}\" = \"tag\" ] && echo "latest")
+          DOCS_VERSION=''
+          if [ "${{ github.event_name }}" = "push" ] ; then
+            DOCS_VERSION="$DOCS_VERSION ${{ github.ref_name }}"
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ] ; then
+            DOCS_VERSION="$DOCS_VERSION $(echo '${{ github.head_ref }}' | sed 's/^docs\///')"
+          fi
+          if [ "${{ github.ref_type }}" = "tag" ] ; then
+            DOCS_VERSION="$DOCS_VERSION latest"
+          fi
+          mike deploy --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $DOCS_VERSION
       - name: Save changes docs
         if: github.ref_name == 'main' || startsWith(github.head_ref, 'docs/')
         run: |
