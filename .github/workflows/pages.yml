@@ -60,14 +60,11 @@ jobs:
             DOCS_VERSION="$DOCS_VERSION latest"
           fi
           mike deploy --config-file mkdocs.yml --update-aliases --deploy-prefix $PAGES_PREFIX --branch $PAGES_BRANCH $DOCS_VERSION
+
       - name: Save changes docs
         if: github.ref_name == 'main' || startsWith(github.head_ref, 'docs/')
         run: |
-          git clean -xdf
-          git fetch --force
-          git switch $PAGES_BRANCH
-          git pull --rebase
-          git push $PAGES_BRANCH:$PAGES_BRANCH
+          git push origin $PAGES_BRANCH:$PAGES_BRANCH
 
   deploy:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed' && (github.ref_name == 'main' || startsWith(github.head_ref, 'docs/'))
