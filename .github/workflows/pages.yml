@@ -68,7 +68,7 @@ jobs:
 
   deploy:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed' && (github.ref_name == 'main' || startsWith(github.head_ref, 'docs/'))
-    runs-on: ubunut-latest
+    runs-on: ubuntu-latest
     needs: docs
     environment:
       name: github-pages
