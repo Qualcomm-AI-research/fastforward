@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: |
-          apt update -qq && apt install -y jq rsync
+          apt update -qq && apt install -y jq
 
       - name: Generate docs
         run: |
@@ -86,6 +86,9 @@ jobs:
           path: "${{ env.PAGES_PREFIX }}"
       - uses: actions/deploy-pages@v3
         id: deployment
+
+      - run: |
+          apt update -qq && apt install -y jq rsync
 
       - name: Deploy public docs
         if: github.ref_name == 'main'
