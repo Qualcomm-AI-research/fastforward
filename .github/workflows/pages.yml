@@ -88,7 +88,7 @@ jobs:
         id: deployment
 
       - run: |
-          apt update -qq && apt install -y jq rsync
+          sudo apt update -qq && sudo apt install -y jq rsync
 
       - name: Deploy public docs
         if: github.ref_name == 'main'
