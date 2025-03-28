@@ -93,6 +93,9 @@ jobs:
       - name: Deploy public docs
         if: github.ref_name == 'main'
         run: |
+          git config --global --add safe.directory '*'
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git clean -xdf
           git fetch --force
           git switch gh-pages
