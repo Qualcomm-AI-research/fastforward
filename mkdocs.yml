@@ -87,9 +87,13 @@ hooks:
 
 markdown_extensions:
   - admonition
+  - pymdownx.details
   - pymdownx.magiclink
   - pymdownx.snippets:
       base_path: [!relative $config_dir]
       check_paths: true
   - toc:
       permalink: "#"
+
+extra_css:
+  - stylesheets/extra.css

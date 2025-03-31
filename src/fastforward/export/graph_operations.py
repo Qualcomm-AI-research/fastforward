@@ -1,6 +1,11 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
-"""!!! experimental"""  # noqa: D415
+"""
+!!! experimental
+    Export is an experimental feature and is currently under active development.
+    Please expect API changes. We encourage you to file bug reports if you run into any problems.
+
+"""  # noqa: D205, D212
 
 import collections
 

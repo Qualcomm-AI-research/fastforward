@@ -1,13 +1,17 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-"""Functionality to export a quantized module for running inference on device.
+"""
+!!! experimental
+    Export is an experimental feature and is currently under active development.
+    Please expect API changes. We encourage you to file bug reports if you run into any problems.
+
+Functionality to export a quantized module for running inference on device.
 
 Supported backends:
  - QNN
 
-!!! experimental
-"""
+"""  # noqa: D205, D212
 
 import abc
 import json
