@@ -86,6 +86,7 @@ hooks:
   - docs/no_sitemap_plugin.py
 
 markdown_extensions:
+  - admonition
   - pymdownx.magiclink
   - pymdownx.snippets:
       base_path: [!relative $config_dir]

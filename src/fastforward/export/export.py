@@ -4,7 +4,9 @@
 """Functionality to export a quantized module for running inference on device.
 
 Supported backends:
-- QNN
+ - QNN
+
+!!! experimental
 """
 
 import abc
