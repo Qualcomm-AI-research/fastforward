@@ -128,7 +128,7 @@ def export_modules(
     """
     args = args or ()
     kwargs = kwargs or {}
-    output_path = output_path / model_name
+    output_path = output_path / model_name / model_name
 
     if args == () and kwargs == {}:
         msg = "Both args and kwargs cannot be None at the same time"
@@ -159,7 +159,7 @@ def export_modules(
         module_input_data = module_io_recorder.input
         module_input_kwargs = module_io_recorder.kwargs
 
-        exported_path = export(
+        export(
             module,
             module_input_data,
             output_path,
@@ -174,12 +174,12 @@ def export_modules(
             "input": module_input_quantizer_settings,
             "output": module_output_quantizer_settings,
         }
-        maybe_extend_encodings_file(module_name, exported_path, quantizer_settings)
+        maybe_extend_encodings_file(module_name, output_path, quantizer_settings)
 
-        input_output_location = exported_path / f"{module_name}_input_output.pickle"
+        input_output_location = output_path / f"{module_name}_input_output.pickle"
         module_io_recorder.store_io_as_dict(input_output_location)
 
-        paths[module_name] = exported_path
+        paths[module_name] = output_path
 
     return paths
 

@@ -424,7 +424,7 @@ def export(
     input_names: None | list[str] = None,
     output_names: None | list[str] = None,
     enable_encodings_propagation: bool = False,
-) -> pathlib.Path:
+) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
     This function takes an user-defined torch model (which can contain fastforward layers
@@ -473,14 +473,11 @@ def export(
         output_names: Replace the default ONNX artifact output names with user defined ones.
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations in the graph as possible.
-
-    Returns:
-        The path to the output directory where the encodings and ONNX files are stored.
     """
-    output_path = pathlib.Path(output_directory) / model_name
-    output_path.mkdir(exist_ok=True, parents=True)
-    onnx_location = output_path / f"{model_name}.onnx" 
-    encodings_location = output_path / f"{model_name}.encodings"
+    output_directory = pathlib.Path(output_directory)
+    output_directory.mkdir(exist_ok=True, parents=True)
+    onnx_location = output_directory / f"{model_name}.onnx"
+    encodings_location = output_directory / f"{model_name}.encodings"
 
     if not graph_preprocessors:
         graph_preprocessors = []
@@ -580,5 +577,3 @@ def export(
         all_tensors_to_one_file=False,
         location="filename",
     )
-
-    return output_path

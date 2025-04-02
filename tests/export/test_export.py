@@ -237,12 +237,10 @@ def test_ff_model_to_onnx_export(
     non_quantized_result = quant_model(data)
 
     model_name = "test_ff_model_to_onnx_export"
-    output_directory = tmp_path
-    output_model_directory = pathlib.Path(output_directory) / model_name
+    output_directory = tmp_path / model_name
+    output_model_directory = output_directory / model_name
 
-    onnx_artifact_location = (pathlib.Path(output_model_directory) / model_name).with_suffix(
-        ".onnx"
-    )
+    onnx_artifact_location = output_model_directory.with_suffix(".onnx")
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
@@ -291,12 +289,9 @@ def test_encodings_file_generation(
     quant_model, activation_quantizers, parameter_quantizers = simple_model
 
     model_name = "test_encodings_file_generation"
-    output_directory = tmp_path
-    output_model_directory = pathlib.Path(output_directory) / model_name
-
-    encodings_file_path = (pathlib.Path(output_model_directory) / model_name).with_suffix(
-        ".encodings"
-    )
+    output_directory = tmp_path / model_name
+    output_model_directory = output_directory / model_name
+    encodings_file_path = output_model_directory.with_suffix(".encodings")
 
     expected_quantized_inputs = [new_input_names[0] if new_input_names else "x"]
     expected_quantized_activations = [
@@ -397,8 +392,9 @@ def test_graph_io_renaming_valid(
     )
 
     model_name = "test_model"
-    output_directory = tmp_path
-    output_model_directory = pathlib.Path(output_directory) / model_name
+    output_directory = tmp_path / model_name
+    output_model_directory = output_directory / model_name
+    onnx_artifact_location = output_model_directory.with_suffix(".onnx")
 
     # WHEN exporting the model with new (valid) input/output names or when these are set to None.
     export(
@@ -411,9 +407,6 @@ def test_graph_io_renaming_valid(
         output_names=output_names,
     )
 
-    onnx_artifact_location = (pathlib.Path(output_model_directory) / model_name).with_suffix(
-        ".onnx"
-    )
     ort_session = onnxruntime.InferenceSession(
         onnx_artifact_location, providers=["CPUExecutionProvider"]
     )
@@ -468,7 +461,7 @@ def test_graph_io_renaming_invalid(
 
     # WHEN exporting the model overriding its input/output names with invalid ones.
     model_name = "test_model"
-    output_directory = tmp_path
+    output_directory = tmp_path / model_name
 
     # THEN the export function should raise an error since the number of user defined
     # inputs/outputs do not match the number of graph inputs/outputs.
@@ -497,21 +490,19 @@ def test_export_function(
     # GIVEN a quantized model.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    output_directory = tmp_path
     model_name = "test_export_function"
-
-    output_model_directory = pathlib.Path(output_directory) / model_name
+    output_directory = tmp_path / model_name
+    output_model_directory = output_directory / model_name
+    onnx_file_path = output_model_directory.with_suffix(".onnx")
+    encodings_file_path = output_model_directory.with_suffix(".encodings")
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     # WHEN exporting the quantized model
     export(quant_model, (data,), output_directory, model_name)
-    onnx_file_path = (output_model_directory / model_name).with_suffix(".onnx")
-    encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
     # THEN we expect that ONNX/encodings files are created and they are
     # not empty.
-    assert output_model_directory.is_dir()
     assert onnx_file_path.is_file()
     assert encodings_file_path.is_file()
 

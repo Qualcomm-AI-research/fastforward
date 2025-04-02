@@ -27,16 +27,15 @@ def test_encodings_propagation(
     granularity = ff.PerTensor()
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_quant_model_with_non_quant_ops
-    output_directory = tmp_path
     model_name = "test_export_function"
-
+    output_directory = tmp_path / model_name
     output_model_directory = pathlib.Path(output_directory) / model_name
+    encodings_file_path = output_model_directory.with_suffix(".encodings")
 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     # GIVEN the exported artifacts from that model and its original encodings file.
     export(quant_model, (data,), output_directory, model_name, enable_encodings_propagation=False)
-    encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
     with open(encodings_file_path, "r") as file:
         encodings_dictionary = json.load(file)
@@ -46,7 +45,6 @@ def test_encodings_propagation(
 
     # WHEN exporting the same model with encoding propagation.
     export(quant_model, (data,), output_directory, model_name, enable_encodings_propagation=True)
-    encodings_file_path = (output_model_directory / model_name).with_suffix(".encodings")
 
     with open(encodings_file_path, "r") as file:
         encodings_dictionary = json.load(file)
