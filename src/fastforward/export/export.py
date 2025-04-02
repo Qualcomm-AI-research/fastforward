@@ -479,9 +479,8 @@ def export(
     """
     output_path = pathlib.Path(output_directory) / model_name
     output_path.mkdir(exist_ok=True, parents=True)
-    artifact_location = output_path / model_name
-    onnx_location = pathlib.Path(str(artifact_location) + ".onnx")
-    encodings_location = pathlib.Path(str(artifact_location) + ".encodings")
+    onnx_location = output_path / f"{model_name}.onnx" 
+    encodings_location = output_path / f"{model_name}.encodings"
 
     if not graph_preprocessors:
         graph_preprocessors = []
@@ -576,7 +575,7 @@ def export(
 
     onnx.save(
         proto,
-        artifact_location.with_suffix(".onnx"),
+        onnx_location,
         save_as_external_data=True,
         all_tensors_to_one_file=False,
         location="filename",
