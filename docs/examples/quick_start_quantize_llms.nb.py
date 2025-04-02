@@ -36,7 +36,7 @@ import fastforward as ff
 import torch
 
 from datasets import load_dataset
-from quick_start_utils import tokenize_dataset
+from doc_helpers.quick_start.quick_start_utils import tokenize_dataset
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
@@ -137,7 +137,7 @@ print(
 
 # Import all the custom QuantizedModules required to quantize our llama model.
 # We just need to import those modules so that `ff.quantize_model` will be able to find them.
-from quantized_models import quantized_llama as quantized_llama  # noqa: E402
+from doc_helpers.quick_start.quantized_models import quantized_llama as quantized_llama  # noqa: E402, I001
 
 # Convert the model into a QuantizedModel  (inplace operation)
 ff.quantize_model(model)

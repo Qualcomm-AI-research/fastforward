@@ -49,6 +49,7 @@ docs = [
   "ruff",
   "sentencepiece",
   "transformers==4.46.3",
+  "tqdm",
 ]
 
 [tool.scikit-build]
@@ -88,7 +89,7 @@ markers = [
 
 [tool.mypy]
 mypy_path = "src:$MYPY_CONFIG_FILE_DIR/build/stubs"
-exclude = ['build/', 'docs/examples/quick_start', 'tests/autoquant/test_data']
+exclude = ['build/', 'docs/examples', 'tests/autoquant/test_data']
 python_version = "3.10"
 warn_unused_configs = true
 strict = true
