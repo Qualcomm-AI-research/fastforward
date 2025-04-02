@@ -299,6 +299,11 @@ class Quantizer(torch.nn.Module):
         self._quantizer_overrides[handle.handle_id] = override_fn
         return handle
 
+    @property
+    def overrides(self) -> Iterator[override.OverrideFn[torch.Tensor]]:
+        """Yield overrides attached to this quantizer."""
+        yield from self._quantizer_overrides.values()
+
     @typing_override
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         wrapped_quantize = override.apply_overrides(self, self.quantize, self._quantizer_overrides)

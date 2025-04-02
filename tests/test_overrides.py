@@ -2,14 +2,19 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import fastforward as ff
+import pytest
 import torch
 
-from fastforward.overrides import DisableQuantizationOverride, disable_quantization
+from fastforward.overrides import (
+    DisableQuantizationOverride,
+    disable_quantization,
+    enable_quantization,
+)
 
 
 @ff.flags.context(ff.strict_quantization, False)
 def test_DisableQuantizationOverride(_seed_prngs: int) -> None:
-    # Setup of non quantized and quantized module using the same weight
+    # GIVEN a quantized and non-quantized model with the same weights
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)
     quantized_module.weight = module.weight
@@ -20,39 +25,54 @@ def test_DisableQuantizationOverride(_seed_prngs: int) -> None:
     # layer
     torch.testing.assert_close(module(input_data), quantized_module(input_data))
 
-    # Initialize quantizers and set ranges on quantized_module
+    # GIVEN the quantizers are properly initialized
     ff.find_quantizers(quantized_module, "**").initialize(ff.nn.LinearQuantizer, num_bits=8)
     with ff.estimate_ranges(quantized_module, ff.range_setting.smoothed_minmax):
         quantized_module(input_data)
 
-    # Obtain expected output for both quantized and non-quantized forward pass
+    # GIVEN an expected output for the quantized and non-quantized model
     expected = module(input_data)
     expected_quantized = quantized_module(input_data)
 
-    # Create override and attach to all quantizers in quantized_module
+    # WHEN DisableQuantizationOverride is attached to each quantizer in the
+    # quantized model
     quantization_override = DisableQuantizationOverride()
     quantization_override.attach_to(ff.find_quantizers(quantized_module, "**"))
 
-    # Test if quantized_module and module are the same when quantizers
-    # are disabled.
+    # THEN the output for quantized_module and module must be the same
     torch.testing.assert_close(quantized_module(input_data), expected)
 
-    # Test if quantized_module produces the same quantized output as before
-    # when quantizers are enabled again.
+    # WHEN quantizers on quantized_module are enabled
     quantization_override.enable_quantization()
+
+    # THEN quantized_module must produce the same quantized output as expected
     torch.testing.assert_close(
         quantized_module(input_data).dequantize(),
         expected_quantized.dequantize(),
     )
 
-    # Test if quantized_module and module are the same when quantizers
-    # are disabled again.
+    # WHEN quantizers on quantized_module are enabled
     quantization_override.disable_quantization()
+
+    # THEN the output for quantized_module and module must be the same
     torch.testing.assert_close(quantized_module(input_data), expected)
 
-    # Test if quantized_module producess the same quantized output as expected
-    # after override has been removed.
+    # WHEN quantizers on quantized_module are enabled using using the returned
+    # context
+    with quantization_override.enable_quantization():
+        # THEN quantized_module must produce the same quantized output as expected
+        torch.testing.assert_close(
+            quantized_module(input_data).dequantize(),
+            expected_quantized.dequantize(),
+        )
+
+    # WHEN quantizers on quantized_module are disabled because the context ended
+    # THEN the output for quantized_module and module must be the same
+    torch.testing.assert_close(quantized_module(input_data), expected)
+
+    # WHEN the disable quantization override is removed from quantized_module
     quantization_override.detach()
+    # THEN quantized_module must produce the same quantized output as expected
     torch.testing.assert_close(
         quantized_module(input_data).dequantize(),
         expected_quantized.dequantize(),
@@ -60,7 +80,7 @@ def test_DisableQuantizationOverride(_seed_prngs: int) -> None:
 
 
 def test_disable_quantization_override_context(_seed_prngs: int) -> None:
-    # Setup of non quantized and quantized module using the same weight
+    # GIVEN a quantized and non-quantized model with the same weights
     module = torch.nn.Linear(10, 10, bias=False)
     quantized_module = ff.nn.QuantizedLinear(10, 10, bias=False)
     quantized_module.weight = module.weight
@@ -72,22 +92,33 @@ def test_disable_quantization_override_context(_seed_prngs: int) -> None:
     with ff.strict_quantization(False):
         torch.testing.assert_close(module(input_data), quantized_module(input_data))
 
-    # Initialize quantizers and set ranges on quantized_module
+    # GIVEN the quantizers are properly initialized
     ff.find_quantizers(quantized_module, "**").initialize(ff.nn.LinearQuantizer, num_bits=8)
     with ff.estimate_ranges(quantized_module, ff.range_setting.smoothed_minmax):
         quantized_module(input_data)
 
-    # Obtain expected output for both quantized and non-quantized forward pass
+    # GIVEN an expected output for the quantized and non-quantized model
     expected = module(input_data)
     expected_quantized = quantized_module(input_data)
 
-    # Test if quantized_module and module are the same when quantizers
-    # are disabled.
+    # WHEN quantization is disables using the disable_quantization context
     with disable_quantization(quantized_module):
+        # THEN the output of the quantized and non-quantized module must be the same
         torch.testing.assert_close(quantized_module(input_data), expected)
 
-    # Test if quantized_module producess the same quantized output as expected
-    # after disable_quantization context ends.
+        # WHEN quantized is enabled using the enable_quantization context
+        with enable_quantization(quantized_module):
+            # THEN quantized_module must produce the same quantized output as expected
+            torch.testing.assert_close(
+                quantized_module(input_data).dequantize(),
+                expected_quantized.dequantize(),
+            )
+        # WHEN the enable_quantization context terminates
+        # THEN the output of the quantized and non-quantized module must be the same
+        torch.testing.assert_close(quantized_module(input_data), expected)
+
+    # WHEN the disable_quantization context terminates
+    # THEN quantized_module must produce the same quantized output as expected
     torch.testing.assert_close(
         quantized_module(input_data).dequantize(),
         expected_quantized.dequantize(),
@@ -128,3 +159,86 @@ def test_disable_quantization_quantizer_attachment() -> None:
     assert _has_override(module.output_quantizer, quantization_override)
     assert not _has_override(module.weight_quantizer, quantization_override)
     quantization_override.detach()
+
+
+def test_partial_model_enable_disable_quantization_context_managers(
+    multi_output_model: "_MultiOutputModel", _seed_prngs: int
+) -> None:
+    # GIVEN a model with multiple outputs
+    model = multi_output_model
+
+    # GIVEN expected outputs for either a quantized or non-quantized model
+    input = torch.randn(4, 10)
+    with ff.strict_quantization(False):
+        expected_quantized_left, expected_quantized_right = model(input)
+
+    with disable_quantization(model):
+        expected_nonquantized_left, expected_nonquantized_right = model(input)
+
+    # WHEN the quantization is disabled at the root level but enabled for a
+    # submodule (left)
+    with disable_quantization(model):
+        with enable_quantization(model.left):
+            actual_left, actual_right = model(input)
+
+            # THEN the left output must match the expected quantized output
+            # and the right output the expected unquantized output
+            torch.testing.assert_close(
+                actual_left.dequantize(), expected_quantized_left.dequantize()
+            )
+            torch.testing.assert_close(actual_right, expected_nonquantized_right)
+
+    # WHEN the quantization is disabled at the root level but enabled for a
+    # submodule (right)
+    with disable_quantization(model):
+        with enable_quantization(model.right):
+            actual_left, actual_right = model(input)
+
+            # THEN the left output must match the expected unquantized output
+            # and the right output the expected quantized output
+            torch.testing.assert_close(actual_left, expected_nonquantized_left)
+            torch.testing.assert_close(
+                actual_right.dequantize(), expected_quantized_right.dequantize()
+            )
+
+        # WHEN the enable_quantization context exits
+        actual_left, actual_right = model(input)
+
+        # THEN both outputs must match the expected unquantized output
+        torch.testing.assert_close(actual_left, expected_nonquantized_left)
+        torch.testing.assert_close(actual_right, expected_nonquantized_right)
+
+    # WHEN the disable_quantization context exits
+    with ff.strict_quantization(False):
+        actual_left, actual_right = model(input)
+
+    # THEN both outputs must match the expected quantized output
+    torch.testing.assert_close(actual_left.dequantize(), expected_quantized_left.dequantize())
+    torch.testing.assert_close(actual_right.dequantize(), expected_quantized_right.dequantize())
+
+
+class _MultiOutputModel(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.left = ff.nn.QuantizedLinear(10, 10)
+        self.right = ff.nn.QuantizedLinear(10, 10)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.left(x), self.right(x)
+
+
+@pytest.fixture
+def multi_output_model() -> _MultiOutputModel:
+    """Define, construct and initialize a model with two linear heads."""
+    model = _MultiOutputModel()
+
+    def _init_quant(_name: str, _current: torch.nn.Module) -> ff.nn.Quantizer:
+        del _name, _current
+        quantizer = ff.nn.LinearQuantizer(num_bits=8)
+        quantizer.quantization_range = (-1.0, 1.0)
+        return quantizer
+
+    ff.find_quantizers(model, "**/{[qtag:parameter/weight], [qtag:activation/output]}").initialize(
+        _init_quant
+    )
+    return model

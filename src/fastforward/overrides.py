@@ -25,14 +25,35 @@ def disable_quantization(model: torch.nn.Module) -> Generator[None, None, None]:
     Args:
         model: The model for which all quantizers are disabled.
     """
-    override = DisableQuantizationOverride()
-    quantizers = [quantizer for _, quantizer in named_quantizers(model)]
-    override.attach_to(quantizers)
+    handles: list[override.OverrideHandle] = []
+    for _, quantizer in named_quantizers(model):
+        handles.append(quantizer.register_override(DisableQuantizationOverride()))
+
     try:
         with ff.strict_quantization(False):
             yield
     finally:
-        override.detach()
+        for handle in handles:
+            handle.remove()
+
+
+@contextlib.contextmanager
+def enable_quantization(model: torch.nn.Module) -> Generator[None, None, None]:
+    """Enable quantization for all quantizers in `model` within context.
+
+    Note that this context manager does not change the `strict_quantization` flag.
+    To also (temporarily) change the `strict_quantization` flag use
+    `fastforward.quantization.strict_quantization.strict_quantization_for_module`
+
+    Args:
+        model: The model for which all quantizers are enabled.
+    """
+    with contextlib.ExitStack() as exit_stack:
+        for _, quantizer in named_quantizers(model):
+            for quantizer_override in quantizer.overrides:
+                if isinstance(quantizer_override, DisableQuantizationOverride):
+                    exit_stack.enter_context(quantizer_override.enable_quantization())
+        yield
 
 
 class DisableQuantizationOverride:
@@ -59,7 +80,7 @@ class DisableQuantizationOverride:
         """True if quantization is enabled, False otherwise."""
         return self._quantization_enabled
 
-    def enable_quantization(self, enabled: bool = True) -> None:
+    def enable_quantization(self, enabled: bool = True) -> "_QuantizationContext":
         """Enable quantization.
 
         More specifically, this instance will not disable quantization for any
@@ -69,14 +90,16 @@ class DisableQuantizationOverride:
         Args:
             enabled: True if quantization must be enabled, False if it must be disabled.
         """
+        context = _QuantizationContext(self, self._quantization_enabled)
         self._quantization_enabled = enabled
+        return context
 
-    def disable_quantization(self) -> None:
+    def disable_quantization(self) -> "_QuantizationContext":
         """Disable quantization.
 
         See the docstring of `enable_quantization` for more information.
         """
-        self.enable_quantization(enabled=False)
+        return self.enable_quantization(enabled=False)
 
     def __call__(
         self,
@@ -124,6 +147,19 @@ class DisableQuantizationOverride:
         for handle in self._handles:
             handle.remove()
         self._handles = []
+
+
+class _QuantizationContext(contextlib.AbstractContextManager[None]):
+    def __init__(
+        self, override: DisableQuantizationOverride, quantization_enabled_reset_status: bool
+    ) -> None:
+        self._override = override
+        self._reset_quantization_status = quantization_enabled_reset_status
+
+    def __enter__(self) -> None: ...
+
+    def __exit__(self, type, value, traceback) -> None:  # type: ignore[no-untyped-def]
+        self._override._quantization_enabled = self._reset_quantization_status
 
 
 def _extract_data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
