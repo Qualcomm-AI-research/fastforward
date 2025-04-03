@@ -11,20 +11,46 @@ construction using libCST.
 import abc
 
 from collections.abc import Sequence
-from typing import Generic, Protocol, runtime_checkable
+from typing import Generic, Protocol, TypeVar, runtime_checkable
 
 import libcst
 import libcst.display
 
 from typing_extensions import override
 
+_CSTNodeT_co = TypeVar("_CSTNodeT_co", bound=libcst.CSTNode, covariant=True)
 
-class NodeBuilder(abc.ABC, Generic[libcst.CSTNodeT]):
+
+class NodeBuilder(abc.ABC, Generic[_CSTNodeT_co]):
     """Abstract Node builder class. All builders inherit from this."""
 
     @abc.abstractmethod
-    def build(self) -> libcst.CSTNodeT:
+    def build(self) -> _CSTNodeT_co:
         """Create CSTNode from collected metadata."""
+
+
+class ModuleBuilder(NodeBuilder[libcst.Module]):
+    """Builder for modules.
+
+    Collects ClassBuilders and builds a module based on them.
+    """
+
+    def __init__(self) -> None:
+        self._statements: list[
+            NodeBuilder[libcst.SimpleStatementLine | libcst.BaseCompoundStatement]
+        ] = []
+
+    def add_class(self, klass: "ClassBuilder") -> None:
+        """Add classbuilder to module."""
+        self._statements.append(klass)
+
+    def build(self) -> libcst.Module:
+        """Build the module."""
+        return libcst.Module(body=self.build_module())
+
+    def build_module(self) -> Sequence[libcst.SimpleStatementLine | libcst.BaseCompoundStatement]:
+        """Create Module from collected metadata."""
+        return [c.build() for c in self._statements]
 
 
 class ClassBuilder(NodeBuilder[libcst.ClassDef]):

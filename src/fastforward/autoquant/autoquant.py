@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-import libcst
-import libcst.display
-import libcst.matchers
 import torch
 
 from fastforward._import import fully_qualified_name
@@ -53,12 +50,12 @@ def autoquantize(
             quantized operator mapping.
 
     """
-    print(_autoquant_with_defaults(module, operator_table))
+    print(_autoquant_with_defaults(module, operator_table).build().code)
 
 
 def _autoquant_with_defaults(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
-) -> str:
+) -> pybuilder.ModuleBuilder:
     operator_table = operator_table or default_optable()
     return _autoquant(module, default_source_context(), operator_table)
 
@@ -67,7 +64,7 @@ def _autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
-) -> str:
+) -> pybuilder.ModuleBuilder:
     ModuleType = type(module)
     src_class = source_context.get(fully_qualified_name(ModuleType))
 
@@ -76,9 +73,12 @@ def _autoquant(
         bases=(ModuleType.__name__,),
     )
 
+    dst_module = pybuilder.ModuleBuilder()
+
     forward_src = src_class.member("forward")
     quantized_forward = convert_method(forward_src, dst_class, operator_table)
 
     dst_class.add_method(quantized_forward)
+    dst_module.add_class(dst_class)
 
-    return libcst.Module([dst_class.build()]).code
+    return dst_module

@@ -258,9 +258,10 @@ def test_autoquant_introduces_quantization_method(
     )
 
     # WHEN we autoquantize the example module
-    actual_output = _autoquant(
+    module_builder = _autoquant(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
+    actual_output = module_builder.build().code
 
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
@@ -283,8 +284,6 @@ class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpressi
 
 def test_expressions_not_quantized() -> None:
     """Tests that expressions are not quantized (fixes #80)."""
-    actual = _autoquant_with_defaults(
-        ExampleExpression(),
-    )
+    actual = _autoquant_with_defaults(ExampleExpression()).build().code
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
     assert_strings_match_verbose(expected_output, actual.strip())
