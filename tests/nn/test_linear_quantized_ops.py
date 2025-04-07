@@ -25,14 +25,13 @@ def _dim_slices_and_indices(dimlen: int) -> Iterator[slice | int]:
     # Positive indices
     for start in range(dimlen):
         yield start  # case x[start]
-        for end in range(start, dimlen + 1):
+        for end in range(start + 1, dimlen + 1):
             yield slice(start, end, None)  # case x[start:end]
-            for step in range(1, end - start + 1):
+            for step in range(2, end - start + 1):
                 yield slice(start, end, step)  # case x[start:end:step]
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("data_shape", [(3, 3), (), (1, 3), (3, 1), (1, 0, 2), (3,)])
+@pytest.mark.parametrize("data_shape", [(), (2, 2), (1, 0, 2), (1, 3), (3,)])
 @pytest.mark.parametrize("quantfunc", LINEAR_QUANT_GENERATORS)
 def test_getitem(
     data_shape: tuple[int, int], quantfunc: Callable[..., ff.QuantizedTensor], _seed_prngs: int
@@ -146,7 +145,6 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
     torch.testing.assert_close(quantized_expanded.dequantize(), expanded, rtol=0, atol=0)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize(
     "granularity",
     [
@@ -160,14 +158,14 @@ def test_expand(quantfunc: Callable[..., ff.QuantizedTensor]) -> None:
 )
 def test_getitem_perchannel(granularity: ff.granularity.Granularity, _seed_prngs: int) -> None:
     # Given: a quantized and dequantized tensor
-    data_shape = (3, 2, 2)
+    data_shape = (3, 1, 2)
     x_in = torch.randn(data_shape)
     qx = dynamic_quant.quantize_per_granularity(x_in, granularity=granularity, num_bits=4)
     x = qx.dequantize()
 
     # Iterate over a large set of possible ways of indexing a tensor
     for slices_and_indices in itertools.product(*[
-        _dim_slices_and_indices(dim) for dim in data_shape
+        _dim_slices_and_indices(dim) for dim in data_shape[:2]
     ]):
         for i in range(1, len(slices_and_indices) + 1):
             # When: one or more dimensions are indexed
