@@ -11,6 +11,8 @@ import json
 import pathlib
 import pickle
 
+from contextlib import ExitStack
+from types import TracebackType
 from typing import Any
 
 import onnxruntime  # type: ignore[import-untyped]
@@ -21,6 +23,7 @@ from typing_extensions import override
 from fastforward.export import export
 from fastforward.export._export_helpers import QuantParametersDict, create_qnn_encoding_entry
 from fastforward.mpath import MPathCollection
+from fastforward.overrides import disable_quantization
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
@@ -82,6 +85,20 @@ class ModuleIORecorder:
         with open(location, "wb") as fp:
             pickle.dump(input_output_registry, fp)
 
+    def __enter__(self) -> "ModuleIORecorder":
+        """Attach the recorder to the module when entering the context."""
+        self.attach()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Detach the recorder from the module when exiting the context."""
+        self.detach()
+
 
 def export_modules(
     model: torch.nn.Module,
@@ -129,6 +146,7 @@ def export_modules(
     args = args or ()
     kwargs = kwargs or {}
     output_path = output_path / model_name / model_name
+    output_path.mkdir(parents=True, exist_ok=True)
 
     if args == () and kwargs == {}:
         msg = "Both args and kwargs cannot be None at the same time"
@@ -138,6 +156,18 @@ def export_modules(
         modules = {mod.full_name: mod.module for mod in module_or_module_collection}
     else:
         modules = {model_name: module_or_module_collection}
+
+    with ExitStack() as stack:
+        recorders = [
+            stack.enter_context(ModuleIORecorder(module, module_name))
+            for module_name, module in modules.items()
+        ]
+        with disable_quantization(model):
+            model(*args, **kwargs)
+        for rec in recorders:
+            rec.store_io_as_dict(
+                output_path / f"{rec.module_name}_nonquantized_input_output.pickle"
+            )
 
     module_io_recorders: list[ModuleIORecorder] = []
     for module_name, module in modules.items():
