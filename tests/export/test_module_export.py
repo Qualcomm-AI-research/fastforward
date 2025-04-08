@@ -9,8 +9,23 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.export.module_export import export_modules
+from fastforward.export.module_export import ModuleIORecorder, export_modules
+from fastforward.quantization.strict_quantization import strict_quantization_for_module
 from tests.export.export_utils import QuantizedModelFixture, activate_quantizers
+
+
+def test_module_io_recorder(
+    simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
+    """Test that the ModuleIORecorder can record the input and output of a module."""
+    data = torch.randn(2, 32, 10)
+    model, *_ = simple_model
+    model_name = "test_linear_model"
+    with ModuleIORecorder(model, model_name) as recorder:
+        with strict_quantization_for_module(False, model):
+            model(data)
+        recorder.store_io_as_dict(tmp_path / f"{model_name}_input_output.pickle")
+        _check_module_input_output_has_been_stored(tmp_path, model_name)
 
 
 @pytest.mark.xfail_due_to_too_new_torch
