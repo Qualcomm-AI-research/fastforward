@@ -226,6 +226,77 @@ class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
 """
 
 
+# Example with sub- and sub-sub-modules that do not have manually quantized counterparts
+class ExampleSubModule6(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.module = torch.nn.Identity()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+
+
+class ExampleModule6(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.module = ExampleSubModule6()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+
+
+FLOAT_MODULE_6 = ExampleModule6()
+
+AUTOQUANTIZED_MODULE_OUT_6 = """
+class QuantizedExampleModule6(fastforward.nn.QuantizedModule, ExampleModule6):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+class QuantizedIdentity(fastforward.nn.QuantizedModule, Identity):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        
+    def forward(self, input: Tensor) -> Tensor:
+        return input
+class QuantizedExampleSubModule6(fastforward.nn.QuantizedModule, ExampleSubModule6):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+"""
+
+
+# Example with manually quantized counterparts
+class ExampleModule7(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.module = torch.nn.Linear(1, 2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+
+
+FLOAT_MODULE_7 = ExampleModule7()
+
+AUTOQUANTIZED_MODULE_OUT_7 = """
+class QuantizedExampleModule7(fastforward.nn.QuantizedModule, ExampleModule7):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module(x)
+        return x
+"""
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module, expected_codegen",
@@ -235,8 +306,10 @@ class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
         (FLOAT_MODULE_3, AUTOQUANTIZED_MODULE_OUT_3),
         (FLOAT_MODULE_4, AUTOQUANTIZED_MODULE_OUT_4),
         (FLOAT_MODULE_5, AUTOQUANTIZED_MODULE_OUT_5),
+        (FLOAT_MODULE_6, AUTOQUANTIZED_MODULE_OUT_6),
+        (FLOAT_MODULE_7, AUTOQUANTIZED_MODULE_OUT_7),
     ],
-    ids=[f"case-{i}" for i in range(1, 6)],
+    ids=[f"case-{i}" for i in range(1, 8)],
 )
 def test_autoquant_introduces_quantization_method(
     input_module: torch.nn.Module, expected_codegen: str

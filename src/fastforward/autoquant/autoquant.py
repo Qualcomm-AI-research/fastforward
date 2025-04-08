@@ -6,6 +6,7 @@ import torch
 
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
+from fastforward.nn.quantized_module import QuantizedModule
 
 from . import pybuilder, pysource
 from .convert import convert_method
@@ -65,20 +66,51 @@ def _autoquant(
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
 ) -> pybuilder.ModuleBuilder:
-    ModuleType = type(module)
-    src_class = source_context.get(fully_qualified_name(ModuleType))
-
-    dst_class = pybuilder.QuantizedModuleBuilder(
-        f"Quantized{ModuleType.__name__}",
-        bases=(ModuleType.__name__,),
-    )
-
+    module_queue: set[torch.nn.Module] = {module}
+    seen_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
     dst_module = pybuilder.ModuleBuilder()
 
-    forward_src = src_class.member("forward")
-    quantized_forward = convert_method(forward_src, dst_class, operator_table)
+    while len(module_queue) > 0:
+        current = module_queue.pop()
+        current_cls = type(current)
 
-    dst_class.add_method(quantized_forward)
-    dst_module.add_class(dst_class)
+        seen_modules.add(current_cls)
+        unseen_submodules = _find_unseen_submodules(current, seen_modules)
+
+        module_queue.update(unseen_submodules)
+
+        src_class = source_context.get(fully_qualified_name(current_cls))
+        dst_class = pybuilder.QuantizedModuleBuilder(
+            f"Quantized{current_cls.__name__}",
+            bases=(current_cls.__name__,),
+        )
+
+        forward_src = src_class.member("forward")
+        quantized_forward = convert_method(forward_src, dst_class, operator_table)
+
+        dst_class.add_method(quantized_forward)
+        dst_module.add_class(dst_class)
 
     return dst_module
+
+
+def _find_unseen_submodules(
+    torch_module: torch.nn.Module, seen_modules: set[type[torch.nn.Module]]
+) -> set[torch.nn.Module]:
+    unseen_submodules = set(
+        module for module in torch_module.modules() if type(module) not in seen_modules
+    )
+    return unseen_submodules
+
+
+def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:
+    """Find the modules that are manually quantized in FastForward."""
+    subclasses = QuantizedModule.__subclasses__()
+    immediate_superclasses: set[type[torch.nn.Module]] = set()
+    for cls in subclasses:
+        for base in cls.__bases__:
+            if not issubclass(base, QuantizedModule):
+                assert issubclass(base, torch.nn.Module), f"Expected a torch.nn.Module, got: {base}"
+                immediate_superclasses.add(base)
+
+    return immediate_superclasses
