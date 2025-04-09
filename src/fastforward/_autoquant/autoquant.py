@@ -48,7 +48,7 @@ def autoquant(
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
 ) -> pybuilder.ModuleBuilder:
-    module_queue: set[torch.nn.Module] = {module}
+    module_queue: list[torch.nn.Module] = [module]
     seen_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
     dst_module = pybuilder.ModuleBuilder()
 
@@ -59,7 +59,7 @@ def autoquant(
         seen_modules.add(current_cls)
         unseen_submodules = _find_unseen_submodules(current, seen_modules)
 
-        module_queue.update(unseen_submodules)
+        module_queue.extend(unseen_submodules)
 
         src_class = source_context.get(fully_qualified_name(current_cls))
         dst_class = pybuilder.QuantizedModuleBuilder(
@@ -78,8 +78,8 @@ def autoquant(
 
 def _find_unseen_submodules(
     torch_module: torch.nn.Module, seen_modules: set[type[torch.nn.Module]]
-) -> set[torch.nn.Module]:
-    unseen_submodules = set(
+) -> tuple[torch.nn.Module, ...]:
+    unseen_submodules = tuple(
         module for module in torch_module.modules() if type(module) not in seen_modules
     )
     return unseen_submodules
