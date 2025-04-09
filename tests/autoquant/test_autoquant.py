@@ -9,6 +9,7 @@ from fastforward._autoquant import pysource
 from fastforward._autoquant.autoquant import (
     autoquant,
     autoquant_with_defaults,
+    codeformat_with_defaults,
     default_source_context,
 )
 from fastforward._autoquant.cst import passes
@@ -360,3 +361,20 @@ def test_expressions_not_quantized() -> None:
     actual = autoquant_with_defaults(ExampleExpression()).build().code
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
     assert_strings_match_verbose(expected_output, actual.strip())
+
+
+UNFORMATTED_CODE = """
+1 + 2 ==3
+"""
+
+FORMATTED_CODE = """
+1 + 2 == 3
+"""
+
+
+def test_codeformat() -> None:
+    """Tests that code is formatted correctly."""
+    input = UNFORMATTED_CODE.strip()
+    expected = FORMATTED_CODE.strip()
+    actual = codeformat_with_defaults(code=input).strip()
+    assert expected == actual

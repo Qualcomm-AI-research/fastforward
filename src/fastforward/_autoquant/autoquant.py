@@ -43,6 +43,13 @@ def autoquant_with_defaults(
     return autoquant(module, default_source_context(), operator_table)
 
 
+def codeformat_with_defaults(
+    code: str, code_formatter: pybuilder.CodeFormatter | None = None
+) -> str:
+    code_formatter = code_formatter or pybuilder.RuffFormatter()
+    return code_formatter.format(code)
+
+
 def autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
