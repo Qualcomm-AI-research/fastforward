@@ -7,9 +7,9 @@ from collections.abc import Sequence
 import libcst
 import pytest
 
-from fastforward.autoquant.cst import node_processing
-from fastforward.autoquant.cst.nodes import GeneralAssignment
-from fastforward.autoquant.cst.passes import WrapAssignments
+from fastforward._autoquant.cst import node_processing
+from fastforward._autoquant.cst.nodes import GeneralAssignment
+from fastforward._autoquant.cst.passes import WrapAssignments
 from typing_extensions import override
 
 

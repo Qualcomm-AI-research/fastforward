@@ -8,11 +8,11 @@ import libcst
 import pytest
 import torch
 
+from fastforward._autoquant.cfg import blocks
+from fastforward._autoquant.cfg.variable_tracking import QuantizationStatus, infer_block_dataflow
+from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
+from fastforward._autoquant.pybuilder import QuantizedModuleBuilder
 from fastforward._quantops import OperatorTable
-from fastforward.autoquant.cfg import blocks
-from fastforward.autoquant.cfg.variable_tracking import QuantizationStatus, infer_block_dataflow
-from fastforward.autoquant.cst.passes import QuantizedCounterpartReplacer
-from fastforward.autoquant.pybuilder import QuantizedModuleBuilder
 
 from tests.autoquant.cfg.cfg_test import CFGTest
 

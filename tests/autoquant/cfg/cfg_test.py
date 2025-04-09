@@ -7,11 +7,11 @@ from typing import Any, Callable, ParamSpec, TypeVar
 import libcst
 import pytest
 
+from fastforward._autoquant.autoquant import default_optable, default_source_context
+from fastforward._autoquant.cfg import blocks, construct
+from fastforward._autoquant.pysource import SourceContext
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import OperatorTable
-from fastforward.autoquant.autoquant import default_optable, default_source_context
-from fastforward.autoquant.cfg import blocks, construct
-from fastforward.autoquant.pysource import SourceContext
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")

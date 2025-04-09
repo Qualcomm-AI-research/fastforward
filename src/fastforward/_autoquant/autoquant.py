@@ -36,32 +36,14 @@ def default_optable() -> optable.OperatorTable:
     return optable.OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
 
 
-def autoquantize(
-    module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
-) -> None:
-    """Create Python source code for quantized version of `module`.
-
-    Note:
-        This functionality is experimental and currently under active
-        development.
-
-    Args:
-        module: The module to quantize.
-        operator_table: The operator table that defines the non-quantized to
-            quantized operator mapping.
-
-    """
-    print(_autoquant_with_defaults(module, operator_table).build().code)
-
-
-def _autoquant_with_defaults(
+def autoquant_with_defaults(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
 ) -> pybuilder.ModuleBuilder:
     operator_table = operator_table or default_optable()
-    return _autoquant(module, default_source_context(), operator_table)
+    return autoquant(module, default_source_context(), operator_table)
 
 
-def _autoquant(
+def autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,

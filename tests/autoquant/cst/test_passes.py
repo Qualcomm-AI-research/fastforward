@@ -5,7 +5,7 @@ from collections.abc import Sequence
 
 import libcst as libcst
 
-from fastforward.autoquant.cst import passes
+from fastforward._autoquant.cst import passes
 
 from tests.utils.string import assert_strings_match_verbose, dedent_strip
 

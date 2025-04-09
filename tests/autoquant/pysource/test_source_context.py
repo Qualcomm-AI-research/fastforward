@@ -10,7 +10,7 @@ import libcst
 import pytest
 import torch
 
-from fastforward.autoquant import pysource
+from fastforward._autoquant import pysource
 
 
 @pytest.mark.slow

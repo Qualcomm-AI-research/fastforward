@@ -7,9 +7,9 @@ from typing import Any
 import libcst
 import pytest
 
-from fastforward.autoquant.cfg import blocks, variable_tracking
-from fastforward.autoquant.cst.passes import WrapAssignments
-from fastforward.autoquant.pysource import SourceContext
+from fastforward._autoquant.cfg import blocks, variable_tracking
+from fastforward._autoquant.cst.passes import WrapAssignments
+from fastforward._autoquant.pysource import SourceContext
 from typing_extensions import override
 
 from tests.autoquant.cfg.cfg_test import CFGTest

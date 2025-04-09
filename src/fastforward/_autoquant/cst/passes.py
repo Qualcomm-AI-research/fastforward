@@ -12,13 +12,13 @@ import libcst.matchers as m
 
 from typing_extensions import override
 
+from fastforward._autoquant.cst.node_creation import (
+    get_output_quantizer_kwarg,
+    get_quantized_function_counterpart,
+)
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
-)
-from fastforward.autoquant.cst.node_creation import (
-    get_output_quantizer_kwarg,
-    get_quantized_function_counterpart,
 )
 
 from .nodes import (

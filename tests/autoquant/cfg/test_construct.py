@@ -5,7 +5,7 @@ import functools
 
 import libcst
 
-from fastforward.autoquant.cfg import blocks, construct
+from fastforward._autoquant.cfg import blocks, construct
 
 from tests.utils.string import dedent_strip
 

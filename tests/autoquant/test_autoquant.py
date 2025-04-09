@@ -5,15 +5,15 @@ import libcst
 import pytest
 import torch
 
-from fastforward._quantops import optable
-from fastforward.autoquant import pysource
-from fastforward.autoquant.autoquant import (
-    _autoquant,
-    _autoquant_with_defaults,
+from fastforward._autoquant import pysource
+from fastforward._autoquant.autoquant import (
+    autoquant,
+    autoquant_with_defaults,
     default_source_context,
 )
-from fastforward.autoquant.cst import passes
-from fastforward.autoquant.pysource import SourceContext
+from fastforward._autoquant.cst import passes
+from fastforward._autoquant.pysource import SourceContext
+from fastforward._quantops import optable
 from typing_extensions import override
 
 from tests.utils.string import assert_strings_match_verbose, dedent_strip
@@ -331,7 +331,7 @@ def test_autoquant_introduces_quantization_method(
     )
 
     # WHEN we autoquantize the example module
-    module_builder = _autoquant(
+    module_builder = autoquant(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
     actual_output = module_builder.build().code
@@ -357,6 +357,6 @@ class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpressi
 
 def test_expressions_not_quantized() -> None:
     """Tests that expressions are not quantized (fixes #80)."""
-    actual = _autoquant_with_defaults(ExampleExpression()).build().code
+    actual = autoquant_with_defaults(ExampleExpression()).build().code
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
     assert_strings_match_verbose(expected_output, actual.strip())

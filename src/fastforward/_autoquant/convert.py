@@ -9,8 +9,8 @@ from typing import cast
 import libcst
 import libcst.display
 
+from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
 from fastforward._quantops import OperatorTable
-from fastforward.autoquant.cst.passes import QuantizedCounterpartReplacer
 
 from .cfg import block_node_elems, blocks, construct, reconstruct, variable_tracking
 from .cst import nodes

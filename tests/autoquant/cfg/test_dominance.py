@@ -9,7 +9,7 @@ from collections.abc import Iterator, Sequence
 
 import pytest
 
-from fastforward.autoquant.cfg import _dominance, blocks
+from fastforward._autoquant.cfg import _dominance, blocks
 from typing_extensions import Self, override
 
 

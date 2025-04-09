@@ -6,7 +6,7 @@ import difflib
 import libcst
 import pytest
 
-from fastforward.autoquant.cfg import construct, reconstruct
+from fastforward._autoquant.cfg import construct, reconstruct
 
 from tests.autoquant.cfg import reconstruct_test_cases
 

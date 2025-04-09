@@ -15,8 +15,8 @@ import libcst.helpers
 
 from typing_extensions import override
 
+from fastforward._autoquant.cst.validation import ensure_type
 from fastforward._import import QualifiedNameReference, fully_qualified_name
-from fastforward.autoquant.cst.validation import ensure_type
 
 
 class SourceContextError(RuntimeError):

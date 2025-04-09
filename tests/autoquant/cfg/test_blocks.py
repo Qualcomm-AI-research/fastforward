@@ -4,7 +4,7 @@
 import inspect
 import unittest.mock
 
-from fastforward.autoquant.cfg import blocks
+from fastforward._autoquant.cfg import blocks
 
 
 def test_block_visitor() -> None:
