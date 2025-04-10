@@ -7,11 +7,13 @@ ENV CONDA_DEFAULT_ENV=dev \
 RUN apt update && \
     DEBIAN_FRONTEND=noninteractive apt install --yes --no-install-recommends \
         acl \
+        bash-completion \
         ca-certificates \
         curl \
         fzf \
         git \
         jq \
+        less \
         nodejs \
         npm \
         openssh-client \
