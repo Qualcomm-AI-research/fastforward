@@ -1,6 +1,13 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
-#
+"""
+!!! experimental
+    Please be aware that autoquant is an experimental feature. Use it with caution and
+    expect changes as we continue the development of the feature.
+
+    We encourage you to report any issues or feature requests.
+"""  # noqa: D205, D212
+
 import torch
 
 from fastforward._autoquant.autoquant import autoquant_with_defaults
@@ -11,10 +18,6 @@ def autoquantize(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
 ) -> None:
     """Create Python source code for quantized version of `module`.
-
-    Note:
-        This functionality is experimental and currently under active
-        development.
 
     Args:
         module: The module to quantize.
