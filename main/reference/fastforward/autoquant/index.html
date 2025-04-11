@@ -10,28 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/nn/dynamic_linear_quantizer/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/autoquant/">
       
       
-        <link rel="prev" href="../conv/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../embedding/">
+        <link rel="next" href="../common/">
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
     
     
       
-        <title>dynamic_linear_quantizer - FastForward</title>
+        <title>autoquant - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.4af4bdda.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -50,11 +50,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.dynamic_linear_quantizer" class="md-skip">
+        <a href="#fastforward.autoquant" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              dynamic_linear_quantizer
+              autoquant
             
           </span>
         </div>
@@ -203,7 +203,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../.." class="md-tabs__link">
+        <a href="../../.." class="md-tabs__link">
           
   
   
@@ -221,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../examples/" class="md-tabs__link">
+      <a href="../../../examples/" class="md-tabs__link">
         
   
   
@@ -244,7 +244,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -280,7 +280,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -351,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -381,7 +381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/" class="md-nav__link">
+      <a href="../../../examples/" class="md-nav__link">
         
   
   
@@ -466,7 +466,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -496,10 +496,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../autoquant/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    autoquant
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -510,6 +530,42 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.autoquant" class="md-nav__link">
+    <span class="md-ellipsis">
+      autoquant
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.autoquant.autoquantize" class="md-nav__link">
+    <span class="md-ellipsis">
+      autoquantize
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -522,7 +578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/" class="md-nav__link">
+      <a href="../common/" class="md-nav__link">
         
   
   
@@ -545,7 +601,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dispatcher/" class="md-nav__link">
+      <a href="../dispatcher/" class="md-nav__link">
         
   
   
@@ -568,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../exceptions/" class="md-nav__link">
+      <a href="../exceptions/" class="md-nav__link">
         
   
   
@@ -606,7 +662,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/" class="md-nav__link ">
+            <a href="../export/" class="md-nav__link ">
               
   
   
@@ -639,7 +695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/export/" class="md-nav__link">
+      <a href="../export/export/" class="md-nav__link">
         
   
   
@@ -662,7 +718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/graph_operations/" class="md-nav__link">
+      <a href="../export/graph_operations/" class="md-nav__link">
         
   
   
@@ -685,7 +741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/module_export/" class="md-nav__link">
+      <a href="../export/module_export/" class="md-nav__link">
         
   
   
@@ -716,7 +772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flags/" class="md-nav__link">
+      <a href="../flags/" class="md-nav__link">
         
   
   
@@ -739,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../forward_override/" class="md-nav__link">
+      <a href="../forward_override/" class="md-nav__link">
         
   
   
@@ -762,7 +818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../logging/" class="md-nav__link">
+      <a href="../logging/" class="md-nav__link">
         
   
   
@@ -800,7 +856,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../mpath/" class="md-nav__link ">
+            <a href="../mpath/" class="md-nav__link ">
               
   
   
@@ -833,7 +889,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/fragments/" class="md-nav__link">
+      <a href="../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -856,7 +912,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/selector/" class="md-nav__link">
+      <a href="../mpath/selector/" class="md-nav__link">
         
   
   
@@ -884,8 +940,6 @@
                 
   
   
-    
-  
   
   
     
@@ -896,15 +950,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../nn/" class="md-nav__link ">
               
   
   
@@ -923,7 +977,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_10">
             <span class="md-nav__icon md-icon"></span>
             nn
@@ -937,7 +991,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../activations/" class="md-nav__link">
+      <a href="../nn/activations/" class="md-nav__link">
         
   
   
@@ -960,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../container/" class="md-nav__link">
+      <a href="../nn/container/" class="md-nav__link">
         
   
   
@@ -983,7 +1037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../conv/" class="md-nav__link">
+      <a href="../nn/conv/" class="md-nav__link">
         
   
   
@@ -1003,30 +1057,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    dynamic_linear_quantizer
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1037,75 +1071,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer" class="md-nav__link">
-    <span class="md-ellipsis">
-      dynamic_linear_quantizer
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="md-nav__link">
-    <span class="md-ellipsis">
-      DynamicLinearQuantizer
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DynamicLinearQuantizer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="md-nav__link">
-    <span class="md-ellipsis">
-      quantization_function
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="md-nav__link">
-    <span class="md-ellipsis">
-      symmetric
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      quantization_parameters
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1118,7 +1083,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../embedding/" class="md-nav__link">
+      <a href="../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1141,7 +1106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../functional/" class="md-nav__link">
+      <a href="../nn/functional/" class="md-nav__link">
         
   
   
@@ -1164,7 +1129,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear/" class="md-nav__link">
+      <a href="../nn/linear/" class="md-nav__link">
         
   
   
@@ -1187,7 +1152,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear_quantizer/" class="md-nav__link">
+      <a href="../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1210,7 +1175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../normalization/" class="md-nav__link">
+      <a href="../nn/normalization/" class="md-nav__link">
         
   
   
@@ -1233,7 +1198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_module/" class="md-nav__link">
+      <a href="../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -1256,7 +1221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantizer/" class="md-nav__link">
+      <a href="../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -1287,7 +1252,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../overrides/" class="md-nav__link">
+      <a href="../overrides/" class="md-nav__link">
         
   
   
@@ -1325,7 +1290,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../quantization/" class="md-nav__link ">
+            <a href="../quantization/" class="md-nav__link ">
               
   
   
@@ -1373,7 +1338,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../quantization/affine/" class="md-nav__link ">
+            <a href="../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -1406,7 +1371,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -1429,7 +1394,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/function/" class="md-nav__link">
+      <a href="../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -1452,7 +1417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/range/" class="md-nav__link">
+      <a href="../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -1475,7 +1440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/static/" class="md-nav__link">
+      <a href="../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -1506,7 +1471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/function/" class="md-nav__link">
+      <a href="../quantization/function/" class="md-nav__link">
         
   
   
@@ -1529,7 +1494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/granularity/" class="md-nav__link">
+      <a href="../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -1552,7 +1517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/local_error/" class="md-nav__link">
+      <a href="../quantization/local_error/" class="md-nav__link">
         
   
   
@@ -1575,7 +1540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/output_mse/" class="md-nav__link">
+      <a href="../quantization/output_mse/" class="md-nav__link">
         
   
   
@@ -1598,7 +1563,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/quant_init/" class="md-nav__link">
+      <a href="../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -1621,7 +1586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/random/" class="md-nav__link">
+      <a href="../quantization/random/" class="md-nav__link">
         
   
   
@@ -1644,7 +1609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/ste/" class="md-nav__link">
+      <a href="../quantization/ste/" class="md-nav__link">
         
   
   
@@ -1667,7 +1632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -1690,7 +1655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -1721,7 +1686,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantized_tensor/" class="md-nav__link">
+      <a href="../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -1759,7 +1724,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../range_setting/" class="md-nav__link ">
+            <a href="../range_setting/" class="md-nav__link ">
               
   
   
@@ -1792,7 +1757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/common/" class="md-nav__link">
+      <a href="../range_setting/common/" class="md-nav__link">
         
   
   
@@ -1815,7 +1780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/min_error/" class="md-nav__link">
+      <a href="../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -1838,7 +1803,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/minmax/" class="md-nav__link">
+      <a href="../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -1869,7 +1834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../type_common/" class="md-nav__link">
+      <a href="../type_common/" class="md-nav__link">
         
   
   
@@ -1919,14 +1884,21 @@
   
 
 
-  <h1>dynamic_linear_quantizer</h1>
+  <h1>autoquant</h1>
 
 <div class="doc doc-object doc-module">
 
 
 
-<a id="fastforward.nn.dynamic_linear_quantizer"></a>
+<a id="fastforward.autoquant"></a>
     <div class="doc doc-contents first">
+
+        <div class="admonition experimental">
+<p class="admonition-title">Experimental</p>
+<p>Please be aware that autoquant is an experimental feature. Use it with caution and
+expect changes as we continue the development of the feature.</p>
+<p>We encourage you to report any issues or feature requests.</p>
+</div>
 
 
 
@@ -1945,33 +1917,19 @@
 
 
 
-<div class="doc doc-object doc-class">
+
+<div class="doc doc-object doc-function">
 
 
+<h2 id="fastforward.autoquant.autoquantize" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">autoquantize</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-<h2 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="doc doc-heading">
-            <code>DynamicLinearQuantizer</code>
-
-
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.autoquant.autoquantize" class="headerlink" title="Permanent link">#</a></h2>
 
 
     <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;AbstractAffineQuantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.linear_quantizer.AbstractAffineQuantizer&lt;/code&gt;)" href="../linear_quantizer/#fastforward.nn.linear_quantizer.AbstractAffineQuantizer">AbstractAffineQuantizer</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
 
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.DynamicAffineQuantParams&lt;/code&gt;)" href="../../quantization/affine/function/#fastforward.quantization.affine.function.DynamicAffineQuantParams">DynamicAffineQuantParams</a>]</code></p>
-
-
-        <p>Dynamic Linear quantizer.</p>
-<p>Support multiple quantization granularities. A granularity
-defines which parts of the input tensor are quantized using the same
-quantization parameter. E.g., per-tensor, per-channel, or per-block
-quantization. The granularity details are implemented in Granularity
-subclasses and are passed into LinearQuantizer.</p>
+        <p>Create Python source code for quantized version of <code>module</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1987,14 +1945,14 @@ subclasses and are passed into LinearQuantizer.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>num_bits</code>
+                <code>module</code>
             </td>
             <td>
-                  <code><span title="int">int</span></code>
+                  <code><span title="torch.nn.Module">Module</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Bitwidth of quantization output granularity</p>
+                <p>The module to quantize.</p>
               </div>
             </td>
             <td>
@@ -2003,335 +1961,19 @@ subclasses and are passed into LinearQuantizer.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>granularity</code>
+                <code>operator_table</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Granularity&lt;/code&gt; (&lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;)" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
+                  <code><span title="fastforward._quantops.optable.OperatorTable">OperatorTable</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Granularity object that specifies the
-quantization granularity</p>
+                <p>The operator table that defines the non-quantized to
+quantized operator mapping.</p>
               </div>
             </td>
             <td>
                   <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>quantized_dtype</code>
-            </td>
-            <td>
-                  <code><span title="torch.dtype">dtype</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>datatype in which the quantized data is stored</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>parameter_inference_fn</code>
-            </td>
-            <td>
-                  <code><span title="fastforward.quantization.affine.DynamicParamInferenceFn">DynamicParamInferenceFn</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>function that determines scale and offset
-dynamically. If omitted, a min/max inference method is used.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/dynamic_linear_quantizer.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DynamicLinearQuantizer</span><span class="p">(</span><span class="n">AbstractAffineQuantizer</span><span class="p">[</span><span class="n">DynamicAffineQuantParams</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dynamic Linear quantizer.</span>
-
-<span class="sd">    Support multiple quantization granularities. A granularity</span>
-<span class="sd">    defines which parts of the input tensor are quantized using the same</span>
-<span class="sd">    quantization parameter. E.g., per-tensor, per-channel, or per-block</span>
-<span class="sd">    quantization. The granularity details are implemented in Granularity</span>
-<span class="sd">    subclasses and are passed into LinearQuantizer.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        num_bits: Bitwidth of quantization output granularity</span>
-<span class="sd">        granularity: Granularity object that specifies the</span>
-<span class="sd">            quantization granularity</span>
-<span class="sd">        quantized_dtype: datatype in which the quantized data is stored</span>
-<span class="sd">        parameter_inference_fn: function that determines scale and offset</span>
-<span class="sd">            dynamically. If omitted, a min/max inference method is used.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">parameter_inference_fn</span><span class="p">:</span> <span class="n">DynamicParamInferenceFn</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">quantized_dtype</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span> <span class="o">=</span> <span class="n">num_bits</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="n">quantized_dtype</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span> <span class="o">=</span> <span class="n">parameter_inference_fn</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if symmetric quantization, False otherwise.</span>
-
-<span class="sd">        Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">False</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DynamicAffineQuantParams</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization parameters of this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            `DynamicAffineQuantParams` specific to this quantizer</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">DynamicAffineQuantParams</span><span class="p">(</span>
-            <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-            <span class="n">quantized_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
-            <span class="n">parameter_inference_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_function</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">DynamicAffineQuantParams</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization function associated with this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            `QuantizationFunction` that implements the quantization operator</span>
-<span class="sd">            specific to this quantizer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">AffineQuantizationFunction</span>
-</code></pre></div></td></tr></table></div>
-              </details>
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_function</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Quantization function associated with this quantizer.</p>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizationFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.DynamicAffineQuantParams&lt;/code&gt;)" href="../../quantization/affine/function/#fastforward.quantization.affine.function.DynamicAffineQuantParams">DynamicAffineQuantParams</a>]]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p><code>QuantizationFunction</code> that implements the quantization operator</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizationFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.DynamicAffineQuantParams&lt;/code&gt;)" href="../../quantization/affine/function/#fastforward.quantization.affine.function.DynamicAffineQuantParams">DynamicAffineQuantParams</a>]]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>specific to this quantizer.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">symmetric</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>True if symmetric quantization, False otherwise.</p>
-<p>Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol</p>
-
-    </div>
-
-</div>
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
-
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Quantization parameters of this quantizer.</p>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.DynamicAffineQuantParams&lt;/code&gt;)" href="../../quantization/affine/function/#fastforward.quantization.affine.function.DynamicAffineQuantParams">DynamicAffineQuantParams</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p><code>DynamicAffineQuantParams</code> specific to this quantizer</p>
-              </div>
             </td>
           </tr>
       </tbody>
@@ -2339,46 +1981,35 @@ dynamically. If omitted, a min/max inference method is used.</p>
 
 
             <details class="quote">
-              <summary>Source code in <code>fastforward/nn/dynamic_linear_quantizer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DynamicAffineQuantParams</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantization parameters of this quantizer.</span>
+              <summary>Source code in <code>fastforward/autoquant.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">operator_table</span><span class="p">:</span> <span class="n">optable</span><span class="o">.</span><span class="n">OperatorTable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create Python source code for quantized version of `module`.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        `DynamicAffineQuantParams` specific to this quantizer</span>
+<span class="sd">    Args:</span>
+<span class="sd">        module: The module to quantize.</span>
+<span class="sd">        operator_table: The operator table that defines the non-quantized to</span>
+<span class="sd">            quantized operator mapping.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">DynamicAffineQuantParams</span><span class="p">(</span>
-        <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
-        <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-        <span class="n">quantized_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
-        <span class="n">parameter_inference_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">autoquant_with_defaults</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span><span class="o">.</span><span class="n">code</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
 
 </div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
 
 
 
@@ -2435,10 +2066,10 @@ dynamically. If omitted, a min/max inference method is used.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>
