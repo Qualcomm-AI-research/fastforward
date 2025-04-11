@@ -1922,7 +1922,7 @@ expect changes as we continue the development of the feature.</p>
 
 
 <h2 id="fastforward.autoquant.autoquantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">autoquantize</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">autoquantize</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">code_formatter</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#fastforward.autoquant.autoquantize" class="headerlink" title="Permanent link">#</a></h2>
 
@@ -1976,14 +1976,30 @@ quantized operator mapping.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>code_formatter</code>
+            </td>
+            <td>
+                  <code><span title="fastforward._autoquant.pybuilder.CodeFormatter">CodeFormatter</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The code formatter to use for formatting the generated
+code. If not provided, the default formatter is used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
 
             <details class="quote">
               <summary>Source code in <code>fastforward/autoquant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
-<span class="normal">18</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
 <span class="normal">21</span>
@@ -1993,8 +2009,17 @@ quantized operator mapping.</p>
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
-<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize</span><span class="p">(</span>
-    <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">operator_table</span><span class="p">:</span> <span class="n">optable</span><span class="o">.</span><span class="n">OperatorTable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="n">operator_table</span><span class="p">:</span> <span class="n">optable</span><span class="o">.</span><span class="n">OperatorTable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">code_formatter</span><span class="p">:</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">CodeFormatter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create Python source code for quantized version of `module`.</span>
 
@@ -2002,9 +2027,13 @@ quantized operator mapping.</p>
 <span class="sd">        module: The module to quantize.</span>
 <span class="sd">        operator_table: The operator table that defines the non-quantized to</span>
 <span class="sd">            quantized operator mapping.</span>
+<span class="sd">        code_formatter: The code formatter to use for formatting the generated</span>
+<span class="sd">            code. If not provided, the default formatter is used.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">autoquant_with_defaults</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span><span class="o">.</span><span class="n">code</span><span class="p">)</span>
+    <span class="n">code</span> <span class="o">=</span> <span class="n">autoquant_with_defaults</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">operator_table</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span><span class="o">.</span><span class="n">code</span>
+    <span class="n">formatted_code</span> <span class="o">=</span> <span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">code_formatter</span><span class="o">=</span><span class="n">code_formatter</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">formatted_code</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
