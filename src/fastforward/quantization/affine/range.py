@@ -87,6 +87,7 @@ def parameters_for_range(
             the given range exactly must be made.
     """
     min_range, max_range = ensure_tensor(min_range), ensure_tensor(max_range)
+    min_range, max_range = min_range.to(torch.float32), max_range.to(torch.float32)
 
     # Here we check if the minimum range threshold is all zero. In that case,
     # we assume a one-sided (or unsigned following Nagel et al., 2021). LinearQuantizerOp
