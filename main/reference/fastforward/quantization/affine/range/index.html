@@ -2301,7 +2301,8 @@ may be None in the non-onesided symmetric case.</p>
 <span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
-<span class="normal">121</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters_for_range</span><span class="p">(</span>
+<span class="normal">121</span>
+<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters_for_range</span><span class="p">(</span>
     <span class="n">min_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">max_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">num_bits</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -2337,6 +2338,7 @@ may be None in the non-onesided symmetric case.</p>
 <span class="sd">            the given range exactly must be made.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">min_range</span><span class="p">,</span> <span class="n">max_range</span> <span class="o">=</span> <span class="n">ensure_tensor</span><span class="p">(</span><span class="n">min_range</span><span class="p">),</span> <span class="n">ensure_tensor</span><span class="p">(</span><span class="n">max_range</span><span class="p">)</span>
+    <span class="n">min_range</span><span class="p">,</span> <span class="n">max_range</span> <span class="o">=</span> <span class="n">min_range</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">max_range</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="c1"># Here we check if the minimum range threshold is all zero. In that case,</span>
     <span class="c1"># we assume a one-sided (or unsigned following Nagel et al., 2021). LinearQuantizerOp</span>
