@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+from collections.abc import Iterator
+
 import torch
 
 from fastforward._import import fully_qualified_name
@@ -55,23 +57,15 @@ def autoquant(
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
 ) -> pybuilder.ModuleBuilder:
-    module_queue: list[torch.nn.Module] = [module]
-    seen_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
+    pre_quantized_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
     dst_module = pybuilder.ModuleBuilder()
 
-    while len(module_queue) > 0:
-        current = module_queue.pop()
-        current_cls = type(current)
-
-        seen_modules.add(current_cls)
-        unseen_submodules = _find_unseen_submodules(current, seen_modules)
-
-        module_queue.extend(unseen_submodules)
-
-        src_class = source_context.get(fully_qualified_name(current_cls))
+    for mod in _find_unquantized_submodules(module, pre_quantized_modules):
+        mod_type = type(mod)
+        src_class = source_context.get(fully_qualified_name(mod_type))
         dst_class = pybuilder.QuantizedModuleBuilder(
-            f"Quantized{current_cls.__name__}",
-            bases=(current_cls.__name__,),
+            f"Quantized{mod_type.__name__}",
+            bases=(mod_type.__name__,),
         )
 
         forward_src = src_class.member("forward")
@@ -83,13 +77,22 @@ def autoquant(
     return dst_module
 
 
-def _find_unseen_submodules(
-    torch_module: torch.nn.Module, seen_modules: set[type[torch.nn.Module]]
-) -> tuple[torch.nn.Module, ...]:
-    unseen_submodules = tuple(
-        module for module in torch_module.modules() if type(module) not in seen_modules
-    )
-    return unseen_submodules
+def _find_unquantized_submodules(
+    torch_module: torch.nn.Module, pre_quantized_modules: set[type[torch.nn.Module]]
+) -> Iterator[torch.nn.Module]:
+    """Yield submodules of `torch_module` that are not quantized yet.
+
+    Multiple instances of a module type that is not quantized may be part of
+    `torch_module` in this case, only the first occurrence is yielded from this
+    function. Any submodule whose type is a member of `pre_quantized_modules`
+    is considered quantized and is not yielded.
+    """
+    discovered_modules = set(pre_quantized_modules)
+    for module in torch_module.modules():
+        module_type = type(module)
+        if module_type not in discovered_modules:
+            discovered_modules.add(module_type)
+            yield module
 
 
 def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:

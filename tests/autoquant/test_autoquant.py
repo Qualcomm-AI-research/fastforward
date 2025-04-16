@@ -231,10 +231,12 @@ class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
 class ExampleSubModule6(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.module = torch.nn.Identity()
+        self.module_1 = torch.nn.Identity()
+        self.module_2 = torch.nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.module(x)
+        x = self.module_1(x)
+        x = self.module_2(x)
         return x
 
 
@@ -258,19 +260,22 @@ class QuantizedExampleModule6(fastforward.nn.QuantizedModule, ExampleModule6):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.module(x)
         return x
+
+class QuantizedExampleSubModule6(fastforward.nn.QuantizedModule, ExampleSubModule6):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.module_1(x)
+        x = self.module_2(x)
+        return x
+
 class QuantizedIdentity(fastforward.nn.QuantizedModule, Identity):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
         
     def forward(self, input: Tensor) -> Tensor:
         return input
-class QuantizedExampleSubModule6(fastforward.nn.QuantizedModule, ExampleSubModule6):
-    def __init_quantization__(self) -> None:
-        super().__init_quantization__()
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.module(x)
-        return x
 """
 
 
@@ -336,9 +341,11 @@ def test_autoquant_introduces_quantization_method(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
     actual_output = module_builder.build().code
+    actual_output = codeformat_with_defaults(code=actual_output).strip()
 
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
+    expected_output = codeformat_with_defaults(code=expected_output).strip()
     assert_strings_match_verbose(expected_output, actual_output.strip())
 
 
