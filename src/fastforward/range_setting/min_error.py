@@ -34,7 +34,7 @@ from fastforward.range_setting.common import (
 )
 
 logger = logging.getLogger(__name__)
-logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
+logger.addFilter(ff.logging_utils.DuplicateLogFilter(levels=(logging.WARNING,)))
 
 
 class _TensorKwargs(TypedDict):

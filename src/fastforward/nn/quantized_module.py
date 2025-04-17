@@ -19,7 +19,7 @@ QuantizedModuleType: TypeAlias = type["QuantizedModule"]
 ModuleConversionDict: TypeAlias = dict[ModuleType, Union[QuantizedModuleType, "SkipQuantization"]]
 
 logger = logging.getLogger(__name__)
-logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.INFO, logging.WARNING)))
+logger.addFilter(ff.logging_utils.DuplicateLogFilter(levels=(logging.INFO, logging.WARNING)))
 
 
 class _QuantizedModuleMeta(type):

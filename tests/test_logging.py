@@ -13,7 +13,7 @@ def test_duplicate_log_filter() -> None:
     # Given: a logger with a DuplicateLogFilter filter that filters duplicated
     # message at the WARNING level
     logger = logging.Logger("test_logger")
-    logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
+    logger.addFilter(ff.logging_utils.DuplicateLogFilter(levels=(logging.WARNING,)))
 
     log_output = StringIO()
     handler = logging.StreamHandler(log_output)

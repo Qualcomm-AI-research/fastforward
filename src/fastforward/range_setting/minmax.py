@@ -20,7 +20,7 @@ T = TypeVar("T")
 
 
 logger = logging.getLogger(__name__)
-logger.addFilter(ff.logging.DuplicateLogFilter(levels=(logging.WARNING,)))
+logger.addFilter(ff.logging_utils.DuplicateLogFilter(levels=(logging.WARNING,)))
 
 
 class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module):
