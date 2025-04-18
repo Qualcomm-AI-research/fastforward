@@ -2703,7 +2703,11 @@ and ONNX files are stored).</p>
 <span class="normal">211</span>
 <span class="normal">212</span>
 <span class="normal">213</span>
-<span class="normal">214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">args</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[()],</span>
     <span class="n">module_or_module_collection</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span> <span class="o">|</span> <span class="n">MPathCollection</span><span class="p">,</span>
@@ -2748,7 +2752,7 @@ and ONNX files are stored).</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">args</span> <span class="ow">or</span> <span class="p">()</span>
     <span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span> <span class="ow">or</span> <span class="p">{}</span>
-    <span class="n">output_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">model_name</span> <span class="o">/</span> <span class="n">model_name</span>
+    <span class="n">output_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">model_name</span>
     <span class="n">output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">args</span> <span class="o">==</span> <span class="p">()</span> <span class="ow">and</span> <span class="n">kwargs</span> <span class="o">==</span> <span class="p">{}:</span>
@@ -2768,8 +2772,11 @@ and ONNX files are stored).</p>
         <span class="k">with</span> <span class="n">disable_quantization</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
             <span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">recorders</span><span class="p">:</span>
+            <span class="n">module_output_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">rec</span><span class="o">.</span><span class="n">module_name</span>
+            <span class="n">module_output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
             <span class="n">rec</span><span class="o">.</span><span class="n">store_io_as_dict</span><span class="p">(</span>
-                <span class="n">output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">_nonquantized_input_output.pickle&quot;</span>
+                <span class="n">module_output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">_nonquantized_input_output.pickle&quot;</span>
             <span class="p">)</span>
 
     <span class="n">module_io_recorders</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ModuleIORecorder</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -2788,6 +2795,7 @@ and ONNX files are stored).</p>
     <span class="k">for</span> <span class="n">module_io_recorder</span> <span class="ow">in</span> <span class="n">module_io_recorders</span><span class="p">:</span>
         <span class="n">module</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">module</span>
         <span class="n">module_name</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">module_name</span>
+        <span class="n">module_output_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">module_name</span>
 
         <span class="n">module_input_data</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">input</span>
         <span class="n">module_input_kwargs</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">kwargs</span>
@@ -2795,7 +2803,7 @@ and ONNX files are stored).</p>
         <span class="n">export</span><span class="p">(</span>
             <span class="n">module</span><span class="p">,</span>
             <span class="n">module_input_data</span><span class="p">,</span>
-            <span class="n">output_path</span><span class="p">,</span>
+            <span class="n">module_output_path</span><span class="p">,</span>
             <span class="n">module_name</span><span class="p">,</span>
             <span class="n">model_kwargs</span><span class="o">=</span><span class="n">module_input_kwargs</span><span class="p">,</span>
             <span class="n">enable_encodings_propagation</span><span class="o">=</span><span class="n">enable_encodings_propagation</span><span class="p">,</span>
@@ -2807,12 +2815,12 @@ and ONNX files are stored).</p>
             <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">module_input_quantizer_settings</span><span class="p">,</span>
             <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">module_output_quantizer_settings</span><span class="p">,</span>
         <span class="p">}</span>
-        <span class="n">maybe_extend_encodings_file</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">)</span>
+        <span class="n">maybe_extend_encodings_file</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">module_output_path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">)</span>
 
-        <span class="n">input_output_location</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">_input_output.pickle&quot;</span>
+        <span class="n">input_output_location</span> <span class="o">=</span> <span class="n">module_output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">_input_output.pickle&quot;</span>
         <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">store_io_as_dict</span><span class="p">(</span><span class="n">input_output_location</span><span class="p">)</span>
 
-        <span class="n">paths</span><span class="p">[</span><span class="n">module_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_path</span>
+        <span class="n">paths</span><span class="p">[</span><span class="n">module_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">module_output_path</span>
 
     <span class="k">return</span> <span class="n">paths</span>
 </code></pre></div></td></tr></table></div>
@@ -2909,11 +2917,7 @@ file.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">295</span>
 <span class="normal">296</span>
 <span class="normal">297</span>
 <span class="normal">298</span>
@@ -2949,7 +2953,11 @@ file.</p>
 <span class="normal">328</span>
 <span class="normal">329</span>
 <span class="normal">330</span>
-<span class="normal">331</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_dequantize_tensors</span><span class="p">(</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_dequantize_tensors</span><span class="p">(</span>
     <span class="n">tensors</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Dequantizes tensors.</span>
@@ -3082,11 +3090,7 @@ activations or parameters.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">221</span>
 <span class="normal">222</span>
 <span class="normal">223</span>
 <span class="normal">224</span>
@@ -3153,7 +3157,11 @@ activations or parameters.</p>
 <span class="normal">285</span>
 <span class="normal">286</span>
 <span class="normal">287</span>
-<span class="normal">288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
     <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
     <span class="n">quantizer_settings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span>
