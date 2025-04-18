@@ -10,28 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/nn/normalization/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/logging_utils/">
       
       
-        <link rel="prev" href="../linear_quantizer/">
+        <link rel="prev" href="../forward_override/">
       
       
-        <link rel="next" href="../quantized_module/">
+        <link rel="next" href="../mpath/">
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
-        <title>normalization - FastForward</title>
+        <title>logging_utils - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -50,11 +50,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.normalization" class="md-skip">
+        <a href="#fastforward.logging_utils" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              normalization
+              logging_utils
             
           </span>
         </div>
@@ -203,7 +203,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../.." class="md-tabs__link">
+        <a href="../../.." class="md-tabs__link">
           
   
   
@@ -221,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../examples/" class="md-tabs__link">
+      <a href="../../../examples/" class="md-tabs__link">
         
   
   
@@ -244,7 +244,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -280,7 +280,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -351,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -381,7 +381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/" class="md-nav__link">
+      <a href="../../../examples/" class="md-nav__link">
         
   
   
@@ -466,7 +466,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -499,7 +499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../autoquant/" class="md-nav__link">
+      <a href="../autoquant/" class="md-nav__link">
         
   
   
@@ -522,7 +522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/" class="md-nav__link">
+      <a href="../common/" class="md-nav__link">
         
   
   
@@ -545,7 +545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dispatcher/" class="md-nav__link">
+      <a href="../dispatcher/" class="md-nav__link">
         
   
   
@@ -568,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../exceptions/" class="md-nav__link">
+      <a href="../exceptions/" class="md-nav__link">
         
   
   
@@ -606,7 +606,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/" class="md-nav__link ">
+            <a href="../export/" class="md-nav__link ">
               
   
   
@@ -639,7 +639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/export/" class="md-nav__link">
+      <a href="../export/export/" class="md-nav__link">
         
   
   
@@ -662,7 +662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/graph_operations/" class="md-nav__link">
+      <a href="../export/graph_operations/" class="md-nav__link">
         
   
   
@@ -685,7 +685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/module_export/" class="md-nav__link">
+      <a href="../export/module_export/" class="md-nav__link">
         
   
   
@@ -716,7 +716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flags/" class="md-nav__link">
+      <a href="../flags/" class="md-nav__link">
         
   
   
@@ -739,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../forward_override/" class="md-nav__link">
+      <a href="../forward_override/" class="md-nav__link">
         
   
   
@@ -759,10 +759,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../logging_utils/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    logging_utils
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -773,6 +793,57 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.logging_utils" class="md-nav__link">
+    <span class="md-ellipsis">
+      logging_utils
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.logging_utils.DuplicateLogFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      DuplicateLogFilter
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DuplicateLogFilter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      filter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -800,7 +871,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../mpath/" class="md-nav__link ">
+            <a href="../mpath/" class="md-nav__link ">
               
   
   
@@ -833,7 +904,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/fragments/" class="md-nav__link">
+      <a href="../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -856,7 +927,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/selector/" class="md-nav__link">
+      <a href="../mpath/selector/" class="md-nav__link">
         
   
   
@@ -884,8 +955,6 @@
                 
   
   
-    
-  
   
   
     
@@ -896,15 +965,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../nn/" class="md-nav__link ">
               
   
   
@@ -923,7 +992,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_10">
             <span class="md-nav__icon md-icon"></span>
             nn
@@ -937,7 +1006,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../activations/" class="md-nav__link">
+      <a href="../nn/activations/" class="md-nav__link">
         
   
   
@@ -960,7 +1029,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../container/" class="md-nav__link">
+      <a href="../nn/container/" class="md-nav__link">
         
   
   
@@ -983,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../conv/" class="md-nav__link">
+      <a href="../nn/conv/" class="md-nav__link">
         
   
   
@@ -1006,7 +1075,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1029,7 +1098,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../embedding/" class="md-nav__link">
+      <a href="../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1052,7 +1121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../functional/" class="md-nav__link">
+      <a href="../nn/functional/" class="md-nav__link">
         
   
   
@@ -1075,7 +1144,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear/" class="md-nav__link">
+      <a href="../nn/linear/" class="md-nav__link">
         
   
   
@@ -1098,7 +1167,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear_quantizer/" class="md-nav__link">
+      <a href="../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1118,30 +1187,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    normalization
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../nn/normalization/" class="md-nav__link">
         
   
   
@@ -1152,42 +1201,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization" class="md-nav__link">
-    <span class="md-ellipsis">
-      normalization
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm" class="md-nav__link">
-    <span class="md-ellipsis">
-      QuantizedLayerNorm
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1200,7 +1213,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_module/" class="md-nav__link">
+      <a href="../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -1223,7 +1236,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantizer/" class="md-nav__link">
+      <a href="../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -1254,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../overrides/" class="md-nav__link">
+      <a href="../overrides/" class="md-nav__link">
         
   
   
@@ -1292,7 +1305,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../quantization/" class="md-nav__link ">
+            <a href="../quantization/" class="md-nav__link ">
               
   
   
@@ -1340,7 +1353,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../quantization/affine/" class="md-nav__link ">
+            <a href="../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -1373,7 +1386,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -1396,7 +1409,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/function/" class="md-nav__link">
+      <a href="../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -1419,7 +1432,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/range/" class="md-nav__link">
+      <a href="../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -1442,7 +1455,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/affine/static/" class="md-nav__link">
+      <a href="../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -1473,7 +1486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/function/" class="md-nav__link">
+      <a href="../quantization/function/" class="md-nav__link">
         
   
   
@@ -1496,7 +1509,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/granularity/" class="md-nav__link">
+      <a href="../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -1519,7 +1532,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/local_error/" class="md-nav__link">
+      <a href="../quantization/local_error/" class="md-nav__link">
         
   
   
@@ -1542,7 +1555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/output_mse/" class="md-nav__link">
+      <a href="../quantization/output_mse/" class="md-nav__link">
         
   
   
@@ -1565,7 +1578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/quant_init/" class="md-nav__link">
+      <a href="../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -1588,7 +1601,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/random/" class="md-nav__link">
+      <a href="../quantization/random/" class="md-nav__link">
         
   
   
@@ -1611,7 +1624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/ste/" class="md-nav__link">
+      <a href="../quantization/ste/" class="md-nav__link">
         
   
   
@@ -1634,7 +1647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -1657,7 +1670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -1688,7 +1701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantized_tensor/" class="md-nav__link">
+      <a href="../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -1726,7 +1739,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../range_setting/" class="md-nav__link ">
+            <a href="../range_setting/" class="md-nav__link ">
               
   
   
@@ -1759,7 +1772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/common/" class="md-nav__link">
+      <a href="../range_setting/common/" class="md-nav__link">
         
   
   
@@ -1782,7 +1795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/min_error/" class="md-nav__link">
+      <a href="../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -1805,7 +1818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/minmax/" class="md-nav__link">
+      <a href="../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -1836,7 +1849,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../type_common/" class="md-nav__link">
+      <a href="../type_common/" class="md-nav__link">
         
   
   
@@ -1886,13 +1899,13 @@
   
 
 
-  <h1>normalization</h1>
+  <h1>logging_utils</h1>
 
 <div class="doc doc-object doc-module">
 
 
 
-<a id="fastforward.nn.normalization"></a>
+<a id="fastforward.logging_utils"></a>
     <div class="doc doc-contents first">
 
 
@@ -1916,19 +1929,53 @@
 
 
 
-<h2 id="fastforward.nn.normalization.QuantizedLayerNorm" class="doc doc-heading">
-            <code>QuantizedLayerNorm</code>
+<h2 id="fastforward.logging_utils.DuplicateLogFilter" class="doc doc-heading">
+            <code>DuplicateLogFilter</code>
 
 
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.logging_utils.DuplicateLogFilter" class="headerlink" title="Permanent link">#</a></h2>
 
 
     <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.LayerNorm">LayerNorm</span></code>, <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code></p>
 
 
-        <p>Quantized implementation of torch.nn.LayerNorm.</p>
+        <p>Filter for duplicated log messages.</p>
+<p>Filters log messages that are logged more than once on a specific loglevel
+included in <code>levels</code> are filtered. This reduces noise on either stdout or
+logfiles. Note that log messages are only filtered if their loglevel is a
+member of <code>levels</code>. This means that logs of a lower level are not filtered
+if that lower level is not a member of levels.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>levels</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Sequence">Sequence</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
 
@@ -1937,8 +1984,10 @@
 
 
               <details class="quote">
-                <summary>Source code in <code>fastforward/nn/normalization.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">11</span>
+                <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
 <span class="normal">12</span>
 <span class="normal">13</span>
 <span class="normal">14</span>
@@ -1963,56 +2012,34 @@
 <span class="normal">33</span>
 <span class="normal">34</span>
 <span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedLayerNorm</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">,</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizedModule</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.LayerNorm.&quot;&quot;&quot;</span>
+<span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DuplicateLogFilter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter for duplicated log messages.</span>
 
-    <span class="n">weight</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># type: ignore[assignment]</span>
-    <span class="n">bias</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># type: ignore[assignment]</span>
+<span class="sd">    Filters log messages that are logged more than once on a specific loglevel</span>
+<span class="sd">    included in `levels` are filtered. This reduces noise on either stdout or</span>
+<span class="sd">    logfiles. Note that log messages are only filtered if their loglevel is a</span>
+<span class="sd">    member of `levels`. This means that logs of a lower level are not filtered</span>
+<span class="sd">    if that lower level is not a member of levels.</span>
 
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="sd">    Args:</span>
+<span class="sd">        levels: Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">elementwise_affine</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;weight_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">levels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
-        <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span>
-        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter record for duplicate log messages.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">levelno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
 
-        <span class="k">if</span> <span class="n">weight</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">layer_norm</span><span class="p">(</span>
-            <span class="nb">input</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">normalized_shape</span><span class="p">,</span>
-            <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span>
-            <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-            <span class="n">eps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">,</span>
-            <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2027,6 +2054,49 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.logging_utils.DuplicateLogFilter.filter" class="doc doc-heading">
+            <code class="highlight language-python"><span class="nb">filter</span><span class="p">(</span><span class="n">record</span><span class="p">)</span></code>
+
+<a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Filter record for duplicate log messages.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter record for duplicate log messages.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">levelno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">log</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -2092,10 +2162,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>

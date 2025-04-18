@@ -43,7 +43,7 @@ from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
 
 datasets.utils.logging.get_logger("datasets.packaged_modules.cache").setLevel("ERROR")
 
-model_dtype = torch.float16
+model_dtype = torch.float32
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 sequence_length = 1024
 batch_size = 1
