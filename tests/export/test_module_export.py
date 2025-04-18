@@ -59,7 +59,10 @@ def test_module_export(
     # encodings should have been added to the modules that did not have
     # an activated input quantizer. Also, pickle files containing inputs/outputs/kwargs
     # gathered from torch hooks should be present and have a set structure.
+    # Also the stem of each exported module's path should be the same as the name of
+    # the module.
     for module, path in zip(modules, paths):
+        assert module.full_name == paths[path].stem
         _check_module_files(paths[path], module.full_name)
         _check_module_input_output_has_been_stored(paths[path], module.full_name)
 

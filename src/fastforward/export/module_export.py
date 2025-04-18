@@ -145,7 +145,7 @@ def export_modules(
     """
     args = args or ()
     kwargs = kwargs or {}
-    output_path = output_path / model_name / model_name
+    output_path = output_path / model_name
     output_path.mkdir(parents=True, exist_ok=True)
 
     if args == () and kwargs == {}:
@@ -165,8 +165,11 @@ def export_modules(
         with disable_quantization(model):
             model(*args, **kwargs)
         for rec in recorders:
+            module_output_path = output_path / rec.module_name
+            module_output_path.mkdir(parents=True, exist_ok=True)
+
             rec.store_io_as_dict(
-                output_path / f"{rec.module_name}_nonquantized_input_output.pickle"
+                module_output_path / f"{rec.module_name}_nonquantized_input_output.pickle"
             )
 
     module_io_recorders: list[ModuleIORecorder] = []
@@ -185,6 +188,7 @@ def export_modules(
     for module_io_recorder in module_io_recorders:
         module = module_io_recorder.module
         module_name = module_io_recorder.module_name
+        module_output_path = output_path / module_name
 
         module_input_data = module_io_recorder.input
         module_input_kwargs = module_io_recorder.kwargs
@@ -192,7 +196,7 @@ def export_modules(
         export(
             module,
             module_input_data,
-            output_path,
+            module_output_path,
             module_name,
             model_kwargs=module_input_kwargs,
             enable_encodings_propagation=enable_encodings_propagation,
@@ -204,12 +208,12 @@ def export_modules(
             "input": module_input_quantizer_settings,
             "output": module_output_quantizer_settings,
         }
-        maybe_extend_encodings_file(module_name, output_path, quantizer_settings)
+        maybe_extend_encodings_file(module_name, module_output_path, quantizer_settings)
 
-        input_output_location = output_path / f"{module_name}_input_output.pickle"
+        input_output_location = module_output_path / f"{module_name}_input_output.pickle"
         module_io_recorder.store_io_as_dict(input_output_location)
 
-        paths[module_name] = output_path
+        paths[module_name] = module_output_path
 
     return paths
 
