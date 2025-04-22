@@ -4,6 +4,7 @@
 from .builder import ClassBuilder as ClassBuilder
 from .builder import FunctionBuilder as FunctionBuilder
 from .builder import ModuleBuilder as ModuleBuilder
+from .builder import QuantizedFunctionBuilder as QuantizedFunctionBuilder
 from .builder import QuantizedModuleBuilder as QuantizedModuleBuilder
 from .formatter import CodeFormatter as CodeFormatter
 from .formatter import RuffFormatter as RuffFormatter

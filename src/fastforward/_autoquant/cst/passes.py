@@ -13,7 +13,7 @@ import libcst.matchers as m
 from typing_extensions import override
 
 from fastforward._autoquant.cst.node_creation import (
-    get_output_quantizer_kwarg,
+    get_keyword_argument_node,
     get_quantized_function_counterpart,
 )
 from fastforward._quantops import OperatorTable
@@ -24,6 +24,7 @@ from fastforward._quantops.optable import (
 from .nodes import (
     GeneralAssignment,
     QuantizedCall,
+    QuantizerReference,
     ReplacementCandidate,
 )
 
@@ -475,13 +476,9 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
     def __init__(
         self,
         optable: OperatorTable,
-        quantizer_list: _QuantizerList,
-        quantizer_prefix: str = "quantizer_",
     ) -> None:
         super().__init__()
         self._optable = optable
-        self._quantizers = quantizer_list
-        self.quantizer_prefix = quantizer_prefix
 
     def leave_ReplacementCandidate(
         self,
@@ -516,10 +513,11 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func, operator = get_quantized_function_counterpart(
             optable=self._optable, func_name=func_name
         )
-        quantizer_var_name = self._quantizers.add_quantizer(
-            f"{self.quantizer_prefix}{func_name.split('.')[-1]}"
+
+        quantizer_var = libcst.helpers.parse_template_expression(
+            "self.{name}", name=QuantizerReference(func_name.split(".")[-1])
         )
-        arg = get_output_quantizer_kwarg(quantizer_var_name)
+        arg = get_keyword_argument_node("output_quantizer", quantizer_var)
 
         return QuantizedCall(
             func=func,

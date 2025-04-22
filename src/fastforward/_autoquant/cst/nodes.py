@@ -12,12 +12,13 @@ CST and can be used during code generation.
 
 import dataclasses
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 import libcst
 
-from libcst._nodes.internal import visit_optional, visit_required, visit_sequence
+from libcst._nodes.internal import CodegenState, visit_optional, visit_required, visit_sequence
+from typing_extensions import Self, override
 
 from fastforward._quantops.operator import Operator
 
@@ -134,3 +135,79 @@ class QuantizedCall(libcst.Call):
 
     original_name: str = dataclasses.field(kw_only=True)
     operator: Operator = dataclasses.field(kw_only=True)
+
+
+@dataclass(slots=True, frozen=True)
+class QuantizerReference(libcst.Name):
+    """Node that references a specific quantizer.
+
+    The quantizer referenced by this node is identified by `quantizer_info`.
+    Each `QuantizerReference` that shares the same `quantizer_info` references
+    the same quantizer.
+
+    The `QuantizerInfo` object stores extra information on the quantizer, which
+    can be changed at any time. Although CST nodes are immutable, the
+    `quantizer_info` object is not. Moreover, in regular CST nodes, a full copy
+    is made during visitor traversal. This node will copy all elements except
+    for the `quantizer_info` object. This means that multiple nodes in multiple
+    trees may reference the same `QuantizerInfo` object.
+    """
+
+    @dataclass(eq=False)
+    class QuantizerInfo:
+        """Quantizer specific information."""
+
+        base_name: str
+
+    quantizer_info: QuantizerInfo = field(init=False)
+
+    @classmethod
+    def from_quantizer_info(cls, quantizer_info: QuantizerInfo) -> "QuantizerReference":
+        """Construct a new `QuantizerReference` from a `QuantizerInfo` object."""
+        quantizer_ref = cls(quantizer_info.base_name)
+        quantizer_ref._set_quantizer_info(quantizer_info)
+        return quantizer_ref
+
+    def __post_init__(self) -> None:
+        self._set_quantizer_info(QuantizerReference.QuantizerInfo(self.value))
+
+    def _set_quantizer_info(self, name_info: QuantizerInfo) -> None:
+        # In LibCST, CST nodes are immutable and new nodes are created after
+        # visiting/transforming. This means we cannot identify a node in a tree
+        # across visits or transforms by means of the node's id. Here, we
+        # introduces a `QuantizerInfo` object that holds both contextual
+        # information about the quantizer  and acts as a 'identification
+        # token'. I.e., every `QuantizerReference` node that has the same
+        # `quantizer_info` object references the same quantizer.
+        object.__setattr__(self, "quantizer_info", name_info)
+
+    @override
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "QuantizerReference":
+        node = QuantizerReference(
+            lpar=visit_sequence(self, "lpar", self.lpar, visitor),
+            value=self.value,
+            rpar=visit_sequence(self, "rpar", self.rpar, visitor),
+        )
+        node._set_quantizer_info(self.quantizer_info)
+        return node
+
+    @override
+    def with_changes(self, **changes: Any) -> Self:
+        if "value" in changes:
+            raise ValueError(f"Cannot change the 'value' attribute of a {type(self).__name__}")
+        return super().with_changes(**changes)
+
+    @override
+    def _codegen_impl(self, state: CodegenState) -> None:
+        with self._parenthesize(state):
+            state.add_token(self.quantizer_info.base_name)
+
+    @override
+    def deep_clone(self: "QuantizerReference") -> "QuantizerReference":
+        node = QuantizerReference(
+            lpar=tuple(elem.deep_clone() for elem in self.lpar),
+            value=self.value,
+            rpar=tuple(elem.deep_clone() for elem in self.rpar),
+        )
+        node._set_quantizer_info(self.quantizer_info)
+        return node

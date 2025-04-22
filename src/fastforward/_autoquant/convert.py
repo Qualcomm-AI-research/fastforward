@@ -7,14 +7,14 @@ import copy
 from typing import cast
 
 import libcst
-import libcst.display
+import libcst.helpers
 
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
 from fastforward._quantops import OperatorTable
 
 from .cfg import block_node_elems, blocks, construct, reconstruct, variable_tracking
 from .cst import nodes
-from .pybuilder import FunctionBuilder, QuantizedModuleBuilder
+from .pybuilder import FunctionBuilder, QuantizedFunctionBuilder, QuantizedModuleBuilder
 from .pysource import PySource
 
 
@@ -41,7 +41,7 @@ def convert_method(
     """
     src_cst = src.cst(NodeType=libcst.FunctionDef)
 
-    src_cst = _rewrite_quantized_operators(src_cst, clsbuilder, optable)
+    src_cst = _rewrite_quantized_operators(src_cst, optable)
 
     cfg = construct(src_cst)
     _add_input_quantizers(cfg, clsbuilder=clsbuilder)
@@ -49,11 +49,11 @@ def convert_method(
 
     assert isinstance(dst_cst, libcst.FunctionDef)
 
-    return FunctionBuilder(dst_cst)
+    return QuantizedFunctionBuilder(dst_cst)
 
 
 def _rewrite_quantized_operators(
-    cst: libcst.FunctionDef, clsbuilder: QuantizedModuleBuilder, optable: OperatorTable
+    cst: libcst.FunctionDef, optable: OperatorTable
 ) -> libcst.FunctionDef:
     """Rewrite function call to quantized function calls.
 
@@ -61,7 +61,7 @@ def _rewrite_quantized_operators(
     quantized function call. Also introduces the appropriate quantizers on
     `clsbuilder`.
     """
-    function_replacement = QuantizedCounterpartReplacer(optable=optable, quantizer_list=clsbuilder)
+    function_replacement = QuantizedCounterpartReplacer(optable=optable)
     new_cst = cast(libcst.FunctionDef, cst.visit(function_replacement))
 
     return new_cst
@@ -227,9 +227,7 @@ class _InsertQuantizerVisitor:
         body = block.body
         assert isinstance(body, blocks.SimpleBlock)
 
-        quantizer_name = self.clsbuilder.add_quantizer(
-            f"{self.quantizer_prefix}{self.variable.name}"
-        )
+        quantizer_name = nodes.QuantizerReference(self.variable.name)
         body.statements = (
             _create_quantize_statement(self.variable.name, quantizer_name),
             *body.statements,
@@ -244,9 +242,7 @@ class _InsertQuantizerVisitor:
 
     def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> None:
         statement_idx = block.statements.index(self.variable.declaration_node)
-        quantizer_name = self.clsbuilder.add_quantizer(
-            f"{self.quantizer_prefix}{self.variable.name}"
-        )
+        quantizer_name = nodes.QuantizerReference(self.variable.name)
         block.statements = (
             *block.statements[: statement_idx + 1],
             _create_quantize_statement(self.variable.name, quantizer_name),
@@ -255,7 +251,9 @@ class _InsertQuantizerVisitor:
         self.variable.mark_quantized()
 
 
-def _create_quantize_statement(name: str, quantizer_name: str) -> libcst.SimpleStatementLine:
+def _create_quantize_statement(
+    name: str, quantizer_name: nodes.QuantizerReference
+) -> libcst.SimpleStatementLine:
     """Create a quantize statement.
 
     Args:
@@ -265,6 +263,11 @@ def _create_quantize_statement(name: str, quantizer_name: str) -> libcst.SimpleS
     Returns:
         The quantize statement.
     """
-    quantize_statement = libcst.parse_statement(f"{name} = self.{quantizer_name}({name})")
+    name_node = libcst.Name(name)
+    quantize_statement = libcst.helpers.parse_template_statement(
+        "{name} = self.{quantizer_name}({name})",
+        name=name_node,
+        quantizer_name=quantizer_name,
+    )
     assert isinstance(quantize_statement, libcst.SimpleStatementLine)
     return quantize_statement

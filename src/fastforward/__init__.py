@@ -9,6 +9,7 @@ from . import nn as nn
 from . import quantization as quantization
 from . import range_setting as range_setting
 from ._version import version
+from .autoquant import autoquantize as autoquantize
 from .flags import export_mode as export_mode
 from .flags import get_export_mode as get_export_mode
 from .flags import get_strict_quantization as get_strict_quantization

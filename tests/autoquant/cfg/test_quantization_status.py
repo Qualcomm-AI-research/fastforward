@@ -11,7 +11,6 @@ import torch
 from fastforward._autoquant.cfg import blocks
 from fastforward._autoquant.cfg.variable_tracking import QuantizationStatus, infer_block_dataflow
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
-from fastforward._autoquant.pybuilder import QuantizedModuleBuilder
 from fastforward._quantops import OperatorTable
 
 from tests.autoquant.cfg.cfg_test import CFGTest
@@ -87,9 +86,7 @@ class TestQuantizationStatus(CFGTest):
     @pytest.fixture(scope="class")
     def cst(self, raw_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:  # type: ignore[override]
         """Replace function calls with their quantized counterpart for each CST."""
-        quantized_counterpart_replacer = QuantizedCounterpartReplacer(
-            optable=optable, quantizer_list=QuantizedModuleBuilder("Dummy", ())
-        )
+        quantized_counterpart_replacer = QuantizedCounterpartReplacer(optable=optable)
         cst = raw_cst.visit(quantized_counterpart_replacer)
         assert isinstance(cst, libcst.FunctionDef)
         return cst

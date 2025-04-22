@@ -10,15 +10,20 @@ construction using libCST.
 
 import abc
 
-from collections.abc import Sequence
-from typing import Generic, Protocol, TypeVar, runtime_checkable
+from collections.abc import Mapping, Sequence
+from typing import Generic, Iterator, Protocol, TypeAlias, TypeVar, runtime_checkable
 
 import libcst
-import libcst.display
+import libcst.helpers
 
 from typing_extensions import override
 
+from fastforward._autoquant.cst import nodes
+from fastforward._autoquant.cst.filter import filter_nodes_by_type
+
 _CSTNodeT_co = TypeVar("_CSTNodeT_co", bound=libcst.CSTNode, covariant=True)
+
+QuantizerInfo: TypeAlias = nodes.QuantizerReference.QuantizerInfo
 
 
 class NodeBuilder(abc.ABC, Generic[_CSTNodeT_co]):
@@ -87,23 +92,27 @@ class QuantizedModuleBuilder(ClassBuilder):
 
     def __init__(self, name: str, bases: Sequence[str]) -> None:
         super().__init__(name=name, bases=bases)
-        self._quantizers: list[str] = []
 
-    def add_quantizer(self, name: str, add_count_suffix: bool = True) -> str:
-        """Add a quantizer to this class."""
-        if add_count_suffix:
-            name = f"{name}_{len(self._quantizers) + 1}"
-        if name in self._quantizers:
-            msg = f"Quantizer with name '{name}' was already added"
-            raise ValueError(msg)
-        self._quantizers.append(name)
-        return name
+    def quantizer_info(self) -> Iterator[QuantizerInfo]:
+        """Iterator over all unique `QuantizerInfo` objects referenced by quantizer references."""
+        seen_info: set[QuantizerInfo] = set()
+        for method in self._methods:
+            if not isinstance(method, QuantizedFunctionBuilder):
+                continue
+            for quantizer_ref in method.quantizer_references:
+                quantizer_info = quantizer_ref.quantizer_info
+                if quantizer_info in seen_info:
+                    continue
+                seen_info.add(quantizer_info)
+                yield quantizer_info
 
     @override
     def build(self) -> libcst.ClassDef:
         bases = ("fastforward.nn.QuantizedModule",) + self._bases
-        methods = [InitQuantizationMethod(self._quantizers)] + self._methods
-        return self.build_class(bases=bases, methods=methods)
+        quantizers = list(self.quantizer_info())
+        methods = [InitQuantizationMethod(quantizers)] + self._methods
+        module_tree = self.build_class(bases=bases, methods=methods)
+        return _disambiguate_quantizers(module_tree, quantizers)
 
 
 @runtime_checkable
@@ -127,25 +136,79 @@ class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
 class InitQuantizationMethod(_FunctionBuilderP):
     """Builder for `__init_quantization__` method."""
 
-    def __init__(self, quantizer_collection: Sequence[str]):
-        self.quantizer_collection = quantizer_collection
+    def __init__(self, quantizer_info: Sequence[QuantizerInfo]):
+        self.quantizers = quantizer_info
 
     @override
     def build(self) -> libcst.FunctionDef:
-        # Parse minimalist method into a subtree, for simplicity of creation
-        magic_method = libcst.parse_statement(
-            "def __init_quantization__(self) -> None:\n    super().__init_quantization__()"
-        )
-        assert isinstance(magic_method, libcst.FunctionDef)
-        init_quantizer_vars = []
+        body_statements = [libcst.parse_statement("super().__init_quantization__()")]
 
-        for name in self.quantizer_collection:
-            init_quantizer_vars.append(
-                libcst.parse_statement(f"self.{name} = fastforward.nn.QuantizerStub()")
+        for quantizer_info in self.quantizers:
+            quantizer_name = nodes.QuantizerReference.from_quantizer_info(quantizer_info)
+            body_statements.append(
+                libcst.helpers.parse_template_statement(
+                    "self.{name} = fastforward.nn.QuantizerStub()", name=quantizer_name
+                )
             )
-        magic_method = magic_method.with_changes(
-            body=magic_method.body.with_changes(
-                body=(*magic_method.body.body, *init_quantizer_vars)
-            )
+
+        init_quant_method_node = libcst.helpers.parse_template_statement(
+            "def __init_quantization__(self) -> None:{body}",
+            body=libcst.IndentedBlock(body_statements),
         )
-        return magic_method
+        assert isinstance(init_quant_method_node, libcst.FunctionDef)
+        return init_quant_method_node
+
+
+class QuantizedFunctionBuilder(FunctionBuilder):
+    """Builder for quantized methods.
+
+    Quantized methods are methods that use (or introduce) quanitzers that are
+    defined on the instance.
+    """
+
+    def __init__(self, funcdef: libcst.FunctionDef) -> None:
+        super().__init__(funcdef)
+        self._quantizer_references: list[nodes.QuantizerReference] = list(
+            filter_nodes_by_type(funcdef, nodes.QuantizerReference)
+        )
+
+    @property
+    def quantizer_references(self) -> list[nodes.QuantizerReference]:
+        """All quantizer references used in this method."""
+        return self._quantizer_references[:]
+
+
+def _disambiguate_quantizers(
+    tree: libcst.CSTNodeT,
+    quantizer_info: Sequence[QuantizerInfo],
+) -> libcst.CSTNodeT:
+    quantizer_info_by_name: dict[str, list[QuantizerInfo]] = {}
+    for qinfo in quantizer_info:
+        quantizer_info_by_name.setdefault(qinfo.base_name, []).append(qinfo)
+
+    quantizer_name_map: dict[QuantizerInfo, str] = {}
+    prefix = "quantizer_"
+    for name, quantizers in quantizer_info_by_name.items():
+        if len(quantizers) == 1:
+            quantizer_name_map[quantizers[0]] = f"{prefix}{name}"
+        else:
+            for i, quantizer in enumerate(quantizers):
+                quantizer_name_map[quantizer] = f"{prefix}{name}_{i + 1}"
+
+    updated_tree = tree.visit(_DisambiguateQuantizerNameTransformer(quantizer_name_map))
+    assert isinstance(updated_tree, type(tree))
+    return updated_tree
+
+
+class _DisambiguateQuantizerNameTransformer(libcst.CSTTransformer):
+    def __init__(self, name_map: Mapping[QuantizerInfo, str]) -> None:
+        self._name_map = name_map
+
+    def leave_QuantizerReference(
+        self, _original_node: nodes.QuantizerReference, updated_node: nodes.QuantizerReference
+    ) -> libcst.Name:
+        return libcst.Name(
+            value=self._name_map[updated_node.quantizer_info],
+            lpar=updated_node.lpar,
+            rpar=updated_node.rpar,
+        )

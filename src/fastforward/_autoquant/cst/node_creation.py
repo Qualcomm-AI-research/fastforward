@@ -2,22 +2,24 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import libcst
+import libcst.helpers
 
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.operator import Operator
 
 
-def get_output_quantizer_kwarg(quantizer_var_name: str) -> libcst.Arg:
-    """Constructs a keyword argument node for a quantizer with name `quantizer_var_name`.
+def get_keyword_argument_node(keyword: str, expression: libcst.BaseExpression) -> libcst.Arg:
+    """Constructs a keyword argument node for `keyword` and `expression`.
 
     Args:
-        quantizer_var_name: The name of the quantizer.
+        keyword: The kwargs keyword.
+        expression: The value for the argument.
 
     Returns:
-        A keyword argument node for the output quantizer.
+        A keyword argument node for `keyword`.
     """
-    dummy_arg = libcst.parse_expression(
-        f"dummy_fn(dummy_var, output_quantizer=self.{quantizer_var_name})"
+    dummy_arg = libcst.helpers.parse_template_expression(
+        "dummy_fn({keyword}={expression})", keyword=libcst.Name(keyword), expression=expression
     )
     assert isinstance(dummy_arg, libcst.Call)
     quantizer_args = dummy_arg.args[-1]
