@@ -31,6 +31,8 @@ from torch.fx.graph import Graph
 from torch.fx.node import Node
 from typing_extensions import override
 
+import fastforward as ff
+
 from fastforward.export._export_helpers import (
     generate_qnn_encodings_dictionary,
     get_activations,
@@ -414,6 +416,7 @@ def process_dynamo_program(
     return dynamo_exported_program, new_old_input_spec_mapping, logs
 
 
+@ff.flags.context(ff.strict_quantization, False)
 def export(
     model: torch.nn.Module,
     data: tuple[torch.Tensor, ...],

@@ -30,7 +30,6 @@ def test_module_io_recorder(
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_module_export(
     simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int
 ) -> None:

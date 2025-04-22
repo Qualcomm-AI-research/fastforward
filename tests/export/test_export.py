@@ -25,7 +25,6 @@ from tests.export.export_utils import (
 
 
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a model with quantizer stubs.
     data = torch.randn(32, 10)
@@ -54,7 +53,6 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a quantized model and its exported dynamo graph.
     data = torch.randn(32, 10)
@@ -102,7 +100,6 @@ def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
@@ -169,7 +166,6 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_node_logging(
     granularity: Granularity, simple_model: QuantizedModelFixture, _seed_prngs: int
@@ -227,7 +223,6 @@ def test_node_logging(
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_ff_model_to_onnx_export(
     tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
 ) -> None:
@@ -274,7 +269,6 @@ def test_ff_model_to_onnx_export(
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("new_input_names", [None, ["new_x"]])
 @pytest.mark.parametrize("new_output_names", [None, ["new_output"]])
 def test_encodings_file_generation(
@@ -368,7 +362,6 @@ def test_encodings_file_generation(
         (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2", "output_3"]),
     ],
 )
-@ff.flags.context(ff.strict_quantization, False)
 def test_graph_io_renaming_valid(
     multi_input_output_model: QuantizedModelFixture,
     tmp_path: pathlib.Path,
@@ -436,7 +429,6 @@ def test_graph_io_renaming_valid(
         (["input_1", "input_2", "input_3", "input_4"], ["output_1", "output_2"]),
     ],
 )
-@ff.flags.context(ff.strict_quantization, False)
 def test_graph_io_renaming_invalid(
     multi_input_output_model: QuantizedModelFixture,
     tmp_path: pathlib.Path,
@@ -479,7 +471,6 @@ def test_graph_io_renaming_invalid(
 
 @pytest.mark.slow
 @pytest.mark.xfail_due_to_too_new_torch
-@ff.flags.context(ff.strict_quantization, False)
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
     tmp_path: pathlib.Path,

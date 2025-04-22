@@ -17,7 +17,6 @@ from tests.export.export_utils import (
 
 @pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
-@ff.flags.context(ff.strict_quantization, False)
 def test_encodings_propagation(
     tmp_path: pathlib.Path,
     simple_quant_model_with_non_quant_ops: QuantizedModelFixture,
