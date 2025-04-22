@@ -8,6 +8,7 @@
 """  # noqa: D205, D212
 
 import collections
+import re
 
 import torch
 
@@ -95,9 +96,9 @@ def _get_node_and_encodings_from_name(
     node = graph_nodes.get(name)
     encodings = quantization_parameter_dict.get(name)
     if node is None:
-        potential_node_name = f"p_{name}"
-        potential_node_name = potential_node_name.replace(".", "_")
-        node = graph_nodes.get(potential_node_name)
+        potential_pattern = name.replace(".", "_")
+        node_name = next((node for node in graph_nodes if re.search(potential_pattern, node)))
+        node = graph_nodes.get(node_name)
         encodings = quantization_parameter_dict.get(name)
     return (node, encodings)
 
