@@ -66,7 +66,13 @@ def can_support_bitwidth(dtype: torch.dtype, num_bits: float) -> bool:
                 )
     else:
         available_precision_bits = torch.iinfo(dtype).bits
-    return available_precision_bits >= num_bits
+
+    # The first integer that cannot be exactly represented using a floating
+    # point representation is (2 ** (mantissa_bits + 1)) + 1. Since fastforward
+    # uses a signed quantization representation, we can also leverage the sign
+    # bit, providing an extra bit of precision.
+    representable_bitwidth = available_precision_bits + 2
+    return representable_bitwidth >= num_bits
 
 
 if torch.__version__ < "2.4":
