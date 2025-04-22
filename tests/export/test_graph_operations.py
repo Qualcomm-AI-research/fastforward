@@ -31,7 +31,10 @@ def test_encodings_propagation(
     output_model_directory = pathlib.Path(output_directory) / model_name
     encodings_file_path = output_model_directory.with_suffix(".encodings")
 
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
+    with ff.strict_quantization(False):
+        activate_quantizers(
+            quant_model, data, activation_quantizers, parameter_quantizers, granularity
+        )
 
     # GIVEN the exported artifacts from that model and its original encodings file.
     export(quant_model, (data,), output_directory, model_name, enable_encodings_propagation=False)

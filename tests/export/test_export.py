@@ -30,7 +30,7 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     # WHEN exporting the model before quantizers are activated.
-    with ff.export_mode(False):
+    with ff.export_mode(False), ff.strict_quantization(False):
         exported_graph = torch.export.export(quant_model, args=(data,))
 
     # THEN the dynamo export should work as with any standard torch modules
@@ -44,7 +44,7 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
     # and the usage of certain methods (such as the inspect.signature.bind) and will throw
     # an UnsupportedError message if these are present in the code. This test checks that
     # both those issues are resolved when exporting with the export mode set to True.
-    with ff.export_mode(True):
+    with ff.export_mode(True), ff.strict_quantization(False):
         exported_graph = torch.export.export(quant_model, args=(data,))
 
     # THEN the dynamo export should work when export mode is activated.
@@ -59,7 +59,7 @@ def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
-    with ff.export_mode(True):
+    with ff.export_mode(True), ff.strict_quantization(False):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
 
     graph_wrapper = GraphWrapper(quantized_model_graph)
@@ -104,7 +104,8 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     # GIVEN a model with a number of quantizers
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    non_quant_result = quant_model(data)
+    with ff.strict_quantization(False):
+        non_quant_result = quant_model(data)
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
     num_quantizers = len([
@@ -115,7 +116,7 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     # a number of nodes corresponding to the quantizer operations
     # (quantize_by_tile/dequantize_by_tile)
 
-    with ff.export_mode(True):
+    with ff.export_mode(True), ff.strict_quantization(False):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
 
     graph_wrapper = GraphWrapper(quantized_model_graph)
@@ -175,7 +176,7 @@ def test_node_logging(
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
-    with ff.export_mode(True):
+    with ff.export_mode(True), ff.strict_quantization(False):
         quantized_model_graph = torch.export.export(quant_model, args=(data,))
         quantized_model_graph = quantized_model_graph.run_decompositions({})
 
@@ -229,7 +230,8 @@ def test_ff_model_to_onnx_export(
     # GIVEN a model and its initial non-quantized result.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    non_quantized_result = quant_model(data)
+    with ff.strict_quantization(False):
+        non_quantized_result = quant_model(data)
 
     model_name = "test_ff_model_to_onnx_export"
     output_directory = tmp_path / model_name
@@ -376,13 +378,14 @@ def test_graph_io_renaming_valid(
     input_names, output_names = names
 
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
-    activate_quantizers(
-        quant_model,
-        (data_x, data_y),
-        activation_quantizers,
-        parameter_quantizers,
-        kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
-    )
+    with ff.strict_quantization(False):
+        activate_quantizers(
+            quant_model,
+            (data_x, data_y),
+            activation_quantizers,
+            parameter_quantizers,
+            kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+        )
 
     model_name = "test_model"
     output_directory = tmp_path / model_name
@@ -443,13 +446,14 @@ def test_graph_io_renaming_invalid(
     input_names, output_names = names
 
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
-    activate_quantizers(
-        quant_model,
-        (data_x, data_y),
-        activation_quantizers,
-        parameter_quantizers,
-        kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
-    )
+    with ff.strict_quantization(False):
+        activate_quantizers(
+            quant_model,
+            (data_x, data_y),
+            activation_quantizers,
+            parameter_quantizers,
+            kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+        )
 
     # WHEN exporting the model overriding its input/output names with invalid ones.
     model_name = "test_model"

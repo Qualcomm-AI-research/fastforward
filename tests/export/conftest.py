@@ -32,7 +32,6 @@ def simple_model() -> QuantizedModelFixture:
             self.relu2 = ff.nn.QuantizedRelu()
             self.fc3 = ff.nn.QuantizedLinear(10, 10)
 
-        @ff.flags.context(ff.strict_quantization, False)
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             x = self.fc1(x)
             x = self.relu1(x)
@@ -59,7 +58,6 @@ def multi_input_output_model() -> QuantizedModelFixture:
             self.fc1 = ff.nn.QuantizedLinear(10, 10)
             self.fc2 = ff.nn.QuantizedLinear(10, 10)
 
-        @ff.flags.context(ff.strict_quantization, False)
         def forward(
             self,
             x: torch.Tensor,
@@ -102,7 +100,6 @@ def simple_quant_model_with_non_quant_ops() -> QuantizedModelFixture:
                 torch.rand(size=(net_in_out_dim, net_in_out_dim))
             )
 
-        @ff.flags.context(ff.strict_quantization, False)
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             x = self.fc1(x)
             x = torch.reshape(x, (x.shape[1], x.shape[0]))
