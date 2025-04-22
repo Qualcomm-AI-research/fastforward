@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHECKOUT_DIR: "_mirror"
-      MIRROR_REFS: "refs/heads/main" # to extend, add further refs separated by blanks
+      MIRROR_REFS: "refs/heads/main refs/heads/gh-pages" # to extend, add further refs separated by blanks
     steps:
       - name: Clone default branch with git
         env:
