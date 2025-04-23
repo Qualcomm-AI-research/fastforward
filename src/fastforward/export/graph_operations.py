@@ -97,7 +97,7 @@ def _get_node_and_encodings_from_name(
     encodings = quantization_parameter_dict.get(name)
     if node is None:
         potential_pattern = name.replace(".", "_")
-        node_name = next((node for node in graph_nodes if re.search(potential_pattern, node)))
+        node_name = next(node for node in graph_nodes if re.search(potential_pattern, node))
         node = graph_nodes.get(node_name)
         encodings = quantization_parameter_dict.get(name)
     return (node, encodings)
