@@ -3,6 +3,7 @@
 
 """Formatters are utility classes to format code."""
 
+import dataclasses
 import subprocess
 
 from typing import Protocol, Sequence
@@ -18,30 +19,41 @@ class CodeFormatter(Protocol):
         raise NotImplementedError
 
 
+@dataclasses.dataclass
 class SubprocessCodeFormatter(CodeFormatter):
     """Formats code via by invoking subprocesses."""
 
-    command: Sequence[str] = ("false",)
+    commands: Sequence[Sequence[str]] = ()
 
     @override
     def format(self, code: str) -> str:
         """Formats the code via a subprocess."""
-        cp = subprocess.run(
-            self.command,
-            input=code,
-            check=True,
-            stdout=subprocess.PIPE,
-            encoding="utf-8",
-        )
-        if cp.returncode != 0:
-            raise RuntimeError(
-                "Code formatting failed (cf. command below). This is an unexpected error, please report it to the FF development team."
-                + f"\nProcess details:\n{cp}"
+        for command in self.commands:
+            cp = subprocess.run(
+                command,
+                input=code,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
             )
-        return cp.stdout
+            if cp.returncode != 0:
+                raise RuntimeError(
+                    "Code formatting failed (cf. command below). This is an unexpected error, "
+                    + "please report it to the FF development team.\n"
+                    + f"Process details:\n{cp}"
+                )
+            code = cp.stdout
+        return code
 
 
 class RuffFormatter(SubprocessCodeFormatter):
     """Formats code with `ruff`."""
 
-    command = ("ruff", "format", "-")
+    def __init__(self) -> None:
+        super().__init__(
+            commands=(
+                ("ruff", "format", "-"),
+                ("ruff", "check", "--fix", "--select", "I001", "-"),  # isort
+            )
+        )

@@ -11,7 +11,7 @@ construction using libCST.
 import abc
 
 from collections.abc import Mapping, Sequence
-from typing import Generic, Iterator, Protocol, TypeAlias, TypeVar, runtime_checkable
+from typing import Generic, Iterable, Iterator, Protocol, TypeAlias, TypeVar, runtime_checkable
 
 import libcst
 import libcst.helpers
@@ -20,6 +20,7 @@ from typing_extensions import override
 
 from fastforward._autoquant.cst import nodes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
+from fastforward._autoquant.pysource.scope import ImportSymbol
 
 _CSTNodeT_co = TypeVar("_CSTNodeT_co", bound=libcst.CSTNode, covariant=True)
 
@@ -53,25 +54,50 @@ class ModuleBuilder(NodeBuilder[libcst.Module]):
         """Build the module."""
         return libcst.Module(body=self.build_module())
 
+    def import_statements(self) -> Iterator[libcst.SimpleStatementLine]:
+        """Combines import statements for all statements."""
+        required_imports: set[ImportSymbol] = set()
+        for statement in self._statements:
+            if imports := getattr(statement, "required_imports", None):
+                required_imports |= set(imports)
+
+        yield from (import_symbol.as_node() for import_symbol in required_imports)
+
     def build_module(self) -> Sequence[libcst.SimpleStatementLine | libcst.BaseCompoundStatement]:
         """Create Module from collected metadata."""
-        return [c.build() for c in self._statements]
+        return list(self.import_statements()) + [c.build() for c in self._statements]
 
 
 class ClassBuilder(NodeBuilder[libcst.ClassDef]):
     """Builder for classes.
 
     Collects methods and other methods.
+
+    Args:
+        name: Name of the class.
+        bases: Name of base classes.
+        required_imports: Sequence of `ImportSymbol`s required for class.
     """
 
-    def __init__(self, name: str, bases: Sequence[str]) -> None:
+    def __init__(
+        self, name: str, bases: Sequence[str], required_imports: Sequence[ImportSymbol]
+    ) -> None:
         self._name = name
         self._bases = tuple(bases)
         self._methods: list[_FunctionBuilderP] = []
+        self._required_imports = tuple(required_imports)
 
     def add_method(self, funcbuilder: "_FunctionBuilderP") -> None:
         """Add a method to the class represented by this `Builder`."""
         self._methods.append(funcbuilder)
+
+    @property
+    def required_imports(self) -> tuple[ImportSymbol, ...]:
+        """Imports that are required for this class."""
+        required_imports: set[ImportSymbol] = set(self._required_imports)
+        for method in self._methods:
+            required_imports |= set(method.required_imports)
+        return tuple(required_imports)
 
     @override
     def build(self) -> libcst.ClassDef:
@@ -88,10 +114,20 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
 
 
 class QuantizedModuleBuilder(ClassBuilder):
-    """Builder for QuantizedModules."""
+    """Builder for QuantizedModules.
 
-    def __init__(self, name: str, bases: Sequence[str]) -> None:
-        super().__init__(name=name, bases=bases)
+    Args:
+        name: Name of the class.
+        bases: Name of base classes.
+        required_imports: Sequence of `ImportSymbol`s required for class.
+    """
+
+    def __init__(
+        self, name: str, bases: Sequence[str], required_imports: Sequence[ImportSymbol]
+    ) -> None:
+        required_imports_set = set(required_imports)
+        required_imports_set.add(ImportSymbol("fastforward"))
+        super().__init__(name=name, bases=bases, required_imports=tuple(required_imports_set))
 
     def quantizer_info(self) -> Iterator[QuantizerInfo]:
         """Iterator over all unique `QuantizerInfo` objects referenced by quantizer references."""
@@ -117,14 +153,30 @@ class QuantizedModuleBuilder(ClassBuilder):
 
 @runtime_checkable
 class _FunctionBuilderP(Protocol):
+    @property
+    def required_imports(self) -> tuple[ImportSymbol, ...]: ...
+
     def build(self) -> libcst.FunctionDef: ...
 
 
 class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
-    """Builder for FunctionDef."""
+    """Builder for FunctionDef.
 
-    def __init__(self, funcdef: libcst.FunctionDef) -> None:
+    Args:
+        funcdef: CST for function.
+        required_imports: Sequence of `ImportSymbol`s required for function.
+    """
+
+    def __init__(
+        self, funcdef: libcst.FunctionDef, required_imports: Iterable[ImportSymbol]
+    ) -> None:
         self._funcdef = funcdef
+        self._required_imports = tuple(required_imports)
+
+    @property
+    def required_imports(self) -> tuple[ImportSymbol, ...]:
+        """Imports that are required for this function."""
+        return self._required_imports
 
     @override
     def build(self) -> libcst.FunctionDef:
@@ -137,7 +189,14 @@ class InitQuantizationMethod(_FunctionBuilderP):
     """Builder for `__init_quantization__` method."""
 
     def __init__(self, quantizer_info: Sequence[QuantizerInfo]):
-        self.quantizers = quantizer_info
+        """Imports that are required for this function."""
+        self.quantizers = tuple(quantizer_info)
+        self._required_imports = (ImportSymbol("fastforward"),)
+
+    @property
+    def required_imports(self) -> tuple[ImportSymbol, ...]:
+        """Imports that are required for this function."""
+        return self._required_imports
 
     @override
     def build(self) -> libcst.FunctionDef:
@@ -164,10 +223,16 @@ class QuantizedFunctionBuilder(FunctionBuilder):
 
     Quantized methods are methods that use (or introduce) quanitzers that are
     defined on the instance.
+
+    Args:
+        funcdef: CST for function.
+        required_imports: Sequence of `ImportSymbol`s required for function.
     """
 
-    def __init__(self, funcdef: libcst.FunctionDef) -> None:
-        super().__init__(funcdef)
+    def __init__(
+        self, funcdef: libcst.FunctionDef, required_imports: Iterable[ImportSymbol]
+    ) -> None:
+        super().__init__(funcdef=funcdef, required_imports=required_imports)
         self._quantizer_references: list[nodes.QuantizerReference] = list(
             filter_nodes_by_type(funcdef, nodes.QuantizerReference)
         )

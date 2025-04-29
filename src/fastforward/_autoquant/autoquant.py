@@ -10,6 +10,7 @@ from types import ModuleType
 
 import torch
 
+from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
 from fastforward.nn.quantized_module import QuantizedModule
@@ -91,10 +92,15 @@ def autoquant(
 
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
         mod_type = type(mod)
-        src_class = source_context.get(fully_qualified_name(mod_type))
+        qualified_class_name = fully_qualified_name(mod_type)
+        src_class = source_context.get(qualified_class_name)
+
+        base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
+
         dst_class = pybuilder.QuantizedModuleBuilder(
             f"Quantized{mod_type.__name__}",
             bases=(mod_type.__name__,),
+            required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
         )
 
         forward_src = src_class.member("forward")

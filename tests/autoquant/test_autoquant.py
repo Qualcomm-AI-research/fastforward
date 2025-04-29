@@ -5,7 +5,7 @@
 import pathlib
 import types
 
-from unittest import mock
+from typing import TypeAlias
 
 import fastforward
 import libcst
@@ -23,9 +23,12 @@ from fastforward._autoquant.cst import passes
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._quantops import optable
 from fastforward.autoquant import autoquantize
+from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
 
 from tests.utils.string import assert_strings_match_verbose, dedent_strip
+
+Tensor: TypeAlias = torch.Tensor  # Required for tests, do not remove
 
 
 class _AssertNoAssignments(libcst.CSTVisitor):
@@ -71,7 +74,7 @@ class ExampleModule1(torch.nn.Module):
         super().__init__()
         self.z = z
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[TensorAlias, torch.Tensor]:
         y = torch.sigmoid(x)
         return self.z, torch.relu(y)
 
@@ -79,6 +82,15 @@ class ExampleModule1(torch.nn.Module):
 FLOAT_MODULE_1 = ExampleModule1(z=torch.tensor([0]))
 
 AUTOQUANTIZED_MODULE_OUT_1 = """
+import torch
+
+from torch import Tensor as TensorAlias
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule1
+
+
 class QuantizedExampleModule1(fastforward.nn.QuantizedModule, ExampleModule1):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -86,7 +98,7 @@ class QuantizedExampleModule1(fastforward.nn.QuantizedModule, ExampleModule1):
         self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
         self.quantizer_relu = fastforward.nn.QuantizerStub()
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[TensorAlias, torch.Tensor]:
         x = self.quantizer_x(x)
         y = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
         return self.z, fastforward.nn.functional.relu(y, output_quantizer=self.quantizer_relu)
@@ -103,6 +115,13 @@ class ExampleModule2(torch.nn.Module):
 FLOAT_MODULE_2 = ExampleModule2()
 
 AUTOQUANTIZED_MODULE_OUT_2 = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule2
+
+
 class QuantizedExampleModule2(fastforward.nn.QuantizedModule, ExampleModule2):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -138,6 +157,13 @@ class ExampleModule3(torch.nn.Module):
 FLOAT_MODULE_3 = ExampleModule3()
 
 AUTOQUANTIZED_MODULE_OUT_3 = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule3
+
+
 class QuantizedExampleModule3(fastforward.nn.QuantizedModule, ExampleModule3):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -187,6 +213,13 @@ class ExampleModule4(torch.nn.Module):
 FLOAT_MODULE_4 = ExampleModule4()
 
 AUTOQUANTIZED_MODULE_OUT_4 = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule4
+
+
 class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -220,6 +253,13 @@ class ExampleModule5(torch.nn.Module):
 FLOAT_MODULE_5 = ExampleModule5()
 
 AUTOQUANTIZED_MODULE_OUT_5 = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule5
+
+
 class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -265,6 +305,16 @@ class ExampleModule6(torch.nn.Module):
 FLOAT_MODULE_6 = ExampleModule6()
 
 AUTOQUANTIZED_MODULE_OUT_6 = """
+import torch
+
+from torch import Tensor
+from torch.nn.modules.linear import Identity
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule6, ExampleSubModule6
+
+
 class QuantizedExampleModule6(fastforward.nn.QuantizedModule, ExampleModule6):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -305,6 +355,13 @@ class ExampleModule7(torch.nn.Module):
 FLOAT_MODULE_7 = ExampleModule7()
 
 AUTOQUANTIZED_MODULE_OUT_7 = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule7
+
+
 class QuantizedExampleModule7(fastforward.nn.QuantizedModule, ExampleModule7):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -362,7 +419,7 @@ def test_autoquant_introduces_quantization_method(
 
 # Example with literal integer
 class ExampleModule8(torch.nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         h = x.reshape((-1 + 2 // 3, self.num_features))
         h = h.reshape((999 - 12, self.num_features))
         h = h.reshape((-1, self.num_features))
@@ -372,11 +429,16 @@ class ExampleModule8(torch.nn.Module):
 FLOAT_MODULE_8 = ExampleModule8()
 
 AUTOQUANTIZED_MODULE_OUT_8 = """
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule8, Tensor
+
+
 class QuantizedExampleModule8(fastforward.nn.QuantizedModule, ExampleModule8):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         h = x.reshape((-1 + 2 // 3, self.num_features))
         h = h.reshape((999 - 12, self.num_features))
         h = h.reshape((-1, self.num_features))
@@ -421,6 +483,11 @@ class ExampleExpression(torch.nn.Module):
 
 
 EXPECTED_OUTPUT = """
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleExpression
+
+
 class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpression):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -433,7 +500,11 @@ class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpressi
 def test_expressions_not_quantized() -> None:
     """Tests that expressions are not quantized (fixes #80)."""
     actual = autoquant_with_defaults(ExampleExpression())
+    actual = codeformat_with_defaults(code=actual).strip()
+
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
+
+    expected_output = codeformat_with_defaults(code=expected_output).strip()
     assert_strings_match_verbose(expected_output, actual.strip())
 
 
@@ -463,6 +534,13 @@ class ExampleModule1B(torch.nn.Module):
 FLOAT_MODULE_1B = ExampleModule1B()
 
 AUTOQUANTIZED_MODULE_OUT_1B = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule1B
+
+
 class QuantizedExampleModule1B(fastforward.nn.QuantizedModule, ExampleModule1B):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
@@ -474,16 +552,6 @@ class QuantizedExampleModule1B(fastforward.nn.QuantizedModule, ExampleModule1B):
         x = self.quantizer_x(x)
         y = fastforward.nn.functional.conv2d(x, x, output_quantizer=self.quantizer_conv2d)
         return fastforward.nn.functional.linear(y, y, output_quantizer=self.quantizer_linear)
-
-"""
-
-# Provides imports until autoquant is able to do this automatically
-_NEEDED_IMPORTS = """
-import torch
-
-import fastforward
-
-from tests.autoquant.test_autoquant import ExampleModule1B
 
 """
 
@@ -570,13 +638,6 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
     assert output_path.is_file()
 
 
-def codeformat_with_additional_imports(code: str, code_formatter: pybuilder.CodeFormatter) -> str:
-    """Provides additional import statements - until ff provides those itself."""
-    generated = codeformat_with_defaults(code=code, code_formatter=code_formatter)
-    assert "import" not in generated, "Auto-import of symbols was added; please remove this mock."
-    return _NEEDED_IMPORTS + generated
-
-
 @pytest.mark.slow
 def test_auto_import(tmp_path: pathlib.Path) -> None:
     # GIVEN a torch module
@@ -586,13 +647,10 @@ def test_auto_import(tmp_path: pathlib.Path) -> None:
 
     # WHEN we autoquantize the example code
     # WHEN we add some additional imports (until this feature is added)
-    with mock.patch(
-        "fastforward.autoquant.codeformat_with_defaults", codeformat_with_additional_imports
-    ):
-        autoquantized_code = autoquantize(
-            module=input,
-            output_path=output_path,
-        )
+    autoquantized_code = autoquantize(
+        module=input,
+        output_path=output_path,
+    )
 
     # THEN the module name is `__init__.py` default module name
     assert autoquantized_code.pymodule_name == module_name

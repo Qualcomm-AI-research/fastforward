@@ -10,6 +10,7 @@ import libcst
 import libcst.helpers
 
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
+from fastforward._autoquant.pysource.scope import ImportSymbol, find_required_imports
 from fastforward._quantops import OperatorTable
 
 from .cfg import block_node_elems, blocks, construct, reconstruct, variable_tracking
@@ -48,8 +49,9 @@ def convert_method(
     dst_cst = reconstruct(cfg)
 
     assert isinstance(dst_cst, libcst.FunctionDef)
+    required_imports = _infer_imports(src, dst_cst)
 
-    return QuantizedFunctionBuilder(dst_cst)
+    return QuantizedFunctionBuilder(dst_cst, required_imports)
 
 
 def _rewrite_quantized_operators(
@@ -179,6 +181,16 @@ def _process_quantized_call(
             case _:
                 # Process attributes and other non-Name accessors (#133)
                 pass
+
+
+def _infer_imports(src: PySource, cst: libcst.FunctionDef) -> set[ImportSymbol]:
+    if (scope := src.scope()) is None:
+        # Cannot infer import if no scope information is available.
+        # Generally, this should not happen.
+        # Do not error here to ensure autoquant does not completely fail
+        # in this case.
+        return set()
+    return find_required_imports(cst, scope, src.module().qualified_name)
 
 
 def _ensure_quantized(

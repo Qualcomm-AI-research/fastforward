@@ -8,14 +8,16 @@ import textwrap
 
 from collections.abc import Sequence
 from types import ModuleType
-from typing import Any, Callable, TypeAlias, TypeVar
+from typing import Any, Callable, TypeAlias
 
 import libcst
 import libcst.helpers
+import libcst.metadata
 
 from typing_extensions import override
 
 from fastforward._autoquant.cst.validation import ensure_type
+from fastforward._autoquant.pysource.scope import infer_scopes
 from fastforward._import import QualifiedNameReference, fully_qualified_name
 
 
@@ -28,7 +30,6 @@ class SourceContextMemberError(AttributeError):
 
 
 _PassesT: TypeAlias = Sequence[libcst.CSTTransformer]
-_T = TypeVar("_T")
 
 
 class SourceContext:
@@ -71,7 +72,7 @@ class SourceContext:
         qualified_name: str,
         NodeType: type[libcst.CSTNodeT] = libcst.CSTNode,  # type: ignore[assignment]
     ) -> libcst.CSTNodeT:
-        """Obtain CST for object references by `qualified_name`.
+        """Obtain CST for object referenced by `qualified_name`.
 
         This method will resolve references, e.g., `fastforward.QuantizedTensor`
         being defined at `fastforward.quantized_tensor.QuantizedTensor`.
@@ -86,6 +87,20 @@ class SourceContext:
         module_src = self._get_module_source(resolved_name.module)
         node = module_src.member_cst(resolved_name.obj_name)
         return ensure_type(node, NodeType)
+
+    def get_scope(self, qualified_name: str) -> libcst.metadata.Scope | None:
+        """Obtain scope for object referend by `qualified_name`.
+
+        This method will resolve references, e.g., `fastforward.QuantizedTensor`
+        being defined at `fastforward.quantized_tensor.QuantizedTensor`.
+
+        Args:
+            qualified_name: A reference to a python object for which to obtain
+                a `Scope` object.
+        """
+        resolved_name = _resolve_name(qualified_name)
+        module_src = self._get_module_source(resolved_name.module)
+        return module_src.member_scope(resolved_name.obj_name)
 
     def _get_module_source(self, module: ModuleType) -> "_ModuleSource":
         if module not in self._modules:
@@ -120,6 +135,10 @@ class PySource:
         """
         return ensure_type(self._source_context.get_cst(self._qualified_name), NodeType)
 
+    def scope(self) -> libcst.metadata.Scope | None:
+        """Obtain scope for object represented by `self`."""
+        return self._source_context.get_scope(self._qualified_name)
+
     def member(self, name: str) -> "PySource":
         """Obtain a `PySource` object for an attribute of the python object represented by `self`.
 
@@ -148,7 +167,7 @@ class PySource:
         """
         if self.is_module():
             return self
-        return self._source_context.get(self._qualified_name.rsplit(".", 1)[0])
+        return self._source_context.get(self._qualified_name.rsplit(".", 1)[0]).module()
 
     @property
     def qualified_name(self) -> str:
@@ -171,6 +190,7 @@ class _ModuleSource:
         self._source_context = source_context
         self._preprocessing_passes = tuple(preprocessing_passes)
         self._py_module = module
+        self._scopes: dict[libcst.CSTNode, libcst.metadata.Scope] = {}
 
         module_cst = self._read_module_cst(module)
         self._members: dict[str, libcst.CSTNode] = {"": module_cst}
@@ -179,7 +199,11 @@ class _ModuleSource:
             relative_name = ".".join(parts)
             self._members[relative_name] = node
 
-        _ = module_cst.visit(_SymbolVisitor(_add_symbol))
+        module_cst = module_cst.visit(_SymbolVisitor(_add_symbol))
+        self._scope_analysis(module_cst)
+
+    def _scope_analysis(self, cst: libcst.Module) -> None:
+        self._scopes = infer_scopes(cst)
 
     def member_cst(self, relative_qualified_name: str) -> libcst.CSTNode:
         if relative_qualified_name not in self._members:
@@ -188,6 +212,10 @@ class _ModuleSource:
                 + "Currently only function and class definitions are recorded as members."
             )
         return self._members[relative_qualified_name]
+
+    def member_scope(self, relative_qualified_name: str) -> libcst.metadata.Scope | None:
+        cst = self.member_cst(relative_qualified_name)
+        return self._scopes.get(cst)
 
     def member(self, relative_qualified_name: str) -> "PySource":
         if relative_qualified_name not in self._members:
