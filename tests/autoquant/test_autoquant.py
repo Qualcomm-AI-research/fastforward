@@ -350,7 +350,64 @@ def test_autoquant_introduces_quantization_method(
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
     expected_output = codeformat_with_defaults(code=expected_output).strip()
-    assert_strings_match_verbose(expected_output, actual_output.strip())
+    assert_strings_match_verbose(str2=expected_output, str1=actual_output.strip())
+
+
+# Example with literal integer
+class ExampleModule8(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = x.reshape((-1 + 2 // 3, self.num_features))
+        h = h.reshape((999 - 12, self.num_features))
+        h = h.reshape((-1, self.num_features))
+        return h
+
+
+FLOAT_MODULE_8 = ExampleModule8()
+
+AUTOQUANTIZED_MODULE_OUT_8 = """
+class QuantizedExampleModule8(fastforward.nn.QuantizedModule, ExampleModule8):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = x.reshape((-1 + 2 // 3, self.num_features))
+        h = h.reshape((999 - 12, self.num_features))
+        h = h.reshape((-1, self.num_features))
+        return h
+"""
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "input_module, expected_codegen",
+    [
+        (FLOAT_MODULE_8, AUTOQUANTIZED_MODULE_OUT_8),
+    ],
+    ids=[f"case-{i}" for i in range(8, 9)],
+)
+def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: str) -> None:
+    """Verifies autoquantization introduces the magic method and quantizers."""
+    # GIVEN a torch module with a forward pass and quantizable function calls
+
+    # GIVEN the default operator table
+    operator_table = optable.OperatorTable.from_yaml(
+        alias_extensions=optable.STR_ALIASES_EXTENSIONS
+    )
+
+    # GIVEN a default SourceContext
+    source_context = default_source_context()
+
+    # WHEN we autoquantize the example module
+    module_builder = autoquant(
+        module=input_module, source_context=source_context, operator_table=operator_table
+    )
+    actual_output = module_builder.build().code
+    actual_output = codeformat_with_defaults(code=actual_output).strip()
+
+    # THEN the generated code is quantized as expected
+    expected_output = dedent_strip(expected_codegen)[0]
+    expected_output = codeformat_with_defaults(code=expected_output).strip()
+    assert_strings_match_verbose(str2=expected_output, str1=actual_output.strip())
 
 
 class ExampleExpression(torch.nn.Module):
