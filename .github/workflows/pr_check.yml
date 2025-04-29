@@ -1,0 +1,21 @@
+name: PR Check
+
+on:
+  pull_request:
+     types:
+       - edited
+       - opened
+       - reopened
+
+jobs:
+  pr_description_check:
+    if: github.server_url != 'https://github.com'
+    name: Verify PR description tasks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the contents of the PR description
+        shell:
+          bash # enables `-o pipefail`
+        run: |
+          echo "${{ github.event.pull_request.body }}" | python3 scripts/pr_description_check.py
