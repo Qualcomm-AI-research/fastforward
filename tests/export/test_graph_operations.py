@@ -15,7 +15,6 @@ from tests.export.export_utils import (
 )
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 def test_encodings_propagation(
     tmp_path: pathlib.Path,
@@ -60,7 +59,7 @@ def test_encodings_propagation(
     # THEN all the original activation should be preserved.
     assert original_activation_names <= new_activation_names
 
-    # THEN the encodings for new activations should be associated as displayed in the below dictionar.
+    # THEN the encodings for new activations should be associated as displayed in the below dictionary.
     # Case 1: these are derived from other activations
     activation_to_activation_association = {"view": "mm", "view_1": "mm"}
 
@@ -70,12 +69,12 @@ def test_encodings_propagation(
             == encodings_dictionary["activation_encodings"][original_activation]
         )
 
-    # THEN the encodings for new activations should be associated as displayed in the below dictionar.
+    # THEN the encodings for new activations should be associated as displayed in the below dictionary.
     # Case 2: these are derived from parameters
     activation_to_parameter_association = {
-        "t": "fc1.weight",
-        "t_1": "fc2.weight",
-        "t_2": "fc3.weight",
+        "permute": "fc1.weight",
+        "permute_1": "fc2.weight",
+        "permute_2": "fc3.weight",
     }
 
     for new_activation, original_activation in activation_to_parameter_association.items():

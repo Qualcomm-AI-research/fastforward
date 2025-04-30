@@ -28,7 +28,6 @@ def test_module_io_recorder(
         _check_module_input_output_has_been_stored(tmp_path, model_name)
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 def test_module_export(
     simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int

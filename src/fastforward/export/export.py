@@ -15,15 +15,15 @@ Supported backends:
 
 import abc
 import json
+import logging
 import pathlib
 
 from operator import attrgetter
-from typing import Any, Generic, Sequence, TypeVar
+from typing import Any, Generic, Sequence, TypeVar, no_type_check
 
 import onnx
 import onnxscript
 import torch
-import torch_onnx  # type: ignore[import-untyped]
 
 from torch.export.exported_program import ExportedProgram
 from torch.export.graph_signature import InputKind, InputSpec
@@ -42,6 +42,30 @@ from fastforward.export._export_helpers import (
 )
 from fastforward.export.graph_operations import propagate_encodings
 from fastforward.flags import export_mode
+
+logger = logging.getLogger(__name__)
+
+if torch.__version__ < "2.5":
+    try:
+        import torch_onnx  # type: ignore[import-not-found]
+    except ImportError:
+        logger.error(
+            "To use export functionality with pytorch version {torch.__version__}, please install `torch_onnx` manually."
+        )
+        raise
+
+    @no_type_check
+    def _get_onnx_model(program: ExportedProgram) -> onnxscript.ir.Model:
+        """Get the onnx model from an exported program."""
+        return torch_onnx.exported_program_to_ir(program)
+
+else:
+
+    @no_type_check
+    def _get_onnx_model(program: ExportedProgram) -> onnxscript.ir.Model:
+        """Get the onnx model from an exported program."""
+        return torch.onnx.export(program).model
+
 
 _T = TypeVar("_T")
 
@@ -496,8 +520,9 @@ def export(
     graph_operators = [*graph_preprocessors, *default_graph_operators]
 
     with export_mode(True):
-        dynamo_exported_program = torch.export.export(model, args=data, kwargs=model_kwargs)
-        dynamo_exported_program = dynamo_exported_program.run_decompositions({})
+        dynamo_exported_program = torch.export.export(
+            model, args=data, kwargs=model_kwargs
+        ).run_decompositions()
 
     dynamo_exported_program, new_old_input_spec_mapping, raw_logs = process_dynamo_program(
         dynamo_exported_program, graph_operators
@@ -512,10 +537,7 @@ def export(
         propagated_encodings_dict = propagate_encodings(dynamo_exported_program, quantization_logs)
         quantization_logs.update(propagated_encodings_dict)
 
-    torch_onnx_model: onnxscript.ir.Model = torch_onnx.exported_program_to_ir(
-        dynamo_exported_program
-    )
-
+    torch_onnx_model = _get_onnx_model(dynamo_exported_program)
     torch_onnx_inputs = torch_onnx_model.graph.inputs
     torch_onnx_outputs = torch_onnx_model.graph.outputs
 

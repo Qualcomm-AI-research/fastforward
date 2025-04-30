@@ -9,18 +9,6 @@ import torch
 from tests.export.export_utils import QuantizedModelFixture
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Called after collection has been performed. May filter or re-order the items in-place."""
-    for item in items:
-        if "xfail_due_to_too_new_torch" in item.keywords:
-            item.add_marker(
-                pytest.mark.xfail(
-                    torch.__version__ >= "2.6",
-                    reason="torch_onnx doesn't work with torch >= 2.6 (issue #66)",
-                )
-            )
-
-
 @pytest.fixture
 def simple_model() -> QuantizedModelFixture:
     class FFNet(torch.nn.Module):
@@ -106,7 +94,7 @@ def simple_quant_model_with_non_quant_ops() -> QuantizedModelFixture:
             x = torch.reshape(x, (x.shape[1], x.shape[0]))
             x = self.relu1(x)
             x = self.fc2(x)
-            x = torch.nn.functional.softmax(x)
+            x = torch.nn.functional.softmax(x, dim=0)
             x = self.relu2(x)
             x = self.fc3(x)
             x = torch.matmul(x, self.extra_weight)

@@ -39,12 +39,17 @@ jobs:
 
       - run: |
           apt update -qq && apt install -y jq
-
+      - run: |
+          export VER_TORCH="2.4"
+          python3 -m pip install torch==$VER_TORCH --extra-index-url https://download.pytorch.org/whl/cu124
+          if [ "$VER_TORCH" = "2.4" ] ; then
+            python3 -m pip install torch-onnx
+          fi
+          python3 -m pip install ".[docs]"
       - name: Generate docs
         run: |
           export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           export DOCS_SITE_URL="$(curl -k -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages | jq -r '.html_url')"
-          python3 -m pip install ".[docs]"
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

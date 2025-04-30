@@ -10,11 +10,13 @@ dependencies = [
   "importlib-metadata",
   "libcst",
   "numpy>=1.24,<2.0",
+  "onnx",
+  "onnxruntime",
+  "onnxscript",
   "optree",
   "packaging",
   "ruff",
   "setuptools",
-  "torch-onnx==0.1.25",
   "typing-extensions",
 ]
 
@@ -28,7 +30,11 @@ dev = [
   "mypy",
   "notebook",
 ]
-test = ["pytest>=6", "pytest-cov>=3", "types-PyYAML", "onnxruntime"]
+test = [
+  "pytest>=6",
+  "pytest-cov>=3",
+  "types-PyYAML",
+]
 docs = [
   "datasets",
   "ipywidgets",
@@ -78,7 +84,6 @@ markers = [
   "benchmark: marks benchmark tests",
   "patchedtorch: marks tests which are required patched PyTorch version (deselect with '-m \"not patchedtorch\"')",
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-  "xfail_due_to_too_new_torch: disable tests for pytorch 2.6",
 ]
 
 [tool.mypy]

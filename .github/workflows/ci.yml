@@ -85,6 +85,7 @@ jobs:
     container:
       image: python:${{ matrix.VER_PYTHON }}
     strategy:
+      fail-fast: false
       matrix:
         VER_PYTHON:
           - "3.10"
@@ -109,15 +110,20 @@ jobs:
           path: "wheelhouse"
       - if: env.RUN_TESTS == 'true'
         run: |
-          echo "torch==${{ matrix.VER_TORCH }}" > constraints.txt
-          python3 -m pip install "$(find wheelhouse -name '*.whl')[test]" -c constraints.txt
+          python3 -m pip install torch==${{ matrix.VER_TORCH }} --extra-index-url https://download.pytorch.org/whl/cu124
+          if [ "${{ matrix.VER_TORCH }}" = "2.4" ] ; then
+            python3 -m pip install torch-onnx==0.1.25
+          fi
+      - if: env.RUN_TESTS == 'true'
+        run: python3 -m pip install "$(find wheelhouse -name '*.whl')[test]"
       - if: env.RUN_TESTS == 'true'
         run: python3 -m pytest --include-slow
       - name: check slow tests are marked as such
         if: env.RUN_TESTS == 'true'
         run: |
           python3 -m pytest `# run non-slow test once to warm up caches`
-          python3 -m pytest --timeout=0.2 
+          python3 -m pytest --timeout=0.2
+
   verify:
     if: github.server_url != 'https://github.com'
     name: "${{ matrix.JOB.NAME }}"

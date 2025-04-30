@@ -31,7 +31,7 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     # WHEN exporting the model before quantizers are activated.
     with ff.export_mode(False), ff.strict_quantization(False):
-        exported_graph = torch.export.export(quant_model, args=(data,))
+        exported_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
 
     # THEN the dynamo export should work as with any standard torch modules
     # without the need for switching to export mode.
@@ -45,13 +45,12 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
     # an UnsupportedError message if these are present in the code. This test checks that
     # both those issues are resolved when exporting with the export mode set to True.
     with ff.export_mode(True), ff.strict_quantization(False):
-        exported_graph = torch.export.export(quant_model, args=(data,))
+        exported_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
 
     # THEN the dynamo export should work when export mode is activated.
     assert isinstance(exported_graph, torch.export.exported_program.ExportedProgram)
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a quantized model and its exported dynamo graph.
@@ -60,7 +59,7 @@ def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
 
     with ff.export_mode(True), ff.strict_quantization(False):
-        quantized_model_graph = torch.export.export(quant_model, args=(data,))
+        quantized_model_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
 
     graph_wrapper = GraphWrapper(quantized_model_graph)
 
@@ -98,7 +97,6 @@ def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     assert len(dequantized_nodes) == len(quantized_nodes) == num_quantizers
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> None:
     # GIVEN a model with a number of quantizers
@@ -117,7 +115,7 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     # (quantize_by_tile/dequantize_by_tile)
 
     with ff.export_mode(True), ff.strict_quantization(False):
-        quantized_model_graph = torch.export.export(quant_model, args=(data,))
+        quantized_model_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
 
     graph_wrapper = GraphWrapper(quantized_model_graph)
 
@@ -165,7 +163,6 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     assert (non_quant_result == quantized_model_graph.module()(data)).all()
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_node_logging(
@@ -177,8 +174,7 @@ def test_node_logging(
     activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
 
     with ff.export_mode(True), ff.strict_quantization(False):
-        quantized_model_graph = torch.export.export(quant_model, args=(data,))
-        quantized_model_graph = quantized_model_graph.run_decompositions({})
+        quantized_model_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
 
     # WHEN loggign the quantization parameters of the model (knowing beforehand
     # what the quantization targets are).
@@ -222,7 +218,6 @@ def test_node_logging(
             assert quantizer.num_bits == parameter_value["num_bits"]
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 def test_ff_model_to_onnx_export(
     tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
@@ -269,7 +264,6 @@ def test_ff_model_to_onnx_export(
     )
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize("new_input_names", [None, ["new_x"]])
 @pytest.mark.parametrize("new_output_names", [None, ["new_output"]])
@@ -355,7 +349,6 @@ def test_encodings_file_generation(
 
 
 @pytest.mark.slow
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "names",
@@ -423,7 +416,6 @@ def test_graph_io_renaming_valid(
     assert graph_outputs == output_names
 
 
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "names",
@@ -474,7 +466,6 @@ def test_graph_io_renaming_invalid(
 
 
 @pytest.mark.slow
-@pytest.mark.xfail_due_to_too_new_torch
 @pytest.mark.parametrize("granularity", [ff.PerTensor(), ff.PerChannel(0)])
 def test_export_function(
     tmp_path: pathlib.Path,
