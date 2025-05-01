@@ -3798,7 +3798,7 @@ needs to be created.</p>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">quantized_module_types</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">qtype</span> <span class="o">=</span> <span class="n">quantized_module_types</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;Multiple quantized versions of &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39; exists. &quot;</span>
                 <span class="s2">&quot;Defaulting to &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39; which was created last&quot;</span><span class="p">,</span>
                 <span class="n">module_type</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
