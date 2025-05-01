@@ -12,3 +12,4 @@ from .writer import BasicCodeWriter as BasicCodeWriter
 from .writer import CodeWriterP as CodeWriterP
 from .writer import FileWriter as FileWriter
 from .writer import StdoutWriter as StdoutWriter
+from .writer import TextIOWriter as TextIOWriter
