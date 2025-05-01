@@ -111,9 +111,6 @@ jobs:
       - if: env.RUN_TESTS == 'true'
         run: |
           python3 -m pip install torch==${{ matrix.VER_TORCH }} --extra-index-url https://download.pytorch.org/whl/cu124
-          if [ "${{ matrix.VER_TORCH }}" = "2.4" ] ; then
-            python3 -m pip install torch-onnx==0.1.25
-          fi
       - if: env.RUN_TESTS == 'true'
         run: python3 -m pip install "$(find wheelhouse -name '*.whl')[test]"
       - if: env.RUN_TESTS == 'true'

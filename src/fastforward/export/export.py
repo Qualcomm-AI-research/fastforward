@@ -15,11 +15,10 @@ Supported backends:
 
 import abc
 import json
-import logging
 import pathlib
 
 from operator import attrgetter
-from typing import Any, Generic, Sequence, TypeVar, no_type_check
+from typing import Any, Generic, Sequence, TypeVar
 
 import onnx
 import onnxscript
@@ -33,6 +32,7 @@ from typing_extensions import override
 
 import fastforward as ff
 
+from fastforward.exceptions import ExportError
 from fastforward.export._export_helpers import (
     generate_qnn_encodings_dictionary,
     get_activations,
@@ -42,30 +42,6 @@ from fastforward.export._export_helpers import (
 )
 from fastforward.export.graph_operations import propagate_encodings
 from fastforward.flags import export_mode
-
-logger = logging.getLogger(__name__)
-
-if torch.__version__ < "2.5":
-    try:
-        import torch_onnx  # type: ignore[import-not-found]
-    except ImportError:
-        logger.error(
-            "To use export functionality with pytorch version {torch.__version__}, please install `torch_onnx` manually."
-        )
-        raise
-
-    @no_type_check
-    def _get_onnx_model(program: ExportedProgram) -> onnxscript.ir.Model:
-        """Get the onnx model from an exported program."""
-        return torch_onnx.exported_program_to_ir(program)
-
-else:
-
-    @no_type_check
-    def _get_onnx_model(program: ExportedProgram) -> onnxscript.ir.Model:
-        """Get the onnx model from an exported program."""
-        return torch.onnx.export(program).model
-
 
 _T = TypeVar("_T")
 
@@ -486,6 +462,8 @@ def export(
     Finally the function will store the model in the user-defined `output_directory`, using the
     user-defined `model_name`.
 
+    The function raises an `ExportError` exception if PyTorch version < 2.5 is used.
+
     Args:
         model: A torch module, can contain FF modules.
         data: A torch `Tensor` object that compatible with the model's input shape.
@@ -501,6 +479,12 @@ def export(
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations in the graph as possible.
     """
+    if torch.__version__ < "2.5":
+        msg = (
+            "Export functionality is only supported for PyTorch version 2.5 and above. "
+            "Please upgrade your PyTorch installation to use this feature."
+        )
+        raise ExportError(msg)
     output_directory = pathlib.Path(output_directory)
     output_directory.mkdir(exist_ok=True, parents=True)
     onnx_location = output_directory / f"{model_name}.onnx"
@@ -537,7 +521,7 @@ def export(
         propagated_encodings_dict = propagate_encodings(dynamo_exported_program, quantization_logs)
         quantization_logs.update(propagated_encodings_dict)
 
-    torch_onnx_model = _get_onnx_model(dynamo_exported_program)
+    torch_onnx_model = torch.onnx.export(dynamo_exported_program).model  # type: ignore[call-arg, union-attr]
     torch_onnx_inputs = torch_onnx_model.graph.inputs
     torch_onnx_outputs = torch_onnx_model.graph.outputs
 

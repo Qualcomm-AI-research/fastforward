@@ -40,11 +40,8 @@ jobs:
       - run: |
           apt update -qq && apt install -y jq
       - run: |
-          export VER_TORCH="2.4"
+          export VER_TORCH="2.5"
           python3 -m pip install torch==$VER_TORCH --extra-index-url https://download.pytorch.org/whl/cu124
-          if [ "$VER_TORCH" = "2.4" ] ; then
-            python3 -m pip install torch-onnx
-          fi
           python3 -m pip install ".[docs]"
       - name: Generate docs
         run: |

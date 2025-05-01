@@ -4,6 +4,7 @@
 import random
 import time
 
+from pathlib import Path
 from typing import Iterator
 
 import pytest
@@ -38,6 +39,19 @@ def pytest_configure(config: pytest.Config) -> None:
         # Replacing 'and not slow' first avoids an invalid `and` left behind.
         for replacement in ["and not slow", "not slow"]:
             config.option.markexpr = config.option.markexpr.replace(replacement, "")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Called after collection has been performed. May filter or re-order the items in-place."""
+    marker = pytest.mark.skipif(
+        torch.__version__ < "2.5",
+        reason="Export functionality is only supported for PyTorch version 2.5 and above.",
+    )
+    export_tests_path = str(Path(__file__).parent / "export")
+    for item in items:
+        if str(item.path).startswith(export_tests_path):
+            print(f"Skipping {item.path} due to PyTorch version {export_tests_path}")
+            item.add_marker(marker)
 
 
 @pytest.fixture(scope="session", name="random_seed")
