@@ -1,11 +1,18 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+
+import pathlib
+import types
+
+from unittest import mock
+
+import fastforward
 import libcst
 import pytest
 import torch
 
-from fastforward._autoquant import pysource
+from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.autoquant import (
     autoquant,
     autoquant_with_defaults,
@@ -15,6 +22,7 @@ from fastforward._autoquant.autoquant import (
 from fastforward._autoquant.cst import passes
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._quantops import optable
+from fastforward.autoquant import autoquantize
 from typing_extensions import override
 
 from tests.utils.string import assert_strings_match_verbose, dedent_strip
@@ -341,16 +349,15 @@ def test_autoquant_introduces_quantization_method(
     )
 
     # WHEN we autoquantize the example module
-    module_builder = autoquant(
+    autoquant_code = autoquant(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
-    actual_output = module_builder.build().code
-    actual_output = codeformat_with_defaults(code=actual_output).strip()
+    actual_code = codeformat_with_defaults(code=autoquant_code)
 
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
     expected_output = codeformat_with_defaults(code=expected_output).strip()
-    assert_strings_match_verbose(str2=expected_output, str1=actual_output.strip())
+    assert_strings_match_verbose(str2=expected_output, str1=actual_code.strip())
 
 
 # Example with literal integer
@@ -398,15 +405,13 @@ def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: s
     source_context = default_source_context()
 
     # WHEN we autoquantize the example module
-    module_builder = autoquant(
+    autoquantized = autoquant(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
-    actual_output = module_builder.build().code
-    actual_output = codeformat_with_defaults(code=actual_output).strip()
+    actual_output = codeformat_with_defaults(code=autoquantized).strip()
 
     # THEN the generated code is quantized as expected
     expected_output = dedent_strip(expected_codegen)[0]
-    expected_output = codeformat_with_defaults(code=expected_output).strip()
     assert_strings_match_verbose(str2=expected_output, str1=actual_output.strip())
 
 
@@ -424,9 +429,10 @@ class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpressi
 """
 
 
+@pytest.mark.slow
 def test_expressions_not_quantized() -> None:
     """Tests that expressions are not quantized (fixes #80)."""
-    actual = autoquant_with_defaults(ExampleExpression()).build().code
+    actual = autoquant_with_defaults(ExampleExpression())
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
     assert_strings_match_verbose(expected_output, actual.strip())
 
@@ -442,7 +448,186 @@ FORMATTED_CODE = """
 
 def test_codeformat() -> None:
     """Tests that code is formatted correctly."""
-    input = UNFORMATTED_CODE.strip()
+    input = UNFORMATTED_CODE
     expected = FORMATTED_CODE.strip()
     actual = codeformat_with_defaults(code=input).strip()
-    assert expected == actual
+    assert_strings_match_verbose(expected, actual)
+
+
+class ExampleModule1B(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y = torch.nn.functional.conv2d(x, x)
+        return torch.nn.functional.linear(y, y)
+
+
+FLOAT_MODULE_1B = ExampleModule1B()
+
+AUTOQUANTIZED_MODULE_OUT_1B = """
+class QuantizedExampleModule1B(fastforward.nn.QuantizedModule, ExampleModule1B):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_x = fastforward.nn.QuantizerStub()
+        self.quantizer_conv2d = fastforward.nn.QuantizerStub()
+        self.quantizer_linear = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x(x)
+        y = fastforward.nn.functional.conv2d(x, x, output_quantizer=self.quantizer_conv2d)
+        return fastforward.nn.functional.linear(y, y, output_quantizer=self.quantizer_linear)
+
+"""
+
+# Provides imports until autoquant is able to do this automatically
+_NEEDED_IMPORTS = """
+import torch
+
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule1B
+
+"""
+
+
+@pytest.mark.slow
+def test_autoquant_emits_code_to_stdout(capsys: pytest.CaptureFixture[str]) -> None:
+    # GIVEN a torch module to autoquantize
+    input = FLOAT_MODULE_1B
+    # GIVEN expected atuqoantzied code
+    (expected_output,) = dedent_strip(AUTOQUANTIZED_MODULE_OUT_1B)
+
+    # WHEN we autoquantize the example code and write it with the default code writer
+    autoquantized = autoquantize(
+        module=input,
+        code_writer=pybuilder.StdoutWriter(module_name="dummy_name"),
+        auto_import=False,
+    )
+    actual_output = autoquantized.code
+
+    # WHEN we inspect the code written to stdout
+    captured = capsys.readouterr()
+
+    # THEN the the only code written to stdout is the expected code
+    assert_strings_match_verbose(captured.out.strip(), expected_output.strip())
+
+    # THEN the output matches our expectation
+    assert_strings_match_verbose(actual_output.strip(), expected_output)
+
+
+@pytest.mark.slow
+def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
+    # GIVEN a torch module to autoquantize
+    input = FLOAT_MODULE_1B
+    # GIVEN expected autoquantized code
+    (expected_output,) = dedent_strip(AUTOQUANTIZED_MODULE_OUT_1B)
+    # GIVEN a target output file to write the code to
+    out_dir = tmp_path / "some_nested_dir"
+
+    # WHEN we autoquantize the example code and write it to a folder
+    autoquantize(
+        module=input,
+        output_path=out_dir,
+        auto_import=False,
+    )
+
+    # THEN the output directory was created
+    assert out_dir.is_dir()
+    # THEN `__init__.py` was created in the output directory
+    out_file = out_dir / "__init__.py"
+    assert out_file.is_file()
+
+    actual_output = out_file.read_text(encoding="utf-8")
+
+    # THEN the file's contents matches our expectation
+    assert_strings_match_verbose(actual_output.strip(), expected_output)
+
+    # WHEN we try to overwrite the existing `__init__.py` file
+    with pytest.raises(FileExistsError, match="already exists. Use `force_overwrite=True`"):
+        # THEN we get a sensible error
+        autoquantize(
+            module=input,
+            output_path=out_dir,
+            auto_import=False,
+        )
+
+    # WHEN we try to overwrite the `__init__.py` file with force-overwrite
+    # THEN no error is thrown
+    autoquantize(
+        module=input,
+        output_path=out_dir,
+        force_overwrite=True,
+        auto_import=False,
+    )
+
+    # WHEN we autoquantize the example code and specify to write to a `.py`-file instead
+    module_name = "some_file.py"
+    output_path = tmp_path / module_name
+    autoquantize(
+        module=input,
+        output_path=output_path,
+        auto_import=False,
+    )
+    # THEN we wrote to the `some_file.py`, and not to `__init__.py`
+    assert output_path.is_file()
+
+
+def codeformat_with_additional_imports(code: str, code_formatter: pybuilder.CodeFormatter) -> str:
+    """Provides additional import statements - until ff provides those itself."""
+    generated = codeformat_with_defaults(code=code, code_formatter=code_formatter)
+    assert "import" not in generated, "Auto-import of symbols was added; please remove this mock."
+    return _NEEDED_IMPORTS + generated
+
+
+@pytest.mark.slow
+def test_auto_import(tmp_path: pathlib.Path) -> None:
+    # GIVEN a torch module
+    input = FLOAT_MODULE_1B
+    module_name = "ff_quant"
+    output_path = tmp_path / module_name
+
+    # WHEN we autoquantize the example code
+    # WHEN we add some additional imports (until this feature is added)
+    with mock.patch(
+        "fastforward.autoquant.codeformat_with_defaults", codeformat_with_additional_imports
+    ):
+        autoquantized_code = autoquantize(
+            module=input,
+            output_path=output_path,
+        )
+
+    # THEN the module name is `__init__.py` default module name
+    assert autoquantized_code.pymodule_name == module_name
+
+    # THEN the generated module is a Python module
+    pymodule = autoquantized_code.pymodule
+    assert isinstance(pymodule, types.ModuleType)
+
+    # THEN autoquant extends the system modules and we can import ff_quant
+    import ff_quant as ff_quant  # type:ignore[import-not-found] # noqa: I001
+
+    # THEN  `import` from the generated module works, too
+    from ff_quant import (  # noqa: I001
+        QuantizedExampleModule1B as QuantizedModule,
+    )
+
+    # THEN the quantized module is available in the generated Python module
+    assert hasattr(pymodule, f"Quantized{ExampleModule1B.__name__}")
+    assert hasattr(ff_quant, f"Quantized{ExampleModule1B.__name__}")
+
+    # THEN the quantized module can be accessed via dot notation
+    modules = [
+        pymodule.QuantizedExampleModule1B,
+        ff_quant.QuantizedExampleModule1B,
+        QuantizedModule,
+    ]
+
+    for module in modules:
+        # THEN the quantized module has expected static properties
+        assert module is not None
+        assert module.__name__ == f"Quantized{ExampleModule1B.__name__}"
+        assert fastforward.nn.QuantizedModule in module.__bases__
+
+        # THEN the quantized module can be instantiated
+        instance = module()
+
+        # THEN the instance has expected properties
+        assert list(instance.modules())[-1].__class__ == fastforward.nn.QuantizerStub

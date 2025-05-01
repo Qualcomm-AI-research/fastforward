@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import pathlib
+
 from collections.abc import Iterator
+from dataclasses import dataclass
+from types import ModuleType
 
 import torch
 
@@ -40,7 +44,7 @@ def default_optable() -> optable.OperatorTable:
 
 def autoquant_with_defaults(
     module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
-) -> pybuilder.ModuleBuilder:
+) -> str:
     operator_table = operator_table or default_optable()
     return autoquant(module, default_source_context(), operator_table)
 
@@ -52,11 +56,36 @@ def codeformat_with_defaults(
     return code_formatter.format(code)
 
 
+def emit_code_of_module(
+    module: str,
+    output_path: pathlib.Path | str | None,
+    code_writer: pybuilder.BasicCodeWriter | None,
+    force_overwrite: bool,
+) -> str:
+    """Emits code via a CodeWriter."""
+    if (output_path is None) + (code_writer is None) != 1:
+        raise ValueError("Specify exactly one of `output_path` and `code_writer`.")
+
+    if code_writer is not None and force_overwrite:
+        raise ValueError(
+            "Cannot force overwrite when using a CodeWriter. "
+            + "Instead, pass it as argument to the `CodeWriter`."
+        )
+    if output_path is not None:
+        code_writer = pybuilder.FileWriter(
+            output_path=pathlib.Path(output_path), force_overwrite=force_overwrite
+        )
+    assert code_writer is not None
+    code_writer.write(module)
+    return code_writer.module_name
+
+
 def autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
-) -> pybuilder.ModuleBuilder:
+) -> str:
+    """Autoquantizes a `torch.nn.Module`."""
     pre_quantized_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
     dst_module = pybuilder.ModuleBuilder()
 
@@ -74,7 +103,7 @@ def autoquant(
         dst_class.add_method(quantized_forward)
         dst_module.add_class(dst_class)
 
-    return dst_module
+    return dst_module.build().code
 
 
 def _find_unquantized_submodules(
@@ -106,3 +135,12 @@ def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:
                 immediate_superclasses.add(base)
 
     return immediate_superclasses
+
+
+@dataclass
+class AutoQuantizedCode:
+    """Contains the generated code and the corresponding Python module."""
+
+    code: str
+    pymodule: ModuleType | None
+    pymodule_name: str

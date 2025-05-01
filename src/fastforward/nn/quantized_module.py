@@ -488,7 +488,7 @@ def quantized_module_map() -> dict[ModuleType, QuantizedModuleType]:
             continue
         if len(quantized_module_types) > 1:
             qtype = quantized_module_types[-1]
-            logger.warn(
+            logger.warning(
                 "Multiple quantized versions of '%s.%s' exists. "
                 "Defaulting to '%s.%s' which was created last",
                 module_type.__module__,

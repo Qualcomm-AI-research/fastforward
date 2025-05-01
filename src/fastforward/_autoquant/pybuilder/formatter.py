@@ -7,6 +7,8 @@ import subprocess
 
 from typing import Protocol, Sequence
 
+from typing_extensions import override
+
 
 class CodeFormatter(Protocol):
     """Defines the required public signature of a CodeFormatter."""
@@ -21,6 +23,7 @@ class SubprocessCodeFormatter(CodeFormatter):
 
     command: Sequence[str] = ("false",)
 
+    @override
     def format(self, code: str) -> str:
         """Formats the code via a subprocess."""
         cp = subprocess.run(
