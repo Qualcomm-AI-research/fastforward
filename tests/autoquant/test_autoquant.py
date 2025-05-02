@@ -534,9 +534,8 @@ class ExampleModule1B(torch.nn.Module):
 FLOAT_MODULE_1B = ExampleModule1B()
 
 AUTOQUANTIZED_MODULE_OUT_1B = """
-import torch
-
 import fastforward
+import torch
 
 from tests.autoquant.test_autoquant import ExampleModule1B
 

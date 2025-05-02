@@ -54,6 +54,15 @@ class RuffFormatter(SubprocessCodeFormatter):
         super().__init__(
             commands=(
                 ("ruff", "format", "-"),
-                ("ruff", "check", "--fix", "--select", "I001", "-"),  # isort
+                (
+                    "ruff",
+                    "--config",
+                    'lint.isort.known-third-party = ["fastforward"]',
+                    "check",
+                    "--fix",
+                    "--select",
+                    "I001",
+                    "-",
+                ),  # isort
             )
         )
