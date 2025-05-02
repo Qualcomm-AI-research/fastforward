@@ -1,11 +1,45 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
-"""
+"""Autoquant is a feature of FastForward that simplifies the
+process of integrating new models.
+
 !!! experimental
     Please be aware that autoquant is an experimental feature. Use it with caution and
     expect changes as we continue the development of the feature.
 
     We encourage you to report any issues or feature requests.
+
+Autoquant takes a PyTorch module (`torch.nn.Module`) instance as input and
+generates Python code that implements quantized modules for the input module
+and all of its submodules. The newly generated modules can either be used
+directly or saved as a file -- after which they can be modified and integrated
+into existing projects.
+
+## Example
+The following example will generate subclasses of `QuantizedModule`
+needed<sup>1</sup> to quantize `my_model` and write them to
+`generated_file.py`. Note that `fastforward.autoquantize` does not change `my_model`.
+
+```python
+my_model = get_model() # instantiate a PyTorch module
+fastforward.autoquantize(my_model, output_path="generated_file.py")
+```
+
+In order to start using the newly generated `QuantizedModule`s we still
+need to quantize `my_model` using `fastforward.quantize_model`:
+
+```python
+my_model = get_model() # instantiate a PyTorch module
+fastforward.autoquantize(my_model, output_path="generated_file.py", auto_import=True)
+fastforward.quantize_model(my_model)
+```
+
+<small>1: Autoquant is an experimental feature under active development. This means
+ not all PyTorch modules are currently supported. Please reach out to us if
+a particular module is important to you.</small>
+
+---
+
 """  # noqa: D205, D212
 
 import pathlib
