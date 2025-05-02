@@ -3,9 +3,11 @@
 
 
 import pathlib
+import sys
 import types
 
 from typing import TypeAlias
+from unittest.mock import patch
 
 import fastforward
 import libcst
@@ -638,11 +640,15 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
 
 
 @pytest.mark.slow
+@patch.dict("sys.modules")
 def test_auto_import(tmp_path: pathlib.Path) -> None:
     # GIVEN a torch module
     input = FLOAT_MODULE_1B
     module_name = "ff_quant"
     output_path = tmp_path / module_name
+
+    # WHEN we take note of the original system modules
+    sys_modules = dict(sys.modules)
 
     # WHEN we autoquantize the example code
     # WHEN we add some additional imports (until this feature is added)
@@ -650,6 +656,12 @@ def test_auto_import(tmp_path: pathlib.Path) -> None:
         module=input,
         output_path=output_path,
     )
+
+    # THEN the system modules are extended by exactly one module
+    new_modules = list(set(sys.modules.values()) - set(sys_modules.values()))
+    assert len(new_modules) == 1
+    # THEN the new module is ff_quant
+    assert new_modules[0] == autoquantized_code.pymodule
 
     # THEN the module name is `__init__.py` default module name
     assert autoquantized_code.pymodule_name == module_name
