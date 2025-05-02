@@ -33,7 +33,7 @@ def autoquantize(
     code_formatter: pybuilder.CodeFormatter | None = None,
     output_path: pathlib.Path | str | None = None,
     force_overwrite: bool = False,
-    auto_import: bool = True,
+    auto_import: bool = False,
 ) -> AutoQuantizedCode: ...
 
 
@@ -44,7 +44,7 @@ def autoquantize(
     operator_table: optable.OperatorTable | None = None,
     code_formatter: pybuilder.CodeFormatter | None = None,
     code_writer: pybuilder.BasicCodeWriter | None = None,
-    auto_import: bool = True,
+    auto_import: bool = False,
 ) -> AutoQuantizedCode: ...
 
 
@@ -56,7 +56,7 @@ def autoquantize(
     output_path: pathlib.Path | str | None = None,
     force_overwrite: bool = False,
     code_writer: pybuilder.BasicCodeWriter | None = None,
-    auto_import: bool = True,
+    auto_import: bool = False,
 ) -> AutoQuantizedCode:
     """Create Python source code for quantized version of `module`.
 

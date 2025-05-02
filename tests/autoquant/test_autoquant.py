@@ -655,6 +655,7 @@ def test_auto_import(tmp_path: pathlib.Path) -> None:
     autoquantized_code = autoquantize(
         module=input,
         output_path=output_path,
+        auto_import=True,
     )
 
     # THEN the system modules are extended by exactly one module
