@@ -65,17 +65,16 @@ plugins:
         python:
           paths: [src/fastforward]
           options:
-            extra:
-              heading_level: 3
-              show_source: false
-              show_inheritance_diagram: True
-              show_if_no_docstring: True
-              merge_init_into_class: true
-              allow_inspection: false
-              show-root-full-path: true
-              show_root_members_full_path: true
-              show_symbol_type_heading: true
-              show_root_toc_entry: false
+            heading_level: 3
+            show_source: true
+            show_inheritance_diagram: True
+            show_if_no_docstring: True
+            merge_init_into_class: true
+            allow_inspection: true
+            show-root-full-path: true
+            show_root_members_full_path: true
+            show_symbol_type_heading: true
+            show_root_toc_entry: false
   - section-index
   # https://github.com/jimporter/mike
   # Generate doc for each version

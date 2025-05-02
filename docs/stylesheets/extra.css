@@ -3,15 +3,16 @@
   }
 .md-typeset .admonition.experimental,
 .md-typeset details.experimental {
-  border-color: orangered;
+  border-color: black;
 }
 .md-typeset .experimental > .admonition-title,
 .md-typeset .experimental > summary {
-  background-color: orange;
+  background-color: purple;
+  color: white
 }
 .md-typeset .experimental > .admonition-title::before,
 .md-typeset .experimental > summary::before {
-  background-color: purple;
+  background-color: white;
   -webkit-mask-image: var(--md-admonition-icon--experimental);
           mask-image: var(--md-admonition-icon--experimental);
 }
