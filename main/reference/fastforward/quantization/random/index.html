@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.random" class="md-skip">
+        <a href="#fastforward.quantization.random.random_quantized" class="md-skip">
           Skip to content
         </a>
       
@@ -1578,15 +1578,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.random" class="md-nav__link">
-    <span class="md-ellipsis">
-      random
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.quantization.random.random_quantized" class="md-nav__link">
     <span class="md-ellipsis">
       random_quantized
@@ -1892,7 +1883,7 @@
 
 
 
-<a id="fastforward.quantization.random"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1916,10 +1907,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.quantization.random.random_quantized" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">random_quantized</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">storage_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></code>
+<h3 id="fastforward.quantization.random.random_quantized" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_quantized</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">storage_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.random.random_quantized" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.random.random_quantized" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2025,7 +2016,7 @@ subsequently quantized using the provided quantization parameters.</p>
                 <code>granularity</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Granularity&lt;/code&gt; (&lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;)" href="../granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;" href="../granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2083,7 +2074,7 @@ subsequently quantized using the provided quantization parameters.</p>
       <tbody>
           <tr class="doc-section-item">
 <td><code>QuantizedTensor</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedTensor&lt;/code&gt; (&lt;code&gt;fastforward.quantized_tensor.QuantizedTensor&lt;/code&gt;)" href="../../quantized_tensor/#fastforward.quantized_tensor.QuantizedTensor">QuantizedTensor</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantized_tensor&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizedTensor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantization_context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.quantized_tensor.QuantizedTensor&lt;/code&gt;)" href="../../quantized_tensor/#fastforward.quantized_tensor.QuantizedTensor">QuantizedTensor</a></code>
             </td>
             <td>
               <div class="doc-md-description">

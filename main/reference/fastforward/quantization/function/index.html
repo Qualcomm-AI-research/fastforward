@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.function" class="md-skip">
+        <a href="#fastforward.quantization.function.QuantParams" class="md-skip">
           Skip to content
         </a>
       
@@ -1463,9 +1463,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.function" class="md-nav__link">
+  <a href="#fastforward.quantization.function.QuantParams" class="md-nav__link">
     <span class="md-ellipsis">
-      function
+      fastforward.quantization.function.QuantParams
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.function.QuantParams_co" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.quantization.function.QuantParams_co
     </span>
   </a>
   
@@ -1480,6 +1489,24 @@
   
     <nav class="md-nav" aria-label="QuantizationContext">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.function.QuantizationContext.quantization_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantization_fn
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.function.QuantizationContext.quantization_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantization_params
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.function.QuantizationContext.attach" class="md-nav__link">
@@ -1582,6 +1609,15 @@
   
     <nav class="md-nav" aria-label="QuantizationParameters">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.function.QuantizationParameters.__format__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __format__
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.function.QuantizationParameters.with_changes" class="md-nav__link">
@@ -2009,7 +2045,7 @@
 
 
 
-<a id="fastforward.quantization.function"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2028,25 +2064,68 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.quantization.function.QuantParams" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">QuantParams</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;QuantParams&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">QuantizationParameters</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.function.QuantParams" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.quantization.function.QuantParams_co" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">QuantParams_co</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;QuantParams_co&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">QuantizationParameters</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.function.QuantParams_co" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 <div class="doc doc-object doc-class">
 
 
 
-<h2 id="fastforward.quantization.function.QuantizationContext" class="doc doc-heading">
-            <code>QuantizationContext</code>
-
+<h3 id="fastforward.quantization.function.QuantizationContext" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">QuantizationContext</span><span class="p">(</span><span class="n">quantization_fn</span><span class="p">,</span> <span class="n">quantization_params</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#fastforward.quantization.function.QuantizationContext" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.function.QuantizationContext" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="typing.Generic">Generic</span>[<span title="fastforward.quantization.function.QuantParams_co">QuantParams_co</span>]</code></p>
+              Bases: <code><span title="typing.Generic">Generic</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantParams_co&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;QuantParams_co&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bound&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;covariant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantParams_co&lt;/code&gt;)" href="#fastforward.quantization.function.QuantParams_co">QuantParams_co</a>]</code></p>
 
 
         <p>A container for <code>QuantizationFunction</code>s and corresponding parameters.</p>
@@ -2059,187 +2138,6 @@ perform quantization and/or dequantization.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">QuantizationContext</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A container for `QuantizationFunction`s and corresponding parameters.</span>
-
-<span class="sd">    Together these form the quantization context and contain all information to</span>
-<span class="sd">    perform quantization and/or dequantization.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">quantization_fn</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]]</span>
-    <span class="n">quantization_params</span><span class="p">:</span> <span class="n">QuantParams_co</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">quantization_fn</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">changes</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create new context replacing `quantization_fn` or parameters.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            quantization_fn: `QuantizationFunction` for new</span>
-<span class="sd">                `QuantizationContext`. If `None`, use the current function.</span>
-<span class="sd">            **changes: Fields to change in `QuantizationParams`.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            New `QuantizationContext`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_params</span><span class="o">.</span><span class="n">with_changes</span><span class="p">(</span><span class="o">**</span><span class="n">changes</span><span class="p">)</span>
-        <span class="n">context_changes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;quantization_params&quot;</span><span class="p">:</span> <span class="n">params</span><span class="p">}</span>
-        <span class="k">if</span> <span class="n">quantization_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">context_changes</span><span class="p">[</span><span class="s2">&quot;quantization_fn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantization_fn</span>
-        <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">context_changes</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply `fn` to every parameter.</span>
-
-<span class="sd">        Create a new `QuantizationParameters` using the results of each application.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_params</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantization_params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">clone_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clone each tensor in `quantization_params`.</span>
-
-<span class="sd">        Return a new context with updated parameters.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">fn</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">maybe_tensor_apply</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">clone</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">detach_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detach each tensor in `quantization_params`.</span>
-
-<span class="sd">        Return a new context with updated parameters.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">fn</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">maybe_tensor_apply</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">detach</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">contiguous_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update each tensor in `quantization_params` to be contiguous.&quot;&quot;&quot;</span>
-        <span class="n">fn</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">maybe_tensor_apply</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="o">.</span><span class="n">contiguous</span><span class="p">)</span>
-        <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-
-        <span class="n">current_params</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantization_params</span><span class="p">)</span>
-        <span class="n">new_params</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">asdict</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">quantization_params</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">current_params</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">current_params</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">new_params</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>
-                <span class="k">return</span> <span class="n">ctx</span>
-        <span class="k">return</span> <span class="bp">self</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update each tensor in `quantization_params` to `device`.&quot;&quot;&quot;</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">_to_device</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
-
-        <span class="n">fn</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">maybe_tensor_apply</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">_to_device</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach to `data` to this context.</span>
-
-<span class="sd">        Creates a `QuantizedTensor` that uses data as raw_data and this context</span>
-<span class="sd">        as quantization context.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">ff</span><span class="o">.</span><span class="n">get_export_mode</span><span class="p">():</span>
-            <span class="c1"># The QuantizedTensor can be used once issue #166 is resolved (waiting for changes</span>
-            <span class="c1"># on the torch side).</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_fn</span><span class="o">.</span><span class="n">dequantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_params</span><span class="p">)</span>  <span class="c1"># type: ignore[return-value]</span>
-        <span class="k">return</span> <span class="n">QuantizedTensor</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2251,15 +2149,55 @@ perform quantization and/or dequantization.</p>
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.function.QuantizationContext.quantization_fn" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_fn</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.function.QuantizationContext.quantization_fn" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.function.QuantizationContext.quantization_params" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_params</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.function.QuantizationContext.quantization_params" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.attach" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">attach</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.attach" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">attach</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.attach" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.attach" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2301,10 +2239,10 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.clone_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">clone_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.clone_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">clone_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.clone_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.clone_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2337,10 +2275,10 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.contiguous_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">contiguous_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.contiguous_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">contiguous_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.contiguous_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.contiguous_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2382,10 +2320,10 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.detach_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">detach_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.detach_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">detach_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.detach_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.detach_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2418,10 +2356,10 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.to" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.to" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.to" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.to" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2455,10 +2393,10 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationContext.with_changes" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">with_changes</span><span class="p">(</span><span class="n">quantization_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationContext.with_changes" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">with_changes</span><span class="p">(</span><span class="n">quantization_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationContext.with_changes" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationContext.with_changes" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2482,7 +2420,11 @@ as quantization context.</p>
                 <code>quantization_fn</code>
             </td>
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizationFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;)" href="#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<span title="fastforward.quantization.function.QuantParams_co">QuantParams_co</span>]] | None</code>
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;" href="#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantParams_co&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;QuantParams_co&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bound&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;covariant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantParams_co&lt;/code&gt;)" href="#fastforward.quantization.function.QuantParams_co">QuantParams_co</a>]] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2596,16 +2538,20 @@ as quantization context.</p>
 
 
 
-<h2 id="fastforward.quantization.function.QuantizationFunction" class="doc doc-heading">
-            <code>QuantizationFunction</code>
+<h3 id="fastforward.quantization.function.QuantizationFunction" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.function.QuantizationFunction</code>
 
 
-<a href="#fastforward.quantization.function.QuantizationFunction" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.function.QuantizationFunction" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="typing.Generic">Generic</span>[<span title="fastforward.quantization.function.QuantParams_co">QuantParams_co</span>]</code>, <code><span title="abc.ABC">ABC</span></code></p>
+              Bases: <code><span title="typing.Generic">Generic</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantParams_co&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;QuantParams_co&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bound&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;covariant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantParams_co&lt;/code&gt;)" href="#fastforward.quantization.function.QuantParams_co">QuantParams_co</a>]</code>, <code><span title="abc.ABC">ABC</span></code></p>
 
 
         <p>Base class for QuantizationFunctions.</p>
@@ -2616,59 +2562,6 @@ as quantization context.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizationFunction</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">],</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for QuantizationFunctions.&quot;&quot;&quot;</span>
-
-    <span class="c1"># mypy does not allow covariant parameters. It&#39;s a coarse way of not</span>
-    <span class="c1"># allowing mutable covariant functions. This is not a problem in this case,</span>
-    <span class="c1"># hence the error (misc) is suppressed.</span>
-    <span class="nd">@classmethod</span>
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantize</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">QuantParams_co</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>  <span class="c1"># type: ignore[misc]</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Abstract method for quantization.</span>
-
-<span class="sd">        Implementors are expected to implement the quantize function that takes</span>
-<span class="sd">        input data and a `QuantizationParameters` object and return a</span>
-<span class="sd">        `QuantizedTensor` that is `data` quantized following `params`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dequantize</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">QuantParams_co</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># type: ignore[misc]</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Abstract method for dequantization.</span>
-
-<span class="sd">        Implementors are expected to implement the dequantize function that takes</span>
-<span class="sd">        quantized data and a `QuantizationParameters` object and return a</span>
-<span class="sd">        tensor that represents the dequantized data.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2685,15 +2578,15 @@ as quantization context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationFunction.dequantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">dequantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationFunction.dequantize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">dequantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.function.QuantizationFunction.dequantize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationFunction.dequantize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2732,15 +2625,15 @@ tensor that represents the dequantized data.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationFunction.quantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationFunction.quantize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.function.QuantizationFunction.quantize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationFunction.quantize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2788,15 +2681,14 @@ input data and a <code>QuantizationParameters</code> object and return a
 
 
 
-<h2 id="fastforward.quantization.function.QuantizationParameters" class="doc doc-heading">
-            <code>QuantizationParameters</code>
-
+<h3 id="fastforward.quantization.function.QuantizationParameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">QuantizationParameters</span><span class="p">()</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#fastforward.quantization.function.QuantizationParameters" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.function.QuantizationParameters" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2811,53 +2703,6 @@ input data and a <code>QuantizationParameters</code> object and return a
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">QuantizationParameters</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Container for quantization parameters.</span>
-
-<span class="sd">    Each quantization expects a specific `QuantizationParameters`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace given keywords and return a new `QuantizationParameters`.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply `fn` to every parameter.</span>
-
-<span class="sd">        Create a new `QuantizationParameters` using the results of each application.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">new_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">fn</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="o">**</span><span class="n">new_values</span><span class="p">)</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__format__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2874,10 +2719,35 @@ input data and a <code>QuantizationParameters</code> object and return a
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.function.QuantizationParameters.with_changes" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">with_changes</span><span class="p">(</span><span class="o">**</span><span class="n">changes</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.function.QuantizationParameters.__format__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__format__</span><span class="p">(</span><span class="n">format_spec</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.function.QuantizationParameters.with_changes" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.function.QuantizationParameters.__format__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="fm">__format__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.function.QuantizationParameters.with_changes" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">with_changes</span><span class="p">(</span><span class="o">**</span><span class="n">changes</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.function.QuantizationParameters.with_changes" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">

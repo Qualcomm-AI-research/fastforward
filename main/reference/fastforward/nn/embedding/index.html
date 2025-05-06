@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.embedding" class="md-skip">
+        <a href="#fastforward.nn.embedding.QuantizedEmbedding" class="md-skip">
           Skip to content
         </a>
       
@@ -1075,20 +1075,35 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.embedding" class="md-nav__link">
-    <span class="md-ellipsis">
-      embedding
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.nn.embedding.QuantizedEmbedding" class="md-nav__link">
     <span class="md-ellipsis">
       QuantizedEmbedding
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="QuantizedEmbedding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.embedding.QuantizedEmbedding.__init_quantization__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init_quantization__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.embedding.QuantizedEmbedding.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      forward
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1892,7 +1907,7 @@
 
 
 
-<a id="fastforward.nn.embedding"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1916,16 +1931,16 @@
 
 
 
-<h2 id="fastforward.nn.embedding.QuantizedEmbedding" class="doc doc-heading">
-            <code>QuantizedEmbedding</code>
+<h3 id="fastforward.nn.embedding.QuantizedEmbedding" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.embedding.QuantizedEmbedding</code>
 
 
-<a href="#fastforward.nn.embedding.QuantizedEmbedding" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.embedding.QuantizedEmbedding" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Embedding">Embedding</span></code>, <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code></p>
+              Bases: <code><span title="torch.nn.Embedding">Embedding</span></code>, <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code></p>
 
 
         <p>Quantized implementation of torch.nn.Embedding.</p>
@@ -1936,51 +1951,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/embedding.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedEmbedding</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Embedding</span><span class="p">,</span> <span class="n">QuantizedModule</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.Embedding.&quot;&quot;&quot;</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">functional</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span>
-            <span class="nb">input</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">padding_idx</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">max_norm</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">norm_type</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">scale_grad_by_freq</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span><span class="p">,</span>
-            <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
-        <span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -1993,6 +1963,78 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.embedding.QuantizedEmbedding.__init_quantization__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.embedding.QuantizedEmbedding.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/embedding.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.embedding.QuantizedEmbedding.forward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.embedding.QuantizedEmbedding.forward" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/embedding.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">functional</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span>
+        <span class="nb">input</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding_idx</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_norm</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm_type</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_grad_by_freq</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span><span class="p">,</span>
+        <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 

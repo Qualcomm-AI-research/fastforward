@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.dynamic_linear_quantizer" class="md-skip">
+        <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="md-skip">
           Skip to content
         </a>
       
@@ -1052,15 +1052,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.dynamic_linear_quantizer" class="md-nav__link">
-    <span class="md-ellipsis">
-      dynamic_linear_quantizer
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="md-nav__link">
     <span class="md-ellipsis">
       DynamicLinearQuantizer
@@ -1071,9 +1062,45 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.granularity" class="md-nav__link">
+    <span class="md-ellipsis">
+      granularity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.num_bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      num_bits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.parameter_inference_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      parameter_inference_fn
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="md-nav__link">
     <span class="md-ellipsis">
       quantization_function
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantized_dtype" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantized_dtype
     </span>
   </a>
   
@@ -1925,7 +1952,7 @@
 
 
 
-<a id="fastforward.nn.dynamic_linear_quantizer"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1949,17 +1976,15 @@
 
 
 
-<h2 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="doc doc-heading">
-            <code>DynamicLinearQuantizer</code>
+<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dynamic_linear_quantizer</span><span class="o">.</span><span class="n">DynamicLinearQuantizer</span><span class="p">(</span><span class="n">num_bits</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parameter_inference_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;AbstractAffineQuantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.linear_quantizer.AbstractAffineQuantizer&lt;/code&gt;)" href="../linear_quantizer/#fastforward.nn.linear_quantizer.AbstractAffineQuantizer">AbstractAffineQuantizer</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;linear_quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;AbstractAffineQuantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.linear_quantizer.AbstractAffineQuantizer&lt;/code&gt;)" href="../linear_quantizer/#fastforward.nn.linear_quantizer.AbstractAffineQuantizer">AbstractAffineQuantizer</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parameter_inference_fn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -2006,7 +2031,7 @@ subclasses and are passed into LinearQuantizer.</p>
                 <code>granularity</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Granularity&lt;/code&gt; (&lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;)" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2039,7 +2064,11 @@ quantization granularity</p>
                 <code>parameter_inference_fn</code>
             </td>
             <td>
-                  <code><span title="fastforward.quantization.affine.DynamicParamInferenceFn">DynamicParamInferenceFn</span> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicParamInferenceFn&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;DynamicAffineQuantParams&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Tensor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_ScaleOffset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.DynamicParamInferenceFn&lt;/code&gt;)" href="../../quantization/affine/function/#fastforward.quantization.affine.function.DynamicParamInferenceFn">DynamicParamInferenceFn</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2060,27 +2089,9 @@ dynamically. If omitted, a min/max inference method is used.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/dynamic_linear_quantizer.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/nn/dynamic_linear_quantizer.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
 <span class="normal">39</span>
 <span class="normal">40</span>
 <span class="normal">41</span>
@@ -2094,107 +2105,23 @@ dynamically. If omitted, a min/max inference method is used.</p>
 <span class="normal">49</span>
 <span class="normal">50</span>
 <span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DynamicLinearQuantizer</span><span class="p">(</span><span class="n">AbstractAffineQuantizer</span><span class="p">[</span><span class="n">DynamicAffineQuantParams</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dynamic Linear quantizer.</span>
-
-<span class="sd">    Support multiple quantization granularities. A granularity</span>
-<span class="sd">    defines which parts of the input tensor are quantized using the same</span>
-<span class="sd">    quantization parameter. E.g., per-tensor, per-channel, or per-block</span>
-<span class="sd">    quantization. The granularity details are implemented in Granularity</span>
-<span class="sd">    subclasses and are passed into LinearQuantizer.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        num_bits: Bitwidth of quantization output granularity</span>
-<span class="sd">        granularity: Granularity object that specifies the</span>
-<span class="sd">            quantization granularity</span>
-<span class="sd">        quantized_dtype: datatype in which the quantized data is stored</span>
-<span class="sd">        parameter_inference_fn: function that determines scale and offset</span>
-<span class="sd">            dynamically. If omitted, a min/max inference method is used.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">parameter_inference_fn</span><span class="p">:</span> <span class="n">DynamicParamInferenceFn</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">quantized_dtype</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span> <span class="o">=</span> <span class="n">num_bits</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="n">quantized_dtype</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span> <span class="o">=</span> <span class="n">parameter_inference_fn</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if symmetric quantization, False otherwise.</span>
-
-<span class="sd">        Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">False</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DynamicAffineQuantParams</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization parameters of this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            `DynamicAffineQuantParams` specific to this quantizer</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">DynamicAffineQuantParams</span><span class="p">(</span>
-            <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-            <span class="n">quantized_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
-            <span class="n">parameter_inference_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_function</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">DynamicAffineQuantParams</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization function associated with this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            `QuantizationFunction` that implements the quantization operator</span>
-<span class="sd">            specific to this quantizer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">AffineQuantizationFunction</span>
+<span class="normal">52</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">parameter_inference_fn</span><span class="p">:</span> <span class="n">DynamicParamInferenceFn</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="n">num_bits</span><span class="o">=</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">quantized_dtype</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span> <span class="o">=</span> <span class="n">num_bits</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="n">quantized_dtype</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">parameter_inference_fn</span> <span class="o">=</span> <span class="n">parameter_inference_fn</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2210,14 +2137,74 @@ dynamically. If omitted, a min/max inference method is used.</p>
 
 
 
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_function</span></code>
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.granularity" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.granularity" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.num_bits" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">num_bits</span> <span class="o">=</span> <span class="n">num_bits</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.num_bits" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.parameter_inference_fn" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">parameter_inference_fn</span> <span class="o">=</span> <span class="n">parameter_inference_fn</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.parameter_inference_fn" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_function</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2236,8 +2223,7 @@ dynamically. If omitted, a min/max inference method is used.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizationFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parameter_inference_fn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -2251,8 +2237,7 @@ dynamically. If omitted, a min/max inference method is used.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizationFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;" href="../../quantization/function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parameter_inference_fn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -2275,14 +2260,34 @@ dynamically. If omitted, a min/max inference method is used.</p>
 
 
 
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">symmetric</span></code>
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantized_dtype" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="n">quantized_dtype</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantized_dtype" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">symmetric</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.symmetric" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2299,10 +2304,10 @@ dynamically. If omitted, a min/max inference method is used.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.dynamic_linear_quantizer.DynamicLinearQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2321,8 +2326,7 @@ dynamically. If omitted, a min/max inference method is used.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;DynamicAffineQuantParams&lt;/code&gt;
-
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parameter_inference_fn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;

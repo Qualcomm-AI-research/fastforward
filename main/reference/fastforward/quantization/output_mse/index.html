@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.output_mse" class="md-skip">
+        <a href="#fastforward.quantization.output_mse.OutputMSE" class="md-skip">
           Skip to content
         </a>
       
@@ -1532,15 +1532,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse" class="md-nav__link">
-    <span class="md-ellipsis">
-      output_mse
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.quantization.output_mse.OutputMSE" class="md-nav__link">
     <span class="md-ellipsis">
       OutputMSE
@@ -1618,6 +1609,15 @@
   
     <nav class="md-nav" aria-label="OutputMSEOverride">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="md-nav__link">
+    <span class="md-ellipsis">
+      passthrough
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="md-nav__link">
@@ -1976,7 +1976,7 @@
 
 
 
-<a id="fastforward.quantization.output_mse"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2000,16 +2000,15 @@
 
 
 
-<h2 id="fastforward.quantization.output_mse.OutputMSE" class="doc doc-heading">
-            <code>OutputMSE</code>
+<h3 id="fastforward.quantization.output_mse.OutputMSE" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">output_mse</span><span class="o">.</span><span class="n">OutputMSE</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">optimizer_factory</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.quantization.output_mse.OutputMSE" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.output_mse.OutputMSE" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;LocalErrorMethod&lt;/code&gt; (&lt;code&gt;fastforward.quantization.local_error.LocalErrorMethod&lt;/code&gt;)" href="../local_error/#fastforward.quantization.local_error.LocalErrorMethod">LocalErrorMethod</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.local_error.LocalErrorMethod&lt;/code&gt;" href="../local_error/#fastforward.quantization.local_error.LocalErrorMethod">LocalErrorMethod</a></code></p>
 
 
         <p>Local error method for output Mean Squared Error (MSE) minimization.</p>
@@ -2020,199 +2019,23 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OutputMSE</span><span class="p">(</span><span class="n">LocalErrorMethod</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Local error method for output Mean Squared Error (MSE) minimization.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">modules</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">QuantizedModule</span><span class="p">],</span> <span class="n">optimizer_factory</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span> <span class="o">=</span> <span class="n">modules</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_override</span> <span class="o">=</span> <span class="n">OutputMSEOverride</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_Handle</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span> <span class="o">=</span> <span class="n">optimizer_factory</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_all_quantizers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over all quantizers in the modules.</span>
-
-<span class="sd">        Yields:</span>
-<span class="sd">            Iterator[Quantizer]: An iterator over quantizers.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">quantizers</span><span class="p">(</span><span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-                <span class="k">yield</span> <span class="n">quantizer</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_all_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over all output quantizers in the modules.</span>
-
-<span class="sd">        Yields:</span>
-<span class="sd">            Iterator[Quantizer]: An iterator over output quantizers.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">quantizers</span><span class="p">(</span><span class="n">skip_stubs</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">metadata</span> <span class="o">:=</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span><span class="p">)</span> <span class="ow">and</span> <span class="n">metadata</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">:</span>
-                    <span class="k">yield</span> <span class="n">quantizer</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">RunnerContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare the context by registering hooks for quantizers.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            ctx: The runner context.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-        <span class="k">for</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_quantizers</span><span class="p">():</span>
-            <span class="n">metadata</span> <span class="o">=</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span>
-            <span class="k">if</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">metadata</span><span class="o">.</span><span class="n">parameter_quantizer</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">quantizer</span><span class="o">.</span><span class="n">register_override</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="p">))</span>
-
-        <span class="k">for</span> <span class="n">output_quantizer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_outputs</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">.</span><span class="n">register_forward_pre_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">))</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up by removing all registered hooks.&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="p">:</span>
-            <span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-
-    <span class="nd">@execution_context</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">alternative_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Provide an alternative context with passthrough mode enabled.</span>
-
-<span class="sd">        Yields:</span>
-<span class="sd">            Generator[None, None, None]: A generator for the alternative context.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">yield</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">conclude_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Conclude the current partition by zeroing the gradients.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantized</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">unquantized</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the model parameters based on the MSE between quantized and unquantized tensors.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            quantized: The quantized tensor.</span>
-<span class="sd">            unquantized: The unquantized tensor.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-        <span class="n">error</span> <span class="o">=</span> <span class="p">(</span><span class="n">quantized</span> <span class="o">-</span> <span class="n">unquantized</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="n">error</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">propagate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replay_value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Propagate the replay value to the default and alternative context.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            replay_value: The replay value tensor.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            tuple[torch.Tensor, torch.Tensor]: The detached and dequantized replay value.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">replay_value</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">replay_value</span><span class="o">.</span><span class="n">dequantize</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">modules</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">QuantizedModule</span><span class="p">],</span> <span class="n">optimizer_factory</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span> <span class="o">=</span> <span class="n">modules</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_override</span> <span class="o">=</span> <span class="n">OutputMSEOverride</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_Handle</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span> <span class="o">=</span> <span class="n">optimizer_factory</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2229,10 +2052,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.alternative_context" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">alternative_context</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.alternative_context" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">alternative_context</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.alternative_context" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.alternative_context" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2297,10 +2120,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.cleanup" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.cleanup" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.cleanup" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.cleanup" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2328,10 +2151,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">conclude_partition</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">conclude_partition</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2355,10 +2178,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.prepare" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.prepare" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.prepare" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.prepare" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2382,7 +2205,7 @@
                 <code>ctx</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;RunnerContext&lt;/code&gt; (&lt;code&gt;fastforward.quantization.local_error.RunnerContext&lt;/code&gt;)" href="../local_error/#fastforward.quantization.local_error.RunnerContext">RunnerContext</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.local_error.RunnerContext&lt;/code&gt;" href="../local_error/#fastforward.quantization.local_error.RunnerContext">RunnerContext</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2441,10 +2264,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.propagate" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">replay_value</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.propagate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">replay_value</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.propagate" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.propagate" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2536,10 +2359,10 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE.update" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">quantized</span><span class="p">,</span> <span class="n">unquantized</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSE.update" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">quantized</span><span class="p">,</span> <span class="n">unquantized</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE.update" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSE.update" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2635,11 +2458,10 @@
 
 
 
-<h2 id="fastforward.quantization.output_mse.OutputMSEOverride" class="doc doc-heading">
-            <code>OutputMSEOverride</code>
+<h3 id="fastforward.quantization.output_mse.OutputMSEOverride" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">output_mse</span><span class="o">.</span><span class="n">OutputMSEOverride</span><span class="p">()</span></code>
 
-
-<a href="#fastforward.quantization.output_mse.OutputMSEOverride" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.output_mse.OutputMSEOverride" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2659,7 +2481,11 @@
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code><span title="fastforward.quantization.output_mse.OutputMSEOverride.passthrough">passthrough</span></code></td>
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;passthrough&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;False&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.output_mse.OutputMSEOverride.passthrough&lt;/code&gt;)" href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough">passthrough</a></code></td>
             <td>
             </td>
             <td>
@@ -2677,79 +2503,13 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OutputMSEOverride</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Override class for output Mean Squared Error (MSE) calculation.</span>
-
-<span class="sd">    Attributes:</span>
-<span class="sd">        passthrough: Flag to enable passthrough mode.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">quantizer</span><span class="p">:</span> <span class="n">Quantizer</span><span class="p">,</span>
-        <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-        <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-        <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Call the override with the given quantizer, callback, and arguments.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            quantizer: The quantizer instance.</span>
-<span class="sd">            callback: The callback function.</span>
-<span class="sd">            args: Positional arguments for the callback.</span>
-<span class="sd">            kwargs: Keyword arguments for the callback.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            torch.Tensor: The result of the callback or the data tensor if passthrough is enabled.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">del</span> <span class="n">quantizer</span>
-
-        <span class="n">data</span> <span class="o">=</span> <span class="n">_data_from_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">passthrough</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">data</span>
-
-        <span class="k">return</span> <span class="n">callback</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">41</span>
+<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2761,15 +2521,35 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2793,7 +2573,7 @@
                 <code>quantizer</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>
             </td>
             <td>
               <div class="doc-md-description">

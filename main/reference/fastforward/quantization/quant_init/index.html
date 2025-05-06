@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.quant_init" class="md-skip">
+        <a href="#fastforward.quantization.quant_init.QuantizationConfig" class="md-skip">
           Skip to content
         </a>
       
@@ -1555,15 +1555,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.quant_init" class="md-nav__link">
-    <span class="md-ellipsis">
-      quant_init
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.quantization.quant_init.QuantizationConfig" class="md-nav__link">
     <span class="md-ellipsis">
       QuantizationConfig
@@ -1572,6 +1563,15 @@
   
     <nav class="md-nav" aria-label="QuantizationConfig">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quant_init.QuantizationConfig.__repr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __repr__
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.quant_init.QuantizationConfig.add_rule" class="md-nav__link">
@@ -1647,6 +1647,24 @@
   
     <nav class="md-nav" aria-label="QuantizerTagSelectorFragment">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__hash__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __hash__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__str__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __str__
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.from_raw_string" class="md-nav__link">
@@ -2000,7 +2018,7 @@
 
 
 
-<a id="fastforward.quantization.quant_init"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2024,11 +2042,10 @@
 
 
 
-<h2 id="fastforward.quantization.quant_init.QuantizationConfig" class="doc doc-heading">
-            <code>QuantizationConfig</code>
+<h3 id="fastforward.quantization.quant_init.QuantizationConfig" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quant_init</span><span class="o">.</span><span class="n">QuantizationConfig</span><span class="p">()</span></code>
 
-
-<a href="#fastforward.quantization.quant_init.QuantizationConfig" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.quant_init.QuantizationConfig" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2042,241 +2059,13 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span>
-<span class="normal">349</span>
-<span class="normal">350</span>
-<span class="normal">351</span>
-<span class="normal">352</span>
-<span class="normal">353</span>
-<span class="normal">354</span>
-<span class="normal">355</span>
-<span class="normal">356</span>
-<span class="normal">357</span>
-<span class="normal">358</span>
-<span class="normal">359</span>
-<span class="normal">360</span>
-<span class="normal">361</span>
-<span class="normal">362</span>
-<span class="normal">363</span>
-<span class="normal">364</span>
-<span class="normal">365</span>
-<span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
-<span class="normal">369</span>
-<span class="normal">370</span>
-<span class="normal">371</span>
-<span class="normal">372</span>
-<span class="normal">373</span>
-<span class="normal">374</span>
-<span class="normal">375</span>
-<span class="normal">376</span>
-<span class="normal">377</span>
-<span class="normal">378</span>
-<span class="normal">379</span>
-<span class="normal">380</span>
-<span class="normal">381</span>
-<span class="normal">382</span>
-<span class="normal">383</span>
-<span class="normal">384</span>
-<span class="normal">385</span>
-<span class="normal">386</span>
-<span class="normal">387</span>
-<span class="normal">388</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizationConfig</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages quantization configuration rules and initializes quantizers in a model.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_QuantConfigRule</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_rule</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">query</span><span class="p">:</span> <span class="n">mpath</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">BaseSelector</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">factory</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">]</span> <span class="o">|</span> <span class="n">_QuanttizerFactory</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a quantizer rule to the collection.</span>
-
-<span class="sd">        A rule consists of an mpath query and a quantizer factory. When a query</span>
-<span class="sd">        matches a quantizer (stub) and has highest precedence, the factory is</span>
-<span class="sd">        called to initialize a `Quantizer` (see the docstring of</span>
-<span class="sd">        `precedence_score`).</span>
-
-<span class="sd">        `quantizer_factory` may either be a `Quantizer` subclass or a callable</span>
-<span class="sd">        that accepts a `str` and `Quantizer`. In the latter case, the provided</span>
-<span class="sd">        string is the full name relative to the root module and the quantizer</span>
-<span class="sd">        is the quantizer that is currently referenced at this location. This</span>
-<span class="sd">        may either be a `QuantizerStub` or an existing (and initialized)</span>
-<span class="sd">        quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            query: Mpath.Selector or str that represent the filter query.</span>
-<span class="sd">                Please see the documentation of `fastforward.mpath.query` and</span>
-<span class="sd">                `fastforward.mpath.search` for more details.</span>
-<span class="sd">            factory: `Quantizer` or callable to initialize each</span>
-<span class="sd">                quantizer in the collection. This factory is called for each</span>
-<span class="sd">                element in the collection. If a `Quantizer` class is passed,</span>
-<span class="sd">                all `kwargs` will be forwarded to the initializer. In the case</span>
-<span class="sd">                of a callable, all `kwargs` are ignored.</span>
-<span class="sd">            factory: A function that creates a new quantizer. Either a `Quantizer` type</span>
-<span class="sd">                or any object that implements `_QuantizerFactory`.</span>
-<span class="sd">            **kwargs: Any extra keyword argument is passed to the `Quantizer`</span>
-<span class="sd">                initializer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">query</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">mpath</span><span class="o">.</span><span class="n">local_context</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_QuantConfigRule</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">factory</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
-        <span class="k">return</span> <span class="bp">self</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">precedence_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rule</span><span class="p">:</span> <span class="n">_QuantConfigRule</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">mpath</span><span class="o">.</span><span class="n">FilterResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score precedence given a result.</span>
-
-<span class="sd">        Returns an integer value that is used to choose between two matching</span>
-<span class="sd">        rules. The rule with the highest score is selected. Ties are broken by</span>
-<span class="sd">        order, i.e., select the rule that was added last. The precedence score</span>
-<span class="sd">        is computer on a per result basis, this means that the precedence can</span>
-<span class="sd">        differ per module.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            rule: The rule that is scored</span>
-<span class="sd">            result: The query/filter request for a given module obtained using rule</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            integer indicating the rule/result precedence</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># By default, only use the order in which rules are specified. This</span>
-        <span class="c1"># behavior can be overwritten by subclassing.</span>
-        <span class="k">return</span> <span class="mi">1</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">safe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">overwrite_policy</span><span class="p">:</span> <span class="n">_OverwriteOptions</span> <span class="o">=</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize quantizers in model following the rules in this config.</span>
-
-<span class="sd">        For each quantizer (stub) that matches at least one location, the last</span>
-<span class="sd">        added rule is applied. The factory function of this rule is executed</span>
-<span class="sd">        to obtain an initialized quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            model: Root module to initialize quantizers in</span>
-<span class="sd">            overwrite_policy: Either `&quot;skip&quot;`, `&quot;overwrite&quot;`, or `&quot;error&quot;`. The</span>
-<span class="sd">                `overwrite_policy` indicates what to do when the element in the</span>
-<span class="sd">                collection is already an initialized quantizer. In case of</span>
-<span class="sd">                `&quot;skip&quot;` the initialization for that specific quantizer is</span>
-<span class="sd">                skipped and nothing happens, for `&quot;overwrite&quot;` a new quantizer</span>
-<span class="sd">                is created and the existing quantizer is overwritten. Lastly,</span>
-<span class="sd">                in case of `&quot;error&quot;` an error is raised when it is attempted to</span>
-<span class="sd">                re-initialize an already initialized quantizer.</span>
-<span class="sd">            safe: Boolean that indicates what to do when the module was</span>
-<span class="sd">                already replaced in the root module between the creation of</span>
-<span class="sd">                this collection and the call to initialize. When safe is</span>
-<span class="sd">                `True`, an error is raised. Otherwise, a (re-)initialization of</span>
-<span class="sd">                the quantizer is attempted.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">matches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">_RuleItem</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">find_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">query</span><span class="p">):</span>
-                <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">precedence_score</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-                <span class="n">module</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">module</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">module</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">matches</span> <span class="ow">or</span> <span class="n">score</span> <span class="o">&gt;=</span> <span class="n">matches</span><span class="p">[</span><span class="n">module</span><span class="p">]</span><span class="o">.</span><span class="n">score</span><span class="p">:</span>
-                    <span class="n">matches</span><span class="p">[</span><span class="n">module</span><span class="p">]</span> <span class="o">=</span> <span class="n">_RuleItem</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">best_item</span> <span class="ow">in</span> <span class="n">matches</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-            <span class="n">factory</span> <span class="o">=</span> <span class="n">_ensure_factory_func</span><span class="p">(</span><span class="n">best_item</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">factory</span><span class="p">,</span> <span class="n">best_item</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="n">_initialize_quantizer</span><span class="p">(</span>
-                <span class="n">result</span><span class="o">=</span><span class="n">best_item</span><span class="o">.</span><span class="n">filter_result</span><span class="p">,</span>
-                <span class="n">quantizer_factory</span><span class="o">=</span><span class="n">factory</span><span class="p">,</span>
-                <span class="n">overwrite_policy</span><span class="o">=</span><span class="n">overwrite_policy</span><span class="p">,</span>
-                <span class="n">safe</span><span class="o">=</span><span class="n">safe</span><span class="p">,</span>
-            <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">()&quot;</span>
-        <span class="n">rules_repr</span> <span class="o">=</span> <span class="s2">&quot;,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;  &quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">)</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span><span class="se">\n</span><span class="si">{</span><span class="n">rules_repr</span><span class="si">}</span><span class="se">\n</span><span class="s2">)&quot;</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">276</span>
+<span class="normal">277</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_QuantConfigRule</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2293,10 +2082,39 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizationConfig.add_rule" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">add_rule</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">factory</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizationConfig.__repr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizationConfig.add_rule" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizationConfig.__repr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">()&quot;</span>
+    <span class="n">rules_repr</span> <span class="o">=</span> <span class="s2">&quot;,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;  &quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">rule</span><span class="p">)</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span><span class="se">\n</span><span class="si">{</span><span class="n">rules_repr</span><span class="si">}</span><span class="se">\n</span><span class="s2">)&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.quant_init.QuantizationConfig.add_rule" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">add_rule</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">factory</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.quant_init.QuantizationConfig.add_rule" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2330,8 +2148,7 @@ quantizer.</p>
                 <code>query</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;BaseSelector&lt;/code&gt;
-
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mpath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;selector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BaseSelector&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -2353,7 +2170,7 @@ Please see the documentation of <code>fastforward.mpath.query</code> and
                 <code>factory</code>
             </td>
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="fastforward.quantization.quant_init._QuanttizerFactory">_QuanttizerFactory</span></code>
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="fastforward.quantization.quant_init._QuanttizerFactory">_QuanttizerFactory</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2373,7 +2190,7 @@ of a callable, all <code>kwargs</code> are ignored.</p>
                 <code>factory</code>
             </td>
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="fastforward.quantization.quant_init._QuanttizerFactory">_QuanttizerFactory</span></code>
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="fastforward.quantization.quant_init._QuanttizerFactory">_QuanttizerFactory</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2492,10 +2309,10 @@ initializer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizationConfig.initialize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">initialize</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">overwrite_policy</span><span class="o">=</span><span class="s1">&#39;error&#39;</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizationConfig.initialize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">initialize</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">overwrite_policy</span><span class="o">=</span><span class="s1">&#39;error&#39;</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizationConfig.initialize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizationConfig.initialize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2680,10 +2497,10 @@ the quantizer is attempted.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizationConfig.precedence_score" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">precedence_score</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizationConfig.precedence_score" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">precedence_score</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizationConfig.precedence_score" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizationConfig.precedence_score" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2823,11 +2640,10 @@ differ per module.</p>
 
 
 
-<h2 id="fastforward.quantization.quant_init.QuantizerCollection" class="doc doc-heading">
-            <code>QuantizerCollection</code>
+<h3 id="fastforward.quantization.quant_init.QuantizerCollection" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quant_init</span><span class="o">.</span><span class="n">QuantizerCollection</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">results</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.quantization.quant_init.QuantizerCollection" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.quant_init.QuantizerCollection" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2893,199 +2709,21 @@ result is provided.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
 <span class="normal">129</span>
 <span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizerCollection</span><span class="p">(</span><span class="n">mpath</span><span class="o">.</span><span class="n">MPathCollection</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;MPathCollection that only stores Quantizer subclasses.</span>
-
-<span class="sd">    On creation, all non quantizer results are filtered out from the results</span>
-<span class="sd">    iterable. In contrast, append will throw an error when a non quantizer</span>
-<span class="sd">    result is provided.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        root: The root module that was used to produce the search results</span>
-<span class="sd">        results: Optional list of search results, may be extended using append</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">mpath</span><span class="o">.</span><span class="n">FilterResult</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">results</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">))</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">results</span><span class="o">=</span><span class="n">results</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">FilterResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add `FilterResult` to the collection.</span>
-
-<span class="sd">        Raises an error if the filter result contains a module that is not a</span>
-<span class="sd">        Quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            item: Filter result to add to the collection</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Can only insert a FilterResult of a Quantizer module to </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_with_factory</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">quantizer_factory</span><span class="p">:</span> <span class="n">_QuanttizerFactory</span><span class="p">,</span>
-        <span class="n">overwrite_policy</span><span class="p">:</span> <span class="n">_OverwriteOptions</span> <span class="o">=</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-        <span class="n">safe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">FilterResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">:</span>
-            <span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">_initialize_quantizer</span><span class="p">(</span>
-                    <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
-                    <span class="n">quantizer_factory</span><span class="o">=</span><span class="n">quantizer_factory</span><span class="p">,</span>
-                    <span class="n">overwrite_policy</span><span class="o">=</span><span class="n">overwrite_policy</span><span class="p">,</span>
-                    <span class="n">safe</span><span class="o">=</span><span class="n">safe</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_results</span> <span class="o">=</span> <span class="n">_results</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">quantizer_factory</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">]</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">],</span> <span class="n">Quantizer</span><span class="p">],</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">overwrite_policy</span><span class="p">:</span> <span class="n">_OverwriteOptions</span> <span class="o">=</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-        <span class="n">safe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize all quantizers in the collection using `quantizer_factory`.</span>
-
-<span class="sd">        `quantizer_factory` may either be a `Quantizer` subclass or a callable</span>
-<span class="sd">        that accepts a `str` and `Quantizer`. In the latter case, the provided</span>
-<span class="sd">        string is the full name relative to the root module and the quantizer</span>
-<span class="sd">        is the quantizer that is currently referenced at this location. This</span>
-<span class="sd">        may either be a `QuantizerStub` or an existing quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            quantizer_factory: `Quantizer` or callable to initialize each</span>
-<span class="sd">                quantizer in the collection. This factory is called for each</span>
-<span class="sd">                element in the collection. If a `Quantizer` class is passed,</span>
-<span class="sd">                all `kwargs` will be forwarded to the initializer. In the case</span>
-<span class="sd">                of a callable, all `kwargs` are ignored.</span>
-<span class="sd">            overwrite_policy: Either `&quot;skip&quot;`, `&quot;overwrite&quot;`, or `&quot;error&quot;`. The</span>
-<span class="sd">                `overwrite_policy` indicates what to do when the element in the</span>
-<span class="sd">                collection is already an initialized quantizer. In case of</span>
-<span class="sd">                `&quot;skip&quot;` the initialization for that specific quantizer is</span>
-<span class="sd">                skipped and nothing happens, for `&quot;overwrite&quot;` a new quantizer</span>
-<span class="sd">                is created and the existing quantizer is overwritten. Lastly,</span>
-<span class="sd">                in case of `&quot;error&quot;` an error is raised when it is attempted to</span>
-<span class="sd">                re-initialize an already initialized quantizer.</span>
-<span class="sd">            safe: Boolean that indicates what to do when the module was</span>
-<span class="sd">                already replaced in the root module between the creation of</span>
-<span class="sd">                this collection and the call to initialize. When safe is</span>
-<span class="sd">                `True`, an error is raised. Otherwise, a (re-)initialization of</span>
-<span class="sd">                the quantizer is attempted.</span>
-<span class="sd">            **kwargs: Any extra keyword argument is passed to the `Quantizer`</span>
-<span class="sd">                initializer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_with_factory</span><span class="p">(</span>
-            <span class="n">_ensure_factory_func</span><span class="p">(</span><span class="n">quantizer_factory</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">),</span>
-            <span class="n">overwrite_policy</span><span class="o">=</span><span class="n">overwrite_policy</span><span class="p">,</span>
-            <span class="n">safe</span><span class="o">=</span><span class="n">safe</span><span class="p">,</span>
-        <span class="p">)</span>
+<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">mpath</span><span class="o">.</span><span class="n">FilterResult</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">))</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">results</span><span class="o">=</span><span class="n">results</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -3102,10 +2740,10 @@ result is provided.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizerCollection.append" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizerCollection.append" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizerCollection.append" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizerCollection.append" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3184,10 +2822,10 @@ Quantizer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizerCollection.initialize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">initialize</span><span class="p">(</span><span class="n">quantizer_factory</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">overwrite_policy</span><span class="o">=</span><span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizerCollection.initialize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">initialize</span><span class="p">(</span><span class="n">quantizer_factory</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">overwrite_policy</span><span class="o">=</span><span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizerCollection.initialize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizerCollection.initialize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3216,7 +2854,7 @@ may either be a <code>QuantizerStub</code> or an existing quantizer.</p>
                 <code>quantizer_factory</code>
             </td>
             <td>
-                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="typing.Callable">Callable</span>[[<span title="str">str</span>, <span title="torch.nn.Module">Module</span>], <a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>]</code>
+                  <code><span title="type">type</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>] | <span title="typing.Callable">Callable</span>[[<span title="str">str</span>, <span title="torch.nn.Module">Module</span>], <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3400,16 +3038,19 @@ initializer.</p>
 
 
 
-<h2 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment" class="doc doc-heading">
-            <code>QuantizerTagSelectorFragment</code>
+<h3 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quant_init</span><span class="o">.</span><span class="n">QuantizerTagSelectorFragment</span><span class="p">(</span><span class="o">*</span><span class="n">tags</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="fastforward.mpath.Fragment">Fragment</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mpath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Fragment&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;selector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Fragment&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.mpath.Fragment&lt;/code&gt;)" href="../../mpath/#fastforward.mpath.Fragment">Fragment</a></code></p>
 
 
         <p>Fragment that matches quantizer tags.</p>
@@ -3422,103 +3063,13 @@ initializer.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@mpath_query_extension</span><span class="p">(</span><span class="s2">&quot;quantizer&quot;</span><span class="p">)</span>
-<span class="nd">@mpath_query_extension</span><span class="p">(</span><span class="s2">&quot;qtag&quot;</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">QuantizerTagSelectorFragment</span><span class="p">(</span><span class="n">Fragment</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fragment that matches quantizer tags.</span>
-
-<span class="sd">    Can be used in query string using `[quantizer:&lt;tag&gt;(,&lt;tag&gt;)+]` or</span>
-<span class="sd">    &quot;[qtag:&lt;tag&gt;(,&lt;tag&gt;)+]</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">tags</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Tag</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if module&#39;s tag metadata includes `self._tags`, False otherwise.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            fragment_name: Unused</span>
-<span class="sd">            module: The module that corresponds to the fragment name.</span>
-
-<span class="sd">        Returns: Boolean indicating whether the fragment matches the tag set.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
-            <span class="k">return</span> <span class="kc">False</span>
-        <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="n">quant_metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span>
-        <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">tag</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">quant_metadata</span><span class="p">:</span>
-                <span class="k">return</span> <span class="kc">False</span>
-        <span class="k">return</span> <span class="kc">True</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">tags</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">)</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;[quantizer:</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">]&quot;</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">from_raw_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">raw_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Selector</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a `QuantizerTagSelectorFragment` from a string.</span>
-
-<span class="sd">        Tags are expected to be comma separated. Any whitespace between tags</span>
-<span class="sd">        is ignored.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="n">tag</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">raw_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
-        <span class="n">fragment</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="o">*</span><span class="n">tags</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">Selector</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">fragment</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span><span class="s2">&quot;__fragment_hash&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">))</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">31</span>
+<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">tags</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Tag</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">Tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -3535,14 +3086,62 @@ initializer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.from_raw_string" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">from_raw_string</span><span class="p">(</span><span class="n">raw_str</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__hash__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__hash__</span><span class="p">()</span></code>
+
+<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__hash__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">67</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span><span class="s2">&quot;__fragment_hash&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__str__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__str__</span><span class="p">()</span></code>
+
+<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.__str__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quant_init.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;[quantizer:</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">]&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.from_raw_string" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">from_raw_string</span><span class="p">(</span><span class="n">raw_str</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.from_raw_string" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.from_raw_string" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3582,10 +3181,10 @@ is ignored.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.match" class="doc doc-heading">
-            <code class="highlight language-python"><span class="k">match</span><span class="p">(</span><span class="n">fragment_name</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quant_init.QuantizerTagSelectorFragment.match" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="k">match</span><span class="p">(</span><span class="n">fragment_name</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.match" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quant_init.QuantizerTagSelectorFragment.match" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3694,10 +3293,10 @@ is ignored.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.quantization.quant_init.find_quantizers" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">find_quantizers</span><span class="p">(</span><span class="n">root_module</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<h3 id="fastforward.quantization.quant_init.find_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quant_init</span><span class="o">.</span><span class="n">find_quantizers</span><span class="p">(</span><span class="n">root_module</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.quant_init.find_quantizers" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.quant_init.find_quantizers" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3737,8 +3336,7 @@ is ignored.</p>
                 <code>query</code>
             </td>
             <td>
-                  <code><span title="str">str</span> | <a class="autorefs autorefs-internal" title="&lt;code&gt;BaseSelector&lt;/code&gt;
-
+                  <code><span title="str">str</span> | <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mpath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;selector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BaseSelector&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -3760,8 +3358,7 @@ Please see the documentation of <code>fastforward.mpath.query</code> and
                 <code>aliases</code>
             </td>
             <td>
-                  <code><span title="dict">dict</span>[<span title="str">str</span>, <a class="autorefs autorefs-internal" title="&lt;code&gt;BaseSelector&lt;/code&gt;
-
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mpath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;selector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BaseSelector&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;

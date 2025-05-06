@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.logging_utils" class="md-skip">
+        <a href="#fastforward.logging_utils.DuplicateLogFilter" class="md-skip">
           Skip to content
         </a>
       
@@ -806,15 +806,6 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.logging_utils" class="md-nav__link">
-    <span class="md-ellipsis">
-      logging_utils
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#fastforward.logging_utils.DuplicateLogFilter" class="md-nav__link">
@@ -1905,7 +1896,7 @@
 
 
 
-<a id="fastforward.logging_utils"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1929,11 +1920,10 @@
 
 
 
-<h2 id="fastforward.logging_utils.DuplicateLogFilter" class="doc doc-heading">
-            <code>DuplicateLogFilter</code>
+<h3 id="fastforward.logging_utils.DuplicateLogFilter" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">logging_utils</span><span class="o">.</span><span class="n">DuplicateLogFilter</span><span class="p">(</span><span class="n">levels</span><span class="o">=</span><span class="p">())</span></code>
 
-
-<a href="#fastforward.logging_utils.DuplicateLogFilter" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.logging_utils.DuplicateLogFilter" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -1983,65 +1973,15 @@ if that lower level is not a member of levels.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
 <span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DuplicateLogFilter</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter for duplicated log messages.</span>
-
-<span class="sd">    Filters log messages that are logged more than once on a specific loglevel</span>
-<span class="sd">    included in `levels` are filtered. This reduces noise on either stdout or</span>
-<span class="sd">    logfiles. Note that log messages are only filtered if their loglevel is a</span>
-<span class="sd">    member of `levels`. This means that logs of a lower level are not filtered</span>
-<span class="sd">    if that lower level is not a member of levels.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        levels: Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">levels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter record for duplicate log messages.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">levelno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
-
-        <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">msg</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">log</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">True</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">levels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2058,10 +1998,10 @@ if that lower level is not a member of levels.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.logging_utils.DuplicateLogFilter.filter" class="doc doc-heading">
-            <code class="highlight language-python"><span class="nb">filter</span><span class="p">(</span><span class="n">record</span><span class="p">)</span></code>
+<h4 id="fastforward.logging_utils.DuplicateLogFilter.filter" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="nb">filter</span><span class="p">(</span><span class="n">record</span><span class="p">)</span></code>
 
-<a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">

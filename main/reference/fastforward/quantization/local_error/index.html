@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.local_error" class="md-skip">
+        <a href="#fastforward.quantization.local_error.ExecGenFactory" class="md-skip">
           Skip to content
         </a>
       
@@ -1509,9 +1509,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.local_error" class="md-nav__link">
+  <a href="#fastforward.quantization.local_error.ExecGenFactory" class="md-nav__link">
     <span class="md-ellipsis">
-      local_error
+      fastforward.quantization.local_error.ExecGenFactory
     </span>
   </a>
   
@@ -1606,18 +1606,36 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.quantization.local_error.Runner.__call__" class="md-nav__link">
+  <a href="#fastforward.quantization.local_error.Runner.ALTERNATIVE_STAGE" class="md-nav__link">
     <span class="md-ellipsis">
-      __call__
+      ALTERNATIVE_STAGE
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#fastforward.quantization.local_error.Runner.__init__" class="md-nav__link">
+  <a href="#fastforward.quantization.local_error.Runner.DEFAULT_STAGE" class="md-nav__link">
     <span class="md-ellipsis">
-      __init__
+      DEFAULT_STAGE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.local_error.Runner.REPLAY_STAGE" class="md-nav__link">
+    <span class="md-ellipsis">
+      REPLAY_STAGE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.local_error.Runner.__call__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __call__
     </span>
   </a>
   
@@ -2063,7 +2081,7 @@
 
 
 
-<a id="fastforward.quantization.local_error"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2082,16 +2100,36 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.quantization.local_error.ExecGenFactory" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">local_error</span><span class="o">.</span><span class="n">ExecGenFactory</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Generator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.local_error.ExecGenFactory" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 <div class="doc doc-object doc-class">
 
 
 
-<h2 id="fastforward.quantization.local_error.LocalErrorMethod" class="doc doc-heading">
-            <code>LocalErrorMethod</code>
+<h3 id="fastforward.quantization.local_error.LocalErrorMethod" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.local_error.LocalErrorMethod</code>
 
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2112,111 +2150,6 @@ neural network.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LocalErrorMethod</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for local error methods.</span>
-
-<span class="sd">    A local error method minimizes errors for sub networks. Specifically, it</span>
-<span class="sd">    aims to minimize the error between a &#39;default&#39; or reference forward pass</span>
-<span class="sd">    and an alternative forward pass. An example of this a floating point</span>
-<span class="sd">    forward pass and a quantized forward pass of a subset of the layers in a</span>
-<span class="sd">    neural network.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="s2">&quot;RunnerContext&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare local error method with the given context.&quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up resources used by the local error method.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">default_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_AbstractExecutionContext</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the default execution context.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">alternative_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_AbstractExecutionContext</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the alternative execution context.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__default_value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">__alternative_value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform update step.</span>
-
-<span class="sd">        Perform update step given the value obtain from the default context</span>
-<span class="sd">        and the value obtained from the alternative context.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">propagate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">__replay_value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">/</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Propagate data from replay stage to default and alternative stage.</span>
-
-<span class="sd">        Given the value obtained in the replay stage, generate new activation</span>
-<span class="sd">        value for default and alternative stage. Return None to &#39;propagate&#39; the</span>
-<span class="sd">        actual values from the default and alternative stage.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">conclude_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Conclude the evaluation and update of a partition of the network.</span>
-
-<span class="sd">        This is called after all stages for a particular partition have been concluded.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2233,10 +2166,10 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.alternative_context" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">alternative_context</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.alternative_context" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">alternative_context</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.alternative_context" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.alternative_context" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2260,14 +2193,14 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.cleanup" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.cleanup" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">()</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.cleanup" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.cleanup" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2291,14 +2224,14 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.conclude_partition" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">conclude_partition</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.conclude_partition" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">conclude_partition</span><span class="p">()</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.conclude_partition" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.conclude_partition" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2329,10 +2262,10 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.default_context" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">default_context</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.default_context" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">default_context</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.default_context" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.default_context" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2356,14 +2289,14 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.prepare" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.prepare" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.prepare" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.prepare" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2387,14 +2320,14 @@ neural network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.propagate" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">__replay_value</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.propagate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">__replay_value</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.propagate" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.propagate" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2435,14 +2368,14 @@ actual values from the default and alternative stage.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.LocalErrorMethod.update" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">__default_value</span><span class="p">,</span> <span class="n">__alternative_value</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.LocalErrorMethod.update" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">__default_value</span><span class="p">,</span> <span class="n">__alternative_value</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.local_error.LocalErrorMethod.update" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.LocalErrorMethod.update" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2485,279 +2418,16 @@ and the value obtained from the alternative context.</p>
 
 
 
-<h2 id="fastforward.quantization.local_error.Runner" class="doc doc-heading">
-            <code>Runner</code>
+<h3 id="fastforward.quantization.local_error.Runner" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">local_error</span><span class="o">.</span><span class="n">Runner</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.quantization.local_error.Runner" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.local_error.Runner" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
 
         <p>Runner class to manage execution stages and contexts.</p>
-
-
-
-
-
-
-
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Runner</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Runner class to manage execution stages and contexts.&quot;&quot;&quot;</span>
-
-    <span class="n">DEFAULT_STAGE</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">ALTERNATIVE_STAGE</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">REPLAY_STAGE</span> <span class="o">=</span> <span class="mi">2</span>
-
-    <span class="n">_orchestrator</span><span class="p">:</span> <span class="n">Orchestrator</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">method</span><span class="p">:</span> <span class="n">LocalErrorMethod</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the runner.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            target: The target function to run.</span>
-<span class="sd">            method: The method to manage errors.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="n">method</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_orchestrator</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_orchestrator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up the orchestrator with the target function.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            target: The target function to run.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">exec_order</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_STAGE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ALTERNATIVE_STAGE</span><span class="p">),</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">REPLAY_STAGE</span><span class="p">,),</span>
-        <span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span> <span class="o">=</span> <span class="n">Orchestrator</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">num_stages</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">execution_order</span><span class="o">=</span><span class="n">exec_order</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">register_global_post_stage_hook</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ALTERNATIVE_STAGE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partition_complete</span>
-        <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_partition_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Notify underlying local error method of the partition complete event.&quot;&quot;&quot;</span>
-        <span class="k">del</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">conclude_partition</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">record_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record input data for the orchestrator.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            *args: Positional arguments for the input data.</span>
-<span class="sd">            **kwargs: Keyword arguments for the input data.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">add_batch</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record input data by calling the runner.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">record_input</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start the runner and manage execution contexts.&quot;&quot;&quot;</span>
-        <span class="c1"># Register context hooks</span>
-
-        <span class="n">handles</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">orchestrator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">default_ctx</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">default_context</span><span class="p">())</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">handles</span> <span class="o">+=</span> <span class="n">_register_context_hooks</span><span class="p">(</span><span class="n">default_ctx</span><span class="p">,</span> <span class="n">orchestrator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_STAGE</span><span class="p">)</span>
-            <span class="n">handles</span> <span class="o">+=</span> <span class="n">_register_context_hooks</span><span class="p">(</span><span class="n">default_ctx</span><span class="p">,</span> <span class="n">orchestrator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">REPLAY_STAGE</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="p">(</span><span class="n">alt_ctx</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">alternative_context</span><span class="p">())</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">handles</span> <span class="o">+=</span> <span class="n">_register_context_hooks</span><span class="p">(</span><span class="n">alt_ctx</span><span class="p">,</span> <span class="n">orchestrator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ALTERNATIVE_STAGE</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">handles</span><span class="p">:</span>
-                <span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-
-    <span class="nd">@ensure_non_mainthread</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">communicate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Communicate a value within the runner&#39;s context.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            value: The value to communicate.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            torch.Tensor: The communicated value.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">stage</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ALTERNATIVE_STAGE</span><span class="p">:</span>
-            <span class="n">default_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">batch_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_STAGE</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">default_value</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">stage</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">REPLAY_STAGE</span><span class="p">:</span>
-            <span class="n">default_value</span><span class="p">,</span> <span class="n">alternative_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="o">.</span><span class="n">propagate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-            <span class="n">batch_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">batch_data</span>
-
-            <span class="k">if</span> <span class="n">default_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">batch_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_STAGE</span><span class="p">]</span> <span class="o">=</span> <span class="n">default_value</span>
-            <span class="k">if</span> <span class="n">alternative_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">batch_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ALTERNATIVE_STAGE</span><span class="p">]</span> <span class="o">=</span> <span class="n">alternative_value</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orchestrator</span><span class="o">.</span><span class="n">synchronize</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># type: ignore[no-any-return]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a string representation of the runner.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(method=</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="fastforward.quantization.local_error.Runner.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.local_error.Runner.__call__" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Record input data by calling the runner.</p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Record input data by calling the runner.&quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">record_input</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="fastforward.quantization.local_error.Runner.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.local_error.Runner.__init__" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
 
         <p>Initialize the runner.</p>
 
@@ -2794,7 +2464,7 @@ and the value obtained from the alternative context.</p>
                 <code>method</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;LocalErrorMethod&lt;/code&gt; (&lt;code&gt;fastforward.quantization.local_error.LocalErrorMethod&lt;/code&gt;)" href="#fastforward.quantization.local_error.LocalErrorMethod">LocalErrorMethod</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.local_error.LocalErrorMethod&lt;/code&gt;" href="#fastforward.quantization.local_error.LocalErrorMethod">LocalErrorMethod</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2809,9 +2479,14 @@ and the value obtained from the alternative context.</p>
     </table>
 
 
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
+
+
+
+
+
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
 <span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
@@ -2829,6 +2504,105 @@ and the value obtained from the alternative context.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="n">method</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_setup_orchestrator</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.local_error.Runner.ALTERNATIVE_STAGE" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">ALTERNATIVE_STAGE</span> <span class="o">=</span> <span class="mi">1</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.local_error.Runner.ALTERNATIVE_STAGE" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.local_error.Runner.DEFAULT_STAGE" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">DEFAULT_STAGE</span> <span class="o">=</span> <span class="mi">0</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.local_error.Runner.DEFAULT_STAGE" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.local_error.Runner.REPLAY_STAGE" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">REPLAY_STAGE</span> <span class="o">=</span> <span class="mi">2</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.local_error.Runner.REPLAY_STAGE" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.local_error.Runner.__call__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.local_error.Runner.__call__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Record input data by calling the runner.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Record input data by calling the runner.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">record_input</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
             </details>
     </div>
 
@@ -2837,10 +2611,10 @@ and the value obtained from the alternative context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.Runner.__repr__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.Runner.__repr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.local_error.Runner.__repr__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.Runner.__repr__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2864,10 +2638,10 @@ and the value obtained from the alternative context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.Runner.communicate" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">communicate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.Runner.communicate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">communicate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.local_error.Runner.communicate" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.Runner.communicate" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2985,10 +2759,10 @@ and the value obtained from the alternative context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.Runner.record_input" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">record_input</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.Runner.record_input" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">record_input</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.local_error.Runner.record_input" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.Runner.record_input" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3069,10 +2843,10 @@ and the value obtained from the alternative context.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.Runner.start" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">start</span><span class="p">()</span></code>
+<h4 id="fastforward.quantization.local_error.Runner.start" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">start</span><span class="p">()</span></code>
 
-<a href="#fastforward.quantization.local_error.Runner.start" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.Runner.start" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3139,11 +2913,11 @@ and the value obtained from the alternative context.</p>
 
 
 
-<h2 id="fastforward.quantization.local_error.RunnerContext" class="doc doc-heading">
-            <code>RunnerContext</code>
+<h3 id="fastforward.quantization.local_error.RunnerContext" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.local_error.RunnerContext</code>
 
 
-<a href="#fastforward.quantization.local_error.RunnerContext" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.local_error.RunnerContext" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3161,47 +2935,6 @@ interface through a context object.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/local_error.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RunnerContext</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol for RunnerContext.</span>
-
-<span class="sd">    Defines methods that are exposed to implementors of the LocalErrorMethod</span>
-<span class="sd">    interface through a context object.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">communicate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Communicate values to other stages.</span>
-
-<span class="sd">        Communicate a value obtained during the execution of a partition in a</span>
-<span class="sd">        stage to the runner. This enables &#39;communication&#39; between different</span>
-<span class="sd">        execution contexts.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            value: The tensor value to communicate to the runner and share with</span>
-<span class="sd">                other contexts.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -3218,10 +2951,10 @@ interface through a context object.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.local_error.RunnerContext.communicate" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">communicate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.local_error.RunnerContext.communicate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">communicate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.local_error.RunnerContext.communicate" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.local_error.RunnerContext.communicate" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3307,10 +3040,10 @@ other contexts.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.quantization.local_error.execution_context" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">execution_context</span><span class="p">(</span><span class="n">func</span><span class="p">)</span></code>
+<h3 id="fastforward.quantization.local_error.execution_context" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">local_error</span><span class="o">.</span><span class="n">execution_context</span><span class="p">(</span><span class="n">func</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.local_error.execution_context" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.local_error.execution_context" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">

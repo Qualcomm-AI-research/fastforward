@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.common" class="md-skip">
+        <a href="#fastforward.common.S" class="md-skip">
           Skip to content
         </a>
       
@@ -568,9 +568,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.common" class="md-nav__link">
+  <a href="#fastforward.common.S" class="md-nav__link">
     <span class="md-ellipsis">
-      common
+      fastforward.common.S
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.common.T" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.common.T
     </span>
   </a>
   
@@ -1908,7 +1917,7 @@
 
 
 
-<a id="fastforward.common"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1927,15 +1936,55 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.common.S" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">S</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.common.S" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.common.T" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.common.T" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.common.ensure_tensor" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">ensure_tensor</span><span class="p">(</span><span class="n">maybe_tensor</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<h3 id="fastforward.common.ensure_tensor" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">ensure_tensor</span><span class="p">(</span><span class="n">maybe_tensor</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-<a href="#fastforward.common.ensure_tensor" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.common.ensure_tensor" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2027,10 +2076,10 @@ tensor, otherwise device is ignored.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.common.maybe_tensor_apply" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">maybe_tensor_apply</span><span class="p">(</span><span class="n">maybe_tensor</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span></code>
+<h3 id="fastforward.common.maybe_tensor_apply" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">maybe_tensor_apply</span><span class="p">(</span><span class="n">maybe_tensor</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span></code>
 
-<a href="#fastforward.common.maybe_tensor_apply" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.common.maybe_tensor_apply" class="headerlink" title="Permanent link">#</a></h3>
           <div class="doc-overloads">
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">maybe_tensor_apply</span><span class="p">(</span>
     <span class="n">maybe_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -2065,7 +2114,11 @@ Otherwise return `maybe_tensor.</p>
                 <code>maybe_tensor</code>
             </td>
             <td>
-                  <code><span title="fastforward.common.T">T</span></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;common&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;T&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.common.T&lt;/code&gt;)" href="#fastforward.common.T">T</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2081,7 +2134,11 @@ Otherwise return `maybe_tensor.</p>
                 <code>fn</code>
             </td>
             <td>
-                  <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>], <span title="fastforward.common.S">S</span>]</code>
+                  <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>], <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;common&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;S&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;S&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.common.S&lt;/code&gt;)" href="#fastforward.common.S">S</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2132,10 +2189,10 @@ Otherwise return `maybe_tensor.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.common.tensor_or_none" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">tensor_or_none</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span></code>
+<h3 id="fastforward.common.tensor_or_none" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">tensor_or_none</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span></code>
 
-<a href="#fastforward.common.tensor_or_none" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.common.tensor_or_none" class="headerlink" title="Permanent link">#</a></h3>
           <div class="doc-overloads">
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">tensor_or_none</span><span class="p">(</span>
     <span class="n">data</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>

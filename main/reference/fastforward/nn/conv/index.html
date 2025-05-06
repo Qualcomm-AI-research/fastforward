@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.conv" class="md-skip">
+        <a href="#fastforward.nn.conv.QuantizedConv1d" class="md-skip">
           Skip to content
         </a>
       
@@ -1029,20 +1029,71 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.conv" class="md-nav__link">
-    <span class="md-ellipsis">
-      conv
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.nn.conv.QuantizedConv1d" class="md-nav__link">
     <span class="md-ellipsis">
       QuantizedConv1d
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="QuantizedConv1d">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.bias_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      bias_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.input_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      input_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.output_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      output_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.weight_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      weight_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.__init_quantization__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init_quantization__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv1d.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      forward
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1052,6 +1103,66 @@
       QuantizedConv2d
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="QuantizedConv2d">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.bias_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      bias_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.input_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      input_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.output_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      output_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.weight_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      weight_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.__init_quantization__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init_quantization__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.conv.QuantizedConv2d.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      forward
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1901,7 +2012,7 @@
 
 
 
-<a id="fastforward.nn.conv"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1925,16 +2036,16 @@
 
 
 
-<h2 id="fastforward.nn.conv.QuantizedConv1d" class="doc doc-heading">
-            <code>QuantizedConv1d</code>
+<h3 id="fastforward.nn.conv.QuantizedConv1d" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.conv.QuantizedConv1d</code>
 
 
-<a href="#fastforward.nn.conv.QuantizedConv1d" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.conv.QuantizedConv1d" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Conv1d">Conv1d</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Conv1d">Conv1d</span></code></p>
 
 
         <p>Quantized implementation of Conv1d.</p>
@@ -1945,17 +2056,114 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.bias_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">bias_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.bias_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.input_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">input_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.input_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.output_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">output_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.output_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.weight_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">weight_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.weight_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.__init_quantization__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
 <span class="normal">62</span>
@@ -1963,9 +2171,36 @@
 <span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
+<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv1d.forward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.conv.QuantizedConv1d.forward" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">69</span>
 <span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
@@ -1983,57 +2218,30 @@
 <span class="normal">84</span>
 <span class="normal">85</span>
 <span class="normal">86</span>
-<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedConv1d</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv1d</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of Conv1d.&quot;&quot;&quot;</span>
-
-    <span class="n">weight_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-    <span class="n">bias_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">input_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-    <span class="n">output_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
-        <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
-        <span class="n">bias</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
-        <span class="k">return</span> <span class="n">conv1d</span><span class="p">(</span>
-            <span class="nb">input</span><span class="p">,</span>
-            <span class="n">weight</span><span class="p">,</span>
-            <span class="n">bias</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
-            <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
-        <span class="p">)</span>
+<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+    <span class="n">bias</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
+    <span class="k">return</span> <span class="n">conv1d</span><span class="p">(</span>
+        <span class="nb">input</span><span class="p">,</span>
+        <span class="n">weight</span><span class="p">,</span>
+        <span class="n">bias</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
+        <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
+    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+            </details>
+    </div>
 
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
+</div>
 
 
 
@@ -2047,16 +2255,16 @@
 
 
 
-<h2 id="fastforward.nn.conv.QuantizedConv2d" class="doc doc-heading">
-            <code>QuantizedConv2d</code>
+<h3 id="fastforward.nn.conv.QuantizedConv2d" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.conv.QuantizedConv2d</code>
 
 
-<a href="#fastforward.nn.conv.QuantizedConv2d" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.conv.QuantizedConv2d" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Conv2d">Conv2d</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Conv2d">Conv2d</span></code></p>
 
 
         <p>Quantized implementation of Conv2d.</p>
@@ -2067,17 +2275,114 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.bias_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">bias_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.bias_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.input_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">input_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.input_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.output_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">output_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.output_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.weight_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">weight_quantizer</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.weight_quantizer" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.__init_quantization__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
 <span class="normal">23</span>
@@ -2085,9 +2390,36 @@
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
+<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.conv.QuantizedConv2d.forward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.conv.QuantizedConv2d.forward" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/conv.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
 <span class="normal">31</span>
 <span class="normal">32</span>
 <span class="normal">33</span>
@@ -2105,57 +2437,30 @@
 <span class="normal">45</span>
 <span class="normal">46</span>
 <span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedConv2d</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of Conv2d.&quot;&quot;&quot;</span>
-
-    <span class="n">weight_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-    <span class="n">bias_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">input_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-    <span class="n">output_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
-        <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
-        <span class="n">bias</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
-        <span class="k">return</span> <span class="n">conv2d</span><span class="p">(</span>
-            <span class="nb">input</span><span class="p">,</span>
-            <span class="n">weight</span><span class="p">,</span>
-            <span class="n">bias</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
-            <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
-        <span class="p">)</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+    <span class="n">bias</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
+    <span class="k">return</span> <span class="n">conv2d</span><span class="p">(</span>
+        <span class="nb">input</span><span class="p">,</span>
+        <span class="n">weight</span><span class="p">,</span>
+        <span class="n">bias</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dilation</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
+        <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
+    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+            </details>
+    </div>
 
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
+</div>
 
 
 

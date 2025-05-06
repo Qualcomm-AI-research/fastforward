@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.dispatcher" class="md-skip">
+        <a href="#fastforward.dispatcher.KernelType" class="md-skip">
           Skip to content
         </a>
       
@@ -591,9 +591,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.dispatcher" class="md-nav__link">
+  <a href="#fastforward.dispatcher.KernelType" class="md-nav__link">
     <span class="md-ellipsis">
-      dispatcher
+      fastforward.dispatcher.KernelType
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.P" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.dispatcher.P
     </span>
   </a>
   
@@ -606,6 +615,39 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DispatcherItem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherItem.fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      fn
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherItem.predicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      predicate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherItem.priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      priority
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -615,6 +657,39 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DispatcherPriority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherPriority.DEFAULT" class="md-nav__link">
+    <span class="md-ellipsis">
+      DEFAULT
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherPriority.FALLBACK" class="md-nav__link">
+    <span class="md-ellipsis">
+      FALLBACK
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherPriority.NOT_IMPLEMENTED_FALLBACK" class="md-nav__link">
+    <span class="md-ellipsis">
+      NOT_IMPLEMENTED_FALLBACK
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -623,6 +698,30 @@
       DispatcherRegistrationHook
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="DispatcherRegistrationHook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherRegistrationHook.__enter__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __enter__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.DispatcherRegistrationHook.__exit__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __exit__
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -640,6 +739,15 @@
   <a href="#fastforward.dispatcher.Predicate.__call__" class="md-nav__link">
     <span class="md-ellipsis">
       __call__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.dispatcher.Predicate.__repr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __repr__
     </span>
   </a>
   
@@ -1950,7 +2058,7 @@
 
 
 
-<a id="fastforward.dispatcher"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1969,25 +2077,68 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.dispatcher.KernelType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">KernelType</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.KernelType" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.dispatcher.P" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">P</span> <span class="o">=</span> <span class="n">ParamSpec</span><span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.P" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 <div class="doc doc-object doc-class">
 
 
 
-<h2 id="fastforward.dispatcher.DispatcherItem" class="doc doc-heading">
-            <code>DispatcherItem</code>
-
+<h3 id="fastforward.dispatcher.DispatcherItem" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">DispatcherItem</span><span class="p">(</span><span class="n">predicate</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">DispatcherPriority</span><span class="o">.</span><span class="n">DEFAULT</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#fastforward.dispatcher.DispatcherItem" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.DispatcherItem" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="typing.Generic">Generic</span>[<span title="fastforward.dispatcher.P">P</span>]</code></p>
+              Bases: <code><span title="typing.Generic">Generic</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>]</code></p>
 
 
         <p>Data class representing an item in the dispatcher.</p>
@@ -2009,7 +2160,11 @@
                 <code>predicate</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Predicate&lt;/code&gt; (&lt;code&gt;fastforward.dispatcher.Predicate&lt;/code&gt;)" href="#fastforward.dispatcher.Predicate">Predicate</a>[<span title="fastforward.dispatcher.P">P</span>]</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Predicate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.dispatcher.Predicate&lt;/code&gt;)" href="#fastforward.dispatcher.Predicate">Predicate</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2025,7 +2180,15 @@
                 <code>fn</code>
             </td>
             <td>
-                  <code><span title="fastforward.dispatcher.KernelType">KernelType</span>[<span title="fastforward.dispatcher.P">P</span>]</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KernelType&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Tensor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.KernelType&lt;/code&gt;)" href="#fastforward.dispatcher.KernelType">KernelType</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2041,7 +2204,7 @@
                 <code>priority</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;DispatcherPriority&lt;/code&gt; (&lt;code&gt;fastforward.dispatcher.DispatcherPriority&lt;/code&gt;)" href="#fastforward.dispatcher.DispatcherPriority">DispatcherPriority</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.dispatcher.DispatcherPriority&lt;/code&gt;" href="#fastforward.dispatcher.DispatcherPriority">DispatcherPriority</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2049,7 +2212,12 @@
               </div>
             </td>
             <td>
-                  <code><span title="fastforward.dispatcher.DispatcherPriority.DEFAULT">DEFAULT</span></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;DEFAULT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.DispatcherPriority.DEFAULT&lt;/code&gt;)" href="#fastforward.dispatcher.DispatcherPriority.DEFAULT">DEFAULT</a></code>
             </td>
           </tr>
       </tbody>
@@ -2061,35 +2229,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">DispatcherItem</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">P</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Data class representing an item in the dispatcher.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        predicate: A predicate that determines when the kernel should be used.</span>
-<span class="sd">        fn: The kernel function to be dispatched.</span>
-<span class="sd">        priority: The priority of the dispatcher item.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">predicate</span><span class="p">:</span> <span class="n">Predicate</span><span class="p">[</span><span class="n">P</span><span class="p">]</span>
-    <span class="n">fn</span><span class="p">:</span> <span class="n">KernelType</span><span class="p">[</span><span class="n">P</span><span class="p">]</span>
-    <span class="n">priority</span><span class="p">:</span> <span class="n">DispatcherPriority</span> <span class="o">=</span> <span class="n">DispatcherPriority</span><span class="o">.</span><span class="n">DEFAULT</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2100,6 +2239,67 @@
 
 
 
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherItem.fn" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fn</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherItem.fn" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherItem.predicate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">predicate</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherItem.predicate" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherItem.priority" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">priority</span> <span class="o">=</span> <span class="n">DispatcherPriority</span><span class="o">.</span><span class="n">DEFAULT</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherItem.priority" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
 
 
 
@@ -2115,11 +2315,11 @@
 
 
 
-<h2 id="fastforward.dispatcher.DispatcherPriority" class="doc doc-heading">
-            <code>DispatcherPriority</code>
+<h3 id="fastforward.dispatcher.DispatcherPriority" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.dispatcher.DispatcherPriority</code>
 
 
-<a href="#fastforward.dispatcher.DispatcherPriority" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.DispatcherPriority" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2137,29 +2337,6 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span>
-<span class="normal">97</span>
-<span class="normal">98</span>
-<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DispatcherPriority</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">IntEnum</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch priority for registered implementations.</span>
-
-<span class="sd">    Operator implementations predicates are evaluated in the order</span>
-<span class="sd">    DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">DEFAULT</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">FALLBACK</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">NOT_IMPLEMENTED_FALLBACK</span> <span class="o">=</span> <span class="mi">2</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2170,6 +2347,69 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherPriority.DEFAULT" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">DEFAULT</span> <span class="o">=</span> <span class="mi">0</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherPriority.DEFAULT" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherPriority.FALLBACK" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">FALLBACK</span> <span class="o">=</span> <span class="mi">1</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherPriority.FALLBACK" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.dispatcher.DispatcherPriority.NOT_IMPLEMENTED_FALLBACK" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">NOT_IMPLEMENTED_FALLBACK</span> <span class="o">=</span> <span class="mi">2</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.dispatcher.DispatcherPriority.NOT_IMPLEMENTED_FALLBACK" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
 
 
 
@@ -2185,11 +2425,10 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
-<h2 id="fastforward.dispatcher.DispatcherRegistrationHook" class="doc doc-heading">
-            <code>DispatcherRegistrationHook</code>
+<h3 id="fastforward.dispatcher.DispatcherRegistrationHook" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">DispatcherRegistrationHook</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="n">dispatcher_item</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.dispatcher.DispatcherRegistrationHook" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.DispatcherRegistrationHook" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2230,8 +2469,7 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
                 <code>dispatcher_item</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;DispatcherItem&lt;/code&gt;
-
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DispatcherItem&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;predicate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;priority&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DispatcherPriority&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DEFAULT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -2255,49 +2493,15 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">128</span>
 <span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DispatcherRegistrationHook</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Context manager for registering and unregistering dispatcher items.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        op_name: The name of the operation.</span>
-<span class="sd">        dispatcher_item: The dispatcher item to register.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dispatcher_item</span><span class="p">:</span> <span class="n">DispatcherItem</span><span class="p">[</span><span class="n">Any</span><span class="p">]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_op_name</span> <span class="o">=</span> <span class="n">op_name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatcher_item</span> <span class="o">=</span> <span class="n">dispatcher_item</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">pass</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">_DISPATCHER</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_op_name</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dispatcher_item</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-            <span class="k">pass</span>
+<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dispatcher_item</span><span class="p">:</span> <span class="n">DispatcherItem</span><span class="p">[</span><span class="n">Any</span><span class="p">]):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_op_name</span> <span class="o">=</span> <span class="n">op_name</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_dispatcher_item</span> <span class="o">=</span> <span class="n">dispatcher_item</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2311,6 +2515,58 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.dispatcher.DispatcherRegistrationHook.__enter__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__enter__</span><span class="p">()</span></code>
+
+<a href="#fastforward.dispatcher.DispatcherRegistrationHook.__enter__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">132</span>
+<span class="normal">133</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">pass</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.dispatcher.DispatcherRegistrationHook.__exit__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__exit__</span><span class="p">(</span><span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">)</span></code>
+
+<a href="#fastforward.dispatcher.DispatcherRegistrationHook.__exit__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_DISPATCHER</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_op_name</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dispatcher_item</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2323,16 +2579,19 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
-<h2 id="fastforward.dispatcher.Predicate" class="doc doc-heading">
-            <code>Predicate</code>
+<h3 id="fastforward.dispatcher.Predicate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">Predicate</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.dispatcher.Predicate" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.Predicate" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="fastforward.dispatcher._Predicate">_Predicate</span>[<span title="fastforward.dispatcher.P">P</span>]</code></p>
+              Bases: <code><span title="fastforward.dispatcher._Predicate">_Predicate</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>]</code></p>
 
 
         <p>Wrapper for a predicate function.</p>
@@ -2354,7 +2613,11 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
                 <code>fn</code>
             </td>
             <td>
-                  <code><span title="typing.Callable">Callable</span>[<span title="fastforward.dispatcher.P">P</span>, <span title="bool">bool</span>]</code>
+                  <code><span title="typing.Callable">Callable</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>, <span title="bool">bool</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2374,41 +2637,13 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Predicate</span><span class="p">(</span><span class="n">_Predicate</span><span class="p">[</span><span class="n">P</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper for a predicate function.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        fn: A callable that takes arbitrary arguments and returns a boolean.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fn</span> <span class="o">=</span> <span class="n">fn</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Call wrapped predicate and return result.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_fn</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fn</span><span class="p">,</span><span class="w"> </span><span class="n">eval_str</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
+<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_fn</span> <span class="o">=</span> <span class="n">fn</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2425,10 +2660,10 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.dispatcher.Predicate.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.dispatcher.Predicate.__call__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.dispatcher.Predicate.__call__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.dispatcher.Predicate.__call__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2449,6 +2684,29 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 
 </div>
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.dispatcher.Predicate.__repr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
+
+<a href="#fastforward.dispatcher.Predicate.__repr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/dispatcher.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">86</span>
+<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_fn</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fn</span><span class="p">,</span><span class="w"> </span><span class="n">eval_str</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2461,10 +2719,10 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.dispatcher.dispatch" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">dispatch</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h3 id="fastforward.dispatcher.dispatch" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">dispatch</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.dispatcher.dispatch" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.dispatch" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2546,7 +2804,15 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="fastforward.dispatcher.KernelType">KernelType</span>[<span title="fastforward.dispatcher.P">P</span>] | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KernelType&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Tensor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.KernelType&lt;/code&gt;)" href="#fastforward.dispatcher.KernelType">KernelType</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dispatcher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;P&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ParamSpec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;P&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.dispatcher.P&lt;/code&gt;)" href="#fastforward.dispatcher.P">P</a>] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2600,10 +2866,10 @@ DEFAULT, FALLBACK, NOT_IMPLEMENTED_FALLBACK.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.dispatcher.register" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">register</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="n">predicate</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">DispatcherPriority</span><span class="o">.</span><span class="n">DEFAULT</span><span class="p">)</span></code>
+<h3 id="fastforward.dispatcher.register" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">op_name</span><span class="p">,</span> <span class="n">predicate</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">DispatcherPriority</span><span class="o">.</span><span class="n">DEFAULT</span><span class="p">)</span></code>
 
-<a href="#fastforward.dispatcher.register" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.dispatcher.register" class="headerlink" title="Permanent link">#</a></h3>
           <div class="doc-overloads">
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">register</span><span class="p">(</span>
     <span class="n">op_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>

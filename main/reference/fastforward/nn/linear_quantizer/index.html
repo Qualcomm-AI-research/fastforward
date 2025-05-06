@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.linear_quantizer" class="md-skip">
+        <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="md-skip">
           Skip to content
         </a>
       
@@ -1144,15 +1144,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.linear_quantizer" class="md-nav__link">
-    <span class="md-ellipsis">
-      linear_quantizer
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="md-nav__link">
     <span class="md-ellipsis">
       AbstractAffineQuantizer
@@ -1161,6 +1152,15 @@
   
     <nav class="md-nav" aria-label="AbstractAffineQuantizer">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.granularity" class="md-nav__link">
+    <span class="md-ellipsis">
+      granularity
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.has_uninitialized_params" class="md-nav__link">
@@ -1190,6 +1190,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.num_bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      num_bits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_channel" class="md-nav__link">
     <span class="md-ellipsis">
       per_channel
@@ -1211,6 +1220,15 @@
   <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_function" class="md-nav__link">
     <span class="md-ellipsis">
       quantization_function
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantized_dtype" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantized_dtype
     </span>
   </a>
   
@@ -1268,9 +1286,45 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.allow_one_sided" class="md-nav__link">
+    <span class="md-ellipsis">
+      allow_one_sided
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      offset
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_function" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantization_function
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_range" class="md-nav__link">
     <span class="md-ellipsis">
       quantization_range
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      scale
     </span>
   </a>
   
@@ -1298,6 +1352,15 @@
   <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.operator_for_range" class="md-nav__link">
     <span class="md-ellipsis">
       operator_for_range
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantization_parameters
     </span>
   </a>
   
@@ -2057,7 +2120,7 @@
 
 
 
-<a id="fastforward.nn.linear_quantizer"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2081,16 +2144,19 @@
 
 
 
-<h2 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="doc doc-heading">
-            <code>AbstractAffineQuantizer</code>
+<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">linear_quantizer</span><span class="o">.</span><span class="n">AbstractAffineQuantizer</span><span class="p">(</span><span class="n">num_bits</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>, <code><span title="abc.ABC">ABC</span></code>, <code><span title="typing.Generic">Generic</span>[<span title="fastforward.quantization.function.QuantParams_co">QuantParams_co</span>]</code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>, <code><span title="abc.ABC">ABC</span></code>, <code><span title="typing.Generic">Generic</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantParams_co&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;QuantParams_co&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bound&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;covariant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantParams_co&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantParams_co">QuantParams_co</a>]</code></p>
 
 
         <p>Abstract affine quantizer.</p>
@@ -2129,7 +2195,7 @@
                 <code>granularity</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Granularity&lt;/code&gt; (&lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;)" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2150,195 +2216,31 @@ granularity</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/linear_quantizer.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 25</span>
-<span class="normal"> 26</span>
-<span class="normal"> 27</span>
-<span class="normal"> 28</span>
-<span class="normal"> 29</span>
-<span class="normal"> 30</span>
-<span class="normal"> 31</span>
-<span class="normal"> 32</span>
-<span class="normal"> 33</span>
-<span class="normal"> 34</span>
-<span class="normal"> 35</span>
-<span class="normal"> 36</span>
-<span class="normal"> 37</span>
-<span class="normal"> 38</span>
-<span class="normal"> 39</span>
-<span class="normal"> 40</span>
-<span class="normal"> 41</span>
-<span class="normal"> 42</span>
-<span class="normal"> 43</span>
-<span class="normal"> 44</span>
-<span class="normal"> 45</span>
-<span class="normal"> 46</span>
-<span class="normal"> 47</span>
-<span class="normal"> 48</span>
-<span class="normal"> 49</span>
-<span class="normal"> 50</span>
-<span class="normal"> 51</span>
-<span class="normal"> 52</span>
-<span class="normal"> 53</span>
-<span class="normal"> 54</span>
-<span class="normal"> 55</span>
-<span class="normal"> 56</span>
-<span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AbstractAffineQuantizer</span><span class="p">(</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract affine quantizer.</span>
-
-<span class="sd">    Abstract base class for affine quantizers.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        num_bits: Bitwidth of quantization output granularity</span>
-<span class="sd">        granularity: Granularity object that specifies the quantization</span>
-<span class="sd">            granularity</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">num_bits</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">quantized_dtype</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">per_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Boolean indicating whether quantizer uses PerChannel quantization.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">granularities</span><span class="o">.</span><span class="n">is_per_channel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">per_tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Boolean indicating whether quantizer uses PerTensor quantization.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">granularities</span><span class="o">.</span><span class="n">is_per_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">integer_minimum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The minimum integer value that quantized data takes, based on bitwidth.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">integer_minimum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">integer_maximum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The maximum integer value that quantized data takes, based on bitwidth.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">integer_maximum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">has_uninitialized_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if there any quantization parameters that are uninitialized.&quot;&quot;&quot;</span>
-        <span class="n">Uninitialized</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">UninitializedParameter</span>
-        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">Uninitialized</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Provide extra repr information.&quot;&quot;&quot;</span>
-        <span class="n">extra_repr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;num_bits=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="si">}</span><span class="s2">, granularity=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">super_extra</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">extra_repr</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">super_extra</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">super_extra</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">extra_repr</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">extra_repr</span>
-
-    <span class="nd">@property</span>
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_function</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization function associated with this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">        `QuantizationFunction` that implements the quantization operator</span>
-<span class="sd">        specific to this quantizer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantParams_co</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization parameters of this quantizer.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            `QuantizationParameterss` specific to this quantizer</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizationContext</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization context for the current parameters for this quantizer.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">QuantizationContext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantization_function</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_parameters</span><span class="p">())</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize data using affine quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            data: Tensor to quantize</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            torch.Tensor:</span>
-<span class="sd">                Quantized data</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_function</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_parameters</span><span class="p">())</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/nn/linear_quantizer.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">num_bits</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">quantized_dtype</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2354,14 +2256,34 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.has_uninitialized_params" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">has_uninitialized_params</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.granularity" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.granularity" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.has_uninitialized_params" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">has_uninitialized_params</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.has_uninitialized_params" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.has_uninitialized_params" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2376,14 +2298,14 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_maximum" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">integer_maximum</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_maximum" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">integer_maximum</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_maximum" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_maximum" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2398,14 +2320,14 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_minimum" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">integer_minimum</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_minimum" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">integer_minimum</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_minimum" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.integer_minimum" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2420,14 +2342,34 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_channel" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">per_channel</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.num_bits" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">num_bits</span> <span class="o">=</span> <span class="n">num_bits</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.num_bits" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_channel" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">per_channel</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_channel" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_channel" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2442,14 +2384,14 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_tensor" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">per_tensor</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_tensor" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">per_tensor</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_tensor" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.per_tensor" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2464,15 +2406,15 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_function" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_function</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_function" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_function</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2486,15 +2428,35 @@ specific to this quantizer.</p>
 
 </div>
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantized_dtype" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="n">quantized_dtype</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantized_dtype" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.extra_repr" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">extra_repr</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.extra_repr" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">extra_repr</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.extra_repr" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.extra_repr" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2530,10 +2492,10 @@ specific to this quantizer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_context" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_context</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_context" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantization_context</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_context" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_context" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2557,14 +2519,14 @@ specific to this quantizer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2583,7 +2545,11 @@ specific to this quantizer.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="fastforward.quantization.function.QuantParams_co">QuantParams_co</span></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantParams_co&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;QuantParams_co&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bound&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;covariant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantParams_co&lt;/code&gt;)" href="../../quantization/function/#fastforward.quantization.function.QuantParams_co">QuantParams_co</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2619,10 +2585,10 @@ specific to this quantizer.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer.quantize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2728,16 +2694,15 @@ Quantized data</p>
 
 
 
-<h2 id="fastforward.nn.linear_quantizer.LinearQuantizer" class="doc doc-heading">
-            <code>LinearQuantizer</code>
+<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">linear_quantizer</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">(</span><span class="n">num_bits</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">allow_one_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">param_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;AbstractAffineQuantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.linear_quantizer.AbstractAffineQuantizer&lt;/code&gt;)" href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer">AbstractAffineQuantizer</a>[&#39;affine_quant.StaticAffineQuantParams&#39;]</code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;linear_quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;AbstractAffineQuantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.linear_quantizer.AbstractAffineQuantizer&lt;/code&gt;)" href="#fastforward.nn.linear_quantizer.AbstractAffineQuantizer">AbstractAffineQuantizer</a>[&#39;affine_quant.StaticAffineQuantParams&#39;]</code></p>
 
 
         <p>Linear quantizer.</p>
@@ -2815,7 +2780,7 @@ are above zero. (Default: True)</p>
                 <code>granularity</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Granularity&lt;/code&gt; (&lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;)" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.granularity.Granularity&lt;/code&gt;" href="../../quantization/granularity/#fastforward.quantization.granularity.Granularity">Granularity</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2885,35 +2850,9 @@ granularity</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/linear_quantizer.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/nn/linear_quantizer.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">146</span>
 <span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
@@ -2939,399 +2878,35 @@ granularity</p>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LinearQuantizer</span><span class="p">(</span><span class="n">AbstractAffineQuantizer</span><span class="p">[</span><span class="s2">&quot;affine_quant.StaticAffineQuantParams&quot;</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Linear quantizer.</span>
+<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">symmetric</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">allow_one_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">param_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="n">num_bits</span><span class="o">=</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">quantized_dtype</span>
+    <span class="p">)</span>
 
-<span class="sd">    Support multiple quantization granularities. A granularity</span>
-<span class="sd">    defines which part of the input tensor are quantized using the same</span>
-<span class="sd">    quantization parameter. E.g., per-tensor, per-channel, or per-block</span>
-<span class="sd">    quantization. The granularity details are implemented in Granularity</span>
-<span class="sd">    subclasses and are passed into LinearQuantizer.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedParameter</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">allow_one_sided</span> <span class="o">=</span> <span class="n">allow_one_sided</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        num_bits: Bitwidh of quantization output granularity</span>
-<span class="sd">        symmetric: Use symmetric quantization if True, asymmetric otherwise.</span>
-<span class="sd">            (Default: True)</span>
-<span class="sd">        allow_one_sided: If symmetric and allow_one_sided, the quantizer may fall</span>
-<span class="sd">            back to a one-sided (or unsigned) quantizer if all lower quantizations thresholds</span>
-<span class="sd">            are above zero. (Default: True)</span>
-<span class="sd">        granularity: Granularity object that specifies the quantization</span>
-<span class="sd">            granularity</span>
-<span class="sd">        quantized_dtype: datatype in which the quantized data is stored</span>
-<span class="sd">        param_dtype: datatype in which the quantization parameters are stored</span>
-<span class="sd">            (which can affect the datatype in which quantization is simulated)</span>
-<span class="sd">        device: The device used for parameters</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">offset</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span> <span class="o">|</span> <span class="kc">None</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">num_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">symmetric</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">allow_one_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">granularity</span><span class="p">:</span> <span class="n">granularities</span><span class="o">.</span><span class="n">Granularity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">quantized_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">param_dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">quantized_dtype</span>
+    <span class="k">if</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">allow_one_sided</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_parameter</span><span class="p">(</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="n">allow_one_sided</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span>
+            <span class="s2">&quot;offset&quot;</span><span class="p">,</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedBuffer</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">),</span>  <span class="c1"># type: ignore[call-arg]</span>
         <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedParameter</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">allow_one_sided</span> <span class="o">=</span> <span class="n">allow_one_sided</span>
-
-        <span class="k">if</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">allow_one_sided</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_parameter</span><span class="p">(</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">symmetric</span> <span class="ow">and</span> <span class="n">allow_one_sided</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span>
-                <span class="s2">&quot;offset&quot;</span><span class="p">,</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedBuffer</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">),</span>  <span class="c1"># type: ignore[call-arg]</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedParameter</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if symmetric quantization, False otherwise.</span>
-
-<span class="sd">        Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># The quantizer is &#39;symmetric&#39; (this includes the unsigned case,</span>
-        <span class="c1"># following [1]) If no offset is set, or  if the offset is set to a</span>
-        <span class="c1"># buffer that equals 2 ** (num_bits -1)</span>
-        <span class="c1">#</span>
-        <span class="c1"># Here we only use a buffer in the &#39;unsigned&#39; case, hence we do not</span>
-        <span class="c1"># check for the buffer&#39;s values.</span>
-        <span class="c1">#</span>
-        <span class="c1"># [1] Nagel, Markus, et al. &quot;A white paper on neural network quantization.&quot;</span>
-        <span class="c1">#     arXiv preprint arXiv:2106.08295 (2021).</span>
-        <span class="k">return</span> <span class="s2">&quot;offset&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffers</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">reset_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset parameters to scale=1, offset=0.&quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameter_dimensionality</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pylint: disable=arguments-differ</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal method to materialize the uninitialized parameters of the quantizer.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_uninitialized_params</span><span class="p">:</span>  <span class="c1"># type: ignore[unused-ignore]</span>
-            <span class="n">scale_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="n">parameter_dimensionality</span><span class="p">])</span>
-            <span class="n">offset_shape</span> <span class="o">=</span> <span class="n">scale_shape</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-
-            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">materialize</span><span class="p">(</span><span class="n">scale_shape</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">offset_shape</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">materialize</span><span class="p">(</span><span class="n">offset_shape</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reset_parameters</span><span class="p">()</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Provide extra repr information on num_bits, symmetric flag and granularities.&quot;&quot;&quot;</span>
-        <span class="n">extra_repr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;symmetric=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">super_extra</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">extra_repr</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">super_extra</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">super_extra</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">extra_repr</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">extra_repr</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;affine_quant.StaticAffineQuantParams&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">StaticAffineQuantParams</span><span class="p">(</span>
-            <span class="n">scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
-            <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span>
-            <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-            <span class="n">quantized_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_function</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="s2">&quot;affine_quant.StaticAffineQuantParams&quot;</span><span class="p">]]:</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">AffineQuantizationFunction</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize data using affine quantizer.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            data: Tensor to quantize</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            torch.Tensor:</span>
-<span class="sd">                Quantized data</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="c1"># If the quantizer has no uninitialized params anymore, reraise the caught</span>
-            <span class="c1"># ValueError</span>
-            <span class="c1"># If the quantizer still has uninitialized params, the ValueError was likely</span>
-            <span class="c1"># raised by UninitializedParameter. Raise a more descriptive ValueError instead.</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_uninitialized_params</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">e</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;Tried to quantize a tensor using an uninitialized quantizer (of type &quot;</span>
-                    <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">). This quantizer is initialized after its &quot;</span>
-                    <span class="o">+</span> <span class="s2">&quot;quantization_range is specified. This can be done explicitly by using &quot;</span>
-                    <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;the </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.quantization_range setter or using a range &quot;</span>
-                    <span class="o">+</span> <span class="s2">&quot;setting method.&quot;</span>
-                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">operator_for_range</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">min_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">max_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">QuantizedTensor</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol.&quot;&quot;&quot;</span>
-        <span class="n">scale</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_for_range</span><span class="p">(</span><span class="n">min_range</span><span class="p">,</span> <span class="n">max_range</span><span class="p">)</span>
-        <span class="n">quant_context</span> <span class="o">=</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">quantization_context</span><span class="p">(</span>
-            <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
-            <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-            <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">_quant_operator</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">quant_context</span><span class="o">.</span><span class="n">quantization_fn</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">quant_context</span><span class="o">.</span><span class="n">quantization_params</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">_quant_operator</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_parameters_for_range</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">min_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">max_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">parameters_for_range</span><span class="p">(</span>
-            <span class="n">min_range</span><span class="o">=</span><span class="n">min_range</span><span class="p">,</span>
-            <span class="n">max_range</span><span class="o">=</span><span class="n">max_range</span><span class="p">,</span>
-            <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
-            <span class="n">symmetric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symmetric</span><span class="p">,</span>
-            <span class="n">allow_one_sided</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">allow_one_sided</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_range</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Getter for quantization range.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            tuple[torch.Tensor, torch.Tensor]:</span>
-<span class="sd">                `Tuple` of tensor representing the minimum and maximum thresholds of the</span>
-<span class="sd">                quantization range, respectively.</span>
-
-<span class="sd">        Part of fastforward.range_setting.RangeSettable Protocol</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_uninitialized_params</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">quantization_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">)</span>
-
-    <span class="nd">@quantization_range</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_range</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">quant_range</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setter for quantization range.</span>
-
-<span class="sd">        `quantization_range` is part of the</span>
-<span class="sd">        fastforward.range_setting.RangeSettable Protocol</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="p">(</span><span class="n">ensure_tensor</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">quant_range</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Tried to set quantization range with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">quant_range</span><span class="p">)</span><span class="si">}</span><span class="s2">-tuple. &quot;</span>
-                <span class="o">+</span> <span class="s2">&quot;A 2-tuple is expected&quot;</span>
-            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
-        <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Tried to set quantization range with a single value. A 2-tuple is expected&quot;</span>
-            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_uninitialized_params</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_parameters</span><span class="p">(</span><span class="nb">min</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>
-
-        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-            <span class="n">scale</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_for_range</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">)</span>
-            <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedParameter</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -3347,15 +2922,75 @@ granularity</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantization_range" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_range</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.allow_one_sided" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">allow_one_sided</span> <span class="o">=</span> <span class="n">allow_one_sided</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.allow_one_sided" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.offset" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">offset</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.offset" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantization_function" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_function</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_function" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantization_range" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_range</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
       <small class="doc doc-label doc-label-writable"><code>writable</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_range" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_range" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3396,14 +3031,34 @@ quantization range, respectively.</p>
 
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.symmetric" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">symmetric</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.scale" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">UninitializedParameter</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param_dtype</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.scale" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.symmetric" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">symmetric</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.symmetric" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.symmetric" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3420,10 +3075,10 @@ quantization range, respectively.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.extra_repr" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">extra_repr</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.extra_repr" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">extra_repr</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.extra_repr" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.extra_repr" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3459,10 +3114,10 @@ quantization range, respectively.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.operator_for_range" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">operator_for_range</span><span class="p">(</span><span class="n">min_range</span><span class="p">,</span> <span class="n">max_range</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.operator_for_range" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">operator_for_range</span><span class="p">(</span><span class="n">min_range</span><span class="p">,</span> <span class="n">max_range</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.operator_for_range" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.operator_for_range" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3512,10 +3167,47 @@ quantization range, respectively.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantization_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantization_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantize" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantization_parameters" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/linear_quantizer.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">quantization_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;affine_quant.StaticAffineQuantParams&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">affine_quant</span><span class="o">.</span><span class="n">StaticAffineQuantParams</span><span class="p">(</span>
+        <span class="n">scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
+        <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span>
+        <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
+        <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
+        <span class="n">quantized_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.quantize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.quantize" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3644,10 +3336,10 @@ Quantized data</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.linear_quantizer.LinearQuantizer.reset_parameters" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">reset_parameters</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.linear_quantizer.LinearQuantizer.reset_parameters" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">reset_parameters</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.reset_parameters" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.linear_quantizer.LinearQuantizer.reset_parameters" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">

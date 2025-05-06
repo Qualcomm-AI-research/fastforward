@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.container" class="md-skip">
+        <a href="#fastforward.nn.container.QuantizedModuleDict" class="md-skip">
           Skip to content
         </a>
       
@@ -1006,15 +1006,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.container" class="md-nav__link">
-    <span class="md-ellipsis">
-      container
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.nn.container.QuantizedModuleDict" class="md-nav__link">
     <span class="md-ellipsis">
       QuantizedModuleDict
@@ -1928,7 +1919,7 @@
 
 
 
-<a id="fastforward.nn.container"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1952,16 +1943,16 @@
 
 
 
-<h2 id="fastforward.nn.container.QuantizedModuleDict" class="doc doc-heading">
-            <code>QuantizedModuleDict</code>
+<h3 id="fastforward.nn.container.QuantizedModuleDict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.container.QuantizedModuleDict</code>
 
 
-<a href="#fastforward.nn.container.QuantizedModuleDict" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.container.QuantizedModuleDict" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ModuleDict">ModuleDict</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ModuleDict">ModuleDict</span></code></p>
 
 
         <p>Quantized implementation of torch.nn.ModuleDict.</p>
@@ -1972,13 +1963,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/container.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
-<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedModuleDict</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.ModuleDict.&quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2004,16 +1988,16 @@
 
 
 
-<h2 id="fastforward.nn.container.QuantizedModuleList" class="doc doc-heading">
-            <code>QuantizedModuleList</code>
+<h3 id="fastforward.nn.container.QuantizedModuleList" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.container.QuantizedModuleList</code>
 
 
-<a href="#fastforward.nn.container.QuantizedModuleList" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.container.QuantizedModuleList" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ModuleList">ModuleList</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ModuleList">ModuleList</span></code></p>
 
 
         <p>Quantized implementation of torch.nn.ModuleList.</p>
@@ -2024,13 +2008,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/container.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">13</span>
-<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedModuleList</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.ModuleList.&quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2056,16 +2033,16 @@
 
 
 
-<h2 id="fastforward.nn.container.QuantizedParameterDict" class="doc doc-heading">
-            <code>QuantizedParameterDict</code>
+<h3 id="fastforward.nn.container.QuantizedParameterDict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.container.QuantizedParameterDict</code>
 
 
-<a href="#fastforward.nn.container.QuantizedParameterDict" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.container.QuantizedParameterDict" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ParameterDict">ParameterDict</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ParameterDict">ParameterDict</span></code></p>
 
 
         <p>Quantized implementation of torch.nn.ParameterDict.</p>
@@ -2076,13 +2053,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/container.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">25</span>
-<span class="normal">26</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedParameterDict</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterDict</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.ParameterDict.&quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2108,16 +2078,16 @@
 
 
 
-<h2 id="fastforward.nn.container.QuantizedParameterList" class="doc doc-heading">
-            <code>QuantizedParameterList</code>
+<h3 id="fastforward.nn.container.QuantizedParameterList" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.container.QuantizedParameterList</code>
 
 
-<a href="#fastforward.nn.container.QuantizedParameterList" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.container.QuantizedParameterList" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ParameterList">ParameterList</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.ParameterList">ParameterList</span></code></p>
 
 
         <p>Quantized implementation of torch.nn.ParameterList.</p>
@@ -2128,13 +2098,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/container.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
-<span class="normal">22</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedParameterList</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.ParameterList.&quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2160,16 +2123,16 @@
 
 
 
-<h2 id="fastforward.nn.container.QuantizedSequential" class="doc doc-heading">
-            <code>QuantizedSequential</code>
+<h3 id="fastforward.nn.container.QuantizedSequential" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.container.QuantizedSequential</code>
 
 
-<a href="#fastforward.nn.container.QuantizedSequential" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.container.QuantizedSequential" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Sequential">Sequential</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code>, <code><span title="torch.nn.Sequential">Sequential</span></code></p>
 
 
         <p>Quantized implementation of torch.nn.Sequential.</p>
@@ -2180,13 +2143,6 @@
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/container.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 9</span>
-<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedSequential</span><span class="p">(</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized implementation of torch.nn.Sequential.&quot;&quot;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 

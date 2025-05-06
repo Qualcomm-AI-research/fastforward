@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.quantized_module" class="md-skip">
+        <a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="md-skip">
           Skip to content
         </a>
       
@@ -1190,9 +1190,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.nn.quantized_module" class="md-nav__link">
+  <a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="md-nav__link">
     <span class="md-ellipsis">
-      quantized_module
+      fastforward.nn.quantized_module.ModuleConversionDict
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.ModuleType" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.nn.quantized_module.ModuleType
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModuleType" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.nn.quantized_module.QuantizedModuleType
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.nn.quantized_module.SKIP_QUANTIZATION
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.logger" class="md-nav__link">
+    <span class="md-ellipsis">
+      fastforward.nn.quantized_module.logger
     </span>
   </a>
   
@@ -1245,6 +1281,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __setattr__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="md-nav__link">
     <span class="md-ellipsis">
       named_quantizers
@@ -1291,6 +1336,21 @@
       SkipQuantization
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="SkipQuantization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.quantized_module.SkipQuantization.__repr__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __repr__
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2015,7 +2075,7 @@
 
 
 
-<a id="fastforward.nn.quantized_module"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -2034,16 +2094,116 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.ModuleConversionDict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">ModuleConversionDict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="n">ModuleType</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">QuantizedModuleType</span><span class="p">,</span> <span class="s1">&#39;SkipQuantization&#39;</span><span class="p">]]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.ModuleConversionDict" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.ModuleType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">ModuleType</span> <span class="o">=</span> <span class="nb">type</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.ModuleType" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.QuantizedModuleType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">QuantizedModuleType</span> <span class="o">=</span> <span class="nb">type</span><span class="p">[</span><span class="s1">&#39;QuantizedModule&#39;</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModuleType" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">SKIP_QUANTIZATION</span> <span class="o">=</span> <span class="n">SkipQuantization</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.SKIP_QUANTIZATION" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.quantized_module.logger" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.quantized_module.logger" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 <div class="doc doc-object doc-class">
 
 
 
-<h2 id="fastforward.nn.quantized_module.QuantizedModule" class="doc doc-heading">
-            <code>QuantizedModule</code>
+<h3 id="fastforward.nn.quantized_module.QuantizedModule" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.quantized_module.QuantizedModule</code>
 
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.QuantizedModule" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2052,7 +2212,7 @@
 
 
         <p>Base class for quantized neural network models/modules.</p>
-<h3 id="fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules">Extending existing (non-quantized) modules<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules" title="Permanent link">#</a></h3>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules">Extending existing (non-quantized) modules<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--extending-existing-non-quantized-modules" title="Permanent link">#</a></h4>
 <p>In many cases, a quantized module will be a specialization of a non-quantized module.
 <code>QuantizedModule</code> follows an extension principle, i.e., QuantizedModule extends the
 existing classes by implementing all the quantization related initialization logic in the
@@ -2078,7 +2238,7 @@ automatic discovery mechanism, pass <code>include_in_module_map=False</code> as 
 counterparts. However, until that feature lands, quantized counterparts need to be
 implemented manually. Quantized implementations for a subset of modules available in
 PyTorch can be found in the <code>fastforward.nn</code> module.</p>
-</details>        <h3 id="fastforward.nn.quantized_module.QuantizedModule--quantizedstubs"><code>QuantizedStub</code>s<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--quantizedstubs" title="Permanent link">#</a></h3>
+</details>        <h4 id="fastforward.nn.quantized_module.QuantizedModule--quantizedstubs"><code>QuantizedStub</code>s<a class="headerlink" href="#fastforward.nn.quantized_module.QuantizedModule--quantizedstubs" title="Permanent link">#</a></h4>
 <p>A QuantizedModule does not define specific quantizers during initialization. Instead, one
 or more <code>QuantizerStub</code>s are defined. These may be replaced by explicit quantizers at a later
 time. This makes <code>QuantizedModule</code>s general over particular quantizers.</p>
@@ -2089,405 +2249,6 @@ time. This makes <code>QuantizedModule</code>s general over particular quantizer
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/quantized_module.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QuantizedModule</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">_QuantizedModuleMeta</span><span class="p">):</span>  <span class="c1"># pylint: disable=abstract-method</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for quantized neural network models/modules.</span>
-
-<span class="sd">    # Extending existing (non-quantized) modules</span>
-<span class="sd">    In many cases, a quantized module will be a specialization of a non-quantized module.</span>
-<span class="sd">    `QuantizedModule` follows an extension principle, i.e., QuantizedModule extends the</span>
-<span class="sd">    existing classes by implementing all the quantization related initialization logic in the</span>
-<span class="sd">    `__init_quantization__()` method. I.e., no quantization logic should be implemented</span>
-<span class="sd">    in `__init__()`</span>
-
-<span class="sd">    When a quantized module is initialized, first the `__init__()` of the super classes is called.</span>
-<span class="sd">    Once these conclude, `__init_quantization__()` is executed. Alternatively, one can create</span>
-<span class="sd">    an instance of the super class. Update the `__class__` attribute to the quantized class</span>
-<span class="sd">    and call `__init_quantization__()`. By adhering to this separation of initialization, we can</span>
-<span class="sd">    easily convert submodules of a non-quantized neural network to their quantized counterparts.</span>
-
-<span class="sd">    Quantized classes are automatically detected through the subclass hierarchy. For example,</span>
-<span class="sd">    a class that subclasses `QuantizedModule` and `torch.nn.Linear` is considered a quantized</span>
-<span class="sd">    implementation of `torch.nn.Linear` and will be used in `quantized_module`. To opt-out from this</span>
-<span class="sd">    automatic discovery mechanism, pass `include_in_module_map=False` as class argument:</span>
-
-<span class="sd">    ```python</span>
-<span class="sd">    class MyQuantizedModule(torch.nn.QuantizedModule, include_in_module_map=False):</span>
-<span class="sd">        ...</span>
-<span class="sd">    ```</span>
-
-<span class="sd">    Note:</span>
-<span class="sd">        Future versions of this library will include support to automatically generate quantized</span>
-<span class="sd">        counterparts. However, until that feature lands, quantized counterparts need to be</span>
-<span class="sd">        implemented manually. Quantized implementations for a subset of modules available in</span>
-<span class="sd">        PyTorch can be found in the `fastforward.nn` module.</span>
-
-<span class="sd">    # `QuantizedStub`s</span>
-<span class="sd">    A QuantizedModule does not define specific quantizers during initialization. Instead, one</span>
-<span class="sd">    or more `QuantizerStub`s are defined. These may be replaced by explicit quantizers at a later</span>
-<span class="sd">    time. This makes `QuantizedModule`s general over particular quantizers.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">_quantizer_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">QuantizerMetadata</span><span class="p">]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization specific initializer.</span>
-
-<span class="sd">        This method is automatically called when a `QuantizedModule` is</span>
-<span class="sd">        initialized directly, after `__init__()`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s2">&quot;_quantizer_metadata&quot;</span><span class="p">,</span> <span class="p">{})</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">include_in_module_map</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record `QuantizedModule` subclasses in module map for model conversion.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            include_in_module_map: If True, the newly created `QuantizedModule` is recorded</span>
-<span class="sd">                in the global module conversion map. This means that the module</span>
-<span class="sd">                will be automatically discovered and used for module replacements</span>
-<span class="sd">                in `ff.quantize_model`. If False, this registration is skipped. This</span>
-<span class="sd">                can be useful for one-off modules or modules for which you want</span>
-<span class="sd">                to provide the mapping explicitly.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">include_in_module_map</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="n">_record_quantized_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantize_children</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-        <span class="n">extra_conversion</span><span class="p">:</span> <span class="n">ModuleConversionDict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">skip_quantized_modules</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize children.</span>
-
-<span class="sd">        Converts the children modules to their `QuantizedModule` counterparts defined in</span>
-<span class="sd">        `fastforward.nn.quantized_module.quantized_module_map` and `extra_conversion`.</span>
-<span class="sd">        This may be used as part of `__init_quantization__` to perform recursive quantization</span>
-<span class="sd">        initialization.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            extra_conversion: A dict that maps `torch.nn.Module` to `QuantizedModule` subclasses.</span>
-<span class="sd">                For any conversion, this dict is first checked. If there is no match, the general</span>
-<span class="sd">                mapping as given by `quantized_module_map` is used.</span>
-<span class="sd">            skip_quantized_modules: If `True` do not try to requantize already</span>
-<span class="sd">                quantized modules.</span>
-
-<span class="sd">        Warning:</span>
-<span class="sd">            If this method is used on a module that has submodules for which no</span>
-<span class="sd">            mapping is available in both `extra_conversion` and</span>
-<span class="sd">            `quantized_module_map`, an error is thrown and the conversions</span>
-<span class="sd">            fails.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">named_children</span><span class="p">():</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
-                <span class="n">quantize_model</span><span class="p">(</span>
-                    <span class="n">child</span><span class="p">,</span>
-                    <span class="n">extra_conversion</span><span class="o">=</span><span class="n">extra_conversion</span><span class="p">,</span>
-                    <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="n">skip_quantized_modules</span><span class="p">,</span>
-                <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">register_quantizer</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">_register_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register new quantizer on module.</span>
-
-<span class="sd">        Register a quantizer with under `name` on this module. This method is similar to</span>
-<span class="sd">        register_module, but specific to quantizers. If an attribute is set to a quantizer</span>
-<span class="sd">        on a QuantizerModule, this method is called automatically.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            name: The name of the quantizer. It will be exposed under this name as an attribute</span>
-<span class="sd">                on the QuantizedModule</span>
-<span class="sd">            quantizer: The quantizer to register.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">)</span> <span class="ow">and</span> <span class="n">quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">quantizer</span><span class="si">}</span><span class="s2"> is not a Quantizer subclass&quot;</span><span class="p">)</span>
-
-        <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_quantizer_metadata&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Cannot assign quantizer before </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.__init_quantization__() call&quot;</span>
-            <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">_register_module</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_module</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">quantizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span>
-
-        <span class="c1"># Either this module or the set quantizer may store metadata.</span>
-        <span class="c1"># Here we ensure that the module/quantizer&#39;s metadata is consistent.</span>
-        <span class="c1"># This may result in overwriting the quantizer&#39;s metadata, which in turn</span>
-        <span class="c1"># may result in an inconsistency with earlier setup. In this case</span>
-        <span class="c1"># a warning is raised.</span>
-        <span class="n">module_has_metadata</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quantizer_metadata</span>
-        <span class="k">if</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">module_has_metadata</span><span class="p">:</span>
-                <span class="c1"># quantizer has metadata, but module has not</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_quantizer_metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># both module and quantizer have metadata, check for consistency</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quantizer_metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">is_extension</span><span class="p">(</span><span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span><span class="p">):</span>
-                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Quantizer metadata for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> is not a consistent &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;extension with stored quantization metadata for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">. &quot;</span>
-                        <span class="s2">&quot;The quantizer metadata is updated to match the module. &quot;</span>
-                        <span class="s2">&quot;Because of this, the quantization state may become inconsistent, &quot;</span>
-                        <span class="s2">&quot;for example, when the same quantizer is shared.&quot;</span><span class="p">,</span>
-                        <span class="ne">RuntimeWarning</span><span class="p">,</span>
-                    <span class="p">)</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="n">module_has_metadata</span><span class="p">:</span>
-            <span class="c1"># No metadata on quantizer or module, use default</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_quantizer_metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">QuantizerMetadata</span><span class="p">()</span>
-
-        <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quantizer_metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
-            <span class="c1"># Module was already registered through Module.__setattr__(...)</span>
-            <span class="c1"># Only register as quantizer</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">_register_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">named_quantizers</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-        <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">remove_duplicate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">skip_stubs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;`Iterator` over quantizers and their names.</span>
-
-<span class="sd">        Return an iterator over `QuantizedModule`s in the network, yielding both</span>
-<span class="sd">        the name of the quantizer as well ass the quantizer itself. Yields only</span>
-<span class="sd">        direct children if `recurse` is False.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            prefix: Str that prefixed to the name of the module.</span>
-<span class="sd">            recurse: Only yield direct children if True, yield all quantizers in</span>
-<span class="sd">                submodules otherwise.</span>
-<span class="sd">            remove_duplicate: Flag indicating whether duplicated should be</span>
-<span class="sd">                yielded once or multiple times.</span>
-<span class="sd">            skip_stubs: Do not yield instances of `QuantizerStub` if True.</span>
-
-<span class="sd">        Yields:</span>
-<span class="sd">            (str, QuantizerModule): `Tuple` of name and quantizer</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">yield from</span> <span class="n">named_quantizers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">recurse</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="n">skip_stubs</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantizers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Quantizer</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterator over quantizers.</span>
-
-<span class="sd">        Return an iterator over `QuantizedModule`s in the network. Yields only</span>
-<span class="sd">        direct children if `recurse` is False.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            recurse: Only yield direct children if True, yield all quantizers in</span>
-<span class="sd">                submodules otherwise.</span>
-<span class="sd">            skip_stubs: Do not yield instances of `QuantizerStub` if True.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">named_quantizers</span><span class="p">(</span><span class="n">recurse</span><span class="o">=</span><span class="n">recurse</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="n">skip_stubs</span><span class="p">):</span>
-            <span class="k">yield</span> <span class="n">quantizer</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2504,10 +2265,10 @@ time. This makes <code>QuantizedModule</code>s general over particular quantizer
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2541,10 +2302,10 @@ initialized directly, after <code>__init__()</code>.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">__init_subclass__</span><span class="p">(</span><span class="n">include_in_module_map</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_subclass__</span><span class="p">(</span><span class="n">include_in_module_map</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__init_subclass__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2626,10 +2387,41 @@ to provide the mapping explicitly.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">named_quantizers</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.__setattr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/quantized_module.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
+        <span class="c1"># Module was already registered through Module.__setattr__(...)</span>
+        <span class="c1"># Only register as quantizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">_register_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">named_quantizers</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.quantized_module.QuantizedModule.named_quantizers" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2804,10 +2596,10 @@ yielded once or multiple times.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantize_children</span><span class="p">(</span><span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize_children</span><span class="p">(</span><span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.quantize_children" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2835,7 +2627,11 @@ initialization.</p>
                 <code>extra_conversion</code>
             </td>
             <td>
-                  <code><span title="fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</span> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantized_module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleConversionDict&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Union&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizedModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;SkipQuantization&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.nn.quantized_module.ModuleConversionDict&lt;/code&gt;)" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2951,10 +2747,10 @@ fails.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.quantizers" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantizers</span><span class="p">(</span><span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantizers</span><span class="p">(</span><span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.quantizers" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.quantizers" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3048,10 +2844,10 @@ submodules otherwise.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">register_quantizer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">_register_module</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h4 id="fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">register_quantizer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">_register_module</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.quantized_module.QuantizedModule.register_quantizer" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3095,7 +2891,7 @@ on the QuantizedModule</p>
                 <code>quantizer</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;Quantizer&lt;/code&gt; (&lt;code&gt;fastforward.nn.Quantizer&lt;/code&gt;)" href="../quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.Quantizer&lt;/code&gt;)" href="../quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3239,11 +3035,11 @@ on the QuantizedModule</p>
 
 
 
-<h2 id="fastforward.nn.quantized_module.SkipQuantization" class="doc doc-heading">
-            <code>SkipQuantization</code>
+<h3 id="fastforward.nn.quantized_module.SkipQuantization" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.quantized_module.SkipQuantization</code>
 
 
-<a href="#fastforward.nn.quantized_module.SkipQuantization" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.SkipQuantization" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3257,19 +3053,6 @@ on the QuantizedModule</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/nn/quantized_module.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SkipQuantization</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marker class to signify that a module must not be quantized.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;&lt;skip quantization&gt;&quot;</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -3283,6 +3066,29 @@ on the QuantizedModule</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.quantized_module.SkipQuantization.__repr__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__repr__</span><span class="p">()</span></code>
+
+<a href="#fastforward.nn.quantized_module.SkipQuantization.__repr__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/nn/quantized_module.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">306</span>
+<span class="normal">307</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s2">&quot;&lt;skip quantization&gt;&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3295,10 +3101,10 @@ on the QuantizedModule</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.nn.quantized_module.named_quantizers" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">named_quantizers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h3 id="fastforward.nn.quantized_module.named_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">named_quantizers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_stubs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.named_quantizers" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.named_quantizers" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3509,10 +3315,10 @@ yielded once or multiple times.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.nn.quantized_module.quantize_model" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<h3 id="fastforward.nn.quantized_module.quantize_model" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">extra_conversion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_quantized_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.quantize_model" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.quantize_model" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3571,7 +3377,11 @@ counterparts defined in
                 <code>extra_conversion</code>
             </td>
             <td>
-                  <code><span title="fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</span> | None</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantized_module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleConversionDict&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Union&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizedModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;SkipQuantization&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.nn.quantized_module.ModuleConversionDict&lt;/code&gt;)" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3740,10 +3550,10 @@ is available in the conversion map or an error is thrown otherwise.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.nn.quantized_module.quantized_module_map" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantized_module_map</span><span class="p">()</span></code>
+<h3 id="fastforward.nn.quantized_module.quantized_module_map" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">quantized_module_map</span><span class="p">()</span></code>
 
-<a href="#fastforward.nn.quantized_module.quantized_module_map" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.quantized_module_map" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3818,10 +3628,10 @@ needs to be created.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.nn.quantized_module.surrogate_quantized_modules" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">surrogate_quantized_modules</span><span class="p">(</span><span class="n">model</span><span class="p">)</span></code>
+<h3 id="fastforward.nn.quantized_module.surrogate_quantized_modules" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">quantized_module</span><span class="o">.</span><span class="n">surrogate_quantized_modules</span><span class="p">(</span><span class="n">model</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.quantized_module.surrogate_quantized_modules" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.nn.quantized_module.surrogate_quantized_modules" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3900,7 +3710,11 @@ have a type name that ends in 'Surrogate'.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</span></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantized_module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleConversionDict&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Union&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizedModuleType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;SkipQuantization&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.nn.quantized_module.ModuleConversionDict&lt;/code&gt;)" href="#fastforward.nn.quantized_module.ModuleConversionDict">ModuleConversionDict</a></code>
             </td>
             <td>
               <div class="doc-md-description">

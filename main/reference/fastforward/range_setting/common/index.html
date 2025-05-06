@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.range_setting.common" class="md-skip">
+        <a href="#fastforward.range_setting.common.RangeEstimator" class="md-skip">
           Skip to content
         </a>
       
@@ -1749,15 +1749,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.range_setting.common" class="md-nav__link">
-    <span class="md-ellipsis">
-      common
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.range_setting.common.RangeEstimator" class="md-nav__link">
     <span class="md-ellipsis">
       RangeEstimator
@@ -1846,6 +1837,15 @@
   <a href="#fastforward.range_setting.common.SimpleEstimatorStep.estimate_step" class="md-nav__link">
     <span class="md-ellipsis">
       estimate_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.range_setting.common.SimpleEstimatorStep.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      forward
     </span>
   </a>
   
@@ -2033,7 +2033,7 @@
 
 
 
-<a id="fastforward.range_setting.common"></a>
+
     <div class="doc doc-contents first">
 
         <p>Collection of types, protocols and base implementations for range setting methods.</p>
@@ -2059,11 +2059,11 @@
 
 
 
-<h2 id="fastforward.range_setting.common.RangeEstimator" class="doc doc-heading">
-            <code>RangeEstimator</code>
+<h3 id="fastforward.range_setting.common.RangeEstimator" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.range_setting.common.RangeEstimator</code>
 
 
-<a href="#fastforward.range_setting.common.RangeEstimator" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.range_setting.common.RangeEstimator" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2087,123 +2087,6 @@ and <code>cleanup</code> is called separately.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RangeEstimator</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">_Module</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for range estimator methods.</span>
-
-<span class="sd">    Subclasses of this base class implement preparation and cleanup methods for</span>
-<span class="sd">    range estimation that setup a module for range estimation before passing</span>
-<span class="sd">    data through the model and clean up any range estimation related settings</span>
-<span class="sd">    afterwards.</span>
-
-<span class="sd">    Since many range estimation methods operate &#39;locally&#39; on leaf modules for</span>
-<span class="sd">    which separate prepare and cleanup steps are appropriate, `split_module`</span>
-<span class="sd">    may take a particular module and yield child modules for which `prepare`</span>
-<span class="sd">    and `cleanup` is called separately.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">_Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare module for a particular range estimation method.</span>
-
-<span class="sd">        Any metadata that is returned from this method is fed back to cleanup</span>
-<span class="sd">        after range estimation.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            module: Module to prepare for range estimation</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            None or any Metadata that may be used during cleanup.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">_Module</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">_T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up any range estimation specific settings from module.</span>
-
-<span class="sd">        After the conclusion of this method, it is assumed that module is in</span>
-<span class="sd">        the same state as before `prepare` was called, except for some</span>
-<span class="sd">        quantization specific parameters that where estimated during the range</span>
-<span class="sd">        estimation step.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            module: The module to clean up</span>
-<span class="sd">            metadata: Any metadata that was returned from the prepare method for `module`</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">split_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">_Module</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Split the module into one or more submodules.</span>
-
-<span class="sd">        For each module yielded from this function, prepare and cleanup are</span>
-<span class="sd">        called separately. If only a single prepare and cleanup should be</span>
-<span class="sd">        performed from module, only yield module once.</span>
-
-<span class="sd">        Yields:</span>
-<span class="sd">            Submodules for module (or module itself) for which a separate prepare/cleanup</span>
-<span class="sd">                step is performed.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2220,14 +2103,14 @@ and <code>cleanup</code> is called separately.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.RangeEstimator.cleanup" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.RangeEstimator.cleanup" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.RangeEstimator.cleanup" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.RangeEstimator.cleanup" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2324,14 +2207,14 @@ estimation step.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.RangeEstimator.prepare" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.RangeEstimator.prepare" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">module</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.RangeEstimator.prepare" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.RangeEstimator.prepare" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2433,14 +2316,14 @@ after range estimation.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.RangeEstimator.split_module" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">split_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.RangeEstimator.split_module" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">split_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.RangeEstimator.split_module" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.RangeEstimator.split_module" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2520,11 +2403,11 @@ step is performed.</p>
 
 
 
-<h2 id="fastforward.range_setting.common.RangeSettable" class="doc doc-heading">
-            <code>RangeSettable</code>
+<h3 id="fastforward.range_setting.common.RangeSettable" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.range_setting.common.RangeSettable</code>
 
 
-<a href="#fastforward.range_setting.common.RangeSettable" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.range_setting.common.RangeSettable" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2543,83 +2426,6 @@ particular quantizer parameterization and is used by range setting methods.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@runtime_checkable</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">RangeSettable</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Interface for range settable quantization modules.</span>
-
-<span class="sd">    The quantization parameters for modules that implement this interface can</span>
-<span class="sd">    be specified through a quantization range. This is a generalization over</span>
-<span class="sd">    particular quantizer parameterization and is used by range setting methods.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">granularity</span><span class="p">(</span><span class="n">Protocol</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">granularity</span><span class="o">.</span><span class="n">Granularity</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The quantization granularity for a quantizer.</span>
-
-<span class="sd">        The granularity specifies which part of the input tensor is quantized</span>
-<span class="sd">        using which quantization parameters. Examples of granularities are</span>
-<span class="sd">        per-tensor and per-channel.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            quantization granulirity</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_range</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantization range for a quantizer specified through a minimum and maximum threshold.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Minimum threshold for quantization range as N-d tensor or None of</span>
-<span class="sd">                no range is specified.</span>
-<span class="sd">            Maximum threshold for quantization range as N-d tensor or None of</span>
-<span class="sd">                no range is specified.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-
-    <span class="nd">@quantization_range</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">quantization_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__range</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2635,14 +2441,14 @@ particular quantizer parameterization and is used by range setting methods.</p>
 
 
 
-<h3 id="fastforward.range_setting.common.RangeSettable.granularity" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">granularity</span></code>
+<h4 id="fastforward.range_setting.common.RangeSettable.granularity" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">granularity</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.RangeSettable.granularity" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.RangeSettable.granularity" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2683,15 +2489,15 @@ per-tensor and per-channel.</p>
 
 
 
-<h3 id="fastforward.range_setting.common.RangeSettable.quantization_range" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">quantization_range</span></code>
+<h4 id="fastforward.range_setting.common.RangeSettable.quantization_range" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantization_range</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
       <small class="doc doc-label doc-label-writable"><code>writable</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.RangeSettable.quantization_range" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.RangeSettable.quantization_range" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2751,11 +2557,10 @@ no range is specified.</p>
 
 
 
-<h2 id="fastforward.range_setting.common.SimpleEstimatorStep" class="doc doc-heading">
-            <code>SimpleEstimatorStep</code>
+<h3 id="fastforward.range_setting.common.SimpleEstimatorStep" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">range_setting</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">SimpleEstimatorStep</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">disable_quantization</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-
-<a href="#fastforward.range_setting.common.SimpleEstimatorStep" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.range_setting.common.SimpleEstimatorStep" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2807,127 +2612,17 @@ are propagated through the network.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
+                  <details class="quote">
+                    <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">193</span>
 <span class="normal">194</span>
 <span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SimpleEstimatorStep</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">_QuantizerType</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for simple range estimator step.</span>
-
-<span class="sd">    SimpleEstimatorStep provides a forward pass in which estimate_step is called. During</span>
-<span class="sd">    the first execution of the forward pass, setup_estimator is called.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        disable_quantization: If True, during range estimation, the ranges are estimated</span>
-<span class="sd">            based on a non-quantized forward pass, i.e., the output of all quantizers will</span>
-<span class="sd">            not be quantized. If False, the quantizers will produce quantized tensors which</span>
-<span class="sd">            are propagated through the network.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">disable_quantization</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_disable_quantization</span> <span class="o">=</span> <span class="n">disable_quantization</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">setup_estimator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform setup for the estimator.</span>
-
-<span class="sd">        The first data batch is passed. this method is only called once during</span>
-<span class="sd">        the first estimator step.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            data: The first batch passed to the estimator.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">estimate_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">:</span> <span class="n">_QuantizerType</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given quantizer and data, update the quantization parameters of `quantizer` based on data.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            quantizer: `Quantizer` module for which parameters should be updated</span>
-<span class="sd">            data: Data that update should be based on</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span>
-
-    <span class="nd">@override</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">quantizer</span><span class="p">:</span> <span class="n">_QuantizerType</span><span class="p">,</span>
-        <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-        <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-        <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">_data</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">data</span>
-
-        <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">setup_estimator</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">estimate_step</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disable_quantization</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">data</span>
-        <span class="k">return</span> <span class="n">callback</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">disable_quantization</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_disable_quantization</span> <span class="o">=</span> <span class="n">disable_quantization</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-              </details>
+                  </details>
 
 
 
@@ -2944,14 +2639,14 @@ are propagated through the network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.SimpleEstimatorStep.estimate_step" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">estimate_step</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.SimpleEstimatorStep.estimate_step" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">estimate_step</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.SimpleEstimatorStep.estimate_step" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.SimpleEstimatorStep.estimate_step" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3034,10 +2729,71 @@ are propagated through the network.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.SimpleEstimatorStep.setup_estimator" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">setup_estimator</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.SimpleEstimatorStep.forward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.range_setting.common.SimpleEstimatorStep.setup_estimator" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.SimpleEstimatorStep.forward" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>  <span class="c1"># type: ignore[misc]</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">quantizer</span><span class="p">:</span> <span class="n">_QuantizerType</span><span class="p">,</span>
+    <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_data</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_estimator</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">estimate_step</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disable_quantization</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span>
+    <span class="k">return</span> <span class="n">callback</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.range_setting.common.SimpleEstimatorStep.setup_estimator" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">setup_estimator</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+<a href="#fastforward.range_setting.common.SimpleEstimatorStep.setup_estimator" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3115,16 +2871,16 @@ the first estimator step.</p>
 
 
 
-<h2 id="fastforward.range_setting.common.SupportsRangeBasedOperator" class="doc doc-heading">
-            <code>SupportsRangeBasedOperator</code>
+<h3 id="fastforward.range_setting.common.SupportsRangeBasedOperator" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.range_setting.common.SupportsRangeBasedOperator</code>
 
 
-<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code&gt;RangeSettable&lt;/code&gt; (&lt;code&gt;fastforward.range_setting.common.RangeSettable&lt;/code&gt;)" href="#fastforward.range_setting.common.RangeSettable">RangeSettable</a></code>, <code><span title="typing.Protocol">Protocol</span></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.range_setting.common.RangeSettable&lt;/code&gt;" href="#fastforward.range_setting.common.RangeSettable">RangeSettable</a></code>, <code><span title="typing.Protocol">Protocol</span></code></p>
 
 
         <p>Interface for quantizers that can create a quantization operator for a range.</p>
@@ -3140,97 +2896,6 @@ during estimation time.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/range_setting/common.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@runtime_checkable</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">SupportsRangeBasedOperator</span><span class="p">(</span><span class="n">RangeSettable</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Interface for quantizers that can create a quantization operator for a range.</span>
-
-<span class="sd">    Interface for Quantizers that can specify a quantization function given a</span>
-<span class="sd">    min/max thresholded quantization range. This is used by range setting</span>
-<span class="sd">    methods that require access to multiple parameterized quantization function</span>
-<span class="sd">    during estimation time.</span>
-
-<span class="sd">    This interface extends the `RangeSettable` interface.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return boolean indicating if quantizer is symmetric.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Boolean indicating if quantization operator is symmetric or not</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">operator_for_range</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">__min</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">__max</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">__data_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">QuantizedTensor</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return quantization operator using the given range.</span>
-
-<span class="sd">        Returns a callable that specifies a quantization operator for the given min/max thresholded</span>
-<span class="sd">        quantization range and specific data_shape.</span>
-
-<span class="sd">        It is assumed that the returned operator is independent of self and not altered during</span>
-<span class="sd">        its life and users of this method may assume a unique reference to the returned operator.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            __min: N-d tensor for minimum threshold of quantization range(s).</span>
-<span class="sd">            __max: N-d tensor for maximum threshold of quantization range(s).</span>
-<span class="sd">            __data_shape: Shape of input to quantization operator.</span>
-
-<span class="sd">        Note:</span>
-<span class="sd">            Implementers of this protocol can use different names for the function arguments</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Quantization operator for given quantization range and data shape.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -3246,14 +2911,14 @@ during estimation time.</p>
 
 
 
-<h3 id="fastforward.range_setting.common.SupportsRangeBasedOperator.symmetric" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">symmetric</span></code>
+<h4 id="fastforward.range_setting.common.SupportsRangeBasedOperator.symmetric" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">symmetric</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator.symmetric" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator.symmetric" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3292,10 +2957,10 @@ during estimation time.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.range_setting.common.SupportsRangeBasedOperator.operator_for_range" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">operator_for_range</span><span class="p">(</span><span class="n">__min</span><span class="p">,</span> <span class="n">__max</span><span class="p">,</span> <span class="n">__data_shape</span><span class="p">)</span></code>
+<h4 id="fastforward.range_setting.common.SupportsRangeBasedOperator.operator_for_range" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">operator_for_range</span><span class="p">(</span><span class="n">__min</span><span class="p">,</span> <span class="n">__max</span><span class="p">,</span> <span class="n">__data_shape</span><span class="p">)</span></code>
 
-<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator.operator_for_range" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.range_setting.common.SupportsRangeBasedOperator.operator_for_range" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3386,7 +3051,7 @@ its life and users of this method may assume a unique reference to the returned 
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>], <a class="autorefs autorefs-internal" title="&lt;code&gt;QuantizedTensor&lt;/code&gt; (&lt;code&gt;fastforward.quantized_tensor.QuantizedTensor&lt;/code&gt;)" href="../../quantized_tensor/#fastforward.quantized_tensor.QuantizedTensor">QuantizedTensor</a>]</code>
+                  <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>], <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantized_tensor&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizedTensor&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantization_context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.quantized_tensor.QuantizedTensor&lt;/code&gt;)" href="../../quantized_tensor/#fastforward.quantized_tensor.QuantizedTensor">QuantizedTensor</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3463,10 +3128,10 @@ its life and users of this method may assume a unique reference to the returned 
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.range_setting.common.estimate_ranges" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">estimate_ranges</span><span class="p">(</span><span class="n">model_or_layers</span><span class="p">,</span> <span class="n">estimator</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h3 id="fastforward.range_setting.common.estimate_ranges" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">range_setting</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">estimate_ranges</span><span class="p">(</span><span class="n">model_or_layers</span><span class="p">,</span> <span class="n">estimator</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.range_setting.common.estimate_ranges" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.range_setting.common.estimate_ranges" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">

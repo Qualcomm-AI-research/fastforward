@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.ste" class="md-skip">
+        <a href="#fastforward.quantization.ste.round_ste" class="md-skip">
           Skip to content
         </a>
       
@@ -1601,9 +1601,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.ste" class="md-nav__link">
+  <a href="#fastforward.quantization.ste.round_ste" class="md-nav__link">
     <span class="md-ellipsis">
-      ste
+      fastforward.quantization.ste.round_ste
     </span>
   </a>
   
@@ -1618,6 +1618,15 @@
   
     <nav class="md-nav" aria-label="STEAutogradFunc">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.ste.STEAutogradFunc.apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      apply
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fastforward.quantization.ste.STEAutogradFunc.backward" class="md-nav__link">
@@ -1949,7 +1958,7 @@
 
 
 
-<a id="fastforward.quantization.ste"></a>
+
     <div class="doc doc-contents first">
 
 
@@ -1968,16 +1977,36 @@
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.quantization.ste.round_ste" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">ste</span><span class="o">.</span><span class="n">round_ste</span> <span class="o">=</span> <span class="n">ste</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">round</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.ste.round_ste" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 <div class="doc doc-object doc-class">
 
 
 
-<h2 id="fastforward.quantization.ste.STEAutogradFunc" class="doc doc-heading">
-            <code>STEAutogradFunc</code>
+<h3 id="fastforward.quantization.ste.STEAutogradFunc" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.ste.STEAutogradFunc</code>
 
 
-<a href="#fastforward.quantization.ste.STEAutogradFunc" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.ste.STEAutogradFunc" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2001,7 +2030,11 @@ providing a gradient for the backward pass.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code><span title="fastforward.quantization.ste.STEAutogradFunc.apply">apply</span></code></td>
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;apply&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.ste.STEAutogradFunc.apply&lt;/code&gt;)" href="#fastforward.quantization.ste.STEAutogradFunc.apply">apply</a></code></td>
             <td>
                   <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>, <span title="torch.Tensor">Tensor</span>], <span title="torch.Tensor">Tensor</span>]</code>
             </td>
@@ -2020,85 +2053,6 @@ providing a gradient for the backward pass.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/ste.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">STEAutogradFunc</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A custom autograd function for Straight-Through Estimator (STE).</span>
-
-<span class="sd">    This function allows the forward pass to be non-differentiable while</span>
-<span class="sd">    providing a gradient for the backward pass.</span>
-
-<span class="sd">    Attributes:</span>
-<span class="sd">        apply: The function to apply STE.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">apply</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass for the STE function.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            ctx: Context object to store information for backward computation.</span>
-<span class="sd">            input: The input tensor.</span>
-<span class="sd">            output: The output tensor.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The output tensor.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">output</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>  <span class="c1"># type: ignore[override]</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Backward pass for the STE function.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            ctx: Context object.</span>
-<span class="sd">            output_grad: Gradient of the output.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Gradient of the input and None for the output.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">output_grad</span><span class="p">,</span> <span class="kc">None</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2110,19 +2064,39 @@ providing a gradient for the backward pass.</p>
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.ste.STEAutogradFunc.apply" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">apply</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.ste.STEAutogradFunc.apply" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.ste.STEAutogradFunc.backward" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.ste.STEAutogradFunc.backward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.ste.STEAutogradFunc.backward" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.ste.STEAutogradFunc.backward" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2234,14 +2208,14 @@ providing a gradient for the backward pass.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.ste.STEAutogradFunc.forward" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.ste.STEAutogradFunc.forward" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
   </span>
 
-<a href="#fastforward.quantization.ste.STEAutogradFunc.forward" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.ste.STEAutogradFunc.forward" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2380,11 +2354,11 @@ providing a gradient for the backward pass.</p>
 
 
 
-<h2 id="fastforward.quantization.ste.STEWrappedFunction" class="doc doc-heading">
-            <code>STEWrappedFunction</code>
+<h3 id="fastforward.quantization.ste.STEWrappedFunction" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.ste.STEWrappedFunction</code>
 
 
-<a href="#fastforward.quantization.ste.STEWrappedFunction" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.ste.STEWrappedFunction" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2401,45 +2375,6 @@ providing a gradient for the backward pass.</p>
 
 
 
-              <details class="quote">
-                <summary>Source code in <code>fastforward/quantization/ste.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">STEWrappedFunction</span><span class="p">(</span><span class="n">Protocol</span><span class="p">[</span><span class="n">_P</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol for a wrapped function using STE.</span>
-
-<span class="sd">    This protocol defines the call signature for functions wrapped with STE.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">_P</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">_P</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Call the wrapped function.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            __input: The input tensor.</span>
-<span class="sd">            *args: Additional positional arguments.</span>
-<span class="sd">            **kwargs: Additional keyword arguments.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The output tensor.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-              </details>
 
 
 
@@ -2456,10 +2391,10 @@ providing a gradient for the backward pass.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.ste.STEWrappedFunction.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">__input</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.ste.STEWrappedFunction.__call__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">__input</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.ste.STEWrappedFunction.__call__" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.ste.STEWrappedFunction.__call__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2596,10 +2531,10 @@ providing a gradient for the backward pass.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.quantization.ste.ste" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">ste</span><span class="p">(</span><span class="n">func</span><span class="p">)</span></code>
+<h3 id="fastforward.quantization.ste.ste" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">ste</span><span class="o">.</span><span class="n">ste</span><span class="p">(</span><span class="n">func</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.ste.ste" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.quantization.ste.ste" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -2650,7 +2585,7 @@ providing a gradient for the backward pass.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;STEWrappedFunction&lt;/code&gt; (&lt;code&gt;fastforward.quantization.ste.STEWrappedFunction&lt;/code&gt;)" href="#fastforward.quantization.ste.STEWrappedFunction">STEWrappedFunction</a>[<span title="fastforward.quantization.ste._P">_P</span>]</code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.ste.STEWrappedFunction&lt;/code&gt;" href="#fastforward.quantization.ste.STEWrappedFunction">STEWrappedFunction</a>[<span title="fastforward.quantization.ste._P">_P</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">

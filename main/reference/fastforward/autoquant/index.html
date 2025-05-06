@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.autoquant" class="md-skip">
+        <a href="#fastforward.autoquant--example" class="md-skip">
           Skip to content
         </a>
       
@@ -545,9 +545,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.autoquant" class="md-nav__link">
+  <a href="#fastforward.autoquant--example" class="md-nav__link">
     <span class="md-ellipsis">
-      autoquant
+      Example
     </span>
   </a>
   
@@ -1890,15 +1890,39 @@
 
 
 
-<a id="fastforward.autoquant"></a>
+
     <div class="doc doc-contents first">
 
-        <div class="admonition experimental">
+        <p>Autoquant is a feature of FastForward that simplifies the
+process of integrating new models.</p>
+<div class="admonition experimental">
 <p class="admonition-title">Experimental</p>
 <p>Please be aware that autoquant is an experimental feature. Use it with caution and
 expect changes as we continue the development of the feature.</p>
 <p>We encourage you to report any issues or feature requests.</p>
 </div>
+<p>Autoquant takes a PyTorch module (<code>torch.nn.Module</code>) instance as input and
+generates Python code that implements quantized modules for the input module
+and all of its submodules. The newly generated modules can either be used
+directly or saved as a file -- after which they can be modified and integrated
+into existing projects.</p>
+<h4 id="fastforward.autoquant--example">Example<a class="headerlink" href="#fastforward.autoquant--example" title="Permanent link">#</a></h4>
+<p>The following example will generate subclasses of <code>QuantizedModule</code>
+needed<sup>1</sup> to quantize <code>my_model</code> and write them to
+<code>generated_file.py</code>. Note that <code>fastforward.autoquantize</code> does not change <code>my_model</code>.</p>
+<pre><code class="language-python">my_model = get_model() # instantiate a PyTorch module
+fastforward.autoquantize(my_model, output_path=&quot;generated_file.py&quot;)
+</code></pre>
+<p>In order to start using the newly generated <code>QuantizedModule</code>s we still
+need to quantize <code>my_model</code> using <code>fastforward.quantize_model</code>:</p>
+<pre><code class="language-python">my_model = get_model() # instantiate a PyTorch module
+fastforward.autoquantize(my_model, output_path=&quot;generated_file.py&quot;, auto_import=True)
+fastforward.quantize_model(my_model)
+</code></pre>
+<p><small>1: Autoquant is an experimental feature under active development. This means
+ not all PyTorch modules are currently supported. Please reach out to us if
+a particular module is important to you.</small></p>
+<hr />
 
 
 
@@ -1921,10 +1945,10 @@ expect changes as we continue the development of the feature.</p>
 <div class="doc doc-object doc-function">
 
 
-<h2 id="fastforward.autoquant.autoquantize" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">autoquantize</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">operator_table</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">code_formatter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">code_writer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_import</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+<h3 id="fastforward.autoquant.autoquantize" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">operator_table</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">code_formatter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">code_writer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_import</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
-<a href="#fastforward.autoquant.autoquantize" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#fastforward.autoquant.autoquantize" class="headerlink" title="Permanent link">#</a></h3>
           <div class="doc-overloads">
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">autoquantize</span><span class="p">(</span>
     <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
@@ -1933,7 +1957,7 @@ expect changes as we continue the development of the feature.</p>
     <span class="n">code_formatter</span><span class="p">:</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">CodeFormatter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">output_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">force_overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AutoQuantizedCode</span>
 </code></pre></div><div class="doc-signature highlight"><pre><span></span><code><span class="nf">autoquantize</span><span class="p">(</span>
     <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
@@ -1941,7 +1965,7 @@ expect changes as we continue the development of the feature.</p>
     <span class="n">operator_table</span><span class="p">:</span> <span class="n">optable</span><span class="o">.</span><span class="n">OperatorTable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">code_formatter</span><span class="p">:</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">CodeFormatter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">code_writer</span><span class="p">:</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">BasicCodeWriter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AutoQuantizedCode</span>
 </code></pre></div>          </div>
 
@@ -2074,7 +2098,7 @@ output_path.</p>
               </div>
             </td>
             <td>
-                  <code>True</code>
+                  <code>False</code>
             </td>
           </tr>
       </tbody>
@@ -2083,48 +2107,48 @@ output_path.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/autoquant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize</span><span class="p">(</span>
     <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">operator_table</span><span class="p">:</span> <span class="n">optable</span><span class="o">.</span><span class="n">OperatorTable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -2132,7 +2156,7 @@ output_path.</p>
     <span class="n">output_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">force_overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">code_writer</span><span class="p">:</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">BasicCodeWriter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">auto_import</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AutoQuantizedCode</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create Python source code for quantized version of `module`.</span>
 
