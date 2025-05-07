@@ -3341,6 +3341,7 @@ and quantizers). It then performs three processing steps:</p>
     automatically inferred to any operations where that is possible.</p>
 <p>Finally the function will store the model in the user-defined <code>output_directory</code>, using the
 user-defined <code>model_name</code>.</p>
+<p>The function raises an <code>ExportError</code> exception if PyTorch version &lt; 2.5 is used.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3671,7 +3672,13 @@ view-type operations in the graph as possible.</p>
 <span class="normal">579</span>
 <span class="normal">580</span>
 <span class="normal">581</span>
-<span class="normal">582</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ff</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="normal">582</span>
+<span class="normal">583</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ff</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
@@ -3717,6 +3724,8 @@ view-type operations in the graph as possible.</p>
 <span class="sd">    Finally the function will store the model in the user-defined `output_directory`, using the</span>
 <span class="sd">    user-defined `model_name`.</span>
 
+<span class="sd">    The function raises an `ExportError` exception if PyTorch version &lt; 2.5 is used.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        model: A torch module, can contain FF modules.</span>
 <span class="sd">        data: A torch `Tensor` object that compatible with the model&#39;s input shape.</span>
@@ -3732,6 +3741,12 @@ view-type operations in the graph as possible.</p>
 <span class="sd">        enable_encodings_propagation: Option to propagate the quantization encodings through as many</span>
 <span class="sd">            view-type operations in the graph as possible.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">__version__</span> <span class="o">&lt;</span> <span class="s2">&quot;2.5&quot;</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;Export functionality is only supported for PyTorch version 2.5 and above. &quot;</span>
+            <span class="s2">&quot;Please upgrade your PyTorch installation to use this feature.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">ExportError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
     <span class="n">output_directory</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">output_directory</span><span class="p">)</span>
     <span class="n">output_directory</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">onnx_location</span> <span class="o">=</span> <span class="n">output_directory</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">.onnx&quot;</span>
@@ -3751,8 +3766,9 @@ view-type operations in the graph as possible.</p>
     <span class="n">graph_operators</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">graph_preprocessors</span><span class="p">,</span> <span class="o">*</span><span class="n">default_graph_operators</span><span class="p">]</span>
 
     <span class="k">with</span> <span class="n">export_mode</span><span class="p">(</span><span class="kc">True</span><span class="p">):</span>
-        <span class="n">dynamo_exported_program</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">model_kwargs</span><span class="p">)</span>
-        <span class="n">dynamo_exported_program</span> <span class="o">=</span> <span class="n">dynamo_exported_program</span><span class="o">.</span><span class="n">run_decompositions</span><span class="p">({})</span>
+        <span class="n">dynamo_exported_program</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">export</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">model_kwargs</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">run_decompositions</span><span class="p">()</span>
 
     <span class="n">dynamo_exported_program</span><span class="p">,</span> <span class="n">new_old_input_spec_mapping</span><span class="p">,</span> <span class="n">raw_logs</span> <span class="o">=</span> <span class="n">process_dynamo_program</span><span class="p">(</span>
         <span class="n">dynamo_exported_program</span><span class="p">,</span> <span class="n">graph_operators</span>
@@ -3767,10 +3783,7 @@ view-type operations in the graph as possible.</p>
         <span class="n">propagated_encodings_dict</span> <span class="o">=</span> <span class="n">propagate_encodings</span><span class="p">(</span><span class="n">dynamo_exported_program</span><span class="p">,</span> <span class="n">quantization_logs</span><span class="p">)</span>
         <span class="n">quantization_logs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">propagated_encodings_dict</span><span class="p">)</span>
 
-    <span class="n">torch_onnx_model</span><span class="p">:</span> <span class="n">onnxscript</span><span class="o">.</span><span class="n">ir</span><span class="o">.</span><span class="n">Model</span> <span class="o">=</span> <span class="n">torch_onnx</span><span class="o">.</span><span class="n">exported_program_to_ir</span><span class="p">(</span>
-        <span class="n">dynamo_exported_program</span>
-    <span class="p">)</span>
-
+    <span class="n">torch_onnx_model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">onnx</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">dynamo_exported_program</span><span class="p">)</span><span class="o">.</span><span class="n">model</span>  <span class="c1"># type: ignore[call-arg, union-attr]</span>
     <span class="n">torch_onnx_inputs</span> <span class="o">=</span> <span class="n">torch_onnx_model</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">inputs</span>
     <span class="n">torch_onnx_outputs</span> <span class="o">=</span> <span class="n">torch_onnx_model</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">outputs</span>
 
