@@ -84,7 +84,21 @@ def pytest_runtest_call(item: pytest.Item) -> Iterator[None]:
 
 @pytest.fixture(scope="session", autouse=True)
 def enable_profiling_fixture() -> None:
-    """Create initial load on the GPU to increase reproducibility of timing."""
+    """Create initial load for torch to increase reproducibility of timing."""
+    # Warmup torch._dynamo which is used by `torch.optim.optimizer`.
+    try:
+        import torch._dynamo  # noqa: F401
+    except ImportError:
+        pass
+
+    # Warmup libsct (libcst.matchers)
+    import fastforward._autoquant.convert  # noqa: F401
+
+    # Warmup autograd functionality (export `sympy` under the hood which takes a lot of time).
+    # For more information please profile imports from the `_make_grads` function in `torch.autograd`.
+    torch.ones(1, requires_grad=True).backward(torch.ones(1))
+
+    # Warmup CUDA functionality
     if torch.cuda.is_available():
         _ = (torch.ones(1) + torch.ones(1)).item()
         torch.cuda.synchronize()
