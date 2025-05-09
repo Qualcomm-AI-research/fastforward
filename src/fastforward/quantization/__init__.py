@@ -3,4 +3,5 @@
 
 from .affine import dynamic as dynamic
 from .affine import static as static
+from .function import create_quantization_function as create_quantization_function
 from .quant_init import QuantizationConfig as QuantizationConfig

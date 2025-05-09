@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import dataclasses
+
 import fastforward as ff
 import pytest
 import torch
@@ -78,3 +80,43 @@ def test_quantization_context_to(
     moved_func = quant_context.to("meta")
     assert isinstance(moved_func.quantization_params.scale, torch.Tensor)
     assert moved_func.quantization_params.scale.device == torch.device("meta")
+
+
+def test_create_quantization_function() -> None:
+    # GIVEN data and quant params
+    data = torch.randn(3, 3)
+    scale = 2.0
+    rescale = 3.5
+
+    # GIVEN an arbitrary quantize and dequantize function where the dequantize
+    # function has a default value
+    def _quantize(data: torch.Tensor, scale: float) -> torch.Tensor:
+        return data * scale
+
+    def _dequantize(data: torch.Tensor, rescale: float = rescale) -> torch.Tensor:
+        return data * rescale
+
+    # WHEN a custom quantizer is created
+    CustomQuantizerParams, CustomQuantizerFunction, custom_quantizer = (
+        ff.quantization.create_quantization_function("CustomQuantizer", _quantize, _dequantize)
+    )
+
+    # THEN the generated parameters dataclass must contain all parameters of
+    # both functions.
+    assert {f.name for f in dataclasses.fields(CustomQuantizerParams)} == {"scale", "rescale"}
+
+    # WHEN the custom quantizer is used using the helper function
+    quantized = custom_quantizer(data, scale=scale)
+
+    # THEN the quantized representation and the dequantized representation must match expectations.
+    torch.testing.assert_close(quantized.raw_data, _quantize(data, scale), atol=0, rtol=0)
+    torch.testing.assert_close(
+        quantized.dequantize(), _dequantize(_quantize(data, scale)), atol=0, rtol=0
+    )
+    assert quantized.quant_func is CustomQuantizerFunction  # type: ignore[comparison-overlap]
+
+    # THEN the quantization arguments must be represented in the tensor's quant_args
+    quant_args = quantized.quant_args()
+    assert isinstance(quantized.quant_args(), CustomQuantizerParams)
+    assert quant_args.scale == scale  # type: ignore[attr-defined]
+    assert quant_args.rescale == rescale  # type: ignore[attr-defined]
