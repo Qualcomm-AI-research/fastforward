@@ -66,6 +66,26 @@ def named_quantizers(
             yield prefixed_name, module
 
 
+def quantizer_state_dict(module: torch.nn.Module) -> dict[str, Any]:
+    """State dict for all (and only) quantizers in `module`.
+
+    state dict can be used using `torch.nn.Module.load_state_dict(state_dict,
+    strict=False)` to load previously stored quantizer state.
+
+    Args:
+        module: The module for which to obtain a quantizer state dict.
+
+    Returns:
+        Dictionary that is a state dict for all (initialized) quantizers in
+        `module`.
+    """
+    state_dict: dict[str, torch.Tensor] = {}
+    for name, quantizer in ff.nn.quantized_module.named_quantizers(module):
+        prefix = name + ("." if name else "")
+        quantizer.state_dict(destination=state_dict, prefix=prefix)
+    return state_dict
+
+
 _QUANTIZED_MODULE_MAP: dict[type[torch.nn.Module], list[type["QuantizedModule"]]] = {}
 
 
@@ -298,6 +318,18 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         """
         for _, quantizer in self.named_quantizers(recurse=recurse, skip_stubs=skip_stubs):
             yield quantizer
+
+    def quantizer_state_dict(self) -> dict[str, Any]:
+        """State dict for all (and only) quantizers in `module`.
+
+        state dict can be used using `torch.nn.Module.load_state_dict(state_dict,
+        strict=False)` to load previously stored quantizer state.
+
+        Returns:
+            Dictionary that is a state dict for all (initialized) quantizers in
+            module.
+        """
+        return quantizer_state_dict(self)
 
 
 class SkipQuantization:

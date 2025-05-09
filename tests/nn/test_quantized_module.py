@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # pylint: disable=missing-function-docstring
+import itertools
+
 from copy import deepcopy
 
 import fastforward as ff
@@ -235,3 +237,54 @@ def test_surrogate_quantized_modules() -> None:
     # appear in the default module map
     default_module_map = ff.nn.quantized_module.quantized_module_map()
     assert module_map[MyUnquantizableModule4] not in default_module_map
+
+
+def test_quantizer_state_store_load() -> None:
+    # GIVEN a model and a copy of the model
+    model = torch.nn.Sequential(
+        torch.nn.Linear(10, 10, bias=False), torch.nn.ReLU(), torch.nn.Linear(10, 10, bias=False)
+    )
+    duplicated_model = deepcopy(model)
+    # GIVEN both models are quantized
+    ff.quantize_model(model)
+    ff.quantize_model(duplicated_model)
+
+    assert isinstance(model, ff.nn.QuantizedModule)
+
+    def _init_quantizers(model: torch.nn.Module) -> None:
+        weight_quants = ff.find_quantizers(model, "{0,2}/[quantizer:parameter/weight]")
+        act_quants = ff.find_quantizers(model, "{0,2}/[quantizer:activation]")
+
+        act_quants.initialize(ff.nn.LinearQuantizer, num_bits=8)
+        weight_quants.initialize(ff.nn.LinearQuantizer, num_bits=8, granularity=ff.PerChannel())
+
+    # GIVEN both models are initialized identically
+    _init_quantizers(model)
+    _init_quantizers(duplicated_model)
+
+    # GIVEN ranges are inferred for the original model
+    with ff.estimate_ranges(model, ff.range_setting.running_minmax):
+        model(torch.randn(3, 10))
+
+    # WHEN we obtain the quantizer state dict from the original model
+    state_dict = model.quantizer_state_dict()
+
+    # THEN all parameters and buffers of all quantizers must be part of the
+    # state dict
+    for name, quantizer in model.named_quantizers():
+        for param_name, _ in itertools.chain(
+            quantizer.named_parameters(), quantizer.named_buffers()
+        ):
+            assert f"{name}.{param_name}" in state_dict
+
+    # WHEN the state dict of the original model is used to instantiate the state
+    # of the duplicated model
+    duplicated_model.load_state_dict(state_dict, strict=False)
+
+    # THEN the output of both models given the same input must match exactly.
+    data = torch.randn(3, 10)
+    actual_output = duplicated_model(data)
+    expected_output = model(data)
+    torch.testing.assert_close(
+        actual_output.dequantize(), expected_output.dequantize(), atol=0, rtol=0
+    )

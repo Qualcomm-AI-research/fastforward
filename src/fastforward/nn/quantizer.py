@@ -4,7 +4,7 @@
 import collections
 
 from types import SimpleNamespace
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Sequence
 
 import torch
 
@@ -263,6 +263,7 @@ class Quantizer(torch.nn.Module):
         # which prevents making weakreferences as uses in OverrideHandle
         super(torch.nn.Module, self).__setattr__("_quantizer_overrides", collections.OrderedDict())
         self.quant_metadata = None
+        self._register_load_state_dict_pre_hook(self._load_state_dict_uninitialized_param_pre_hook)
 
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
         """Quantize the input data.
@@ -328,6 +329,33 @@ class Quantizer(torch.nn.Module):
     def is_stub(self) -> bool:
         """Returns: False, indicating this is not a stub."""
         return False
+
+    def _load_state_dict_uninitialized_param_pre_hook(
+        self,
+        state_dict: dict[str, Any],
+        prefix: str,
+        local_metadata: Any,
+        strict: bool,
+        missing_keys: Sequence[str],
+        unexpected_keys: Sequence[str],
+        error_msgs: Sequence[str],
+    ) -> None:
+        """Ensure uninitialized params are materialized before loading, if required."""
+        del local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+
+        def is_uninitialized(tensor: torch.Tensor) -> bool:
+            return isinstance(tensor, torch.nn.parameter.UninitializedTensorMixin)  # type: ignore[attr-defined]
+
+        for full_name, loaded_param in state_dict.items():
+            param_name = full_name.removeprefix(prefix)
+            param = getattr(self, param_name, None)
+
+            if loaded_param is None or param is None:
+                continue
+
+            if is_uninitialized(param) and not is_uninitialized(loaded_param):
+                with torch.no_grad():
+                    param.materialize(loaded_param.shape)
 
 
 class QuantizerStub(Quantizer):
