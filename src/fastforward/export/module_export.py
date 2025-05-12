@@ -108,6 +108,7 @@ def export_modules(
     output_path: pathlib.Path,
     kwargs: None | dict[str, Any] = None,
     enable_encodings_propagation: bool = False,
+    verbose: bool | None = None,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -138,6 +139,7 @@ def export_modules(
         output_path: Path to the exported artifacts.
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations as possible for each exported graph.
+        verbose: Whether to print verbose messages. If `None`, some messages will be printed.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -200,6 +202,7 @@ def export_modules(
             module_name,
             model_kwargs=module_input_kwargs,
             enable_encodings_propagation=enable_encodings_propagation,
+            verbose=verbose,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings

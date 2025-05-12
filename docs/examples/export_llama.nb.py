@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.17.0
+#       jupytext_version: 1.16.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -54,16 +54,16 @@ from fastforward.export.export import export
 from fastforward.export.module_export import export_modules
 
 warnings.filterwarnings("ignore")
+logging.getLogger("torch.onnx._internal._registration").setLevel(logging.ERROR)
 logging.getLogger("torch.onnx._internal.exporter").setLevel(logging.ERROR)
-
+datasets.utils.logging.get_logger("datasets").setLevel("ERROR")
 # -
-datasets.utils.logging.get_logger("datasets.packaged_modules.cache").setLevel("ERROR")
 
 # ## Mode setup
 #
 # Since we are not training the model, and to avoid memory issues, we switch off gradient calculation.
-torch.set_grad_enabled(False)
 
+torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703
 
 # ## Model Definition and Quantization
 
@@ -134,6 +134,7 @@ export(
     model_name=model_name,
     model_kwargs=batch,
     enable_encodings_propagation=True,
+    verbose=False,
 )
 
 # As a result our chosen output directory is now populated with all the relevant files. Because we choose to split the parameters from the ONNX graph, we will get separate files for each model parameter. However, running the command below, we can see on the top the ONNX and encondings files which are the most relevant to us.
@@ -187,6 +188,7 @@ paths = export_modules(
     enable_encodings_propagation=True,
     kwargs=batch,
     output_path=modules_output_path,
+    verbose=False,
 )
 # -
 
@@ -212,6 +214,7 @@ full_llama = export_modules(
     enable_encodings_propagation=True,
     kwargs=batch,
     output_path=full_llama_output_path,
+    verbose=False,
 )
 # -
 

@@ -427,6 +427,7 @@ def export(
     input_names: None | list[str] = None,
     output_names: None | list[str] = None,
     enable_encodings_propagation: bool = False,
+    verbose: bool | None = None,
 ) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -478,6 +479,7 @@ def export(
         output_names: Replace the default ONNX artifact output names with user defined ones.
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations in the graph as possible.
+        verbose: Whether to print verbose messages. If `None`, some messages will be printed.
     """
     if torch.__version__ < "2.5":
         msg = (
@@ -521,7 +523,7 @@ def export(
         propagated_encodings_dict = propagate_encodings(dynamo_exported_program, quantization_logs)
         quantization_logs.update(propagated_encodings_dict)
 
-    torch_onnx_model = torch.onnx.export(dynamo_exported_program).model  # type: ignore[call-arg, union-attr]
+    torch_onnx_model = torch.onnx.export(dynamo_exported_program, verbose=verbose).model  # type: ignore[call-arg, arg-type, union-attr, unused-ignore]
     torch_onnx_inputs = torch_onnx_model.graph.inputs
     torch_onnx_outputs = torch_onnx_model.graph.outputs
 
