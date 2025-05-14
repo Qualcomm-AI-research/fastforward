@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.13">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -1633,6 +1633,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.function.create_quantization_function" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_quantization_function
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2209,17 +2218,17 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span>
 <span class="normal">161</span>
 <span class="normal">162</span>
-<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach to `data` to this context.</span>
 
 <span class="sd">    Creates a `QuantizedTensor` that uses data as raw_data and this context</span>
@@ -2253,13 +2262,13 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
-<span class="normal">121</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">clone_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">clone_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Clone each tensor in `quantization_params`.</span>
 
 <span class="sd">    Return a new context with updated parameters.</span>
@@ -2288,10 +2297,7 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
 <span class="normal">137</span>
@@ -2299,7 +2305,10 @@ as quantization context.</p>
 <span class="normal">139</span>
 <span class="normal">140</span>
 <span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">contiguous_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">contiguous_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update each tensor in `quantization_params` to be contiguous.&quot;&quot;&quot;</span>
     <span class="n">fn</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">maybe_tensor_apply</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="o">.</span><span class="n">contiguous</span><span class="p">)</span>
     <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
@@ -2334,13 +2343,13 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
-<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Detach each tensor in `quantization_params`.</span>
 
 <span class="sd">    Return a new context with updated parameters.</span>
@@ -2369,14 +2378,14 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
 <span class="normal">150</span>
-<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update each tensor in `quantization_params` to `device`.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_to_device</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -2481,10 +2490,7 @@ as quantization context.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
 <span class="normal"> 90</span>
 <span class="normal"> 91</span>
 <span class="normal"> 92</span>
@@ -2500,7 +2506,10 @@ as quantization context.</p>
 <span class="normal">102</span>
 <span class="normal">103</span>
 <span class="normal">104</span>
-<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">quantization_fn</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">QuantizationFunction</span><span class="p">[</span><span class="n">QuantParams_co</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">**</span><span class="n">changes</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
@@ -2592,27 +2601,27 @@ as quantization context.</p>
     <div class="doc doc-contents ">
 
         <p>Abstract method for dequantization.</p>
-<p>Implementors are expected to implement the dequantize function that takes
+<p>Implementers are expected to implement the dequantize function that takes
 quantized data and a <code>QuantizationParameters</code> object and return a
 tensor that represents the dequantized data.</p>
 
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span>
 <span class="normal">70</span>
 <span class="normal">71</span>
-<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">dequantize</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">QuantParams_co</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>  <span class="c1"># type: ignore[misc]</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract method for dequantization.</span>
 
-<span class="sd">    Implementors are expected to implement the dequantize function that takes</span>
+<span class="sd">    Implementers are expected to implement the dequantize function that takes</span>
 <span class="sd">    quantized data and a `QuantizationParameters` object and return a</span>
 <span class="sd">    tensor that represents the dequantized data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2639,27 +2648,27 @@ tensor that represents the dequantized data.</p>
     <div class="doc doc-contents ">
 
         <p>Abstract method for quantization.</p>
-<p>Implementors are expected to implement the quantize function that takes
+<p>Implementers are expected to implement the quantize function that takes
 input data and a <code>QuantizationParameters</code> object and return a
 <code>QuantizedTensor</code> that is <code>data</code> quantized following <code>params</code>.</p>
 
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span>
-<span class="normal">62</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">quantize</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">QuantParams_co</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>  <span class="c1"># type: ignore[misc]</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract method for quantization.</span>
 
-<span class="sd">    Implementors are expected to implement the quantize function that takes</span>
+<span class="sd">    Implementers are expected to implement the quantize function that takes</span>
 <span class="sd">    input data and a `QuantizationParameters` object and return a</span>
 <span class="sd">    `QuantizedTensor` that is `data` quantized following `params`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2730,9 +2739,9 @@ input data and a <code>QuantizationParameters</code> object and return a
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
 <span class="k">def</span><span class="w"> </span><span class="fm">__format__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -2757,9 +2766,9 @@ input data and a <code>QuantizationParameters</code> object and return a
 
             <details class="quote">
               <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">with_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Replace given keywords and return a new `QuantizationParameters`.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -2776,6 +2785,189 @@ input data and a <code>QuantizationParameters</code> object and return a
 
 </div>
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.quantization.function.create_quantization_function" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">create_quantization_function</span><span class="p">(</span><span class="n">cls_name</span><span class="p">,</span> <span class="n">quantize</span><span class="p">,</span> <span class="n">dequantize</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.function.create_quantization_function" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate types and function for quantizer.</p>
+<p>Given a <code>quantize</code> and <code>dequantize</code> function, create a new
+<code>QuantizationFunction</code> and associated <code>QuantizationParameters</code> to use
+within fastforward. Moverover, a new helper function is returned that calls
+the newly created <code>QuantizationFunction</code> with appropriate bookkeeping.</p>
+<p>The newly produced <code>QuantizationFunction</code> and <code>QuantizationParameters</code>
+subclasses are deduced from the signature of <code>quantize</code> and <code>dequantize</code>.
+For this reason, any annotation or default value of parameters with the
+same name between quantize and dequantze must match.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>cls_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The name of the newly created <code>QuantizationFunction</code> subclass.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>quantize</code>
+            </td>
+            <td>
+                  <code><span title="typing.Callable">Callable</span>[..., <span title="torch.Tensor">Tensor</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A quantization function. Must return a <code>torch.Tensor</code> that is
+then wrapped as a <code>QuantizedTensor</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dequantize</code>
+            </td>
+            <td>
+                  <code><span title="typing.Callable">Callable</span>[..., <span title="torch.Tensor">Tensor</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A dequantization function. Must return a <code>torch.Tensor</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/function.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_quantization_function</span><span class="p">(</span>
+    <span class="n">cls_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">quantize</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">dequantize</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+    <span class="nb">type</span><span class="p">[</span><span class="n">_QuantParamsWithDict</span><span class="p">],</span>
+    <span class="n">_ImplicitQuantizationFunction</span><span class="p">[</span><span class="n">_QuantParamsWithDict</span><span class="p">],</span>
+    <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">QuantizedTensor</span><span class="p">],</span>
+<span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate types and function for quantizer.</span>
+
+<span class="sd">    Given a `quantize` and `dequantize` function, create a new</span>
+<span class="sd">    `QuantizationFunction` and associated `QuantizationParameters` to use</span>
+<span class="sd">    within fastforward. Moverover, a new helper function is returned that calls</span>
+<span class="sd">    the newly created `QuantizationFunction` with appropriate bookkeeping.</span>
+
+<span class="sd">    The newly produced `QuantizationFunction` and `QuantizationParameters`</span>
+<span class="sd">    subclasses are deduced from the signature of `quantize` and `dequantize`.</span>
+<span class="sd">    For this reason, any annotation or default value of parameters with the</span>
+<span class="sd">    same name between quantize and dequantze must match.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cls_name: The name of the newly created `QuantizationFunction` subclass.</span>
+<span class="sd">        quantize: A quantization function. Must return a `torch.Tensor` that is</span>
+<span class="sd">            then wrapped as a `QuantizedTensor`.</span>
+<span class="sd">        dequantize: A dequantization function. Must return a `torch.Tensor`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">QuantParams</span> <span class="o">=</span> <span class="n">_make_quantization_parameters_type</span><span class="p">(</span><span class="n">cls_name</span><span class="p">,</span> <span class="n">quantize</span><span class="p">,</span> <span class="n">dequantize</span><span class="p">)</span>
+
+    <span class="n">QuantFunc</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">_ImplicitQuantizationFunction</span><span class="p">[</span><span class="n">_QuantParamsWithDict</span><span class="p">]]</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">new_class</span><span class="p">(</span>
+        <span class="n">cls_name</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">_ImplicitQuantizationFunction</span><span class="p">[</span><span class="n">QuantParams</span><span class="p">],),</span>  <span class="c1"># type: ignore[valid-type]</span>
+        <span class="p">{},</span>
+        <span class="k">lambda</span> <span class="n">ns</span><span class="p">:</span> <span class="n">ns</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s2">&quot;_quantize_impl&quot;</span><span class="p">:</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">quantize</span><span class="p">),</span>
+            <span class="s2">&quot;_dequantize_impl&quot;</span><span class="p">:</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">dequantize</span><span class="p">),</span>
+        <span class="p">}),</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">quantize_func</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize `data`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">QuantFunc</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">QuantParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">QuantParams</span><span class="p">,</span> <span class="n">QuantFunc</span><span class="p">,</span> <span class="n">quantize_func</span>  <span class="c1"># type: ignore[return-value]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
