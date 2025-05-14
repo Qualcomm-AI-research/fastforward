@@ -283,6 +283,7 @@ def quantize_by_tile_meta(
     output_dtype: torch.dtype | None,
     offset: torch.Tensor | None = None,
 ) -> torch.Tensor:
+    del scale, tile_size, num_bits, output_dtype, offset
     return torch.empty(input.shape)
 
 
@@ -294,6 +295,7 @@ def dequantize_by_tile_meta(
     offset: torch.Tensor | None = None,
     output_dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
+    del scale, tile_size, offset, output_dtype
     return torch.empty(input.shape)
 
 
@@ -306,6 +308,7 @@ def quantize_by_tile_backward_meta(
     num_bits: float,
     offset: torch.Tensor | None = None,
 ) -> List[torch.Tensor]:  # noqa: UP006
+    del output_grad, tile_size, num_bits, offset
     return [torch.empty(input.shape), torch.empty(scale.shape), torch.empty(scale.shape)]
 
 
@@ -318,6 +321,7 @@ def quantize_dynamic_by_tile_meta(
     output_dtype: torch.dtype | None,
     offset: torch.Tensor | None = None,
 ) -> RT:
+    del num_bits, output_dtype
     num_params = int(input.numel() / torch.Size(tile_size).numel())
     scale = torch.empty(num_params)
     offset = torch.empty(num_params)

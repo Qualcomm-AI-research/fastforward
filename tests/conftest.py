@@ -43,6 +43,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Called after collection has been performed. May filter or re-order the items in-place."""
+    del config
     marker = pytest.mark.skipif(
         torch.__version__ < "2.5",
         reason="Export functionality is only supported for PyTorch version 2.5 and above.",

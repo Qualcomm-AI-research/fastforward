@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from fastforward.quantization.affine import StaticAffineQuantParams
 
 
-def _is_affine_per_tensor(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
+def _is_affine_per_tensor(input: QuantizedTensor, *_args: Any, **_kwargs: Any) -> bool:
     # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
@@ -47,7 +47,7 @@ def _is_affine_per_tensor(input: QuantizedTensor, *args: Any, **kwargs: Any) -> 
 affine_per_tensor_predicate = Predicate(_is_affine_per_tensor)
 
 
-def _is_affine_per_channel(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
+def _is_affine_per_channel(input: QuantizedTensor, *_args: Any, **_kwargs: Any) -> bool:
     # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
@@ -72,7 +72,7 @@ def _affine_params(tensor: QuantizedTensor) -> "StaticAffineQuantParams":
     return tensor.quant_args()  # type: ignore[return-value]
 
 
-def _is_affine(input: QuantizedTensor, *args: Any, **kwargs: Any) -> bool:
+def _is_affine(input: QuantizedTensor, *_args: Any, **_kwargs: Any) -> bool:
     # As part of the predicate we verify input is actually a QuantizedTensor
     if not isinstance(input, QuantizedTensor):
         return False  # type: ignore[unreachable]
@@ -136,14 +136,16 @@ class _ScaleGradient(torch.autograd.Function):
         return grad * ctx.scalar, None
 
 
-def _is_scalar_other(input: QuantizedTensor, other: float, **kwargs) -> bool:  # type: ignore[no-untyped-def]
+def _is_scalar_other(input: QuantizedTensor, other: float, **_kwargs) -> bool:  # type: ignore[no-untyped-def]
+    del input
     return isinstance(other, (float, int))
 
 
 def _no_output_quantizer(
-    input: QuantizedTensor, other: float, output_quantizer: Any = None, **kwargs: Any
+    input: QuantizedTensor, other: float, output_quantizer: Any = None, **_kwargs: Any
 ) -> bool:
     # Lazy import to break circular import
+    del input, other
     from fastforward.nn import QuantizerStub
 
     return output_quantizer is None or isinstance(output_quantizer, QuantizerStub)
@@ -159,7 +161,7 @@ no_output_quantizer_predicate = Predicate(_no_output_quantizer)
     # type: ignore[misc, call-overload]
 )
 def scalar_multiply(
-    input: QuantizedTensor, other: float, *args: Any, **kwargs: Any
+    input: QuantizedTensor, other: float, *_args: Any, **_kwargs: Any
 ) -> QuantizedTensor:
     """Multiply quantized `input` tensor by a scalar.
 
@@ -185,6 +187,7 @@ def cat_predicate(
     Returns True if all elements of `tensors` are quantized using affine quantization
     using the exact same quantization params.
     """
+    del dim, strict_quantization
     if output_quantizer is not None:
         return False
 
@@ -220,7 +223,7 @@ def cat_predicate(
 
 @register("cat", Predicate(cat_predicate))
 def cat(
-    tensors: Sequence[QuantizedTensor], dim: int = 0, *args: Any, **kwargs: Any
+    tensors: Sequence[QuantizedTensor], dim: int = 0, *_args: Any, **_kwargs: Any
 ) -> QuantizedTensor:
     output = torch.cat([t.raw_data for t in tensors], dim=dim)
     return tensors[0].quantization_context.attach(output)

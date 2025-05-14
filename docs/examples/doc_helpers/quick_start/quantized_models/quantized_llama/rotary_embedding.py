@@ -43,6 +43,7 @@ def apply_rotary_pos_emb(
     Returns:
         `tuple(torch.Tensor)` comprising of the query and key tensors rotated using the Rotary Position Embedding.
     """
+    del position_ids
     # NOTE: this operation is not quantized
     with strict_quantization(False):
         cos = cos.unsqueeze(unsqueeze_dim)

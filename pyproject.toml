@@ -121,6 +121,7 @@ extend-exclude = ["tests/autoquant/test_data"]
 
 [tool.ruff.lint]
 select = [
+  "ARG001",
   "I",
   "D",
   "E4",

@@ -105,7 +105,7 @@ def _ensure_factory_func(
 
     assert issubclass(factory, Quantizer)
 
-    def quantizer_factory(name: str, existing: Quantizer) -> Quantizer:
+    def quantizer_factory(_name: str, _existing: Quantizer) -> Quantizer:
         return factory(**kwargs)
 
     return quantizer_factory

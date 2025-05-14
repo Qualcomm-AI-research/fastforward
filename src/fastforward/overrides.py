@@ -162,5 +162,5 @@ class _QuantizationContext(contextlib.AbstractContextManager[None]):
         self._override._quantization_enabled = self._reset_quantization_status
 
 
-def _extract_data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def _extract_data_from_args(data: torch.Tensor, *_args: Any, **_kwargs: Any) -> torch.Tensor:
     return data

@@ -158,7 +158,7 @@ def test_dispatchers_are_all_the_same() -> None:
 
     predicate = Predicate(lambda *_, **__: True)
 
-    def kernel(input: QuantizedTensor, other: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
+    def kernel(input: QuantizedTensor, other: QuantizedTensor, **_kwargs: Any) -> torch.Tensor:
         return input.dequantize() - other.dequantize()
 
     kernel_mock = make_mock(kernel)

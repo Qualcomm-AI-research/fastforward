@@ -223,7 +223,7 @@ class SimpleEstimatorStep(abc.ABC, Generic[_QuantizerType]):
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> torch.Tensor:
-        def _data(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+        def _data(data: torch.Tensor, *_args: Any, **_kwargs: Any) -> torch.Tensor:
             return data
 
         data = _data(*args, **kwargs)

@@ -21,6 +21,9 @@ def test_register_override() -> None:
         kwargs: dict[str, Any],
     ) -> torch.Tensor:
         assert quantizer_ctx is quantizer, "Quantizer should be passed into override as context"
+        del fn
+        del args
+        del kwargs
         return torch.tensor(100)
 
     def override2(

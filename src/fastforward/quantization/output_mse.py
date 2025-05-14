@@ -10,7 +10,7 @@ from fastforward.nn.quantizer import Quantizer
 from fastforward.quantization.local_error import LocalErrorMethod, RunnerContext, execution_context
 
 
-def _data_from_args(data: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def _data_from_args(data: torch.Tensor, *_args: Any, **_kwargs: Any) -> torch.Tensor:
     """Extract the data tensor from the arguments.
 
     Args:

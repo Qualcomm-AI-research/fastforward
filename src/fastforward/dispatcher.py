@@ -162,7 +162,7 @@ def _register_decorator(
     return decorator
 
 
-def _true_predicate_func(signature_func: Callable[P, Any]) -> Callable[P, bool]:
+def _true_predicate_func(_signature_func: Callable[P, Any]) -> Callable[P, bool]:
     """Create a predicate that always returns true with the same typed signature as signature_func.
 
     Args:
@@ -172,7 +172,7 @@ def _true_predicate_func(signature_func: Callable[P, Any]) -> Callable[P, bool]:
         A predicate function that always returns true.
     """
 
-    def true_predicate(*args: P.args, **kwargs: P.kwargs) -> bool:
+    def true_predicate(*_args: P.args, **_kwargs: P.kwargs) -> bool:
         return True
 
     return true_predicate

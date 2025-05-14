@@ -11,15 +11,18 @@ from fastforward import forward_override as override
 
 def test_function_override() -> None:
     def to_override_function(a: int, b: int, **kwargs: Any) -> int:
+        del kwargs
         return a + b
 
     def override1(ctx: Any, fn: Any, args: Any, kwargs: Any) -> Any:
         return fn(*args, **kwargs) + ctx["c"]
 
     def override2(ctx: Any, fn: Any, args: Any, kwargs: Any) -> Any:
+        del ctx
         return fn(*args, **kwargs) * 2
 
     def override_noop(ctx: Any, fn: Any, args: Any, kwargs: Any) -> str:
+        del ctx, fn, args, kwargs
         return "nothing"
 
     mock_override1 = unittest.mock.Mock(override1, wraps=override1)

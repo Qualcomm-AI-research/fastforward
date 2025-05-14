@@ -98,7 +98,7 @@ def test_orchestrator_repeated_stage() -> None:
 
 def _hook_order_logger(hook_stage: str, logs: list[str]) -> Callable[..., None]:
     def hook_side_effect(
-        orchestrator: ConcurrentExecOrchestrator, *args: Any, **kwargs: Any
+        orchestrator: ConcurrentExecOrchestrator, *_args: Any, **_kwargs: Any
     ) -> None:
         logs.append(f"{hook_stage}_{orchestrator.stage}")
 
@@ -210,7 +210,7 @@ def test_orchestrator_thread_exception() -> None:
     num_inputs = 5
     orchestrator = _create_orchestrator(num_partitions, execution_order, run_list)
 
-    def error_hook(*args: Any, **kwargs: Any) -> NoReturn:
+    def error_hook(*_args: Any, **_kwargs: Any) -> NoReturn:
         raise ValueError()
 
     orchestrator.register_global_post_stage_hook(1, error_hook)
