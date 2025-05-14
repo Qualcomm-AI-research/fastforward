@@ -277,11 +277,11 @@ orchestrator.add_batch(1)
 orchestrator.add_batch(2)
 
 
-def pre_stage_hook(orchestrator: ConcurrentExecOrchestrator, stage_data: Any) -> None:
+def pre_stage_hook(orchestrator: ConcurrentExecOrchestrator, stage_data: Any) -> None:  # noqa: ARG001
     print(f"    >> pre_stage_hook stage={orchestrator.stage} batch={orchestrator.batch}")
 
 
-def post_stage_hook(orchestrator: ConcurrentExecOrchestrator, stage_data: Any) -> None:
+def post_stage_hook(orchestrator: ConcurrentExecOrchestrator, stage_data: Any) -> None:  # noqa: ARG001
     print(f"    >> post_stage_hook stage={orchestrator.stage} batch={orchestrator.batch}")
 
 
@@ -324,11 +324,13 @@ orchestrator.start()
 
 
 def repeated_target(idx: int) -> None:
-    print(f"partition 1 stage={orchestrator.stage} batch={orchestrator.batch}")
+    print(f"partition 1 stage={orchestrator.stage} batch={orchestrator.batch} idx={idx}")
     orchestrator.synchronize()
     num_steps = 3 if orchestrator.stage == 1 else 1
     for i in range(num_steps):
-        print(f"partition 2 stage={orchestrator.stage} batch={orchestrator.batch} iteration={i}")
+        print(
+            f"partition 2 stage={orchestrator.stage} batch={orchestrator.batch} idx={idx} iteration={i}"
+        )
         repeat_stage = orchestrator.stage == 1 and i < 2
         orchestrator.synchronize(repeat_stage=repeat_stage)
     print(f"partition 3 stage={orchestrator.stage} batch={orchestrator.batch}")

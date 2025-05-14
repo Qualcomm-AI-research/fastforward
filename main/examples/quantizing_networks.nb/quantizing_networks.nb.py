@@ -350,7 +350,7 @@ config.add_rule(
 
 # We only want to enable the input quantizer of the first layer, so that we can turn a floating point input into a quantized input.
 # For the subsequent layers, the input will already be quantized because there will be an output quantizer in the layer before that.
-def input_factory(name: str, current_quantizer: ff.nn.Quantizer) -> ff.nn.Quantizer:
+def input_factory(name: str, current_quantizer: ff.nn.Quantizer) -> ff.nn.Quantizer:  # noqa: ARG001
     return ff.nn.LinearQuantizer(num_bits=8, symmetric=False, granularity=ff.PerTensor())
 
 
