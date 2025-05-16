@@ -86,6 +86,10 @@ markers = [
   "patchedtorch: marks tests which are required patched PyTorch version (deselect with '-m \"not patchedtorch\"')",
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
+filterwarnings = [
+  "error",
+  "ignore:ComplexHalf support is experimental:UserWarning",
+]
 
 [tool.mypy]
 mypy_path = "src:$MYPY_CONFIG_FILE_DIR/build/stubs"

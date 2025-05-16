@@ -210,7 +210,7 @@ _set_no_dispatch("__dir__")
 _no_dispatch_attributes = [
     "is_coalesced", "is_complex", "is_conj", "is_contiguous", "is_cpu", "is_cuda",
     "is_distributed", "is_floating_point", "is_inference", "is_ipu", "is_leaf", "is_meta",
-    "is_mkldnn", "is_mps", "is_neg", "is_nested", "is_nonzero", "is_ort", "is_pinned",
+    "is_mkldnn", "is_mps", "is_neg", "is_nested", "is_nonzero", "is_pinned",
     "is_same_size", "is_set_to", "is_shared", "is_signed", "is_sparse", "is_sparse_csr",
     "is_vulkan", "is_xpu",
 ]

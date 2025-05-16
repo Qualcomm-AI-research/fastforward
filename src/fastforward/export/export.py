@@ -16,6 +16,7 @@ Supported backends:
 import abc
 import json
 import pathlib
+import warnings
 
 from operator import attrgetter
 from typing import Any, Generic, Sequence, TypeVar
@@ -505,7 +506,9 @@ def export(
 
     graph_operators = [*graph_preprocessors, *default_graph_operators]
 
-    with export_mode(True):
+    with export_mode(True), warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning, module="onnxscript.*")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="torch._dynamo.*")
         dynamo_exported_program = torch.export.export(
             model, args=data, kwargs=model_kwargs
         ).run_decompositions()

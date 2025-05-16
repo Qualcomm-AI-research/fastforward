@@ -3,6 +3,9 @@
 
 import json
 import pathlib
+import warnings
+
+from typing import Generator
 
 from typing import TypeAlias
 
@@ -24,6 +27,15 @@ from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
+
+
+@pytest.fixture(autouse=True)
+def disable_warnings() -> Generator[None, None, None]:
+    """Disables warnings for the duration of the test module."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning, module="onnxscript.*")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="torch._dynamo.*")
+        yield
 
 
 @pytest.mark.slow

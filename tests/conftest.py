@@ -3,6 +3,7 @@
 
 import random
 import time
+import warnings
 
 from pathlib import Path
 from typing import Iterator
@@ -88,7 +89,9 @@ def enable_profiling_fixture() -> None:
     """Create initial load for torch to increase reproducibility of timing."""
     # Warmup torch._dynamo which is used by `torch.optim.optimizer`.
     try:
-        import torch._dynamo  # noqa: F401
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning, module="onnxscript.*")
+            import torch._dynamo  # noqa: F401
     except ImportError:
         pass
 
