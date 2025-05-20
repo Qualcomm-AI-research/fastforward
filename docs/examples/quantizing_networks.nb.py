@@ -540,7 +540,7 @@ my_quantized_layer
 #   2. The class of our module is changed from `MySelfAttentionLayer` to `MyQuantizedSelfAttentionLayer`.
 #   3. `MyQuantizedSelfAttentionLayer.__init_quantization__` is still called, inserting the quantizer stubs into the previously unquantized layer.
 #   4. The children modules are also converted to their quantized counterparts by calling `MyQuantizedSelfAttentionLayer.quantize_children`.
-
-# %% [markdown]
+#
+#
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear

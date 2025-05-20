@@ -222,7 +222,7 @@ ff.find_quantizers(my_quantized_module, "**/[quantizer:input]")
 # Lastly, note that there is a difference between the module hierarchy and the tag hierarchy in a query string. We can mix tag and module hierarchy queries.
 #
 # For example, `top_module/sub_module/**/[quantizer:parameter/weight]` will match all quantizers in `top_module.sub_module` that have the `parameter/weight` tag.
-
-# %% [markdown]
+#
+#
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
