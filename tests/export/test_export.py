@@ -4,6 +4,8 @@
 import json
 import pathlib
 
+from typing import TypeAlias
+
 import fastforward as ff
 import numpy as np
 import onnxruntime  # type: ignore[import-untyped]
@@ -18,10 +20,10 @@ from fastforward.export.export import (
     export,
 )
 from fastforward.quantization.granularity import Granularity
-from tests.export.export_utils import (
-    QuantizedModelFixture,
-    activate_quantizers,
-)
+from fastforward.quantization.quant_init import QuantizerCollection
+from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+
+QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
 
 
 @pytest.mark.slow
@@ -38,7 +40,10 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
     assert isinstance(exported_graph, torch.export.exported_program.ExportedProgram)
 
     # WHEN exporitng the model with activated quantizers.
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     # The export method does not support custom tensors objects (like the QuantizedTensor)
     # and the usage of certain methods (such as the inspect.signature.bind) and will throw
@@ -56,7 +61,10 @@ def test_node_request(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     # GIVEN a quantized model and its exported dynamo graph.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     with ff.export_mode(True), ff.strict_quantization(False):
         quantized_model_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
@@ -104,7 +112,11 @@ def test_node_removal(simple_model: QuantizedModelFixture, _seed_prngs: int) -> 
     quant_model, activation_quantizers, parameter_quantizers = simple_model
     with ff.strict_quantization(False):
         non_quant_result = quant_model(data)
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     num_quantizers = len([
         module for module in quant_model.modules() if isinstance(module, ff.nn.LinearQuantizer)
@@ -171,7 +183,11 @@ def test_node_logging(
     # GIVEN a quantized model
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
+
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers, granularity_parameters=granularity
+    )
+    estimate_model_ranges(data)
 
     with ff.export_mode(True), ff.strict_quantization(False):
         quantized_model_graph = torch.export.export(quant_model, args=(data,)).run_decompositions()
@@ -234,7 +250,10 @@ def test_ff_model_to_onnx_export(
 
     onnx_artifact_location = output_model_directory.with_suffix(".onnx")
 
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     # WHEN using the export pipeline for the quantized model
     # and running inference on the ONNX artifact
@@ -311,7 +330,10 @@ def test_encodings_file_generation(
         "scale",
     ])
 
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     # WHEN exporting the quantized model
     export(
@@ -372,13 +394,10 @@ def test_graph_io_renaming_valid(
 
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
     with ff.strict_quantization(False):
-        activate_quantizers(
-            quant_model,
-            (data_x, data_y),
-            activation_quantizers,
-            parameter_quantizers,
-            kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+        estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+            quant_model, activation_quantizers, parameter_quantizers
         )
+        estimate_model_ranges(data_x, data_y, subtract_from_x=subtract_from_x, add_to_y=add_to_y)
 
     model_name = "test_model"
     output_directory = tmp_path / model_name
@@ -439,13 +458,10 @@ def test_graph_io_renaming_invalid(
 
     quant_model, activation_quantizers, parameter_quantizers = multi_input_output_model
     with ff.strict_quantization(False):
-        activate_quantizers(
-            quant_model,
-            (data_x, data_y),
-            activation_quantizers,
-            parameter_quantizers,
-            kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
+        estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+            quant_model, activation_quantizers, parameter_quantizers
         )
+        estimate_model_ranges(data_x, data_y, subtract_from_x=subtract_from_x, add_to_y=add_to_y)
 
     # WHEN exporting the model overriding its input/output names with invalid ones.
     model_name = "test_model"
@@ -482,7 +498,10 @@ def test_export_function(
     onnx_file_path = output_model_directory.with_suffix(".onnx")
     encodings_file_path = output_model_directory.with_suffix(".encodings")
 
-    activate_quantizers(quant_model, data, activation_quantizers, parameter_quantizers, granularity)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers, granularity_parameters=granularity
+    )
+    estimate_model_ranges(data)
 
     # WHEN exporting the quantized model
     export(quant_model, (data,), output_directory, model_name)

@@ -88,6 +88,8 @@ class FunctionCaseCollector(metaclass=_MetaCaseCollector):
 
 
 class CFGTest(FunctionCaseCollector):
+    """CFGTest case collector."""
+
     @pytest.fixture(scope="class")
     def optable(self) -> OperatorTable:
         """Fixture for `OperatorTable`.

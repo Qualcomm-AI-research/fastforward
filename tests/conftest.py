@@ -10,7 +10,7 @@ from typing import Iterator
 import pytest
 import torch
 
-from tests.utils import seed_prngs
+from fastforward.testing import seed_prngs
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

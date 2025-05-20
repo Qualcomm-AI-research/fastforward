@@ -6,8 +6,7 @@ import functools
 import libcst
 
 from fastforward._autoquant.cfg import blocks, construct
-
-from tests.utils.string import dedent_strip
+from fastforward.testing.string import dedent_strip
 
 (_src1,) = dedent_strip("""
     def example(a):

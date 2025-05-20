@@ -25,10 +25,9 @@ from fastforward._autoquant.cst import passes
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._quantops import optable
 from fastforward.autoquant import autoquantize
+from fastforward.testing.string import assert_strings_match_verbose, dedent_strip
 from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
-
-from tests.utils.string import assert_strings_match_verbose, dedent_strip
 
 Tensor: TypeAlias = torch.Tensor  # Required for tests, do not remove
 

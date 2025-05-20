@@ -10,9 +10,8 @@ import pytest
 from fastforward._autoquant.cfg import blocks, variable_tracking
 from fastforward._autoquant.cst.passes import WrapAssignments
 from fastforward._autoquant.pysource import SourceContext
+from fastforward.testing.cfg import CFGTest
 from typing_extensions import override
-
-from tests.autoquant.cfg.cfg_test import CFGTest
 
 
 def _variable(name: str, version: int) -> variable_tracking.Variable:

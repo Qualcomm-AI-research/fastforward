@@ -13,8 +13,7 @@ import pytest
 import torch
 
 from fastforward._autoquant.pybuilder import TextIOWriter
-
-from tests.utils.string import assert_strings_match_verbose
+from fastforward.testing.string import assert_strings_match_verbose
 
 
 def _find_test_cases() -> Iterator[tuple[str, torch.nn.Module, str]]:

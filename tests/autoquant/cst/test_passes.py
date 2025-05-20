@@ -6,8 +6,7 @@ from collections.abc import Sequence
 import libcst as libcst
 
 from fastforward._autoquant.cst import passes
-
-from tests.utils.string import assert_strings_match_verbose, dedent_strip
+from fastforward.testing.string import assert_strings_match_verbose, dedent_strip
 
 _STATEMENT_SUITE_TO_BLOCK_IN = """
 x = 10; y = 20; z = x + y

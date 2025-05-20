@@ -12,8 +12,7 @@ from fastforward._autoquant.cfg import blocks
 from fastforward._autoquant.cfg.variable_tracking import QuantizationStatus, infer_block_dataflow
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
 from fastforward._quantops import OperatorTable
-
-from tests.autoquant.cfg.cfg_test import CFGTest
+from fastforward.testing.cfg import CFGTest
 
 
 class TestQuantizationStatus(CFGTest):

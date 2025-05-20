@@ -5,13 +5,18 @@ import json
 import pathlib
 import pickle
 
+from typing import TypeAlias
+
 import fastforward as ff
 import pytest
 import torch
 
 from fastforward.export.module_export import ModuleIORecorder, export_modules
+from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.quantization.strict_quantization import strict_quantization_for_module
-from tests.export.export_utils import QuantizedModelFixture, activate_quantizers
+from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+
+QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
 
 
 def test_module_io_recorder(
@@ -38,7 +43,10 @@ def test_module_export(
     model, activation_quantizers, parameter_quantizers = simple_model
     model_name = "test_linear_model"
 
-    activate_quantizers(model, data, activation_quantizers, parameter_quantizers)
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
 
     # WHEN: exporting the individual modules AND the entire model.
     linear_modules = ff.mpath.search("**/[cls:torch.nn.Linear]", model)

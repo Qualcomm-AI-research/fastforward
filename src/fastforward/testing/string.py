@@ -11,6 +11,10 @@ def dedent_strip(*txt: str) -> tuple[str, ...]:
 
 
 def assert_strings_match_verbose(str1: str, str2: str) -> None:
+    """Assert that `str1` and `str2` match exactly.
+
+    Raise `AssertionError` with a verbose diff if strings don't match.
+    """
     if not str1 == str2:
         output = "\n".join(difflib.unified_diff(str2.splitlines(), str1.splitlines()))
         raise AssertionError(f"Transformed module does not match expected output:\n{output}")

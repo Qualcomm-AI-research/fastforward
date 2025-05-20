@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+from typing import TypeAlias
+
 import fastforward as ff
 import pytest
 import torch
 
-from tests.export.export_utils import QuantizedModelFixture
+from fastforward.quantization.quant_init import QuantizerCollection
+
+QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
 
 
 @pytest.fixture
