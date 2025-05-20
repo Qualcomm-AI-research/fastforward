@@ -806,7 +806,7 @@ def add(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:60
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:58
 def sub(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -844,7 +844,7 @@ def sub(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:63
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:61
 def mul(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -881,7 +881,7 @@ def mul(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:66
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:64
 def div(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -918,7 +918,7 @@ def div(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:69
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:67
 def pow(
     input: torch.Tensor,
     exponent: Union[float, torch.Tensor],
@@ -955,7 +955,7 @@ def pow(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:72
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:70
 def sum(
     input: torch.Tensor,
     dim: int | None = None,
@@ -980,7 +980,7 @@ def sum(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:75
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:73
 def bitwise_not(
     input: torch.Tensor,
     *,
@@ -1004,7 +1004,7 @@ def bitwise_not(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:78
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:76
 def negative(
     input: torch.Tensor,
     *,
@@ -1028,7 +1028,7 @@ def negative(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:81
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:79
 def positive(
     input: torch.Tensor,
     *,
@@ -1052,7 +1052,7 @@ def positive(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:84
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:82
 def bitwise_and(
     input: torch.Tensor,
     other: torch.Tensor,
@@ -1085,7 +1085,7 @@ def bitwise_and(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:87
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:85
 def bitwise_or(
     input: torch.Tensor,
     other: torch.Tensor,
@@ -1118,7 +1118,7 @@ def bitwise_or(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:90
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:88
 def bitwise_xor(
     input: torch.Tensor,
     other: torch.Tensor,
@@ -1151,7 +1151,7 @@ def bitwise_xor(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:93
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:91
 def floor_divide(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -1188,7 +1188,7 @@ def floor_divide(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:96
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:94
 def bitwise_left_shift(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -1225,7 +1225,7 @@ def bitwise_left_shift(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:99
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:97
 def bitwise_right_shift(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -1262,7 +1262,7 @@ def bitwise_right_shift(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:102
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:100
 def remainder(
     input: torch.Tensor,
     other: Union[float, torch.Tensor],
@@ -1299,7 +1299,7 @@ def remainder(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:105
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:103
 def silu(
     input: torch.Tensor,
     *,
@@ -1323,9 +1323,10 @@ def silu(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:108
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:106
 def gelu(
     input: torch.Tensor,
+    approximate: str = "none",
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -1341,13 +1342,13 @@ def gelu(
     if isinstance(input, QuantizedTensor):
         input = input.dequantize()
 
-    output = torch.nn.functional.gelu(input=input)
+    output = torch.nn.functional.gelu(input=input, approximate=approximate)
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:111
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:109
 def scaled_dot_product_attention(
     query: torch.Tensor,
     key: torch.Tensor,
@@ -1401,7 +1402,7 @@ def scaled_dot_product_attention(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:114
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:112
 def dropout(
     input: torch.Tensor,
     p: float = 0.5,
@@ -1428,7 +1429,7 @@ def dropout(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:117
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:115
 def permute(
     input: torch.Tensor,
     dims: tuple[int, ...],
@@ -1453,7 +1454,7 @@ def permute(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:120
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:118
 def cat(
     tensors: Sequence[torch.Tensor],
     dim: int = 0,
@@ -1482,7 +1483,7 @@ def cat(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:123
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:121
 def index_add(
     input: torch.Tensor,
     dim: int,
@@ -1518,7 +1519,7 @@ def index_add(
     return output
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:126
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:124
 def cumsum(
     input: torch.Tensor,
     dim: int,

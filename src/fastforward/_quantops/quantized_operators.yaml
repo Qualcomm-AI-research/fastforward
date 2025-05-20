@@ -103,7 +103,7 @@
 - op: "silu(input: Quantized) -> Quantized"
   fallback: torch.nn.functional.silu
 
-- op: "gelu(input: Quantized) -> Quantized"
+- op: "gelu(input: Quantized, approximate: str='none') -> Quantized"
   fallback: torch.nn.functional.gelu
 
 - op: "scaled_dot_product_attention( query: Quantized, key: Quantized, value: Quantized, attn_mask: Optional[Tensor] = None, dropout_p: float = 0.0, is_causal: bool = False, scale: Optional[float] = None) -> Quantized"
