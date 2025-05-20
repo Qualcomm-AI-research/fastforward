@@ -52,7 +52,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     export_tests_path = str(Path(__file__).parent / "export")
     for item in items:
         if str(item.path).startswith(export_tests_path):
-            print(f"Skipping {item.path} due to PyTorch version {export_tests_path}")
             item.add_marker(marker)
 
 
