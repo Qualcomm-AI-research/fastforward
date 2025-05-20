@@ -72,7 +72,8 @@ class _SpecParser(Parser):
         #
         _R("ident", ["IDENTIFIER"], lambda r: r.source),
         _R("digit", ["DIGIT"], lambda r: r.source),
-        _R("expr", ["ident", "digit"]),
+        _R("string", ["STRING"], lambda r: r.source[1:-1]),
+        _R("expr", ["ident", "digit", "string"]),
         #
         _R("type", ["type_union", "ident !LEFTBRACKET sub_types !RIGHTBRACKET", "ident"], _type),
         _R("type_union", ["type_union !PIPE type", "type !PIPE type"], symtypes.Union.create),

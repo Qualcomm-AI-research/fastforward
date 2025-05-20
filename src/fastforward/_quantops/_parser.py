@@ -30,6 +30,7 @@ class ParseError(Exception):
 class TokenKind(enum.Enum):
     Identifier = enum.auto()
     Digit = enum.auto()
+    String = enum.auto()
 
     Pipe = enum.auto()
     Comma = enum.auto()
@@ -117,6 +118,16 @@ class _Lexer:
         else:
             raise TokenizationError(f"Expected number at position {start}")
 
+    def _emit_string(self) -> Token:
+        start = self._position
+        matcher = re.compile(r"""(['"])(?:\\.|(?!\1).)*\1""")
+        if match := matcher.match(self._src[self._position :]):
+            match_str = match.group()
+            self._position += len(match_str)
+            return Token(match_str, TokenKind.String, start, self._position)
+        else:
+            raise TokenizationError(f"Expected string at position {start}")
+
     def _peek_char(self) -> str | None:
         if self._position + 1 < len(self._src):
             return self._src[self._position + 1]
@@ -141,6 +152,9 @@ class _Lexer:
                 continue
             if char.isdigit():
                 yield self._emit_digit()
+                continue
+            if char in ("'", '"'):
+                yield self._emit_string()
                 continue
 
             raise TokenizationError(
