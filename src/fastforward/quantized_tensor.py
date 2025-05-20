@@ -468,7 +468,7 @@ class QuantizedTensor(torch.Tensor):
                 repr_str = super().__repr__(**kwargs)
         indent = len(type(self).__name__) + 1
         quantizer = self.quant_func.__name__
-        return f"{repr_str[:-1]},\n{' ' * indent}quantizer={quantizer}, {self.quant_args():short})"
+        return f"{repr_str[:-1]},\n{' ' * indent}quant_func={quantizer}, quant_args={self.quant_args()})"
 
     # fmt: off
     # Remove any implementation of in-place operators. This doesn't prohibit
