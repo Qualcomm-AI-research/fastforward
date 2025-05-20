@@ -116,7 +116,10 @@ def _type_expression(symtype_or_typestr: symtypes.Type | str | None) -> libcst.B
 def _parameter(param: operator.Parameter) -> libcst.Param:
     default: libcst.BaseExpression | None = None
     if param.default_value is not None:
-        default = libcst.parse_expression(param.default_value)
+        default_value = param.default_value
+        if param.param_type is symtypes.String:
+            default_value = f"'{default_value}'"
+        default = libcst.parse_expression(default_value)
     return libcst.Param(
         name=libcst.Name(value=param.name),
         annotation=libcst.Annotation(_type_expression(param.param_type)),
@@ -426,7 +429,13 @@ def generate(operators: OperatorTable, source: pathlib.Path, destination: pathli
         source: The source locationfrom which the files are created.
         destination: The directory to write the newly created files to.
     """
+    copyright_header = (
+        "# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.\n"
+        + "# SPDX-License-Identifier: BSD-3-Clause-Clear\n"
+    )
     with (destination / "fallback.py").open("w") as dest_file:
+        dest_file.write(copyright_header)
         _generate_fallback(operators, source=source, writer=dest_file)
     with (destination / "operators.py").open("w") as dest_file:
+        dest_file.write(copyright_header)
         _generate_operators(operators, source=source, writer=dest_file)
