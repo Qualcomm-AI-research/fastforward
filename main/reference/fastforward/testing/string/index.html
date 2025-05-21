@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/nn/normalization/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/testing/string/">
       
       
-        <link rel="prev" href="../linear_quantizer/">
+        <link rel="prev" href="../initialization/">
       
       
-        <link rel="next" href="../quantized_module/">
+        <link rel="next" href="../../type_common/">
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>normalization - FastForward</title>
+        <title>string - FastForward</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.nn.normalization.QuantizedLayerNorm" class="md-skip">
+        <a href="#fastforward.testing.string.assert_strings_match_verbose" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              normalization
+              string
             
           </span>
         </div>
@@ -884,8 +884,6 @@
                 
   
   
-    
-  
   
   
     
@@ -896,15 +894,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../nn/" class="md-nav__link ">
               
   
   
@@ -923,7 +921,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_10">
             <span class="md-nav__icon md-icon"></span>
             nn
@@ -937,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../activations/" class="md-nav__link">
+      <a href="../../nn/activations/" class="md-nav__link">
         
   
   
@@ -960,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../container/" class="md-nav__link">
+      <a href="../../nn/container/" class="md-nav__link">
         
   
   
@@ -983,7 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../conv/" class="md-nav__link">
+      <a href="../../nn/conv/" class="md-nav__link">
         
   
   
@@ -1006,7 +1004,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1029,7 +1027,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../embedding/" class="md-nav__link">
+      <a href="../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1052,7 +1050,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../functional/" class="md-nav__link">
+      <a href="../../nn/functional/" class="md-nav__link">
         
   
   
@@ -1075,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear/" class="md-nav__link">
+      <a href="../../nn/linear/" class="md-nav__link">
         
   
   
@@ -1098,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1118,30 +1116,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    normalization
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -1152,75 +1130,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm" class="md-nav__link">
-    <span class="md-ellipsis">
-      QuantizedLayerNorm
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="QuantizedLayerNorm">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm.bias" class="md-nav__link">
-    <span class="md-ellipsis">
-      bias
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm.weight" class="md-nav__link">
-    <span class="md-ellipsis">
-      weight
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm.__init_quantization__" class="md-nav__link">
-    <span class="md-ellipsis">
-      __init_quantization__
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.nn.normalization.QuantizedLayerNorm.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      forward
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1233,7 +1142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_module/" class="md-nav__link">
+      <a href="../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -1256,7 +1165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantizer/" class="md-nav__link">
+      <a href="../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -1866,6 +1775,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1876,15 +1787,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../testing/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1903,7 +1814,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_15">
             <span class="md-nav__icon md-icon"></span>
             testing
@@ -1917,7 +1828,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/cfg/" class="md-nav__link">
+      <a href="../cfg/" class="md-nav__link">
         
   
   
@@ -1940,7 +1851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/initialization/" class="md-nav__link">
+      <a href="../initialization/" class="md-nav__link">
         
   
   
@@ -1960,10 +1871,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../testing/string/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    string
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1974,6 +1905,42 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.testing.string.assert_strings_match_verbose" class="md-nav__link">
+    <span class="md-ellipsis">
+      assert_strings_match_verbose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.testing.string.dedent_strip" class="md-nav__link">
+    <span class="md-ellipsis">
+      dedent_strip
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2044,7 +2011,7 @@
   
 
 
-  <h1>normalization</h1>
+  <h1>string</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -2070,120 +2037,39 @@
 
 
 
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="fastforward.nn.normalization.QuantizedLayerNorm" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.nn.normalization.QuantizedLayerNorm</code>
-
-
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.LayerNorm">LayerNorm</span></code>, <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.quantized_module.QuantizedModule&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedModule&lt;/code&gt;)" href="../quantized_module/#fastforward.nn.quantized_module.QuantizedModule">QuantizedModule</a></code></p>
-
-
-        <p>Quantized implementation of torch.nn.LayerNorm.</p>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h4 id="fastforward.nn.normalization.QuantizedLayerNorm.bias" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">bias</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm.bias" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h4 id="fastforward.nn.normalization.QuantizedLayerNorm.weight" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">weight</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm.weight" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-
 
 <div class="doc doc-object doc-function">
 
 
-<h4 id="fastforward.nn.normalization.QuantizedLayerNorm.__init_quantization__" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__init_quantization__</span><span class="p">()</span></code>
+<h3 id="fastforward.testing.string.assert_strings_match_verbose" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">assert_strings_match_verbose</span><span class="p">(</span><span class="n">str1</span><span class="p">,</span> <span class="n">str2</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm.__init_quantization__" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.testing.string.assert_strings_match_verbose" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
+        <p>Assert that <code>str1</code> and <code>str2</code> match exactly.</p>
+<p>Raise <code>AssertionError</code> with a verbose diff if strings don't match.</p>
+
 
             <details class="quote">
-              <summary>Source code in <code>fastforward/nn/normalization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+              <summary>Source code in <code>fastforward/testing/string.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
 <span class="normal">18</span>
 <span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">__init_quantization__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_quantization__</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">input_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_strings_match_verbose</span><span class="p">(</span><span class="n">str1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">str2</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Assert that `str1` and `str2` match exactly.</span>
 
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">elementwise_affine</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">weight_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">bias_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;weight_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">register_quantizer</span><span class="p">(</span><span class="s2">&quot;bias_quantizer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span> <span class="o">=</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">QuantizerStub</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="sd">    Raise `AssertionError` with a verbose diff if strings don&#39;t match.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">str1</span> <span class="o">==</span> <span class="n">str2</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">difflib</span><span class="o">.</span><span class="n">unified_diff</span><span class="p">(</span><span class="n">str2</span><span class="o">.</span><span class="n">splitlines</span><span class="p">(),</span> <span class="n">str1</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()))</span>
+        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transformed module does not match expected output:</span><span class="se">\n</span><span class="si">{</span><span class="n">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2193,68 +2079,29 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="fastforward.nn.normalization.QuantizedLayerNorm.forward" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span></code>
+<h3 id="fastforward.testing.string.dedent_strip" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">dedent_strip</span><span class="p">(</span><span class="o">*</span><span class="n">txt</span><span class="p">)</span></code>
 
-<a href="#fastforward.nn.normalization.QuantizedLayerNorm.forward" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.testing.string.dedent_strip" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
+        <p>Returns dedented then stripped version of input string(s).</p>
+
 
             <details class="quote">
-              <summary>Source code in <code>fastforward/nn/normalization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
-    <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span>
-    <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
-
-    <span class="k">if</span> <span class="n">weight</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_quantizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">ffnn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">layer_norm</span><span class="p">(</span>
-        <span class="nb">input</span><span class="p">,</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">normalized_shape</span><span class="p">,</span>
-        <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span>
-        <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-        <span class="n">eps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">,</span>
-        <span class="n">output_quantizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer</span><span class="p">,</span>
-    <span class="p">)</span>
+              <summary>Source code in <code>fastforward/testing/string.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dedent_strip</span><span class="p">(</span><span class="o">*</span><span class="n">txt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns dedented then stripped version of input string(s).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">txt</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
 
 </div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
 
 
 
