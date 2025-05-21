@@ -36,35 +36,16 @@ def _context_flag(flag_name: str, init_value: bool) -> _FlagMethods:
     def getter() -> bool:
         return _FLAGS[flag_name]
 
-    class _ResetToTrue:
+    class context:
+        def __init__(self, value: bool) -> None:
+            self._current_value = getter()
+            _setter(value)
+
         def __enter__(self) -> None:
             pass
 
         def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
-            _setter(True)
-
-    class _ResetToFalse:
-        def __enter__(self) -> None:
-            pass
-
-        def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
-            _setter(False)
-
-    # context could have been implemented as a contextmanager, however, as of
-    # PyTorch 2.4, Dynamo does not support contextmanager and has limited
-    # support for user defined classes that implement __enter__ and __exit__.
-    # In particular, a user defined class that has a custom __init__ results in
-    # Dynamo errors. For this reason, we create two separate ContextManager:
-    # _ResetToTrue and _ResetToFalse that will reset the flag value at the end
-    # of a with block. Once more support in dynamo lands this function can
-    # rewritten to a contextmanager.
-    def context(value: bool) -> ContextManager[None]:
-        current_value = getter()
-        _setter(value)
-        if current_value:
-            return _ResetToTrue()
-        else:
-            return _ResetToFalse()
+            _setter(self._current_value)
 
     def setter(value: bool) -> ContextManager[None]:
         return context(value)
@@ -72,8 +53,6 @@ def _context_flag(flag_name: str, init_value: bool) -> _FlagMethods:
     setter.__name__ = setter.__qualname__ = f"set_{flag_name}"
     getter.__name__ = getter.__qualname__ = f"get_{flag_name}"
     context.__name__ = context.__qualname__ = flag_name
-    _ResetToTrue.__name__ = _ResetToTrue.__qualname__ = f"{flag_name}_ResetToTrue"
-    _ResetToFalse.__name__ = _ResetToFalse.__qualname__ = f"{flag_name}_ResetToFalse"
 
     return _FlagMethods(setter, getter, context)  # noqa: F821
 

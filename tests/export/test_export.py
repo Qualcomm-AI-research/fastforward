@@ -5,9 +5,7 @@ import json
 import pathlib
 import warnings
 
-from typing import Generator
-
-from typing import TypeAlias
+from typing import Any, Generator, TypeAlias
 
 import fastforward as ff
 import numpy as np
@@ -525,3 +523,26 @@ def test_export_function(
 
     assert onnx_file_path.stat().st_size > 0
     assert encodings_file_path.stat().st_size > 0
+
+
+@pytest.mark.slow
+def test_export_model_with_ctx_manager(
+    tmp_path: pathlib.Path,
+    _seed_prngs: int,
+) -> None:
+    class TestModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.linear = torch.nn.Linear(10, 10)
+
+        def forward(self, x: torch.Tensor) -> Any:
+            with ff.strict_quantization(False):
+                return self.linear(x)
+
+    # GIVEN a model with a context manager
+    quant_model = TestModel()
+    data = torch.randn(32, 10)
+    model_name = "model_with_ctx_manager"
+    output_directory = tmp_path / model_name
+    # WHEN export should not fail
+    export(quant_model, (data,), output_directory, model_name)
