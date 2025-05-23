@@ -16,6 +16,7 @@ import torch
 
 from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.autoquant import (
+    _find_known_quantized_modules,
     autoquant,
     autoquant_with_defaults,
     codeformat_with_defaults,
@@ -700,3 +701,10 @@ def test_auto_import(tmp_path: pathlib.Path) -> None:
 
         # THEN the instance has expected properties
         assert list(instance.modules())[-1].__class__ == fastforward.nn.QuantizerStub
+
+
+def test_find_known_quantized_modules_subclasses_of_subclasses() -> None:
+    # _find_known_quantized_modules should find all quantized modules, including
+    # modules that don't directly subclass QuantizedModule. An example of this is
+    # QuantizedRelu for which ReLU should be discovered.
+    assert torch.nn.ReLU in _find_known_quantized_modules()

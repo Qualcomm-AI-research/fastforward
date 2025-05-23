@@ -35,7 +35,7 @@ def conditional_compile(func: Callable[_P, _T]) -> Callable[_P, _T]:
         if get_compiled_quant_funcs():
             if compiled_func is None:
                 compiled_func = torch.compile(func)
-            return compiled_func(*args, **kwargs)  # type: ignore[no-any-return]
+            return compiled_func(*args, **kwargs)  # type: ignore[no-any-return, unused-ignore]
         return func(*args, **kwargs)
 
     return wrapper

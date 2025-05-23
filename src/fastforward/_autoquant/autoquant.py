@@ -130,9 +130,15 @@ def _find_unquantized_submodules(
             yield module
 
 
+def _all_subclasses(cls: type[torch.nn.Module]) -> set[type[torch.nn.Module]]:
+    return set(cls.__subclasses__()).union([
+        c for subcls in cls.__subclasses__() for c in _all_subclasses(subcls)
+    ])
+
+
 def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:
     """Find the modules that are manually quantized in FastForward."""
-    subclasses = QuantizedModule.__subclasses__()
+    subclasses = _all_subclasses(QuantizedModule)
     immediate_superclasses: set[type[torch.nn.Module]] = set()
     for cls in subclasses:
         for base in cls.__bases__:
