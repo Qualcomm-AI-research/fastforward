@@ -10,24 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/main/reference/summary/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/testing/metrics/">
       
       
+        <link rel="prev" href="../initialization/">
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+        <link rel="next" href="../string/">
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
-        <title>Summary - FastForward</title>
+        <title>metrics - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.342714a4.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -46,11 +50,11 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -73,6 +77,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#fastforward.testing.metrics.sqnr" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -87,7 +96,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -107,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Summary
+              metrics
             
           </span>
         </div>
@@ -194,7 +203,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
+        <a href="../../../.." class="md-tabs__link">
           
   
   
@@ -212,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../examples/" class="md-tabs__link">
+      <a href="../../../../examples/" class="md-tabs__link">
         
   
   
@@ -229,11 +238,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../fastforward/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   
@@ -269,7 +280,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -340,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   
@@ -370,7 +381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
+      <a href="../../../../examples/" class="md-nav__link">
         
   
   
@@ -389,24 +400,29 @@
       
   
   
+    
   
   
+  
     
     
     
     
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
@@ -419,7 +435,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             API reference
@@ -430,6 +446,8 @@
                 
   
   
+    
+  
   
   
     
@@ -440,15 +458,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -467,7 +485,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             fastforward
@@ -481,7 +499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/autoquant/" class="md-nav__link">
+      <a href="../../autoquant/" class="md-nav__link">
         
   
   
@@ -504,7 +522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/common/" class="md-nav__link">
+      <a href="../../common/" class="md-nav__link">
         
   
   
@@ -527,7 +545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/dispatcher/" class="md-nav__link">
+      <a href="../../dispatcher/" class="md-nav__link">
         
   
   
@@ -550,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/exceptions/" class="md-nav__link">
+      <a href="../../exceptions/" class="md-nav__link">
         
   
   
@@ -588,7 +606,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/export/" class="md-nav__link ">
+            <a href="../../export/" class="md-nav__link ">
               
   
   
@@ -621,7 +639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/export/export/" class="md-nav__link">
+      <a href="../../export/export/" class="md-nav__link">
         
   
   
@@ -644,7 +662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/export/graph_operations/" class="md-nav__link">
+      <a href="../../export/graph_operations/" class="md-nav__link">
         
   
   
@@ -667,7 +685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/export/module_export/" class="md-nav__link">
+      <a href="../../export/module_export/" class="md-nav__link">
         
   
   
@@ -698,7 +716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/flags/" class="md-nav__link">
+      <a href="../../flags/" class="md-nav__link">
         
   
   
@@ -721,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/forward_override/" class="md-nav__link">
+      <a href="../../forward_override/" class="md-nav__link">
         
   
   
@@ -744,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/logging_utils/" class="md-nav__link">
+      <a href="../../logging_utils/" class="md-nav__link">
         
   
   
@@ -782,7 +800,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/mpath/" class="md-nav__link ">
+            <a href="../../mpath/" class="md-nav__link ">
               
   
   
@@ -815,7 +833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/mpath/fragments/" class="md-nav__link">
+      <a href="../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -838,7 +856,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/mpath/selector/" class="md-nav__link">
+      <a href="../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -884,7 +902,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/nn/" class="md-nav__link ">
+            <a href="../../nn/" class="md-nav__link ">
               
   
   
@@ -917,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/activations/" class="md-nav__link">
+      <a href="../../nn/activations/" class="md-nav__link">
         
   
   
@@ -940,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/container/" class="md-nav__link">
+      <a href="../../nn/container/" class="md-nav__link">
         
   
   
@@ -963,7 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/conv/" class="md-nav__link">
+      <a href="../../nn/conv/" class="md-nav__link">
         
   
   
@@ -986,7 +1004,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1009,7 +1027,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/embedding/" class="md-nav__link">
+      <a href="../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1032,7 +1050,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/functional/" class="md-nav__link">
+      <a href="../../nn/functional/" class="md-nav__link">
         
   
   
@@ -1055,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/linear/" class="md-nav__link">
+      <a href="../../nn/linear/" class="md-nav__link">
         
   
   
@@ -1078,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1101,7 +1119,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/normalization/" class="md-nav__link">
+      <a href="../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -1124,7 +1142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/quantized_module/" class="md-nav__link">
+      <a href="../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -1147,7 +1165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/nn/quantizer/" class="md-nav__link">
+      <a href="../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -1178,7 +1196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/overrides/" class="md-nav__link">
+      <a href="../../overrides/" class="md-nav__link">
         
   
   
@@ -1216,7 +1234,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/quantization/" class="md-nav__link ">
+            <a href="../../quantization/" class="md-nav__link ">
               
   
   
@@ -1264,7 +1282,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/quantization/affine/" class="md-nav__link ">
+            <a href="../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -1297,7 +1315,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -1320,7 +1338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/affine/function/" class="md-nav__link">
+      <a href="../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -1343,7 +1361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/affine/range/" class="md-nav__link">
+      <a href="../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -1366,7 +1384,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/affine/static/" class="md-nav__link">
+      <a href="../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -1397,7 +1415,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/function/" class="md-nav__link">
+      <a href="../../quantization/function/" class="md-nav__link">
         
   
   
@@ -1420,7 +1438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/granularity/" class="md-nav__link">
+      <a href="../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -1443,7 +1461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/local_error/" class="md-nav__link">
+      <a href="../../quantization/local_error/" class="md-nav__link">
         
   
   
@@ -1466,7 +1484,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/output_mse/" class="md-nav__link">
+      <a href="../../quantization/output_mse/" class="md-nav__link">
         
   
   
@@ -1489,7 +1507,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/quant_init/" class="md-nav__link">
+      <a href="../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -1512,7 +1530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/random/" class="md-nav__link">
+      <a href="../../quantization/random/" class="md-nav__link">
         
   
   
@@ -1535,7 +1553,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/ste/" class="md-nav__link">
+      <a href="../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -1558,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/strict_quantization/" class="md-nav__link">
+      <a href="../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -1581,7 +1599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -1612,7 +1630,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/quantized_tensor/" class="md-nav__link">
+      <a href="../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -1650,7 +1668,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/range_setting/" class="md-nav__link ">
+            <a href="../../range_setting/" class="md-nav__link ">
               
   
   
@@ -1683,7 +1701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/range_setting/common/" class="md-nav__link">
+      <a href="../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -1706,7 +1724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/range_setting/min_error/" class="md-nav__link">
+      <a href="../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -1729,7 +1747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/range_setting/minmax/" class="md-nav__link">
+      <a href="../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -1757,6 +1775,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1767,15 +1787,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../fastforward/testing/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1794,7 +1814,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_15">
             <span class="md-nav__icon md-icon"></span>
             testing
@@ -1808,7 +1828,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/testing/cfg/" class="md-nav__link">
+      <a href="../cfg/" class="md-nav__link">
         
   
   
@@ -1831,7 +1851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/testing/initialization/" class="md-nav__link">
+      <a href="../initialization/" class="md-nav__link">
         
   
   
@@ -1851,10 +1871,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../fastforward/testing/metrics/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    metrics
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1865,6 +1905,33 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.testing.metrics.sqnr" class="md-nav__link">
+    <span class="md-ellipsis">
+      sqnr
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1877,7 +1944,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/testing/string/" class="md-nav__link">
+      <a href="../string/" class="md-nav__link">
         
   
   
@@ -1908,7 +1975,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fastforward/type_common/" class="md-nav__link">
+      <a href="../../type_common/" class="md-nav__link">
         
   
   
@@ -1954,81 +2021,227 @@
                   
 
 
+  
+  
 
-  <h1>Summary</h1>
 
-<ul>
-<li><a href="../fastforward/">fastforward</a><ul>
-<li><a href="../fastforward/autoquant/">autoquant</a></li>
-<li><a href="../fastforward/common/">common</a></li>
-<li><a href="../fastforward/dispatcher/">dispatcher</a></li>
-<li><a href="../fastforward/exceptions/">exceptions</a></li>
-<li><a href="../fastforward/export/">export</a><ul>
-<li><a href="../fastforward/export/export/">export</a></li>
-<li><a href="../fastforward/export/graph_operations/">graph_operations</a></li>
-<li><a href="../fastforward/export/module_export/">module_export</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/flags/">flags</a></li>
-<li><a href="../fastforward/forward_override/">forward_override</a></li>
-<li><a href="../fastforward/logging_utils/">logging_utils</a></li>
-<li><a href="../fastforward/mpath/">mpath</a><ul>
-<li><a href="../fastforward/mpath/fragments/">fragments</a></li>
-<li><a href="../fastforward/mpath/selector/">selector</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/nn/">nn</a><ul>
-<li><a href="../fastforward/nn/activations/">activations</a></li>
-<li><a href="../fastforward/nn/container/">container</a></li>
-<li><a href="../fastforward/nn/conv/">conv</a></li>
-<li><a href="../fastforward/nn/dynamic_linear_quantizer/">dynamic_linear_quantizer</a></li>
-<li><a href="../fastforward/nn/embedding/">embedding</a></li>
-<li><a href="../fastforward/nn/functional/">functional</a></li>
-<li><a href="../fastforward/nn/linear/">linear</a></li>
-<li><a href="../fastforward/nn/linear_quantizer/">linear_quantizer</a></li>
-<li><a href="../fastforward/nn/normalization/">normalization</a></li>
-<li><a href="../fastforward/nn/quantized_module/">quantized_module</a></li>
-<li><a href="../fastforward/nn/quantizer/">quantizer</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/overrides/">overrides</a></li>
-<li><a href="../fastforward/quantization/">quantization</a><ul>
-<li><a href="../fastforward/quantization/affine/">affine</a><ul>
-<li><a href="../fastforward/quantization/affine/dynamic/">dynamic</a></li>
-<li><a href="../fastforward/quantization/affine/function/">function</a></li>
-<li><a href="../fastforward/quantization/affine/range/">range</a></li>
-<li><a href="../fastforward/quantization/affine/static/">static</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/quantization/function/">function</a></li>
-<li><a href="../fastforward/quantization/granularity/">granularity</a></li>
-<li><a href="../fastforward/quantization/local_error/">local_error</a></li>
-<li><a href="../fastforward/quantization/output_mse/">output_mse</a></li>
-<li><a href="../fastforward/quantization/quant_init/">quant_init</a></li>
-<li><a href="../fastforward/quantization/random/">random</a></li>
-<li><a href="../fastforward/quantization/ste/">ste</a></li>
-<li><a href="../fastforward/quantization/strict_quantization/">strict_quantization</a></li>
-<li><a href="../fastforward/quantization/tiled_tensor/">tiled_tensor</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/quantized_tensor/">quantized_tensor</a></li>
-<li><a href="../fastforward/range_setting/">range_setting</a><ul>
-<li><a href="../fastforward/range_setting/common/">common</a></li>
-<li><a href="../fastforward/range_setting/min_error/">min_error</a></li>
-<li><a href="../fastforward/range_setting/minmax/">minmax</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/testing/">testing</a><ul>
-<li><a href="../fastforward/testing/cfg/">cfg</a></li>
-<li><a href="../fastforward/testing/initialization/">initialization</a></li>
-<li><a href="../fastforward/testing/metrics/">metrics</a></li>
-<li><a href="../fastforward/testing/string/">string</a></li>
-</ul>
-</li>
-<li><a href="../fastforward/type_common/">type_common</a></li>
-</ul>
-</li>
-</ul>
+  <h1>metrics</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.testing.metrics.sqnr" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">sqnr</span><span class="p">(</span><span class="n">non_quantized_tensor</span><span class="p">,</span> <span class="n">quantized_tensor</span><span class="p">,</span> <span class="n">in_db</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-15</span><span class="p">)</span></code>
+
+<a href="#fastforward.testing.metrics.sqnr" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Calculate the signal-to-quantization-noise-ratio (SQNR) over the batch dimension.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>non_quantized_tensor</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Original tensor.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>quantized_tensor</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Quantized tensor.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>in_db</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to return the output in dB scale.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>eps</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Small value to avoid division by zero.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1e-15</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SQNR value between the two input tensors.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/testing/metrics.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sqnr</span><span class="p">(</span>
+    <span class="n">non_quantized_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">quantized_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">in_db</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the signal-to-quantization-noise-ratio (SQNR) over the batch dimension.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        non_quantized_tensor: Original tensor.</span>
+<span class="sd">        quantized_tensor: Quantized tensor.</span>
+<span class="sd">        in_db: Whether to return the output in dB scale.</span>
+<span class="sd">        eps: Small value to avoid division by zero.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SQNR value between the two input tensors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">non_quantized_tensor</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">quantized_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The shapes of `org_out` and `quant_out` must match. Got </span><span class="si">{</span><span class="n">non_quantized_tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">quantized_tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">quant_error</span> <span class="o">=</span> <span class="n">non_quantized_tensor</span> <span class="o">-</span> <span class="n">quantized_tensor</span>
+        <span class="n">exp_noise</span> <span class="o">=</span> <span class="n">quant_error</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">quant_error</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">eps</span>
+        <span class="n">exp_signal</span> <span class="o">=</span> <span class="n">non_quantized_tensor</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">non_quantized_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">sqnr</span> <span class="o">=</span> <span class="p">(</span><span class="n">exp_signal</span> <span class="o">/</span> <span class="n">exp_noise</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">in_db</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">sqnr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sqnr</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2077,10 +2290,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>
