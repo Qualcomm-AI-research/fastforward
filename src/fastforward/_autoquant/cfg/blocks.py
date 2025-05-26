@@ -7,7 +7,7 @@ import itertools
 
 from collections.abc import Iterator, Sequence
 from types import UnionType
-from typing import Protocol, TypeVar, Union, get_args, get_origin, get_type_hints
+from typing import Callable, Protocol, TypeVar, Union, get_args, get_origin, get_type_hints
 
 import libcst
 
@@ -41,8 +41,10 @@ class Block(abc.ABC):
     is also present on the `Block` during reconstruction.
     """
 
-    _wrappers: list[libcst.CSTNode] = dataclasses.field(init=False, default_factory=list)
-    immediate_dominator: "Block | None" = dataclasses.field(init=False, default=None)
+    _wrappers: list[libcst.CSTNode] = dataclasses.field(
+        init=False, default_factory=list, repr=False
+    )
+    immediate_dominator: "Block | None" = dataclasses.field(init=False, default=None, repr=False)
     immediate_post_dominator: "Block | None" = dataclasses.field(
         init=False, default=None, repr=False
     )
@@ -93,10 +95,24 @@ class Block(abc.ABC):
                 if child := getattr(self, name):
                     yield name, child
 
+    def children(self) -> Iterator["Block"]:
+        """Yields all direct children of this block.
+
+        By default, this will find all members that are a subclass of `Block`
+        and yields those. A specific subclass of `Block` may require other
+        behaviour. In that case, this method should be overridden. If all
+        members that are `Blocks` are children, the method works as expected.
+
+        Returns:
+            An iterator over direct children and their names.
+        """
+        for _, child in self.named_children():
+            yield child
+
     def blocks(
         self,
         *,
-        reverse: bool = True,
+        reverse: bool = False,
     ) -> Iterator["Block"]:
         """Traverse graph and yield blocks in (reversed) post-order.
 
@@ -107,21 +123,7 @@ class Block(abc.ABC):
             reverse: yield blocks in reversed order if True, otherwise
                 yield blocks in post order.
         """
-        visited: set["Block"] = set()
-
-        def dfs(block: "Block") -> Iterator["Block"]:
-            """Depth first search."""
-            visited.add(block)
-            for _, child in block.named_children():
-                if child not in visited:
-                    yield from dfs(child)
-            yield block
-
-        block_iter = dfs(self)
-        if reverse:
-            block_iter = reversed(list(block_iter))
-
-        yield from block_iter
+        yield from _traverse_cfg(self, reversed=reverse)
 
     def is_dominated_by(self, other: "Block") -> bool:
         """True if `other` dominates `self`, False otherwise.
@@ -142,6 +144,79 @@ class Block(abc.ABC):
     @abc.abstractmethod
     def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
         """Visit block using visitor."""
+
+
+def _traverse_cfg(cfg: Block, reversed: bool = False) -> Iterator[Block]:
+    """Traverse a CFG using a priority-based topological sorting heuristic.
+
+    This function produces an ordering of nodes in a CFG, with the following
+    properties:
+
+    If `reversed` is False:
+    1. For all nodes u, v, if there is a simple path root, ..., u, ..., v, then
+       u <= v.
+    2. For all nodes u, v, if there is a simple path u, ..., v, ..., sink, then
+        u <= v.
+    3. in the presence of cycles in the CFG, the algorithm
+       prioritizes preserving the root-to-node ordering over the sink-to-node
+       ordering.
+
+    If `reversed` is True:
+    1. For all nodes u, v, if there is a simple path sink, ..., u, ..., v, then
+       u <= v.
+    2. For all nodes u, v, if there is a simple path u, ..., v, ..., root, then
+        u <= v.
+    3. in the presence of cycles in the CFG, the algorithm
+       prioritizes preserving the sink-to-node ordering over the sink-to-node
+       ordering.
+
+    The method assigns a priority score to each node based on its distance from
+    the root and to the sink, then sorts nodes accordingly. Cycles are handled
+    by breaking edges that violate the root-first (or sink-first) constraint.
+    """
+    dist_from_root: dict["Block", int] = {}
+    dist_from_sink: dict["Block", int] = {}
+    parents: dict[Block, list[Block]] = {}
+
+    def _infer_distance(
+        block: "Block",
+        *,
+        child_fn: Callable[[Block], Iterator[Block]],
+        dists: dict["Block", int],
+        parents_collector: dict[Block, list[Block]],
+        dist: int = 0,
+    ) -> None:
+        if dists.get(block, float("inf")) <= dist:
+            return
+        dists[block] = dist
+        for child in child_fn(block):
+            parents_collector.setdefault(child, []).append(block)
+            _infer_distance(
+                child,
+                dists=dists,
+                child_fn=child_fn,
+                dist=dist + 1,
+                parents_collector=parents_collector,
+            )
+
+    def parents_fn(block: Block) -> Iterator[Block]:
+        yield from parents.get(block) or []
+
+    _infer_distance(cfg, dists=dist_from_root, child_fn=Block.children, parents_collector=parents)
+    sink = next(block for block in dist_from_root if isinstance(block, ExitBlock))
+    _infer_distance(sink, dists=dist_from_sink, child_fn=parents_fn, parents_collector={})
+
+    node_priorities = [
+        (
+            (dist_from_root[block], -dist_from_sink[block], block)
+            if not reversed
+            else (dist_from_sink[block], -dist_from_root[block], block)
+        )
+        for block in dist_from_root
+    ]
+
+    for _, _, block in sorted(node_priorities, key=lambda prio: prio[:2]):
+        yield block
 
 
 @dataclasses.dataclass(eq=False)
@@ -204,6 +279,43 @@ class IfBlock(BranchingBlock):
     @override
     def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
         return visitor.visit_IfBlock(self)
+
+
+@dataclasses.dataclass(eq=False)
+class ForBlock(BranchingBlock):
+    body: Block
+    iter: libcst.BaseExpression
+    target: libcst.BaseAssignTargetExpression
+    next_block: Block | None = None
+
+    @override
+    def set_tail(self, tail: Block) -> None:
+        if self.next_block is not None:
+            self.next_block.set_tail(tail)
+        else:
+            self.next_block = tail
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_ForBlock(self)
+
+
+@dataclasses.dataclass(eq=False)
+class WhileBlock(BranchingBlock):
+    body: Block
+    test: libcst.BaseExpression
+    next_block: Block | None = None
+
+    @override
+    def set_tail(self, tail: Block) -> None:
+        if self.next_block is not None:
+            self.next_block.set_tail(tail)
+        else:
+            self.next_block = tail
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_WhileBlock(self)
 
 
 @dataclasses.dataclass(eq=False)
@@ -334,6 +446,22 @@ class BlockVisitor(Protocol[_VT]):
 
     def visit_SimpleBlock(self, __block: SimpleBlock) -> _VT:
         """Visitor for `SimpleBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_ForBlock(self, __block: ForBlock) -> _VT:
+        """Visitor for `ForBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_WhileBlock(self, __block: WhileBlock) -> _VT:
+        """Visitor for `WhileBlock`.
 
         Args:
             __block: The block that is visisted.

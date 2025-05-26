@@ -77,7 +77,7 @@ class _BlockReconstructor:
         `IndentedBlock`.
 
         If `block.false` is equal to the post-dominator of block, there is no
-        specific control flow for the else branch, hence, else branch is created.
+        specific control flow for the else branch, hence, no else branch is created.
         Otherwise, the else branch is created from the block pointed to by
         `block.false`. In the case where the `IndentedBlock` of the `false` branch
         only contains a single `libcst.If` node, the `libcst.If` is used directly
@@ -108,6 +108,54 @@ class _BlockReconstructor:
         )
         if_node = ensure_type(if_node, libcst.If, CFGReconstructionError)
         node = libcst.IndentedBlock(body=(if_node,))
+
+        return self._process_tail(block, node)
+
+    def visit_ForBlock(self, block: blocks.ForBlock) -> libcst.IndentedBlock:
+        """Convert a `ForBlock` into an `IndentedBlock`.
+
+        A `ForBlock` has a body and a next block. The next block is always the
+        immediate post-dominator. The CST is reconstructed by replacing the
+        wrapper's body with the `IndentedBlock` created from `body`. The `iter`
+        and `target` elements from the wrapper are replaced with the `iter` and
+        `target` members on the block.
+
+        The reconstructed `For` node is wrapped in an `IndentedBlock`.
+
+        Args:
+            block: `Block` to convert into a CST.
+
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        body = block.body.visit(self)
+        for_node = block.wrappers[0].with_changes(body=body, target=block.target, iter=block.iter)
+        for_node = ensure_type(for_node, libcst.For, CFGReconstructionError)
+        node = libcst.IndentedBlock(body=(for_node,))
+
+        return self._process_tail(block, node)
+
+    def visit_WhileBlock(self, block: blocks.WhileBlock) -> libcst.IndentedBlock:
+        """Convert a `WhileBlock` into an `IndentedBlock`.
+
+        A `WhileBlock` has a body and a next block. The next block is always
+        the immediate post-dominator. The CST is reconstructed by replacing the
+        wrapper's body with the `IndentedBlock` created from `body`. The `test`
+        element from the wrapper are replaced with the `test` member on the
+        block.
+
+        The reconstructed `While` node is wrapped in an `IndentedBlock`.
+
+        Args:
+            block: `Block` to convert into a CST.
+
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        body = block.body.visit(self)
+        while_node = block.wrappers[0].with_changes(body=body, test=block.test)
+        while_node = ensure_type(while_node, libcst.While, CFGReconstructionError)
+        node = libcst.IndentedBlock(body=(while_node,))
 
         return self._process_tail(block, node)
 

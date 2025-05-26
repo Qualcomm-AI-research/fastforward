@@ -45,7 +45,7 @@ def _statements_and_expressions_in_block(block: blocks.Block) -> Iterator[_ExprO
     Statements and expressions are yielded in order of execution.
 
     Arguments:
-        block: The block for which statements and expressions are yielden.
+        block: The block for which statements and expressions are yielded.
 
     Returns:
         Iterator over statements and expression CST nodes in `block`.
@@ -64,6 +64,16 @@ class _BlockStamementAndExpressions:
 
     def visit_IfBlock(self, block: blocks.IfBlock) -> Iterator[_ExprOrStatement]:
         yield block.test
+
+    def visit_WhileBlock(self, block: blocks.WhileBlock) -> Iterator[_ExprOrStatement]:
+        yield block.test
+
+    def visit_ForBlock(self, block: blocks.ForBlock) -> Iterator[_ExprOrStatement]:
+        yield block.iter
+        # Note: target is yielded here. Outside of the context of a `ForBlock`
+        #       or `libcst.For` it is not clear that this is an assignment.
+        #       Assignments require special handling.
+        yield block.target
 
     def visit_ExitBlock(self, _block: blocks.ExitBlock) -> Iterator[_ExprOrStatement]:
         yield from ()

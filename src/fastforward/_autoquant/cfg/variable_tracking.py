@@ -128,6 +128,36 @@ class _VariableTrackerVisitor:
         tracker = self._create_tracker(block)
         self._process_assignments(block, tracker)
 
+    def visit_WhileBlock(self, block: blocks.WhileBlock) -> None:
+        tracker = self._create_tracker(block)
+        self._process_assignments(block, tracker)
+
+    def visit_ForBlock(self, block: blocks.ForBlock) -> None:
+        tracker = self._create_tracker(block)
+
+        def _unpack_targets(node: libcst.BaseExpression) -> Iterator[libcst.Name]:
+            match node:
+                case libcst.Name():
+                    yield node
+                case libcst.Tuple():
+                    for elem in node.elements:
+                        if isinstance(elem, libcst.Element):
+                            yield from _unpack_targets(elem.value)
+                case _:
+                    # Currently we only consider `Name`s.
+                    pass
+
+        for target in _unpack_targets(block.target):
+            var = self.variable_collection.get(
+                name=target.value,
+                quantization_status=QuantizationStatus.Unknown,
+                declaration_block=block,
+                declaration_node=block.target,
+            )
+            tracker.vars_gen.add(var)
+
+        self._visit_children(block)
+
     def visit_FunctionBlock(self, block: blocks.FunctionBlock) -> None:
         tracker = self._create_tracker(block)
         for param in block.params():

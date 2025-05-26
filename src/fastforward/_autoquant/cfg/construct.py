@@ -10,7 +10,7 @@ import libcst
 
 from ..cst.validation import ensure_type
 from . import _dominance, blocks
-from .exceptions import CFGConstructionError
+from .exceptions import CFGConstructionError, CFGConstructionNotImplemented
 
 
 def construct(node: libcst.FunctionDef) -> blocks.FunctionBlock:
@@ -46,7 +46,7 @@ def _block_from_CSTNode(node: libcst.CSTNode) -> blocks.Block:
         may be dangling.
     """
     raise CFGConstructionError(
-        f"Cannot convert {type(node).__name__} to CFG. A conversion implementation is missing. "
+        f"Cannot convert '{type(node).__name__}' to CFG. A conversion implementation is missing. "
         + "Please file an issue if you run into this error."
     )
 
@@ -170,6 +170,41 @@ def _block_from_Else(node: libcst.Else) -> blocks.Block:
     return block
 
 
+@_block_from_CSTNode.register
+def _block_from_For(node: libcst.For) -> blocks.Block:
+    # template:
+    # {node.asynchronous} for {node.target} in {node.iter}:
+    #     {node.body}
+    # else:
+    #     {node.orelse}
+    _check_not_implemented(node.orelse is None, "Else-blocks for for-loops are not supported")
+    _check_not_implemented(node.asynchronous is None, "async for is not supported")
+
+    body_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
+    body_block = _block_from_CSTNode(body_node)
+    for_block = blocks.ForBlock(body=body_block, iter=node.iter, target=node.target)
+    body_block.set_tail(for_block)
+    for_block.push_wrapper(node)
+    return for_block
+
+
+@_block_from_CSTNode.register
+def _block_from_While(node: libcst.While) -> blocks.Block:
+    # template:
+    # while {node.test}:
+    #     {node.body}
+    # else:
+    #     {node.orelse}
+    _check_not_implemented(node.orelse is None, "Else-blocks for while-loops are not supported")
+
+    body_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
+    body_block = _block_from_CSTNode(body_node)
+    while_block = blocks.WhileBlock(body=body_block, test=node.test)
+    body_block.set_tail(while_block)
+    while_block.push_wrapper(node)
+    return while_block
+
+
 def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.IndentedBlock]:
     """Split `IndentedBlock` into multiple `IndentedBlock`s.
 
@@ -234,3 +269,8 @@ def _set_tails(block: blocks.Block | None, tail: blocks.Block) -> None:
     """Helper function that sets tails of `block` if `block` is not `None`."""
     if block:
         block.set_tail(tail)
+
+
+def _check_not_implemented(check: bool, msg: str) -> None:
+    if not check:
+        raise CFGConstructionNotImplemented(msg)

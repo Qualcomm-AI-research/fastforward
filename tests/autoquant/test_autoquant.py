@@ -6,7 +6,7 @@ import pathlib
 import sys
 import types
 
-from typing import TypeAlias
+from typing import Any, TypeAlias
 from unittest.mock import patch
 
 import fastforward
@@ -448,13 +448,91 @@ class QuantizedExampleModule8(fastforward.nn.QuantizedModule, ExampleModule8):
 """
 
 
+# Example with loops
+class ExampleModule9(torch.nn.Module):
+    def forward(self, x: Tensor) -> Tensor:
+        for _ in range(3):
+            x = torch.sigmoid(x)
+        x = torch.relu(x)
+        test = True
+        while test:
+            for _ in range(3):
+                x = _my_func(x)
+            test = False
+        return torch.relu(x)
+
+
+FLOAT_MODULE_9 = ExampleModule9()
+
+AUTOQUANTIZED_MODULE_OUT_9 = """
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule9, Tensor, _my_func
+
+
+class QuantizedExampleModule9(fastforward.nn.QuantizedModule, ExampleModule9):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_x_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+        self.quantizer_x_2 = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.quantizer_x_1(x)
+        for _ in range(3):
+            x = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
+        x = fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu_1)
+        test = True
+        while test:
+            for _ in range(3):
+                x = _my_func(x)
+                x = self.quantizer_x_2(x)
+            test = False
+        return fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu_2)
+"""
+
+
+# Example with quantized loop variables
+class ExampleModule10(torch.nn.Module):
+    def forward(self, x: Tensor) -> Tensor:
+        for a in x:
+            _ = torch.relu(a)
+        return x
+
+
+FLOAT_MODULE_10 = ExampleModule10()
+
+AUTOQUANTIZED_MODULE_OUT_10 = """
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule10, Tensor
+
+
+class QuantizedExampleModule10(fastforward.nn.QuantizedModule, ExampleModule10):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_a = fastforward.nn.QuantizerStub()
+        self.quantizer_relu = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: Tensor) -> Tensor:
+        for a in x:
+            a = self.quantizer_a(a)
+            _ = fastforward.nn.functional.relu(a, output_quantizer=self.quantizer_relu)
+        return x
+"""
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module, expected_codegen",
     [
         (FLOAT_MODULE_8, AUTOQUANTIZED_MODULE_OUT_8),
+        (FLOAT_MODULE_9, AUTOQUANTIZED_MODULE_OUT_9),
+        (FLOAT_MODULE_10, AUTOQUANTIZED_MODULE_OUT_10),
     ],
-    ids=[f"case-{i}" for i in range(8, 9)],
+    ids=[f"case-{i}" for i in range(8, 11)],
 )
 def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: str) -> None:
     """Verifies autoquantization introduces the magic method and quantizers."""
@@ -708,3 +786,9 @@ def test_find_known_quantized_modules_subclasses_of_subclasses() -> None:
     # modules that don't directly subclass QuantizedModule. An example of this is
     # QuantizedRelu for which ReLU should be discovered.
     assert torch.nn.ReLU in _find_known_quantized_modules()
+
+
+def _my_func(x: Any, *args: Any, **kwargs: Any) -> Any:
+    """Used in autoquant examples."""
+    del args, kwargs
+    return x

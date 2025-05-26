@@ -52,7 +52,7 @@ def set_immediate_dominators(root: blocks.Block) -> None:
 
     try:
         _assign_immediate_dominators(
-            root, parents, block_order, _DominatorAccessor(), reverse_traversal=True
+            root, parents, block_order, _DominatorAccessor(), reverse_traversal=False
         )
     finally:
         root.immediate_dominator = None
@@ -60,9 +60,11 @@ def set_immediate_dominators(root: blocks.Block) -> None:
     # Do the same thing as for dominators, but in reverse. I.e., use the exit
     # block of the graph as the root element and children instead of
     # parents. This will infer the immediate post-dominators.
+
     children = infer_children(root)
-    block_order = {block: OrderIndex(idx) for idx, block in enumerate(root.blocks(reverse=False))}
-    exit_block = next(root.blocks(reverse=False))
+    ordered_blocks = list(root.blocks(reverse=True))
+    exit_block = ordered_blocks[0]
+    block_order = {block: OrderIndex(idx) for idx, block in enumerate(ordered_blocks)}
     exit_block.immediate_post_dominator = exit_block
     try:
         _assign_immediate_dominators(
@@ -70,7 +72,7 @@ def set_immediate_dominators(root: blocks.Block) -> None:
             parents=children,
             block_order=block_order,
             dominator_accessor=_PostDominatorAccessor(),
-            reverse_traversal=False,
+            reverse_traversal=True,
         )
     finally:
         exit_block.immediate_post_dominator = None

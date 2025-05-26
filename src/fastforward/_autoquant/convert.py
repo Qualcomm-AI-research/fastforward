@@ -226,28 +226,21 @@ class _InsertQuantizerVisitor:
         self,
         variable: variable_tracking.Variable,
         clsbuilder: QuantizedModuleBuilder,
-        quantizer_prefix: str = "quantizer_",
     ) -> None:
         self.clsbuilder = clsbuilder
         self.variable = variable
-        self.quantizer_prefix = quantizer_prefix
 
     def visit_FunctionBlock(self, block: blocks.FunctionBlock) -> None:
-        if not isinstance(block.body, blocks.SimpleBlock):
-            blocks.insert_block_between(block, block.body)
-
-        body = block.body
-        assert isinstance(body, blocks.SimpleBlock)
-
-        quantizer_name = nodes.QuantizerReference(self.variable.name)
-        body.statements = (
-            _create_quantize_statement(self.variable.name, quantizer_name),
-            *body.statements,
-        )
-        self.variable.mark_quantized()
+        self._insert_in_referenced(block, "body")
 
     def visit_IfBlock(self, block: blocks.IfBlock) -> None:
         pass
+
+    def visit_ForBlock(self, block: blocks.ForBlock) -> None:
+        self._insert_in_referenced(block, "body")
+
+    def visit_WhileBlock(self, block: blocks.WhileBlock) -> None:
+        self._insert_in_referenced(block, "body")
 
     def visit_ExitBlock(self, _block: blocks.ExitBlock) -> None:
         pass
@@ -259,6 +252,29 @@ class _InsertQuantizerVisitor:
             *block.statements[: statement_idx + 1],
             _create_quantize_statement(self.variable.name, quantizer_name),
             *block.statements[statement_idx + 1 :],
+        )
+        self.variable.mark_quantized()
+
+    def _insert_in_referenced(self, block: blocks.Block, next_block_attr: str) -> None:
+        """Insert quantizer as first statement in block `next_block_attr`.
+
+        If the block referenced by `next_block_attr` is not a `SimpleBlock`,
+        create a new `SimpleBlock` between the referenced block and `block` and
+        insert the quantizer there.
+        """
+        next_block = getattr(block, next_block_attr, None)
+        if next_block is None or not isinstance(next_block, blocks.Block):
+            msg = f"'{type(block).__name__}' does not have a block reference '{next_block_attr}'"
+            raise ValueError(msg)
+        if not isinstance(next_block, blocks.SimpleBlock):
+            blocks.insert_block_between(block, next_block)
+            next_block = getattr(block, next_block_attr)
+
+        assert isinstance(next_block, blocks.SimpleBlock)
+        quantizer_name = nodes.QuantizerReference(self.variable.name)
+        next_block.statements = (
+            _create_quantize_statement(self.variable.name, quantizer_name),
+            *next_block.statements,
         )
         self.variable.mark_quantized()
 

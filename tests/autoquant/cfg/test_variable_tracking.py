@@ -337,6 +337,20 @@ class TestVariableReachability(CFGTest):
         assert_not_reaches(ant, 1)
         assert_not_reaches(ant, 3)
 
+    def case_if_statement6(ant: int, bat: int, flag: bool) -> None:  # type: ignore[misc]
+        for _ in range(ant):
+            assert_reaches(ant, 0)
+            ant = ant * bat
+        assert_reaches(ant, 0)
+        assert_reaches(ant, 1)
+        while flag:
+            assert_reaches(ant, 0)
+            assert_reaches(ant, 1)
+            ant = ant - bat
+        assert_reaches(ant, 0)
+        assert_reaches(ant, 1)
+        assert_reaches(ant, 2)
+
 
 class _ReachabilityAssertionVisitor(libcst.CSTVisitor):
     """CST node visitor that acts on reachability assertions.

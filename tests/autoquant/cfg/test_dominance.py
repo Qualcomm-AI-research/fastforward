@@ -17,7 +17,6 @@ from typing_extensions import Self, override
     scope="module",
     params=[
         # Diamond
-        #
         # ┌──A──┐
         # ▼     ▼
         # B     C
@@ -36,6 +35,38 @@ from typing_extensions import Self, override
         # Sequence
         # A──►B──►C──►D──►E──►F
         ("AB", "BC", "CD", "DE", "EF"),
+        # Loop I
+        #     ┌───┐
+        #     ▼   │
+        # A──►B──►C
+        #     │
+        #     ▼
+        #     D
+        ("AB", "BC", "CB", "BD"),
+        # Loop II
+        #     ┌───────┐
+        #     ▼       │
+        # A──►B──►C──►D
+        #     │
+        #     ▼
+        #     E
+        ("AB", "BC", "CD", "DB", "BE"),
+        # Loop III
+        #     ┌───────┬───────┐
+        #     ▼       │       │
+        # A──►B──►C──►D──►E──►F
+        #     │
+        #     ▼
+        #     G
+        ("AB", "BC", "CD", "DB", "DE", "EF", "FB", "BG"),
+        # Loop IV
+        #     ┌───┐
+        #     ▼   │
+        # A──►B──►C──►D
+        #     │   ▲   │
+        #     ▼   └───┘
+        #     E
+        ("AB", "BC", "CD", "DC", "CB", "BE"),
     ],
 )
 def graph(request: pytest.FixtureRequest) -> "_Graph":
@@ -104,20 +135,20 @@ class _TestBlock(blocks.Block):
     can therefore be a placeholder of various `Blocks`.
     """
 
-    children: list[blocks.Block | None]
     label: str
+    child_blocks: list[blocks.Block | None]
 
     @override
     def set_tail(self, tail: blocks.Block) -> None:
-        for i, child in enumerate(self.children):
+        for i, child in enumerate(self.child_blocks):
             if child is None:
-                self.children[i] = tail
+                self.child_blocks[i] = tail
             else:
                 child.set_tail(tail)
 
     @override
     def named_children(self) -> Iterator[tuple[str, blocks.Block]]:
-        for i, child in enumerate(self.children):
+        for i, child in enumerate(self.child_blocks):
             if child is not None:
                 yield f"child_{i}", child
 
@@ -125,6 +156,11 @@ class _TestBlock(blocks.Block):
     def visit(self, visitor: blocks.BlockVisitor[blocks._VT]) -> blocks._VT:
         # Implementation to make tests.autoquant.cfg.blocks::test_block_visitor pass.
         return visitor.visit__TestBlock(self)  # type: ignore[no-any-return, attr-defined]
+
+
+@dataclasses.dataclass(eq=False)
+class _TestExitBlock(_TestBlock, blocks.ExitBlock):
+    pass
 
 
 @dataclasses.dataclass
@@ -207,12 +243,13 @@ class _Graph:
             path = open_set.pop()
             node_current = path[-1]
 
-            doms[node_current] &= set(path)
+            if node_current not in path[:-1]:
+                doms[node_current] &= set(path)
 
-            for child in self.edges.get(node_current, []):
-                new_path = path + child
-                if new_path not in visited_set:
-                    open_set.append(new_path)
+                for child in self.edges.get(node_current, []):
+                    new_path = path + child
+                    if new_path not in visited_set:
+                        open_set.append(new_path)
 
         return doms
 
@@ -223,14 +260,15 @@ class _Graph:
             A CFG created out of `_TestBlock`s that follows the same structure
             as this graph.
         """
-        cfg_nodes = {name: _TestBlock(children=[], label=name) for name in self.nodes}
+        cfg_nodes = {name: _TestBlock(child_blocks=[], label=name) for name in self.nodes}
+        cfg_nodes[self.node_exit].__class__ = _TestExitBlock
         for source, targets in self.edges.items():
             cfg_node = cfg_nodes[source]
             for target in targets:
-                cfg_node.children.append(cfg_nodes[target])
+                cfg_node.child_blocks.append(cfg_nodes[target])
         entry_node = cfg_nodes[self.node_entry]
 
-        assert not cfg_nodes[self.node_exit].children
+        assert not cfg_nodes[self.node_exit].child_blocks
         assert sum(1 for _ in entry_node.blocks()) == len(self.nodes), (
             "The constructed CFG must have an equal number of nodes as the graph"
         )

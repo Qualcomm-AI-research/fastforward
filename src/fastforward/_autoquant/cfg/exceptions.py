@@ -10,5 +10,9 @@ class CFGConstructionError(CFGError):
     """CFG Construction Exception."""
 
 
+class CFGConstructionNotImplemented(CFGError):
+    """CFG Construction Exception."""
+
+
 class CFGReconstructionError(CFGError):
     """CFG Reconstruction Exception."""

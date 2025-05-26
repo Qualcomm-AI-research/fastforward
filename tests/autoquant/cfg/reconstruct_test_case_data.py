@@ -90,10 +90,35 @@ def my_function_6() -> None:
 # ENDCASE
 # ------------------------------------------------------------------------------
 
+
+# CASE: Function with for loop
+def my_function_7() -> None:
+    for x in range(10):
+        print(x)
+
+
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+
+
+# CASE: Function with while loop
+def my_function_8() -> None:
+    while do_something():
+        print("iteration")
+
+
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+
 # Define symbols used in test functions to suppress errors
 test = True
 test2 = False
 
 
-def do_something() -> None: ...
+def do_something() -> bool:
+    return True
+
+
 def do_more() -> None: ...
