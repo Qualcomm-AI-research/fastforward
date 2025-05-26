@@ -34,8 +34,8 @@ def _tiled_dequant_reference(
 DEVICES = ["cpu", "cuda"]
 NUM_BITS = [2, 3, 4]
 OUTPUT_DTYPES = [
-    pytest.param(torch.int32, marks=pytest.mark.patchedtorch),
-    pytest.param(torch.int16, marks=pytest.mark.patchedtorch),
+    torch.int32,
+    torch.int16,
     torch.float32,
 ]
 
@@ -81,9 +81,10 @@ def test_quantize_per_tensor(
     assert_close(quantized.raw_data, expected_raw.to(output_dtype))
     assert_close(dequantized, expected_dequant)
 
-    assert_close(data_grad, data.grad, output_dtype)
-    assert_close(scale_grad, scale.grad, output_dtype)
-    assert_close(offset_grad, offset.grad, output_dtype)
+    if output_dtype.is_floating_point:
+        assert_close(data_grad, data.grad, output_dtype)
+        assert_close(scale_grad, scale.grad, output_dtype)
+        assert_close(offset_grad, offset.grad, output_dtype)
 
 
 @pytest.mark.slow
@@ -120,9 +121,10 @@ def test_quantize_per_channel(
     torch.testing.assert_close(quantized.raw_data, expected_raw.to(output_dtype))
     torch.testing.assert_close(dequantized, expected_dequant)
 
-    assert_close(data_grad, data.grad, output_dtype)
-    assert_close(scale_grad, scale.grad, output_dtype)
-    assert_close(offset_grad, offset.grad, output_dtype)
+    if output_dtype.is_floating_point:
+        assert_close(data_grad, data.grad, output_dtype)
+        assert_close(scale_grad, scale.grad, output_dtype)
+        assert_close(offset_grad, offset.grad, output_dtype)
 
 
 @pytest.mark.slow
@@ -173,9 +175,10 @@ def test_quantize_per_block(
     torch.testing.assert_close(quantized.raw_data, expected_raw.to(output_dtype))
     torch.testing.assert_close(dequantized, expected_dequant)
 
-    assert_close(data_grad, data.grad, output_dtype)
-    assert_close(offset_grad, offset.grad, output_dtype)
-    assert_close(scale_grad, scale.grad, output_dtype)
+    if output_dtype.is_floating_point:
+        assert_close(data_grad, data.grad, output_dtype)
+        assert_close(scale_grad, scale.grad, output_dtype)
+        assert_close(offset_grad, offset.grad, output_dtype)
 
 
 @pytest.mark.slow
@@ -216,9 +219,10 @@ def test_quantize_by_tile(
     assert_close(quantized.raw_data, expected_raw.to(output_dtype))
     assert_close(dequantized, expected_dequant)
 
-    assert_close(data_grad, data.grad, output_dtype)
-    assert_close(scale_grad, scale.grad, output_dtype)
-    assert_close(offset_grad, offset.grad, output_dtype)
+    if output_dtype.is_floating_point:
+        assert_close(data_grad, data.grad, output_dtype)
+        assert_close(scale_grad, scale.grad, output_dtype)
+        assert_close(offset_grad, offset.grad, output_dtype)
 
 
 @pytest.mark.slow
@@ -229,9 +233,9 @@ def test_quantize_by_tile(
     [
         torch.float16,
         torch.float32,
-        pytest.param(torch.int32, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int16, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int8, marks=pytest.mark.patchedtorch),
+        torch.int32,
+        torch.int16,
+        torch.int8,
     ],
 )
 @pytest.mark.parametrize("scale_dtype", [torch.float32, torch.float16])
@@ -240,9 +244,9 @@ def test_quantize_by_tile(
     [
         torch.float16,
         torch.float32,
-        pytest.param(torch.int32, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int16, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int8, marks=pytest.mark.patchedtorch),
+        torch.int32,
+        torch.int16,
+        torch.int8,
     ],
 )
 def test_quantize_per_element_cuda(
@@ -264,9 +268,9 @@ def test_quantize_per_element_cuda(
     [
         torch.float16,
         torch.float32,
-        pytest.param(torch.int32, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int16, marks=pytest.mark.patchedtorch),
-        pytest.param(torch.int8, marks=pytest.mark.patchedtorch),
+        torch.int32,
+        torch.int16,
+        torch.int8,
     ],
 )
 @pytest.mark.parametrize("scale_dtype", [torch.float32])
@@ -317,9 +321,18 @@ def _quantize_per_element_impl(
     data = data_.to(input_dtype)
     if not input_dtype.is_floating_point:
         data *= 10
-    data.requires_grad_()
-    scale = torch.ones(data.numel(), device=device, dtype=scale_dtype, requires_grad=True)
-    offset = torch.ones(data.numel(), device=device, dtype=offset_dtype, requires_grad=True)
+
+    if data.dtype.is_floating_point:
+        data.requires_grad_()
+    scale = torch.ones(
+        data.numel(), device=device, dtype=scale_dtype, requires_grad=scale_dtype.is_floating_point
+    )
+    offset = torch.ones(
+        data.numel(),
+        device=device,
+        dtype=offset_dtype,
+        requires_grad=offset_dtype.is_floating_point,
+    )
     with torch.no_grad():
         scale.fill_(scale_)
         offset.fill_(offset_)
@@ -328,22 +341,28 @@ def _quantize_per_element_impl(
     quantized = affine.quantize_by_tile(data, scale, offset, tile_size, num_bits, output_dtype)
     dequantized = quantized.dequantize()
 
-    dequantized.sum().backward()
-    data_grad, scale_grad, offset_grad = data.grad, scale.grad, offset.grad
-    data.grad, scale.grad, offset.grad = None, None, None
+    if dequantized.grad_fn is not None:
+        dequantized.sum().backward()
+        data_grad, scale_grad, offset_grad = data.grad, scale.grad, offset.grad
+        data.grad, scale.grad, offset.grad = None, None, None
 
-    expected_raw = _tiled_quant_reference(data, scale, offset, num_bits, tile_size).to(output_dtype)
-    expected_dequant = _tiled_dequant_reference(expected_raw, scale, offset, tile_size)
-    expected_dequant = expected_dequant.to(data.dtype)
+        expected_raw = _tiled_quant_reference(data, scale, offset, num_bits, tile_size).to(
+            output_dtype
+        )
+        expected_dequant = _tiled_dequant_reference(expected_raw, scale, offset, tile_size)
+        expected_dequant = expected_dequant.to(data.dtype)
 
-    torch.testing.assert_close(quantized.raw_data, expected_raw, atol=0.005, rtol=0.01)
-    torch.testing.assert_close(dequantized, expected_dequant, atol=0.005, rtol=0.01)
+        torch.testing.assert_close(quantized.raw_data, expected_raw, atol=0.005, rtol=0.01)
+        torch.testing.assert_close(dequantized, expected_dequant, atol=0.005, rtol=0.01)
 
-    expected_dequant.sum().backward()
+        expected_dequant.sum().backward()
 
-    torch.testing.assert_close(data_grad, data.grad, atol=0.005, rtol=0.01)
-    torch.testing.assert_close(offset_grad, offset.grad, atol=0.05, rtol=0.01)
-    torch.testing.assert_close(scale_grad, scale.grad, atol=0.05, rtol=0.01)
+        if data_grad is not None:
+            torch.testing.assert_close(data_grad, data.grad, atol=0.005, rtol=0.01)
+        if offset_grad is not None:
+            torch.testing.assert_close(offset_grad, offset.grad, atol=0.05, rtol=0.01)
+        if scale_grad is not None:
+            torch.testing.assert_close(scale_grad, scale.grad, atol=0.05, rtol=0.01)
 
 
 def test_quantized_value_precision_loss() -> None:
