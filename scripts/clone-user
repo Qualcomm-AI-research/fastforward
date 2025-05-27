@@ -25,4 +25,4 @@ fi
 grep -q "$(id -g)" "$DST_DIR/group" || getent group "$(id -g)" >> "$DST_DIR/group"
 grep -q "$(id -u)" "$DST_DIR/passwd" || getent passwd "$(id -u)" >> "$DST_DIR/passwd"
 
-echo "--mount source=/var/tmp/$USER/$DOCKER_IMAGE/passwd,target=/etc/passwd,type=bind,readonly --mount source=/var/tmp/$USER/$DOCKER_IMAGE/group,target=/etc/group,type=bind,readonly --user=$(id -u):$(id -g)"
+echo "--mount source=/var/tmp/$USER/$DOCKER_IMAGE/passwd,target=/etc/passwd,type=bind,readonly --mount source=/var/tmp/$USER/$DOCKER_IMAGE/group,target=/etc/group,type=bind,readonly --user=$(id -u):$(id -g) --env USER=$(whoami)"
