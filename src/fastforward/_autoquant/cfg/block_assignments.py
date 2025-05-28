@@ -5,7 +5,7 @@ from collections.abc import Iterator
 
 from ..cst import nodes
 from ..cst.node_processing import NormalizedAssignment, normalize_assignments
-from . import blocks
+from . import block_node_elems, blocks
 
 
 def assignments_in_block(block: blocks.Block) -> Iterator[NormalizedAssignment]:
@@ -17,26 +17,8 @@ def assignments_in_block(block: blocks.Block) -> Iterator[NormalizedAssignment]:
     Returns:
         Iterator over `NormalizedAssignment`s in `block`.
     """
-    yield from block.visit(_AssignmentVisitor())
-
-
-class _AssignmentVisitor:
-    """Block visitor that yields all assignments in visited block."""
-
-    def visit_FunctionBlock(self, _block: blocks.FunctionBlock) -> Iterator[NormalizedAssignment]:
-        yield from ()
-
-    def visit_IfBlock(self, _block: blocks.IfBlock) -> Iterator[NormalizedAssignment]:
-        yield from ()
-
-    def visit_ExitBlock(self, _block: blocks.ExitBlock) -> Iterator[NormalizedAssignment]:
-        # Requires support for walrus operator. See #103
-        yield from ()
-
-    def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> Iterator[NormalizedAssignment]:
-        # This implementation does not take assignment expressions into
-        # account. See #103.
-        for statement_line in block.statements:
-            for statement in statement_line.body:
-                if isinstance(statement, nodes.GeneralAssignment):
-                    yield from normalize_assignments(statement)
+    for assignment, _ in block_node_elems.extract_nodes_from_block(
+        block, (nodes.GeneralAssignment,)
+    ):
+        assert isinstance(assignment, nodes.GeneralAssignment)
+        yield from normalize_assignments(assignment)
