@@ -37,7 +37,7 @@ class STEAutogradFunc(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx: Any, output_grad: torch.Tensor) -> tuple[torch.Tensor, None]:  # type: ignore[override]
+    def backward(ctx: Any, output_grad: torch.Tensor) -> tuple[torch.Tensor, None]:
         """Backward pass for the STE function.
 
         Args:

@@ -132,7 +132,7 @@ class _ScaleGradient(torch.autograd.Function):
         return input
 
     @staticmethod
-    def backward(ctx: Any, grad: torch.Tensor) -> tuple[torch.Tensor, None]:  # type: ignore[override]
+    def backward(ctx: Any, grad: torch.Tensor) -> tuple[torch.Tensor, None]:
         return grad * ctx.scalar, None
 
 

@@ -83,7 +83,7 @@ class TestQuantizationStatus(CFGTest):
             raise ValueError("Unknown case")
 
     @pytest.fixture(scope="class")
-    def cst(self, raw_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:  # type: ignore[override]
+    def cst(self, raw_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:
         """Replace function calls with their quantized counterpart for each CST."""
         quantized_counterpart_replacer = QuantizedCounterpartReplacer(optable=optable)
         cst = raw_cst.visit(quantized_counterpart_replacer)

@@ -390,7 +390,7 @@ class QuantizedTensor(torch.Tensor):
             cloned_tensor = super().clone()
         return quant_ctx.attach(cloned_tensor)
 
-    def detach(self) -> "QuantizedTensor":  # type: ignore[override]
+    def detach(self) -> "QuantizedTensor":
         """Detach tensor.
 
         This returns a ternsor that alliases this tensor, but is
@@ -480,7 +480,7 @@ class QuantizedTensor(torch.Tensor):
     def __isub__(self, other: Any) -> torch.Tensor: return NotImplemented
     def __imul__(self, other: Any) -> torch.Tensor: return NotImplemented
     def __imatmul__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __itruediv__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[override]
+    def __itruediv__(self, other: Any) -> torch.Tensor: return NotImplemented
     def __ifloordiv__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
     def __imod__(self, other: Any) -> torch.Tensor: return NotImplemented
     def __ilshift__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]

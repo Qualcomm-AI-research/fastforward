@@ -84,7 +84,7 @@ def test_dispatch(_seed_prngs: int) -> None:
 
     torch.testing.assert_close(kernel(input, dim), torch.softmax(input.to(torch.float), dim))
     predicate.assert_called_once()
-    kernel.assert_called_once()
+    kernel.assert_called_once()  # type: ignore[attr-defined]
 
 
 def test_dispatch_order(_seed_prngs: int) -> None:
@@ -127,7 +127,7 @@ def test_dispatch_registration_hook(_seed_prngs: int) -> None:
 
         torch.testing.assert_close(kernel(input, dim), torch.softmax(input.to(torch.float), dim))
         predicate.assert_called_once()
-        kernel.assert_called_once()
+        kernel.assert_called_once()  # type: ignore[attr-defined]
 
     kernel = dispatch("softmax", input, dim)
     assert kernel is None
