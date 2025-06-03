@@ -474,13 +474,23 @@ def quantize_model(
         logger.info(
             "Skipping requantization of '%s' because skip_quantized_modules=True", type(model)
         )
-        return model
+    else:
+        _quantize_module(model, module_map)
 
+    if isinstance(model, QuantizedModule) and recursive:
+        model.quantize_children(
+            extra_conversion=extra_conversion, skip_quantized_modules=skip_quantized_modules
+        )
+
+    return model
+
+
+def _quantize_module(module: torch.nn.Module, module_map: ModuleConversionDict) -> None:
     try:
-        quantized_class = module_map[type(model)]
+        quantized_class = module_map[type(module)]
     except KeyError as e:
         raise QuantizationError(
-            f"Quantization is not supported for '{type(model)}'. \n"
+            f"Quantization is not supported for '{type(module)}'. \n"
             f"Supported types can be found in `fastforward.nn.quantized_module.quantized_module_map`"
         ) from e
 
@@ -488,22 +498,15 @@ def quantize_model(
         logger.info(
             "Skipping quantization of '%s' because the conversion is set to "
             "fastforward.nn.quantized_module.SKIP_QUANTIZATION",
-            type(model).__name__,
+            type(module).__name__,
         )
-        return model
+        return
 
-    original_class = model.__class__
-    model.__class__ = quantized_class
-    model = cast(QuantizedModule, model)
-    model.__init_quantization__()
+    original_class = module.__class__
+    module.__class__ = quantized_class
+    module = cast(QuantizedModule, module)
+    module.__init_quantization__()
     logger.debug("Converting '%s' to '%s'", original_class.__name__, quantized_class.__name__)
-
-    if recursive:
-        model.quantize_children(
-            extra_conversion=extra_conversion, skip_quantized_modules=skip_quantized_modules
-        )
-
-    return model
 
 
 def quantized_module_map() -> dict[ModuleType, QuantizedModuleType]:
