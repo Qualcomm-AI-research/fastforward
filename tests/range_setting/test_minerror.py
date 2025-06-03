@@ -8,7 +8,7 @@ from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.quantization import granularity
 from fastforward.quantization.granularity import Granularity
 from fastforward.range_setting import estimate_ranges
-from fastforward.range_setting.min_error import _default_search_grid, mse_grid
+from fastforward.range_setting.min_error import _UniformSearchGrid, mse_grid
 
 
 @pytest.mark.slow
@@ -58,7 +58,7 @@ def test_mse_grid_estimator_decreasing_error_by_num_candidates(
 
 @pytest.mark.parametrize("symmetric", [True, False])
 @pytest.mark.parametrize("negative_data", [True, False])
-def test__default_search_grid(symmetric: bool, negative_data: bool) -> None:
+def test__UniformSearchGrid(symmetric: bool, negative_data: bool) -> None:
     num_candidates = 3
     parameter_dimensionality = 5
 
@@ -66,7 +66,8 @@ def test__default_search_grid(symmetric: bool, negative_data: bool) -> None:
     if not negative_data:
         data = data.abs()
 
-    min_threshold, max_threshold = _default_search_grid(
+    search_grid_generator = _UniformSearchGrid()
+    min_threshold, max_threshold = search_grid_generator(
         data,
         symmetric=symmetric,
         parameter_dimensionality=parameter_dimensionality,

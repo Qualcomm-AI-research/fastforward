@@ -12,6 +12,7 @@ Attributes:
 
 """
 
+import dataclasses
 import logging
 
 from math import floor, sqrt
@@ -73,65 +74,98 @@ def mse_error(quantized_data: torch.Tensor, unquantized_data: torch.Tensor) -> t
     return torch.mean((quantized_data - unquantized_data) ** 2, dim=1)
 
 
-def _default_search_grid(
-    tiled_data_sample: torch.Tensor,
-    symmetric: bool,
-    parameter_dimensionality: int,
-    num_candidates: int,
-    range_margin: float = 0.5,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Generate a default grid for grid search.
+@dataclasses.dataclass
+class _UniformSearchGrid:
+    absolute_margin: float = 0.5
+    relative_margin: float = 1.0
 
-    Returns
-        (Torch.Tensor, Torch.Tensor): min_threshold and max_threshold tensors of dimension
-            (num_candidates, parameter_dimensionality)
+    def __call__(
+        self,
+        tiled_data_sample: torch.Tensor,
+        symmetric: bool,
+        parameter_dimensionality: int,
+        num_candidates: int,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Generate a uniform grid for grid search.
+
+        Returns
+            (Torch.Tensor, Torch.Tensor): min_threshold and max_threshold tensors of dimension
+                (num_candidates, parameter_dimensionality)
+        """
+        assert tiled_data_sample.ndim == 2
+        assert tiled_data_sample.shape[0] == parameter_dimensionality
+        rel_margin = self.relative_margin
+        abs_margin = self.absolute_margin
+
+        max_data = rel_margin * tiled_data_sample.max(dim=1).values + abs_margin
+        min_data = rel_margin * tiled_data_sample.min(dim=1).values - abs_margin
+        negative_data = min_data.min() < 0
+
+        tkwargs: _TensorKwargs = {
+            "dtype": tiled_data_sample.dtype,
+            "device": tiled_data_sample.device,
+        }
+        if not negative_data:
+            # Case, search from 0ish - max for upper min_threshold
+            # Potentially, also search for lower threshold 0ish-max?
+            min_threshold = torch.zeros((num_candidates, parameter_dimensionality), **tkwargs)
+            steps = torch.linspace(1 / num_candidates, 1, num_candidates, **tkwargs)
+            max_threshold = steps.unsqueeze(1) * max_data.unsqueeze(0)
+
+        elif not symmetric:  # and negative_data
+            # Asymmetric, search a combinatorial search space of:
+            #   min_range: [min_range, margin * min_range] x [max_range, margin * max_range]
+            margin = 0.6
+
+            num_candidates_min_threshold = floor(sqrt(num_candidates))
+            num_candidates_max_threshold = (
+                num_candidates_min_threshold + num_candidates - num_candidates_min_threshold**2
+            )
+
+            steps_min_threshold = torch.linspace(1, margin, num_candidates_min_threshold, **tkwargs)
+            steps_max_threshold = torch.linspace(margin, 1, num_candidates_max_threshold, **tkwargs)
+
+            min_threshold = steps_min_threshold.unsqueeze(1) * (
+                rel_margin * min_data.unsqueeze(0) + abs_margin
+            )
+            max_threshold = steps_max_threshold.unsqueeze(1) * (
+                rel_margin * max_data.unsqueeze(0) + abs_margin
+            )
+
+            # Make combinatorial optimization grid
+            min_threshold = min_threshold.repeat(num_candidates_max_threshold, 1)
+            max_threshold = max_threshold.repeat_interleave(num_candidates_min_threshold, dim=0)
+
+        else:  # symmetric and negative_data
+            # search [(-delta, delta), ... (-max, max)]
+            steps = torch.linspace(1 / num_candidates, 1, num_candidates, **tkwargs)
+            max_abs_data = torch.max(torch.abs(min_data), torch.abs(max_data))
+            max_threshold = steps.unsqueeze(1) * max_abs_data.unsqueeze(0)
+            min_threshold = -max_threshold
+
+        return min_threshold, max_threshold
+
+
+def uniform_search_grid(
+    absolute_margin: float = 0.5, relative_margin: float = 1.0
+) -> _UniformSearchGrid:
+    """Uniform search grid generator.
+
+    Generates a search grid with a margin based on the provided data.
+
+    The search grid will contain ranges within `(r * min + a, r * max + a)`
+    where `r` denotes `relative_margin`, `a` denotes `absolute_margin` and
+    `min` and `max` denote    the minimum an maximum value of the observed
+    batch.
+
+    Args:
+        absolute_margin: The absolute margin to use
+        relative_margin: The absolute margin to use
+
+    Return:
+        Instance of `_UniformSearchGrid`.
     """
-    assert tiled_data_sample.ndim == 2
-    assert tiled_data_sample.shape[0] == parameter_dimensionality
-
-    min_data = tiled_data_sample.min(dim=1).values - range_margin
-    max_data = tiled_data_sample.max(dim=1).values + range_margin
-    negative_data = min_data.min() < 0
-
-    tkwargs: _TensorKwargs = {
-        "dtype": tiled_data_sample.dtype,
-        "device": tiled_data_sample.device,
-    }
-    if not negative_data:
-        # Case, search from 0ish - max for upper min_threshold
-        # Potentially, also search for lower threshold 0ish-max?
-        min_threshold = torch.zeros((num_candidates, parameter_dimensionality), **tkwargs)
-        steps = torch.linspace(1 / num_candidates, 1, num_candidates, **tkwargs)
-        max_threshold = steps.unsqueeze(1) * max_data.unsqueeze(0)
-
-    elif not symmetric:  # and negative_data
-        # Asymmetric, search a combinatorial search space of:
-        #   min_range: [min_range, margin * min_range] x [max_range, margin * max_range]
-        margin = 0.6
-
-        num_candidates_min_threshold = floor(sqrt(num_candidates))
-        num_candidates_max_threshold = (
-            num_candidates_min_threshold + num_candidates - num_candidates_min_threshold**2
-        )
-
-        steps_min_threshold = torch.linspace(1, margin, num_candidates_min_threshold, **tkwargs)
-        steps_max_threshold = torch.linspace(margin, 1, num_candidates_max_threshold, **tkwargs)
-
-        min_threshold = steps_min_threshold.unsqueeze(1) * min_data.unsqueeze(0)
-        max_threshold = steps_max_threshold.unsqueeze(1) * max_data.unsqueeze(0)
-
-        # Make combinatorial optimization grid
-        min_threshold = min_threshold.repeat(num_candidates_max_threshold, 1)
-        max_threshold = max_threshold.repeat_interleave(num_candidates_min_threshold, dim=0)
-
-    else:  # symmetric and negative_data
-        # search [(-delta, delta), ... (-max, max)]
-        steps = torch.linspace(1 / num_candidates, 1, num_candidates, **tkwargs)
-        max_abs_data = torch.max(torch.abs(min_data), torch.abs(max_data))
-        max_threshold = steps.unsqueeze(1) * max_abs_data.unsqueeze(0)
-        min_threshold = -max_threshold
-
-    return min_threshold, max_threshold
+    return _UniformSearchGrid(absolute_margin=absolute_margin, relative_margin=relative_margin)
 
 
 class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator], torch.nn.Module):
@@ -144,7 +178,7 @@ class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator],
         quantizer: SupportsRangeBasedOperator,
         error_fn: _ErrorFn = mse_error,
         num_candidates: int = 100,
-        search_grid_generator: _SearchGridGenerator = _default_search_grid,
+        search_grid_generator: _SearchGridGenerator = _UniformSearchGrid(),
         update_range_policy: Callable[["_MinAvgErrorGridEstimator", int], bool] | None = None,
         disable_quantization: bool = False,
     ):
@@ -230,7 +264,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         self,
         error_fn: _ErrorFn = mse_error,
         num_candidates: int = 100,
-        search_grid_generator: _SearchGridGenerator = _default_search_grid,
+        search_grid_generator: _SearchGridGenerator = _UniformSearchGrid(),
         update_range_policy: Callable[["_MinAvgErrorGridEstimator", int], bool] | None = None,
         skip_unsupported_quantizers: bool = False,
     ):
