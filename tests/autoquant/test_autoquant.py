@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import contextlib
 import pathlib
 import sys
 import types
 
-from typing import Any, TypeAlias
+from typing import Any, Iterator, TypeAlias
 from unittest.mock import patch
 
 import fastforward
@@ -524,6 +525,47 @@ class QuantizedExampleModule10(fastforward.nn.QuantizedModule, ExampleModule10):
 """
 
 
+# Example with with statement
+class ExampleModule11(torch.nn.Module):
+    def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
+        with _my_context(x) as xx, _my_context(y) as yy:
+            if True:
+                pass
+            out1 = torch.relu(xx)
+            out2 = torch.sigmoid(yy)
+
+        return out1, out2
+
+
+FLOAT_MODULE_11 = ExampleModule11()
+
+AUTOQUANTIZED_MODULE_OUT_11 = """
+import fastforward
+
+from tests.autoquant.test_autoquant import ExampleModule11, Tensor, _my_context
+
+
+class QuantizedExampleModule11(fastforward.nn.QuantizedModule, ExampleModule11):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_yy = fastforward.nn.QuantizerStub()
+        self.quantizer_xx = fastforward.nn.QuantizerStub()
+        self.quantizer_relu = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
+        with _my_context(x) as xx, _my_context(y) as yy:
+            yy = self.quantizer_yy(yy)
+            xx = self.quantizer_xx(xx)
+            if True:
+                pass
+            out1 = fastforward.nn.functional.relu(xx, output_quantizer=self.quantizer_relu)
+            out2 = fastforward.nn.functional.sigmoid(yy, output_quantizer=self.quantizer_sigmoid)
+
+        return out1, out2
+"""
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module, expected_codegen",
@@ -531,8 +573,9 @@ class QuantizedExampleModule10(fastforward.nn.QuantizedModule, ExampleModule10):
         (FLOAT_MODULE_8, AUTOQUANTIZED_MODULE_OUT_8),
         (FLOAT_MODULE_9, AUTOQUANTIZED_MODULE_OUT_9),
         (FLOAT_MODULE_10, AUTOQUANTIZED_MODULE_OUT_10),
+        (FLOAT_MODULE_11, AUTOQUANTIZED_MODULE_OUT_11),
     ],
-    ids=[f"case-{i}" for i in range(8, 11)],
+    ids=[f"case-{i}" for i in range(8, 12)],
 )
 def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: str) -> None:
     """Verifies autoquantization introduces the magic method and quantizers."""
@@ -792,3 +835,8 @@ def _my_func(x: Any, *args: Any, **kwargs: Any) -> Any:
     """Used in autoquant examples."""
     del args, kwargs
     return x
+
+
+@contextlib.contextmanager
+def _my_context(x: Any) -> Iterator[Any]:
+    yield x

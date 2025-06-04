@@ -9,6 +9,7 @@ from typing import cast
 import libcst
 import libcst.helpers
 
+from fastforward._autoquant.cfg.exceptions import CFGError
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
 from fastforward._autoquant.pysource.scope import ImportSymbol, find_required_imports
 from fastforward._quantops import OperatorTable
@@ -241,6 +242,16 @@ class _InsertQuantizerVisitor:
 
     def visit_WhileBlock(self, block: blocks.WhileBlock) -> None:
         self._insert_in_referenced(block, "body")
+
+    def visit_WithBlock(self, block: blocks.WithBlock) -> None:
+        self._insert_in_referenced(block, "body")
+
+    def visit_MarkerBlock(self, block: blocks.MarkerBlock) -> None:
+        if (next_block := block.next_block) is not None:
+            next_block.visit(self)
+        else:
+            msg = "Encountered dangling MarkerBlock in CFG"
+            raise CFGError(msg)
 
     def visit_ExitBlock(self, _block: blocks.ExitBlock) -> None:
         pass

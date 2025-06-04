@@ -11,7 +11,7 @@ from fastforward._autoquant.cfg import blocks, construct
 from fastforward._autoquant.cfg.exceptions import CFGConstructionNotImplemented
 from fastforward.testing.string import dedent_strip
 
-(_src1,) = dedent_strip("""
+(_src_basic,) = dedent_strip("""
     def example(a):
         b = 200
         c = 300
@@ -25,7 +25,7 @@ from fastforward.testing.string import dedent_strip
         # a trailing comment
 """)
 
-(_src2,) = dedent_strip("""
+(_src_loops,) = dedent_strip("""
     def example(a):
         b = 200
         c = 300
@@ -40,11 +40,21 @@ from fastforward.testing.string import dedent_strip
         return out
 """)
 
-_funcdef1: libcst.FunctionDef = libcst.parse_module(_src1).body[0]  # type: ignore[assignment]
-_funcdef2: libcst.FunctionDef = libcst.parse_module(_src2).body[0]  # type: ignore[assignment]
+(_src_with_stmt,) = dedent_strip("""
+    def example(a):
+        b = 200
+        c = 300
+        with open("filename", 'w') as f:
+            f.write(f"b + c = {b + c}")
+        return True
+""")
+
+_funcdef_basic: libcst.FunctionDef = libcst.parse_module(_src_basic).body[0]  # type: ignore[assignment]
+_funcdef_loops: libcst.FunctionDef = libcst.parse_module(_src_loops).body[0]  # type: ignore[assignment]
+_funcdef_with_stmt: libcst.FunctionDef = libcst.parse_module(_src_with_stmt).body[0]  # type: ignore[assignment]
 
 
-def test_cfg_construction_1() -> None:
+def test_cfg_construction_basic() -> None:
     # Given an expected CFG structure
     tail = _TestSimpleBlock(next_block=_TestExitBlock())
     expected_graph_structure = _TestFunctionBlock(
@@ -60,13 +70,13 @@ def test_cfg_construction_1() -> None:
     )
 
     # When a CFG is created that matches the expected CFG structure
-    cfg = construct(_funcdef1)
+    cfg = construct(_funcdef_basic)
 
     # Then the CFG structure must match the expected CFG structure.
     expected_graph_structure.assert_cfg_structure(cfg)
 
 
-def test_cfg_construction_2() -> None:
+def test_cfg_construction_loops() -> None:
     # Given an expected CFG structure
     exit_block = _TestExitBlock()
     for_block = _TestForBlock(
@@ -80,7 +90,30 @@ def test_cfg_construction_2() -> None:
     expected_graph_structure = _TestFunctionBlock(body=_TestSimpleBlock(next_block=while_block))
 
     # When a CFG is created that matches the expected CFG structure
-    cfg = construct(_funcdef2)
+    cfg = construct(_funcdef_loops)
+
+    # Then the CFG structure must match the expected CFG structure.
+    expected_graph_structure.assert_cfg_structure(cfg)
+
+
+def test_cfg_construction_with_stmt() -> None:
+    # Given an expected CFG structure
+    expected_graph_structure = _TestFunctionBlock(
+        body=_TestSimpleBlock(
+            next_block=_TestWithBlock(
+                body=_TestSimpleBlock(
+                    next_block=_TestMarkerBlock(
+                        next_block=_TestSimpleBlock(
+                            next_block=_TestExitBlock(),
+                        ),
+                    ),
+                )
+            )
+        )
+    )
+
+    # When a CFG is created that matches the expected CFG structure
+    cfg = construct(_funcdef_with_stmt)
 
     # Then the CFG structure must match the expected CFG structure.
     expected_graph_structure.assert_cfg_structure(cfg)
@@ -152,6 +185,8 @@ _TestFunctionBlock = functools.partial(_TestBlock, blocks.FunctionBlock)
 _TestExitBlock = functools.partial(_TestBlock, blocks.ExitBlock)
 _TestWhileBlock = functools.partial(_TestBlock, blocks.WhileBlock)
 _TestForBlock = functools.partial(_TestBlock, blocks.ForBlock)
+_TestWithBlock = functools.partial(_TestBlock, blocks.WithBlock)
+_TestMarkerBlock = functools.partial(_TestBlock, blocks.MarkerBlock)
 
 
 @pytest.mark.parametrize(
@@ -171,6 +206,10 @@ _TestForBlock = functools.partial(_TestBlock, blocks.ForBlock)
         """,
         """
         async for _ in range(10):
+            pass
+        """,
+        """
+        async with context(x) as q:
             pass
         """,
     ],

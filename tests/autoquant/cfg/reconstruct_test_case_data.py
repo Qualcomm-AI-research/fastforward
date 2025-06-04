@@ -112,6 +112,61 @@ def my_function_8() -> None:
 # ENDCASE
 # ------------------------------------------------------------------------------
 
+
+# CASE: Function with with statement
+def my_function_9() -> None:
+    filename = "my_file"
+    with open(filename) as f:
+        f.write("text")
+    print("finalize")
+
+
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+#
+# CASE: Function with nested with statements
+def my_function_10() -> None:
+    filename1 = "my_file1"
+    filename2 = "my_file2"
+    filename3 = "my_file3"
+    with open(filename1) as f1:
+        f1.write("text1")
+        with open(filename2) as f2:
+            f2.write("text2")
+            with open(filename3) as f3:
+                f3.write("text3")
+    print("finalize")
+
+
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+#
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+#
+# CASE: Function with two nested with statements
+def my_function_11() -> None:
+    filename1 = "my_file1"
+    filename2 = "my_file2"
+    filename3 = "my_file3"
+    with open(filename1) as f1:
+        f1.write("text1")
+        with open(filename2) as f2:
+            f2.write("text2")
+        value = 100 * 2
+        with open(filename3):
+            print("do nothing")
+        print(value)
+    print("finalize")
+
+
+# EXPECT: exact
+# ENDCASE
+# ------------------------------------------------------------------------------
+
 # Define symbols used in test functions to suppress errors
 test = True
 test2 = False

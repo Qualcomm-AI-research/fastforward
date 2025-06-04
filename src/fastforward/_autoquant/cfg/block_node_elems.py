@@ -81,6 +81,12 @@ class _BlockStamementAndExpressions:
     def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> Iterator[_ExprOrStatement]:
         yield from block.statements
 
+    def visit_WithBlock(self, block: blocks.WithBlock) -> Iterator[_ExprOrStatement]:
+        yield from (with_item.item for with_item in block.items)
+
+    def visit_MarkerBlock(self, block: blocks.MarkerBlock) -> Iterator[_ExprOrStatement]:
+        yield from ()
+
 
 def extract_nodes_from_block(
     block: blocks.Block,

@@ -178,20 +178,8 @@ def _normalize_item_to_seq_assignment(
     unpacked to a `NormalizedAssignment` with `a`, `b`, and `c` as targets and
     `d` as value.
     """
-    target_elements = _unpack_target(target)
+    target_elements = tuple(unpack_sequence_expression(target, include_starred=True))
     yield NormalizedAssignment(targets=target_elements, value=value)
-
-
-def _unpack_target(target: libcst.BaseExpression) -> tuple[libcst.BaseExpression, ...]:
-    """Unpack (nested) targets into a flat tuple."""
-    unpacked: list[libcst.BaseExpression] = []
-    match target:
-        case libcst.Tuple() | libcst.List():
-            for elem in target.elements:
-                unpacked += _unpack_target(elem.value)
-            return tuple(unpacked)
-        case _:
-            return (target,)
 
 
 def _indexof_star(sequence_node: libcst.Tuple | libcst.List) -> int | None:
@@ -200,3 +188,29 @@ def _indexof_star(sequence_node: libcst.Tuple | libcst.List) -> int | None:
         if isinstance(elem, libcst.StarredElement):
             return i
     return None
+
+
+def unpack_sequence_expression(
+    expr: libcst.BaseExpression, *, include_starred: bool = False
+) -> Iterator[libcst.BaseExpression]:
+    """Unpack sequence expressions into their constituents.
+
+    Yield elements from sequence type nodes (`List`, `Tuple`) which may be
+    nested and yield `expr` if `expr` is not a sequence type node.
+
+    Args:
+        expr: The expression node to unpack.
+        include_starred: If False, filter out starred elements.
+
+    Returns:
+        Iterator over the sequence elements of `expr` or `expr` itself if it is
+        not a sequence.
+    """
+    exclude_elem_types = (libcst.StarredElement,) if not include_starred else ()
+    match expr:
+        case libcst.Tuple(elems) | libcst.List(elems):
+            for elem in elems:
+                if not isinstance(elem, exclude_elem_types):
+                    yield from unpack_sequence_expression(elem.value)
+        case _:
+            yield expr

@@ -205,6 +205,27 @@ def _block_from_While(node: libcst.While) -> blocks.Block:
     return while_block
 
 
+@_block_from_CSTNode.register
+def _block_from_With(node: libcst.With) -> blocks.Block:
+    # template
+    # {node.asynchronous} with {node.items[0]}, ..., {node.items[-1]}:
+    #     {node.body}
+    _check_not_implemented(node.asynchronous is None, "async with is not supported")
+
+    body_node = ensure_type(node.body, libcst.IndentedBlock, CFGConstructionError)
+    body_block = _block_from_CSTNode(body_node)
+
+    # We include a `MakerBlock` to indicate the end of the syntactic block that is the body
+    # of a with statement. This is used to reconstruct the syntactic block later and signifies
+    # the call of `__exit__` on the context manager from a control flow perspective.
+    marker_block = blocks.MarkerBlock(marker=blocks.MarkerType.WithBlockTerminator, next_block=None)
+    body_block.set_tail(marker_block)
+
+    with_block = blocks.WithBlock(body=body_block, items=tuple(node.items))
+    with_block.push_wrapper(node)
+    return with_block
+
+
 def _split_indented_block(node: libcst.IndentedBlock) -> Iterator[libcst.IndentedBlock]:
     """Split `IndentedBlock` into multiple `IndentedBlock`s.
 

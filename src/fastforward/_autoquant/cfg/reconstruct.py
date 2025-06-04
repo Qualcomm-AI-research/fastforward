@@ -128,6 +128,36 @@ class _BlockReconstructor:
 
         return self._process_tail(block, node)
 
+    def visit_WithBlock(self, block: blocks.WithBlock) -> libcst.IndentedBlock:
+        """Convert a `WithBlock` into an `IndentedBlock`.
+
+        Args:
+            block: `Block` to convert into a CST.
+
+        Returns:
+                CST representation of `block` with `IndentedBlock` as root node.
+        """
+        body = block.body.visit(self)
+        with_node = block.wrappers[0].with_changes(body=body, items=block.items)
+        with_node = ensure_type(with_node, libcst.With, CFGReconstructionError)
+        node = libcst.IndentedBlock(body=(with_node,))
+
+        if with_terminator := _find_with_terminator_block(block):
+            return self._process_tail(with_terminator, node)
+        else:
+            msg = (
+                "Inconsistent CFG. CFG contains a 'WithBlock' without a "
+                + "corresponding terminator 'MarkerBlock'"
+            )
+            raise CFGReconstructionError(msg)
+
+    def visit_MarkerBlock(self, block: blocks.MarkerBlock) -> libcst.IndentedBlock:
+        """Skip marker block and continue reconstruction."""
+        if (next_block := block.next_block) is not None:
+            return next_block.visit(self)
+        msg = "Encountered a dangling MarkerBlock"
+        raise CFGReconstructionError(msg)
+
     def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> libcst.IndentedBlock:
         """Convert a `SimpleBlock` into an `IndentedBlock`.
 
@@ -177,6 +207,25 @@ class _BlockReconstructor:
         return node
 
 
+def _find_with_terminator_block(
+    block: blocks.Block, *, _depth: int = 0
+) -> blocks.MarkerBlock | None:
+    with_depth = _depth
+    match block:
+        case blocks.WithBlock():
+            with_depth += 1
+        case blocks.MarkerBlock(marker=blocks.MarkerType.WithBlockTerminator):
+            with_depth -= 1
+            if with_depth == 0:
+                return block
+
+    for child in block.children():
+        if terminator := _find_with_terminator_block(child, _depth=with_depth):
+            return terminator
+
+    return None
+
+
 def _has_tail(block: blocks.Block) -> bool:
     """Checks if `block` has a 'tail' block.
 
@@ -211,7 +260,19 @@ def _has_tail(block: blocks.Block) -> bool:
         raise RuntimeError(
             f"Encountered {type(block).__name__} with dangling immediate_post_dominator"
         )
-    return block.immediate_post_dominator.immediate_dominator is block
+    post_dom = block.immediate_post_dominator
+
+    # Syntactic block boundaries are not explicitly represented in the CFG.
+    # However, the notion of an ending block is important for CST
+    # reconstruction (e.g., for `with` statements). To support this, the CFG
+    # includes `MarkerBlock` nodes that signify the end of such blocks. A
+    # `MarkerBlock` is considered a terminator if `is_terminator` evaluates to
+    # True, typically when it post-dominates a block. In such cases, the block
+    # has no tail in terms of CFG-to-CST reconstruction, and therefore this
+    # function will return False.
+
+    is_terminating_marker = isinstance(post_dom, blocks.MarkerBlock) and post_dom.is_terminator
+    return post_dom.immediate_dominator is block and not is_terminating_marker
 
 
 @overload

@@ -3,6 +3,7 @@
 
 import abc
 import dataclasses
+import enum
 import itertools
 
 from collections.abc import Iterator, Sequence
@@ -219,6 +220,46 @@ def _traverse_cfg(cfg: Block, reversed: bool = False) -> Iterator[Block]:
         yield block
 
 
+class MarkerType(enum.Enum):
+    """Specifies the type of marker for `MarkerBlock`."""
+
+    WithBlockTerminator = enum.auto()
+
+    @property
+    def is_terminator_marker(self) -> bool:
+        return self is MarkerType.WithBlockTerminator
+
+
+@dataclasses.dataclass(eq=False)
+class MarkerBlock(Block):
+    """A block that acts as a marker in a CFG.
+
+    A `MarkerBlock` does not represent control flow but can contain information
+    relevant for reconstructing a CST from a CFG.
+    """
+
+    next_block: Block | None
+    marker: MarkerType
+
+    @override
+    def set_tail(self, tail: Block) -> None:
+        if tail is self:
+            return
+
+        if next_block := self.next_block:
+            next_block.set_tail(tail)
+        else:
+            self.next_block = tail
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_MarkerBlock(self)
+
+    @property
+    def is_terminator(self) -> bool:
+        return self.marker.is_terminator_marker
+
+
 @dataclasses.dataclass(eq=False)
 class SimpleBlock(Block):
     """A block that encodes simple control flow.
@@ -316,6 +357,20 @@ class WhileBlock(BranchingBlock):
     @override
     def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
         return visitor.visit_WhileBlock(self)
+
+
+@dataclasses.dataclass(eq=False)
+class WithBlock(BranchingBlock):
+    body: Block
+    items: Sequence[libcst.WithItem]
+
+    @override
+    def set_tail(self, tail: Block) -> None:
+        self.body.set_tail(tail)
+
+    @override
+    def visit(self, visitor: "BlockVisitor[_VT]") -> "_VT":
+        return visitor.visit_WithBlock(self)
 
 
 @dataclasses.dataclass(eq=False)
@@ -462,6 +517,22 @@ class BlockVisitor(Protocol[_VT]):
 
     def visit_WhileBlock(self, __block: WhileBlock) -> _VT:
         """Visitor for `WhileBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_WithBlock(self, __block: WithBlock) -> _VT:
+        """Visitor for `WithBlock`.
+
+        Args:
+            __block: The block that is visisted.
+        """
+        raise NotImplementedError
+
+    def visit_MarkerBlock(self, __block: MarkerBlock) -> _VT:
+        """Visitor for `WithBlock`.
 
         Args:
             __block: The block that is visisted.

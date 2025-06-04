@@ -14,6 +14,7 @@ import libcst
 from typing_extensions import Self, override
 
 from ..cst import nodes
+from ..cst.node_processing import unpack_sequence_expression
 from . import _dominance, block_node_elems, blocks
 
 
@@ -135,19 +136,9 @@ class _VariableTrackerVisitor:
     def visit_ForBlock(self, block: blocks.ForBlock) -> None:
         tracker = self._create_tracker(block)
 
-        def _unpack_targets(node: libcst.BaseExpression) -> Iterator[libcst.Name]:
-            match node:
-                case libcst.Name():
-                    yield node
-                case libcst.Tuple():
-                    for elem in node.elements:
-                        if isinstance(elem, libcst.Element):
-                            yield from _unpack_targets(elem.value)
-                case _:
-                    # Currently we only consider `Name`s.
-                    pass
-
-        for target in _unpack_targets(block.target):
+        for target in unpack_sequence_expression(block.target):
+            if not isinstance(target, libcst.Name):
+                continue
             var = self.variable_collection.get(
                 name=target.value,
                 quantization_status=QuantizationStatus.Unknown,
@@ -174,6 +165,25 @@ class _VariableTrackerVisitor:
     def visit_ExitBlock(self, block: blocks.ExitBlock) -> None:
         assert block not in self.trackers
         self.trackers[block] = BlockTracker()
+        self._visit_children(block)
+
+    def visit_WithBlock(self, block: blocks.WithBlock) -> None:
+        tracker = self._create_tracker(block)
+        for item in block.items:
+            if (asname := item.asname) is None:
+                continue
+            for elem in unpack_sequence_expression(asname.name):
+                if isinstance(elem, libcst.Name):
+                    var = self.variable_collection.get(
+                        name=elem.value,
+                        declaration_block=block,
+                        quantization_status=QuantizationStatus.Unknown,
+                    )
+                    tracker.vars_gen.add(var)
+        self._visit_children(block)
+
+    def visit_MarkerBlock(self, block: blocks.MarkerBlock) -> None:
+        _ = self._create_tracker(block)
         self._visit_children(block)
 
 

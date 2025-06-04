@@ -163,6 +163,29 @@ def test_normalize_assignments(
         assert _node_equals(observed.value, expected.value)
 
 
+@pytest.mark.parametrize(
+    "expr,expected_names",
+    [
+        ("ant", ["ant"]),
+        ("(ant, bat)", ["ant", "bat"]),
+        ("(ant, (bat, cat))", ["ant", "bat", "cat"]),
+        ("[ant, bat]", ["ant", "bat"]),
+        ("[ant, (bat, cat)]", ["ant", "bat", "cat"]),
+        ('[ant(), (bat[3:4], {"cat"})]', ["ant()", "bat[3:4]", '{"cat"}']),
+    ],
+)
+def test_unpack_sequence_expression(expr: str, expected_names: list[str]) -> None:
+    # GIVEN an expression CST node
+    expr_node = libcst.parse_expression(expr)
+
+    # WHEN the expression is unpacked
+    elems = node_processing.unpack_sequence_expression(expr_node)
+    actual_names = [libcst.Module([]).code_for_node(elem) for elem in elems]
+
+    # THEN the unpacked names must match the expected names
+    assert actual_names == expected_names
+
+
 def _node_equals(left: libcst.CSTNode, right: libcst.CSTNode) -> bool:
     """Helper to test two nodes for equality.
 

@@ -78,6 +78,18 @@ The Following blocks are supported:
 - **ExitBlock**: Sink for the graph, all paths will end up in the `ExitBlock`.
   A graph can only have one `ExitBlock`. It follows that the `ExitBlock`
   post-dominates all other blocks in the graph.
+- **MarkerBlock**: A block that acts as a marker in a CFG. A `MarkerBlock` does
+  not represent control flow but can contain information relevant for
+  reconstructing a CST from a CFG. It links to a `next_block`. The
+  marker field determines its semantics, such as whether it acts as a terminator.
+-  **ForBlock**: Represents a for loop. It contains the loop `iter` and `target` expressions.
+  The `body` and `next_block` are edges to other blocks.
+  body. `next_block` is the block that follows after the loop completes. 
+- **WhileBlock**: Represents a while loop. It contains a test expression. The
+  `body` and `next_block` are edges to other blocks. `next_block` is the
+  block that follows after the loop completes. 
+- **WithBlock**: Represents a with statement. It contains a sequence of items
+  and refers to a `body` block. 
 
 The implements can be found in `autoquant.cfg.blocks`
 
