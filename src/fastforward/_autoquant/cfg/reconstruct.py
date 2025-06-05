@@ -71,21 +71,6 @@ class _BlockReconstructor:
     def visit_IfBlock(self, block: blocks.IfBlock) -> libcst.IndentedBlock:
         """Convert an `IfBlock` into an `IndentedBlock`.
 
-        An `IfBlock` contains a test expression and references blocks for the true
-        and false branch. The body of the `libcst.If` is made up of the
-        `IndentedBlock` that is created by converting the `true` block to and
-        `IndentedBlock`.
-
-        If `block.false` is equal to the post-dominator of block, there is no
-        specific control flow for the else branch, hence, no else branch is created.
-        Otherwise, the else branch is created from the block pointed to by
-        `block.false`. In the case where the `IndentedBlock` of the `false` branch
-        only contains a single `libcst.If` node, the `libcst.If` is used directly
-        as an elif branch, if no `libcst.Else` wrapper node is present.
-
-        If the immediate post-dominator of `block` is dominated by `block`, its
-        reconstructed `IndentedBlock` is merged with that of `block`.
-
         Args:
             block: `Block` to convert into a CST.
 
@@ -114,14 +99,6 @@ class _BlockReconstructor:
     def visit_ForBlock(self, block: blocks.ForBlock) -> libcst.IndentedBlock:
         """Convert a `ForBlock` into an `IndentedBlock`.
 
-        A `ForBlock` has a body and a next block. The next block is always the
-        immediate post-dominator. The CST is reconstructed by replacing the
-        wrapper's body with the `IndentedBlock` created from `body`. The `iter`
-        and `target` elements from the wrapper are replaced with the `iter` and
-        `target` members on the block.
-
-        The reconstructed `For` node is wrapped in an `IndentedBlock`.
-
         Args:
             block: `Block` to convert into a CST.
 
@@ -138,14 +115,6 @@ class _BlockReconstructor:
     def visit_WhileBlock(self, block: blocks.WhileBlock) -> libcst.IndentedBlock:
         """Convert a `WhileBlock` into an `IndentedBlock`.
 
-        A `WhileBlock` has a body and a next block. The next block is always
-        the immediate post-dominator. The CST is reconstructed by replacing the
-        wrapper's body with the `IndentedBlock` created from `body`. The `test`
-        element from the wrapper are replaced with the `test` member on the
-        block.
-
-        The reconstructed `While` node is wrapped in an `IndentedBlock`.
-
         Args:
             block: `Block` to convert into a CST.
 
@@ -161,14 +130,6 @@ class _BlockReconstructor:
 
     def visit_SimpleBlock(self, block: blocks.SimpleBlock) -> libcst.IndentedBlock:
         """Convert a `SimpleBlock` into an `IndentedBlock`.
-
-        A `SimpleBlock` has a list of statements and a 'root' wrapper that must be
-        an `IndentedBlock`. The CST is reconstructed by replacing the wrapper's
-        body with the block's statements.
-
-        If the block pointed to by next is dominated by `block` then the
-        `IndentedBlock` created from `block` is merged with the `IndentedBlock`
-        created from `block.next`.
 
         Args:
             block: `Block` to convert into a CST.
