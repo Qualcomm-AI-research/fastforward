@@ -40,6 +40,7 @@ class ModuleStrictQuantHandle:
             module: The module being executed.
             args: The arguments passed to the module.
         """
+        del args
         self._module_original_strict_mode[module] = ff.get_strict_quantization()
         ff.set_strict_quantization(self._enable_strict_quantization)
 
@@ -53,6 +54,7 @@ class ModuleStrictQuantHandle:
             args: The arguments passed to the module.
             output: The output of the module.
         """
+        del args, output
         if (strict_mode := self._module_original_strict_mode.get(module, None)) is not None:
             ff.set_strict_quantization(strict_mode)
 

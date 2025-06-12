@@ -86,8 +86,9 @@ class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
         cache_position: torch.LongTensor | None = None,
         position_embeddings: tuple[torch.Tensor, torch.Tensor]
         | None = None,  # will become mandatory in v4.46
-        **kwargs,
+        **_kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
+        del use_cache
         bsz, q_len, _ = hidden_states.size()
 
         # quantize inputs
@@ -218,8 +219,9 @@ class QuantizedLlamaSdpaAttention(LlamaSdpaAttention, QuantizedModule):
         cache_position: torch.LongTensor | None = None,
         position_embeddings: tuple[torch.Tensor, torch.Tensor]
         | None = None,  # will become mandatory in v4.46
-        **kwargs,
+        **_kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
+        del use_cache
         if output_attentions:
             raise NotImplementedError()
 

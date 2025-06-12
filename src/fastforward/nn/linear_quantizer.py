@@ -267,6 +267,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         self, min_range: torch.Tensor, max_range: torch.Tensor, data_shape: torch.Size
     ) -> Callable[[torch.Tensor], QuantizedTensor]:
         """Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol."""
+        del data_shape
         scale, offset = self._parameters_for_range(min_range, max_range)
         quant_context = affine_quant.quantization_context(
             scale=scale,

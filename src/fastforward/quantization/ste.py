@@ -23,12 +23,12 @@ class STEAutogradFunc(torch.autograd.Function):
     apply: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
     @staticmethod
-    def forward(ctx: Any, input: torch.Tensor, output: torch.Tensor) -> torch.Tensor:
+    def forward(_ctx: Any, _input: torch.Tensor, output: torch.Tensor) -> torch.Tensor:
         """Forward pass for the STE function.
 
         Args:
-            ctx: Context object to store information for backward computation.
-            input: The input tensor.
+            _ctx: Context object to store information for backward computation.
+            _input: The input tensor.
             output: The output tensor.
 
         Returns:
@@ -37,11 +37,11 @@ class STEAutogradFunc(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx: Any, output_grad: torch.Tensor) -> tuple[torch.Tensor, None]:
+    def backward(_ctx: Any, output_grad: torch.Tensor) -> tuple[torch.Tensor, None]:
         """Backward pass for the STE function.
 
         Args:
-            ctx: Context object.
+            _ctx: Context object.
             output_grad: Gradient of the output.
 
         Returns:

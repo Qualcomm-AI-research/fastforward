@@ -40,6 +40,7 @@ class QuantizerTagSelectorFragment(Fragment):
 
         Returns: Boolean indicating whether the fragment matches the tag set.
         """
+        del fragment_name
         if not isinstance(module, Quantizer):
             return False
         if module.quant_metadata is None:
@@ -331,6 +332,7 @@ class QuantizationConfig:
         Returns:
             integer indicating the rule/result precedence
         """
+        del rule, result
         # By default, only use the order in which rules are specified. This
         # behavior can be overwritten by subclassing.
         return 1

@@ -288,7 +288,7 @@ class QuantizedTensor(torch.Tensor):
             produce data.
     """
 
-    def __new__(cls, data: torch.Tensor, *args: Any, **kwargs: Any) -> "QuantizedTensor":
+    def __new__(cls, data: torch.Tensor, *_args: Any, **_kwargs: Any) -> "QuantizedTensor":
         """Create a new quantized tensor."""
         return data.as_subclass(cls)
 
@@ -520,7 +520,7 @@ class QuantizedTensor(torch.Tensor):
         return False
 
     @is_quantized.setter
-    def is_quantized(self, value: bool) -> None:
+    def is_quantized(self, _value: bool) -> None:
         raise AttributeError("AttributeError: can't set attribute 'is_quantized'")
 
 

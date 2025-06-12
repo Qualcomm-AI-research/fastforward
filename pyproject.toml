@@ -124,7 +124,7 @@ extend-exclude = ["tests/autoquant/test_data"]
 
 [tool.ruff.lint]
 select = [
-  "ARG001",
+  "ARG",
   "I",
   "D",
   "E4",
@@ -157,6 +157,7 @@ ignore = [
   "D408",
   "D409",
   "D413",
+  "ARG005",
 ]
 
 

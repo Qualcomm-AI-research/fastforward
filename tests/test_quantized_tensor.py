@@ -371,6 +371,7 @@ class TestView:
 
     @pytest.fixture
     def new_shape(self, shape: torch.Size) -> tuple[int, ...]:
+        del shape
         return 1, 1, 1, 64
 
     @pytest.fixture

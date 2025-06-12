@@ -10,6 +10,7 @@ from fastforward.mpath.selector import MPathQueryError
 
 class _MockFragment(mpath.Fragment):
     def match(self, fragment_name: str, module: torch.nn.Module) -> bool:
+        del fragment_name, module
         return False
 
 
