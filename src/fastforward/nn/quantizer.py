@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import collections
+import logging
 
 from types import SimpleNamespace
 from typing import Any, Callable, Iterator, Sequence
@@ -12,8 +13,12 @@ from typing_extensions import Self, deprecated
 from typing_extensions import override as typing_override
 
 from fastforward import forward_override as override
+from fastforward.serialization import yamlable
+
+logger = logging.getLogger(__name__)
 
 
+@yamlable
 class Tag:
     """Tags are symbol-like objects used to communicate features of a quantizer.
 
@@ -252,6 +257,10 @@ class Quantizer(torch.nn.Module):
     _quantizer_overrides: dict[int, override.OverrideFn[torch.Tensor]]
     quant_metadata: QuantizerMetadata | None
 
+    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
+        super().__init_subclass__(*args, **kwargs)
+        yamlable(cls)
+
     def __init__(self) -> None:
         """Initialize the Quantizer.
 
@@ -264,6 +273,46 @@ class Quantizer(torch.nn.Module):
         super(torch.nn.Module, self).__setattr__("_quantizer_overrides", collections.OrderedDict())
         self.quant_metadata = None
         self._register_load_state_dict_pre_hook(self._load_state_dict_uninitialized_param_pre_hook)
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Restore the state of the Quantizer.
+
+        Args:
+            state: Dictionary containing the object's state to restore.
+        """
+        # Restore all attributes from the state dictionary
+        for attr, value in state.items():
+            setattr(self, attr, value)
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Return the state of the Quantizer for serialization.
+
+        It filters out attributes that come from standard library modules or torch modules.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the quantizer's serializable
+                attributes, excluding inherited attributes from standard library
+                and torch modules.
+        """
+        if self._quantizer_overrides:
+            msg = (
+                "quantizer_overrides can not be serialized. Please remove all "
+                "overrides before serialization."
+            )
+            logger.error(msg)
+            raise RuntimeError(msg)
+        ignored_attribures = set((
+            "__initargs_ex__",
+            "quant_metadata",  # metadata is assigned at registration
+            "_quantizer_overrides",  # doesn't support yet
+        ))
+        ignored_attribures.update(torch.nn.Module().__getstate__().keys())
+
+        return {
+            key: value
+            for key, value in super().__getstate__().items()
+            if key not in ignored_attribures and not isinstance(value, torch.Tensor)
+        }
 
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
         """Quantize the input data.
