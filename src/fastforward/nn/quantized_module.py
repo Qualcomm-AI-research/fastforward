@@ -5,12 +5,18 @@ import logging
 import textwrap
 import warnings
 
+from pathlib import Path
 from typing import Any, Iterator, TypeAlias, Union, cast
 
 import torch
+import yaml
+
+from safetensors import safe_open
+from safetensors.torch import save_file
 
 import fastforward as ff
 
+from fastforward.cache import get_assets_path
 from fastforward.exceptions import QuantizationError
 from fastforward.nn import Quantizer, QuantizerMetadata, QuantizerStub
 
@@ -39,7 +45,7 @@ def named_quantizers(
     """`Iterator` over quantizers with names.
 
     Return an iterator over `QuantizedModule`s in module, yielding both
-    the name of the quantizer as well ass the quantizer itself. Yields only
+    the name of the quantizer as well as the quantizer itself. Yields only
     direct children if `recurse` is False.
 
     Args:
@@ -330,6 +336,176 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             module.
         """
         return quantizer_state_dict(self)
+
+    def save_quantization_state(
+        self,
+        *,
+        tag: str = "main",
+        name_or_path: str | Path | None = None,
+        cache_dir: Path | None = None,
+    ) -> Path:
+        """Save quantization state to disk for later restoration.
+
+        Saves the quantization state of all quantizers in this module to disk,
+        including quantizer parameters, metadata, and configuration information.
+        The state is saved as a SafeTensors file with accompanying YAML configuration.
+
+        Args:
+            tag: Tag to identify this particular save. Used to organize multiple
+                saves of the same model. Defaults to "main".
+            name_or_path: Model identifier or path. If None, attempts to extract
+                from the model's config.name_or_path attribute. Used to determine
+                the save location and validate consistency during loading.
+            cache_dir: Directory where quantization state should be cached. If None,
+                uses the default cache directory from get_assets_path().
+
+        Returns:
+            Path to the saved configuration file (config.yaml).
+
+        Raises:
+            RuntimeError: If the model identifier cannot be determined or if
+                shared quantizers are detected (not yet supported).
+            ValueError: If the cache directory cannot be created due to an
+                existing file with the same name.
+
+        Note:
+            The quantization state is saved in a directory structure:
+            {cache_dir}/quantization-state/{name_or_path}/{tag}/
+            containing 'model.safetensors' and 'config.yaml' files.
+        """
+        if name_or_path is None:
+            name_or_path = getattr(getattr(self, "config", None), "name_or_path", None)
+        if name_or_path is None:
+            raise RuntimeError(
+                "Unable to detect the model identifier. Please provide it manually "
+                "if there is no `config.name_or_path` property in the model"
+            )
+        transformers_version = getattr(getattr(self, "config", None), "transformers_version", None)
+        fastforward_version = ff.__version__
+        unique_quantizers = [q for q, _ in self.named_quantizers(remove_duplicate=False)]
+        shared_quantizers = [q for q, _ in self.named_quantizers(remove_duplicate=False)]
+        if len(unique_quantizers) != len(shared_quantizers):
+            msg = "Shared quantizers are not ssupported yet"
+            raise RuntimeError(msg)
+
+        quantizers = {
+            name: quantizer for name, quantizer in self.named_quantizers(remove_duplicate=False)
+        }
+        state = {
+            f"{name}.{key}": value
+            for name, quantizer in quantizers.items()
+            for key, value in quantizer.state_dict().items()
+        }
+        metadata = {
+            name: ",".join(f"{name}.{key}" for key in quantizer.state_dict().keys())
+            for name, quantizer in quantizers.items()
+        }
+        config = {
+            "version": "1.0",
+            "name_or_path": str(name_or_path),
+            "transformers_version": str(transformers_version),
+            "fastforward_version": str(fastforward_version),
+            "quantizers": quantizers,
+        }
+        assets_path = get_assets_path(
+            f"quantization-state/{name_or_path}", tag, cache_dir=cache_dir
+        )
+        try:
+            assets_path.mkdir(exist_ok=True, parents=True, mode=0o775)
+        except (FileExistsError, NotADirectoryError):
+            msg = f"Cannot create directory {assets_path} because of an existing file."
+            raise ValueError(msg)
+        save_file(state, assets_path / "model.safetensors", metadata=metadata)
+        config_path = assets_path / "config.yaml"
+        with open(config_path, "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        return config_path
+
+    def load_quantization_state(
+        self,
+        *,
+        tag: str = "main",
+        name_or_path: str | Path | None = None,
+        cache_dir: Path | None = None,
+    ) -> None:
+        """Load quantization state from saved files.
+
+        Args:
+            tag: Tag used when saving the quantization state. Defaults to "main".
+            name_or_path: Model identifier used when saving. If None, attempts to get from config.
+            cache_dir: Directory where the quantization state was cached. If None, uses
+                default cache.
+
+        Raises:
+            RuntimeError: If the model identifier cannot be determined.
+            FileNotFoundError: If the quantization state files are not found.
+            ValueError: If the loaded configuration is incompatible.
+        """
+        name: str | None = getattr(getattr(self, "config", None), "name_or_path", None)
+        if name_or_path is not None and not Path(name_or_path).exists():
+            name = str(name_or_path)
+        if name is None:
+            raise RuntimeError(
+                "Unable to detect the model identifier. Please provide it manually "
+                "if there is no `config.name_or_path` property in the model"
+            )
+        if name_or_path is not None and Path(name_or_path).exists():
+            config_path = Path(name_or_path)
+        else:
+            config_path = (
+                get_assets_path(f"quantization-state/{name}", tag, cache_dir=cache_dir)
+                / "config.yaml"
+            )
+        model_path = config_path.parent / "model.safetensors"
+
+        # Check if files exist
+        if not config_path.exists():
+            raise FileNotFoundError(f"Quantization state config not found at {config_path}")
+        if not model_path.exists():
+            raise FileNotFoundError(f"Quantization state model not found at {model_path}")
+
+        # Load configuration
+        with open(config_path, "r") as f:
+            config = yaml.load(f, yaml.Loader)
+
+        # Validate configuration
+        if config.get("version") != "1.0":
+            raise ValueError(f"Unsupported quantization state version: {config.get('version')}")
+
+        # if user provides a fill path to the config, we assume he knows what he is doing
+        if str(config.get("name_or_path")) != str(name):
+            msg = (
+                f"Model identifier mismatch: expected '{name_or_path}', "
+                f"found '{config.get('name_or_path')}' in saved state"
+            )
+            logger.error(msg)
+            raise RuntimeError(msg)
+
+        # Restore quantizers
+        quantizers: dict[str, Quantizer] = config.get("quantizers", {})
+        with safe_open(model_path, framework="pt") as f:
+            metadata = f.metadata()
+            for name, quantizer in quantizers.items():
+                missing_keys, unexpected_keys = quantizer.load_state_dict({
+                    key.removeprefix(f"{name}."): f.get_tensor(key)
+                    for key in metadata[f"{name}"].split(",")
+                })
+                if missing_keys or unexpected_keys:
+                    msg = f"{missing_keys} or {unexpected_keys}"
+                    logger.error(msg)
+                    raise RuntimeError(msg)
+
+        for name, quantizer in quantizers.items():
+
+            def _quantizer_factory(_name: str, _: torch.nn.Module) -> Quantizer:
+                if name != _name:
+                    msg = f"Requested quantizer {_name} does not match the {name}"
+                    raise RuntimeError(msg)
+                return quantizer
+
+            ff.find_quantizers(self, name).initialize(
+                _quantizer_factory, overwrite_policy="overwrite"
+            )
 
 
 class SkipQuantization:

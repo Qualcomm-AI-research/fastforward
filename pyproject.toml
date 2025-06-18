@@ -16,6 +16,7 @@ dependencies = [
   "optree",
   "packaging",
   "ruff",
+  "safetensors",
   "setuptools",
   "typing-extensions",
 ]
