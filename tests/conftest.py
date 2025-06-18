@@ -105,3 +105,10 @@ def enable_profiling_fixture() -> None:
     if torch.cuda.is_available():
         _ = (torch.ones(1) + torch.ones(1)).item()
         torch.cuda.synchronize()
+
+
+@pytest.fixture(name="tmp_home")
+def tmp_home_fixture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+    """Sets the home directory to a temporary directory."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    yield tmp_path
