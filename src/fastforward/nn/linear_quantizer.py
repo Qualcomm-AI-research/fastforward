@@ -273,6 +273,7 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
             offset=offset,
             num_bits=self.num_bits,
             granularity=self.granularity,
+            output_dtype=self.quantized_dtype,
         )
 
         def _quant_operator(data: torch.Tensor) -> QuantizedTensor:
