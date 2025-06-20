@@ -3290,7 +3290,8 @@ quantization range, respectively.</p>
 <span class="normal">278</span>
 <span class="normal">279</span>
 <span class="normal">280</span>
-<span class="normal">281</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">operator_for_range</span><span class="p">(</span>
+<span class="normal">281</span>
+<span class="normal">282</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">operator_for_range</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">min_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">max_range</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">QuantizedTensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol.&quot;&quot;&quot;</span>
@@ -3300,6 +3301,7 @@ quantization range, respectively.</p>
         <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
         <span class="n">num_bits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bits</span><span class="p">,</span>
         <span class="n">granularity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">granularity</span><span class="p">,</span>
+        <span class="n">output_dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantized_dtype</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_quant_operator</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuantizedTensor</span><span class="p">:</span>
