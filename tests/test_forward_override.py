@@ -59,7 +59,7 @@ def test_function_override() -> None:
     }
     wrapped_fn = override.apply_overrides(context_object, to_override_function, override_map)
 
-    assert wrapped_fn(2, 3) == "nothingnothing"  # type: ignore[comparison-overlap]
+    assert wrapped_fn(2, 3) == "nothingnothing"
     mock_override1.assert_not_called()
     mock_override2.assert_called_once_with(context_object, unittest.mock.ANY, (2, 3), {})
     mock_override_noop.assert_called_once_with(context_object, unittest.mock.ANY, (2, 3), {})
