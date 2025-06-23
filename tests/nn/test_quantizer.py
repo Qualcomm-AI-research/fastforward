@@ -203,22 +203,3 @@ def test_quantizer_state_with_overrides() -> None:
     # WHEN getting raise an exception
     with pytest.raises(RuntimeError):
         quantizer.__getstate__()
-
-
-def test_quantizer_metadata_state_preservation() -> None:
-    """Test that QuantizerMetadata state is properly preserved."""
-    # GIVEN a quantizer with metadata
-    metadata = QuantizerMetadata("custom_tag", weight_quantizer=True, shape=(5, 10))
-    quantizer = Quantizer()
-    quantizer.quant_metadata = metadata
-
-    # WHEN getting and setting state
-    state = quantizer.__getstate__()
-    new_quantizer = Quantizer()
-    new_quantizer.__setstate__(state)
-
-    # THEN metadata should be preserved
-    assert new_quantizer.quant_metadata is not None
-    assert new_quantizer.quant_metadata.weight_quantizer
-    assert new_quantizer.quant_metadata.shape == (5, 10)
-    assert Tag("custom_tag") in new_quantizer.quant_metadata

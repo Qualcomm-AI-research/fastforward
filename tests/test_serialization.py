@@ -72,28 +72,6 @@ def test_class_without_custom_methods() -> None:
     assert not hasattr(obj, "__getinitargs_ex__")
 
 
-def test_class_with_custom_new() -> None:
-    """Test class with custom __new__ method."""
-
-    @yamlable
-    class CustomNewClass:
-        value: Any
-
-        def __new__(cls, value: Any) -> Self:
-            instance = super().__new__(cls)
-            instance.value = value
-            return instance
-
-    # Create instance
-    obj = CustomNewClass(42)
-
-    # Should have __getnewargs_ex__ method
-    assert hasattr(obj, "__getnewargs_ex__")
-    args, kwargs = obj.__getnewargs_ex__()
-    assert args == (42,)
-    assert kwargs == {}
-
-
 def test_class_with_custom_init() -> None:
     """Test class with custom __init__ method."""
 

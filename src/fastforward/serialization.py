@@ -28,10 +28,9 @@ def _has_custom_method(cls: type, method_name: str) -> bool:
 def yamlable(cls: type) -> type:
     """Class decorator that stores initialization arguments for YAML serialization.
 
-    Wraps the class's __new__ and __init__ methods to store their respective
-    args/kwargs in __getnewargs_ex__ and __getinitargs_ex__ for later
-    reconstruction from YAML. Only wraps methods that are not the default
-    superclass implementations.
+    Wraps the class's __init__ method to store their respective args/kwargs in __getinitargs_ex__
+    for later reconstruction from YAML. Only wraps methods that are not the default superclass
+    implementations.
 
     Args:
         cls: The class to be decorated.
@@ -39,15 +38,7 @@ def yamlable(cls: type) -> type:
     Returns:
         The decorated class with wrapped __new__ and/or __init__ methods.
     """
-    original_new = getattr(cls, "__new__")
     original_init = getattr(cls, "__init__")
-
-    @functools.wraps(original_new)
-    def wrapper_new(*args: Any, **kwargs: Any) -> type:
-        newargs_ex = copy.deepcopy((args[1:], kwargs))
-        new_cls: type = original_new(*args, **kwargs)
-        setattr(new_cls, "__getnewargs_ex__", lambda: newargs_ex)
-        return new_cls
 
     @functools.wraps(original_init)
     def wrapper_init(self: Any, *args: Any, **kwargs: Any) -> None:
@@ -56,9 +47,6 @@ def yamlable(cls: type) -> type:
         setattr(self, "__initargs_ex__", initargs_ex)
         setattr(self.__class__, "__getinitargs_ex__", lambda self: self.__initargs_ex__)
 
-    # Wrap __new__ method to save its arguments if a class defines own implementation
-    if _has_custom_method(cls, "__new__"):
-        setattr(cls, "__new__", wrapper_new)
     # Wrap __init__ method to save its arguments if a class defines own implementation
     if _has_custom_method(cls, "__init__"):
         setattr(cls, "__init__", wrapper_init)
