@@ -2238,7 +2238,7 @@ providing a gradient for the backward pass.</p>
 
 
 <h4 id="fastforward.quantization.ste.STEAutogradFunc.backward" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">backward</span><span class="p">(</span><span class="n">_ctx</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
@@ -2265,7 +2265,7 @@ providing a gradient for the backward pass.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>ctx</code>
+                <code>_ctx</code>
             </td>
             <td>
                   <code><span title="typing.Any">Any</span></code>
@@ -2336,11 +2336,11 @@ providing a gradient for the backward pass.</p>
 <span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">_ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">output_grad</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Backward pass for the STE function.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        ctx: Context object.</span>
+<span class="sd">        _ctx: Context object.</span>
 <span class="sd">        output_grad: Gradient of the output.</span>
 
 <span class="sd">    Returns:</span>
@@ -2357,7 +2357,7 @@ providing a gradient for the backward pass.</p>
 
 
 <h4 id="fastforward.quantization.ste.STEAutogradFunc.forward" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">forward</span><span class="p">(</span><span class="n">_ctx</span><span class="p">,</span> <span class="n">_input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
@@ -2384,7 +2384,7 @@ providing a gradient for the backward pass.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>ctx</code>
+                <code>_ctx</code>
             </td>
             <td>
                   <code><span title="typing.Any">Any</span></code>
@@ -2400,7 +2400,7 @@ providing a gradient for the backward pass.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>input</code>
+                <code>_input</code>
             </td>
             <td>
                   <code><span title="torch.Tensor">Tensor</span></code>
@@ -2472,12 +2472,12 @@ providing a gradient for the backward pass.</p>
 <span class="normal">35</span>
 <span class="normal">36</span>
 <span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">_ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">_input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward pass for the STE function.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        ctx: Context object to store information for backward computation.</span>
-<span class="sd">        input: The input tensor.</span>
+<span class="sd">        _ctx: Context object to store information for backward computation.</span>
+<span class="sd">        _input: The input tensor.</span>
 <span class="sd">        output: The output tensor.</span>
 
 <span class="sd">    Returns:</span>

@@ -8,7 +8,7 @@
 """ATTENTION: Please be aware that the LLaMA code below is modified to be exportable to QNN.
 
 Some of the important changes include:
-    - The attention maks is generated outside the model, and passed prepared as an input. This
+    - The attention mask is generated outside the model, and passed prepared as an input. This
         was done in part due to require more control over the range of the mask, and avoiding
         usage of the ONNX Triu operation (which is not supported by QNN).
     - Indexing of tensors is done by explicitly stating the start/end values, which is
@@ -78,6 +78,7 @@ class QuantizedLlamaForCausalLM(LlamaForCausalLM, QuantizedModule):
         "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
         ```
         """
+        del logits_to_keep
         output_attentions = (
             output_attentions if output_attentions is not None else self.config.output_attentions
         )
@@ -137,14 +138,15 @@ class QuantizedLlamaModel(LlamaModel, QuantizedModule):
         return_dict: bool | None = None,
         cache_position: torch.LongTensor | None = None,
     ) -> Union[tuple, BaseModelOutputWithPast]:
+        del return_dict
         assert cache_position is None
         # retrieve input_ids and inputs_embeds
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
-            batch_size, seq_length = input_ids.shape[:2]
+            _batch_size, seq_length = input_ids.shape[:2]
         elif inputs_embeds is not None:
-            batch_size, seq_length = inputs_embeds.shape[:2]
+            _batch_size, seq_length = inputs_embeds.shape[:2]
         else:
             raise ValueError("You have to specify either input_ids or inputs_embeds")
 

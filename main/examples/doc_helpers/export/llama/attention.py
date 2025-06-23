@@ -47,8 +47,9 @@ class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
         past_key_value: Cache | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-        **kwargs,
+        **_kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor] | None]:
+        del use_cache
         bsz, q_len, _ = hidden_states.size()
 
         query_states = self.q_proj(hidden_states)
