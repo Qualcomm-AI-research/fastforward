@@ -4,6 +4,7 @@
 import libcst
 import libcst.helpers
 
+from fastforward._autoquant.cst import nodes
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.operator import Operator
 
@@ -46,3 +47,25 @@ def get_quantized_function_counterpart(
     func = libcst.parse_expression(replace_name)
     assert isinstance(func, libcst.Attribute)
     return func, operator
+
+
+def _create_quantize_statement(
+    name: str, quantizer_name: nodes.QuantizerReference
+) -> libcst.SimpleStatementLine:
+    """Create a quantize statement.
+
+    Args:
+        name: The name of the variable to be quantized.
+        quantizer_name: The name of the quantizer.
+
+    Returns:
+        The quantize statement.
+    """
+    name_node = libcst.Name(name)
+    quantize_statement = libcst.helpers.parse_template_statement(
+        "{name} = self.{quantizer_name}({name})",
+        name=name_node,
+        quantizer_name=quantizer_name,
+    )
+    assert isinstance(quantize_statement, libcst.SimpleStatementLine)
+    return quantize_statement

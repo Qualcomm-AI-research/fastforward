@@ -104,7 +104,7 @@ def autoquant(
         )
 
         forward_src = src_class.member("forward")
-        quantized_forward = convert_method(forward_src, dst_class, operator_table)
+        quantized_forward = convert_method(forward_src, operator_table)
 
         dst_class.add_method(quantized_forward)
         dst_module.add_class(dst_class)
