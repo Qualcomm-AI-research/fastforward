@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/logging_utils/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/serialization/">
       
       
-        <link rel="prev" href="../forward_override/">
+        <link rel="prev" href="../range_setting/minmax/">
       
       
-        <link rel="next" href="../mpath/">
+        <link rel="next" href="../testing/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>logging_utils - FastForward</title>
+        <title>serialization - FastForward</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.logging_utils.DuplicateLogFilter" class="md-skip">
+        <a href="#fastforward.serialization.register_yaml_handlers" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              logging_utils
+              serialization
             
           </span>
         </div>
@@ -782,30 +782,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    logging_utils
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../logging_utils/" class="md-nav__link">
         
   
   
@@ -816,48 +796,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.logging_utils.DuplicateLogFilter" class="md-nav__link">
-    <span class="md-ellipsis">
-      DuplicateLogFilter
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DuplicateLogFilter">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="md-nav__link">
-    <span class="md-ellipsis">
-      filter
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1860,10 +1798,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../serialization/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    serialization
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1874,6 +1832,42 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.serialization.register_yaml_handlers" class="md-nav__link">
+    <span class="md-ellipsis">
+      register_yaml_handlers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.serialization.yamlable" class="md-nav__link">
+    <span class="md-ellipsis">
+      yamlable
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2084,7 +2078,7 @@
   
 
 
-  <h1>logging_utils</h1>
+  <h1>serialization</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -2110,25 +2104,148 @@
 
 
 
-<div class="doc doc-object doc-class">
+
+<div class="doc doc-object doc-function">
 
 
+<h3 id="fastforward.serialization.register_yaml_handlers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">register_yaml_handlers</span><span class="p">()</span></code>
 
-<h3 id="fastforward.logging_utils.DuplicateLogFilter" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">logging_utils</span><span class="o">.</span><span class="n">DuplicateLogFilter</span><span class="p">(</span><span class="n">levels</span><span class="o">=</span><span class="p">())</span></code>
-
-<a href="#fastforward.logging_utils.DuplicateLogFilter" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.serialization.register_yaml_handlers" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
+        <p>Register YAML handlers for custom object serialization and deserialization.</p>
+<p>Sets up custom YAML representers and constructors for Quantizer, Tag, and
+Granularity classes to enable proper serialization/deserialization of these
+objects to/from YAML format using the !ff.obj tag.</p>
 
-        <p>Filter for duplicated log messages.</p>
-<p>Filters log messages that are logged more than once on a specific loglevel
-included in <code>levels</code> are filtered. This reduces noise on either stdout or
-logfiles. Note that log messages are only filtered if their loglevel is a
-member of <code>levels</code>. This means that logs of a lower level are not filtered
-if that lower level is not a member of levels.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/serialization.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_yaml_handlers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register YAML handlers for custom object serialization and deserialization.</span>
+
+<span class="sd">    Sets up custom YAML representers and constructors for Quantizer, Tag, and</span>
+<span class="sd">    Granularity classes to enable proper serialization/deserialization of these</span>
+<span class="sd">    objects to/from YAML format using the !ff.obj tag.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._import</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualifiedNameReference</span><span class="p">,</span> <span class="n">fully_qualified_name</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.nn.quantizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Quantizer</span><span class="p">,</span> <span class="n">Tag</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.quantization.granularity</span><span class="w"> </span><span class="kn">import</span> <span class="n">Granularity</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ff_obj_yaml_representer</span><span class="p">(</span><span class="n">dumper</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Dumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">yaml</span><span class="o">.</span><span class="n">MappingNode</span><span class="p">:</span>
+        <span class="n">type_</span> <span class="o">=</span> <span class="n">fully_qualified_name</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getnewargs_ex__&quot;</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The object can not be serialized to yaml because it is not clear what arguments should be passed to the __init__ to deserialize object. Please define &#39;__getnewargs_ex__&#39; attribute in the type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">type_</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getnewargs_ex__&quot;</span><span class="p">):</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">newargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getnewargs_ex__</span><span class="p">())</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">):</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getinitargs_ex__</span><span class="p">())</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getstate__&quot;</span><span class="p">):</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span>
+            <span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span>
+            <span class="n">state</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ff_obj_yaml_constructor</span><span class="p">(</span><span class="n">loader</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">,</span> <span class="n">_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">MappingNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">construct_mapping</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">class_name</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">newargs</span><span class="p">,</span> <span class="n">newkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;newargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
+        <span class="n">initargs</span><span class="p">,</span> <span class="n">initkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;initargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">QualifiedNameReference</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span><span class="o">.</span><span class="n">import_</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__new__&quot;</span><span class="p">):</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">newargs</span><span class="p">,</span> <span class="o">**</span><span class="n">newkwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">):</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="o">*</span><span class="n">initargs</span><span class="p">,</span> <span class="o">**</span><span class="n">initkwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;cant deserialise an object&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;state&quot;</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">__setstate__</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Granularity</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>  <span class="c1"># type: ignore[type-abstract]</span>
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Tag</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_constructor</span><span class="p">(</span><span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span> <span class="n">_ff_obj_yaml_constructor</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.serialization.yamlable" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span></code>
+
+<a href="#fastforward.serialization.yamlable" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Class decorator that stores initialization arguments for YAML serialization.</p>
+<p>Wraps the class's <strong>init</strong> method to store their respective args/kwargs in <strong>getinitargs_ex</strong>
+for later reconstruction from YAML. Only wraps methods that are not the default superclass
+implementations.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2144,70 +2261,50 @@ if that lower level is not a member of levels.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>levels</code>
+                <code>cls</code>
             </td>
             <td>
-                  <code><span title="collections.abc.Sequence">Sequence</span>[<span title="int">int</span>]</code>
+                  <code><span title="type">type</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Sequence of loglevels (e.g., logging.FATAL, logging.WARNING, etc.)</p>
+                <p>The class to be decorated.</p>
               </div>
             </td>
             <td>
-                  <code>()</code>
+                <em>required</em>
             </td>
           </tr>
       </tbody>
     </table>
 
 
-
-
-
-
-
-                  <details class="quote">
-                    <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">levels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.logging_utils.DuplicateLogFilter.filter" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="nb">filter</span><span class="p">(</span><span class="n">record</span><span class="p">)</span></code>
-
-<a href="#fastforward.logging_utils.DuplicateLogFilter.filter" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Filter record for duplicate log messages.</p>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="type">type</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The decorated class with wrapped <strong>new</strong> and/or <strong>init</strong> methods.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="quote">
-              <summary>Source code in <code>fastforward/logging_utils.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
+              <summary>Source code in <code>fastforward/serialization.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">28</span>
 <span class="normal">29</span>
 <span class="normal">30</span>
 <span class="normal">31</span>
@@ -2215,31 +2312,54 @@ if that lower level is not a member of levels.</p>
 <span class="normal">33</span>
 <span class="normal">34</span>
 <span class="normal">35</span>
-<span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter record for duplicate log messages.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">levelno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suppressed_levels</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">True</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class decorator that stores initialization arguments for YAML serialization.</span>
 
-    <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">msg</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">log</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span>
+<span class="sd">    Wraps the class&#39;s __init__ method to store their respective args/kwargs in __getinitargs_ex__</span>
+<span class="sd">    for later reconstruction from YAML. Only wraps methods that are not the default superclass</span>
+<span class="sd">    implementations.</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">_logged_warnings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
-    <span class="k">return</span> <span class="kc">True</span>
+<span class="sd">    Args:</span>
+<span class="sd">        cls: The class to be decorated.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The decorated class with wrapped __new__ and/or __init__ methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">original_init</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">)</span>
+
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">original_init</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper_init</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">initargs_ex</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">((</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+        <span class="n">original_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;__initargs_ex__&quot;</span><span class="p">,</span> <span class="n">initargs_ex</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__initargs_ex__</span><span class="p">)</span>
+
+    <span class="c1"># Wrap __init__ method to save its arguments if a class defines own implementation</span>
+    <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">,</span> <span class="n">wrapper_init</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">cls</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
 
 </div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
 
 
 
