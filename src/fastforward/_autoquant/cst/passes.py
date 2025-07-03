@@ -341,6 +341,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         super().__init__()
         self._visit_stack = []
         self._insertions = _Insertions()
+        self._nested_in_comprehension = 0
         self._count = 1
 
     def parent(self) -> libcst.CSTNode | None:
@@ -356,13 +357,18 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
     def on_visit(self, node: libcst.CSTNode) -> bool:
         visit_children = super().on_visit(node)
         self._visit_stack.append(node)
+        if isinstance(node, libcst.BaseComp):
+            self._nested_in_comprehension += 1
         return visit_children
 
     @override
     def on_leave(
         self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
-    ) -> libcst.CSTNodeT | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
-        _ = self._visit_stack.pop()
+    ) -> libcst.CSTNodeT | libcst.RemovalSentinel:
+        top = self._visit_stack.pop()
+        if isinstance(top, libcst.BaseComp):
+            self._nested_in_comprehension -= 1
+
         result_node = super().on_leave(original_node, updated_node)
 
         # Don't allow for Removal- or FlattenSentinel as these could remove
@@ -419,7 +425,10 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
     def leave_ReplacementCandidate(
         self, original_node: ReplacementCandidate, updated_node: ReplacementCandidate
     ) -> ReplacementCandidate | libcst.Name:
-        """Leave function for `ReplacementCandidate`."""
+        """Leave function for `ReplacementCandidate`.
+
+        Within comprehensions, we skip this function.
+        """
         del original_node
 
         parent = self.parent()
@@ -443,6 +452,10 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
                 return updated_node
             case _:
                 pass
+
+        # Within a list comprehension, we skip it, too.
+        if self._is_nested_in_a_comprehension():
+            return updated_node
 
         assign_name = libcst.Name(f"_tmp_{self._count}")
         self._count += 1
@@ -472,6 +485,9 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self._insertions.add_insertion(insert_target, assignment, insert_location)
 
         return assign_name
+
+    def _is_nested_in_a_comprehension(self) -> bool:
+        return self._nested_in_comprehension > 0
 
     @override
     def leave_IndentedBlock(

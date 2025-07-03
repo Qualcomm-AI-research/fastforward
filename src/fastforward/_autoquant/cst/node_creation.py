@@ -49,7 +49,7 @@ def get_quantized_function_counterpart(
     return func, operator
 
 
-def _create_quantize_statement(
+def create_quantize_statement(
     name: str, quantizer_name: nodes.QuantizerReference
 ) -> libcst.SimpleStatementLine:
     """Create a quantize statement.

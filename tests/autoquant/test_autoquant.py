@@ -7,7 +7,7 @@ import pathlib
 import sys
 import types
 
-from typing import Any, Iterator, TypeAlias
+from typing import Any, Iterable, Iterator, TypeAlias
 from unittest.mock import patch
 
 import fastforward
@@ -170,8 +170,8 @@ from tests.autoquant.test_autoquant import ExampleModule3
 class QuantizedExampleModule3(fastforward.nn.QuantizedModule, ExampleModule3):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_y = fastforward.nn.QuantizerStub()
         self.quantizer_x = fastforward.nn.QuantizerStub()
+        self.quantizer_y = fastforward.nn.QuantizerStub()
         self.quantizer_add = fastforward.nn.QuantizerStub()
         self.quantizer_bitwise_or = fastforward.nn.QuantizerStub()
         self.quantizer_bitwise_xor = fastforward.nn.QuantizerStub()
@@ -186,8 +186,8 @@ class QuantizedExampleModule3(fastforward.nn.QuantizedModule, ExampleModule3):
         self.quantizer_sub = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        y = self.quantizer_y(y)
         x = self.quantizer_x(x)
+        y = self.quantizer_y(y)
         s = fastforward.nn.functional.add(x, y, output_quantizer=self.quantizer_add)
         s = fastforward.nn.functional.bitwise_or(x, y, output_quantizer=self.quantizer_bitwise_or)
         s = fastforward.nn.functional.bitwise_xor(x, y, output_quantizer=self.quantizer_bitwise_xor)
@@ -497,15 +497,25 @@ class QuantizedExampleModule9(fastforward.nn.QuantizedModule, ExampleModule9):
 
 # Example with quantized loop variables
 class ExampleModule10(torch.nn.Module):
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Any:
         for a in x:
             _ = torch.relu(a)
+        for a in x:
+            if 0 > 0:
+                break
+            _ = torch.relu(a)
+        for a in x:
+            if 0 > 0:
+                continue
+            return
         return x
 
 
 FLOAT_MODULE_10 = ExampleModule10()
 
 AUTOQUANTIZED_MODULE_OUT_10 = """
+from typing import Any
+
 import fastforward
 
 from tests.autoquant.test_autoquant import ExampleModule10, Tensor
@@ -514,21 +524,32 @@ from tests.autoquant.test_autoquant import ExampleModule10, Tensor
 class QuantizedExampleModule10(fastforward.nn.QuantizedModule, ExampleModule10):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_a = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
+        self.quantizer_a_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_a_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Any:
         for a in x:
-            a = self.quantizer_a(a)
-            _ = fastforward.nn.functional.relu(a, output_quantizer=self.quantizer_relu)
+            a = self.quantizer_a_1(a)
+            _ = fastforward.nn.functional.relu(a, output_quantizer=self.quantizer_relu_1)
+        for a in x:
+            a = self.quantizer_a_2(a)
+            if 0 > 0:
+                break
+            _ = fastforward.nn.functional.relu(a, output_quantizer=self.quantizer_relu_2)
+        for a in x:
+            if 0 > 0:
+                continue
+            return
         return x
 """
 
 
-# Example with with statement
+# Example with `with` statement
 class ExampleModule11(torch.nn.Module):
     def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
-        with _my_context(x) as xx, _my_context(y) as yy:
+        with _my_context(x) as xx, _my_context(y) as yy, _my_context(x):
             if True:
                 pass
             out1 = torch.relu(xx)
@@ -548,21 +569,166 @@ from tests.autoquant.test_autoquant import ExampleModule11, Tensor, _my_context
 class QuantizedExampleModule11(fastforward.nn.QuantizedModule, ExampleModule11):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_yy = fastforward.nn.QuantizerStub()
         self.quantizer_xx = fastforward.nn.QuantizerStub()
+        self.quantizer_yy = fastforward.nn.QuantizerStub()
         self.quantizer_relu = fastforward.nn.QuantizerStub()
         self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
 
     def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
-        with _my_context(x) as xx, _my_context(y) as yy:
-            yy = self.quantizer_yy(yy)
+        with _my_context(x) as xx, _my_context(y) as yy, _my_context(x):
             xx = self.quantizer_xx(xx)
+            yy = self.quantizer_yy(yy)
             if True:
                 pass
             out1 = fastforward.nn.functional.relu(xx, output_quantizer=self.quantizer_relu)
             out2 = fastforward.nn.functional.sigmoid(yy, output_quantizer=self.quantizer_sigmoid)
 
         return out1, out2
+"""
+
+
+# Example with docstring and empty assignment
+class FloatModule12(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """I am an important docstring.
+
+        How multiline of me!
+        """
+        y: Tensor
+        y = torch.zeros([0])
+        return x + y
+
+
+FLOAT_MODULE_12 = FloatModule12()
+AUTOQUANTIZED_MODULE_OUT_12 = '''
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import FloatModule12
+
+
+class QuantizedFloatModule12(fastforward.nn.QuantizedModule, FloatModule12):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_x = fastforward.nn.QuantizerStub()
+        self.quantizer_y = fastforward.nn.QuantizerStub()
+        self.quantizer_add = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """I am an important docstring.
+        
+        How multiline of me!
+        """
+        x = self.quantizer_x(x)
+        y: Tensor
+        y = torch.zeros([0])
+        y = self.quantizer_y(y)
+        return fastforward.nn.functional.add(x, y, output_quantizer=self.quantizer_add)
+'''
+
+
+# Example with comprehensions
+class ExampleModule13(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[Any]]:
+        return [torch.relu(z) for y in x for z in y], [x + x for x in x if x > 0]
+
+
+FLOAT_MODULE_13 = ExampleModule13()
+
+AUTOQUANTIZED_MODULE_OUT_13 = """
+from typing import Any
+
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import ExampleModule13
+
+
+class QuantizedExampleModule13(fastforward.nn.QuantizedModule, ExampleModule13):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_x_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu = fastforward.nn.QuantizerStub()
+        self.quantizer_add = fastforward.nn.QuantizerStub()
+        self.quantizer_z = fastforward.nn.QuantizerStub()
+        self.quantizer_x_2 = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[Any]]:
+        x = self.quantizer_x_1(x)
+        return [
+            fastforward.nn.functional.relu(
+                self.quantizer_z(z), output_quantizer=self.quantizer_relu
+            )
+            for y in x
+            for z in y
+        ], [
+            fastforward.nn.functional.add(
+                (__ff0 := self.quantizer_x_2(x)), __ff0, output_quantizer=self.quantizer_add
+            )
+            for x in x
+            if x > 0
+        ]
+"""
+
+
+# Example with with statement
+class ExampleModule14(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> Iterable[Tensor]:
+        if 0 > 0:
+            return {torch.relu(y) for y in x}
+        elif 0 == 0:
+            return (torch.relu(y) for y in x)
+        else:
+            return {torch.relu(y): torch.sigmoid(z) for y, z in x}
+
+
+FLOAT_MODULE_14 = ExampleModule14()
+
+AUTOQUANTIZED_MODULE_OUT_14 = """
+from typing import Iterable
+
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import ExampleModule14, Tensor
+
+
+class QuantizedExampleModule14(fastforward.nn.QuantizedModule, ExampleModule14):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_y_1 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_y_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_3 = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+        self.quantizer_y_3 = fastforward.nn.QuantizerStub()
+        self.quantizer_z = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> Iterable[Tensor]:
+        if 0 > 0:
+            return {
+                fastforward.nn.functional.relu(
+                    self.quantizer_y_1(y), output_quantizer=self.quantizer_relu_1
+                )
+                for y in x
+            }
+        elif 0 == 0:
+            return (
+                fastforward.nn.functional.relu(
+                    self.quantizer_y_2(y), output_quantizer=self.quantizer_relu_2
+                )
+                for y in x
+            )
+        else:
+            return {
+                fastforward.nn.functional.relu(
+                    self.quantizer_y_3(y), output_quantizer=self.quantizer_relu_3
+                ): fastforward.nn.functional.sigmoid(
+                    self.quantizer_z(z), output_quantizer=self.quantizer_sigmoid
+                )
+                for y, z in x
+            }
 """
 
 
@@ -574,8 +740,11 @@ class QuantizedExampleModule11(fastforward.nn.QuantizedModule, ExampleModule11):
         (FLOAT_MODULE_9, AUTOQUANTIZED_MODULE_OUT_9),
         (FLOAT_MODULE_10, AUTOQUANTIZED_MODULE_OUT_10),
         (FLOAT_MODULE_11, AUTOQUANTIZED_MODULE_OUT_11),
+        (FLOAT_MODULE_12, AUTOQUANTIZED_MODULE_OUT_12),
+        (FLOAT_MODULE_13, AUTOQUANTIZED_MODULE_OUT_13),
+        (FLOAT_MODULE_14, AUTOQUANTIZED_MODULE_OUT_14),
     ],
-    ids=[f"case-{i}" for i in range(8, 12)],
+    ids=[f"case-{i}" for i in range(8, 15)],
 )
 def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: str) -> None:
     """Verifies autoquantization introduces the magic method and quantizers."""

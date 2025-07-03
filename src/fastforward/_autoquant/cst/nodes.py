@@ -39,6 +39,7 @@ class GeneralAssignment(libcst.BaseSmallStatement):
     targets: Sequence[libcst.BaseAssignTargetExpression]
     annotation: libcst.Annotation | None
     value: libcst.BaseExpression | None
+    semicolon: libcst.Semicolon | libcst.MaybeSentinel = libcst.MaybeSentinel.DEFAULT
 
     def _codegen_impl(self, *args: Any, **kwargs: Any) -> None:
         self._validate()
