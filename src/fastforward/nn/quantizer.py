@@ -18,7 +18,6 @@ from fastforward.serialization import yamlable
 logger = logging.getLogger(__name__)
 
 
-@yamlable
 class Tag:
     """Tags are symbol-like objects used to communicate features of a quantizer.
 
@@ -251,15 +250,12 @@ class QuantizerMetadata:
         return QuantizerStub(_metadata=self)
 
 
+@yamlable
 class Quantizer(torch.nn.Module):
     """Base class for Quantizers."""
 
     _quantizer_overrides: dict[int, override.OverrideFn[torch.Tensor]]
     quant_metadata: QuantizerMetadata | None
-
-    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
-        super().__init_subclass__(*args, **kwargs)
-        yamlable(cls)
 
     def __init__(self) -> None:
         """Initialize the Quantizer.

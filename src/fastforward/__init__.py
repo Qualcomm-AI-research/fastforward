@@ -39,8 +39,3 @@ __version__ = version
 PerTensor = granularity.PerTensor
 PerChannel = granularity.PerChannel
 PerTile = granularity.PerTile
-
-from .serialization import register_yaml_handlers as _register_yaml_handlers  # noqa: E402
-
-_register_yaml_handlers()
-del _register_yaml_handlers

@@ -13,6 +13,7 @@ from fastforward.quantization.tiled_tensor import check_tile_compatibility
 from fastforward.serialization import yamlable
 
 
+@yamlable
 class Granularity(abc.ABC):
     """Granularity represents how paraameters are shared during quantization.
 
@@ -44,10 +45,6 @@ class Granularity(abc.ABC):
     FastForward (`fastforward.nn.linear_quantizer`).
 
     """
-
-    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
-        super().__init_subclass__(*args, **kwargs)
-        yamlable(cls)
 
     @abc.abstractmethod
     def tile_size(self, data_shape: torch.Size) -> torch.Size | Literal["data_shape"]:
