@@ -8,11 +8,11 @@ from fastforward.testing.string import assert_strings_match_verbose, dedent_stri
 
 
 class _TestVisitor(NotImplementedMixin):
-    def visit_For(self, node: libcst.For) -> None:
+    def visit_For(self, _node: libcst.For) -> None:
         self.warn_not_implemented("For Loop Warning")
 
     def leave_CompFor(
-        self, original_node: libcst.CompFor, updated_node: libcst.CompFor
+        self, _original_node: libcst.CompFor, updated_node: libcst.CompFor
     ) -> libcst.CompFor:
         node_code = libcst.Module([]).code_for_node(updated_node.iter)
         msg = f"CompFor Loop Warning [{node_code}]"

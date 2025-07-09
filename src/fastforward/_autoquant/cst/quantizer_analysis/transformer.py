@@ -228,20 +228,20 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         updated_body = updated_node.body.with_changes(body=(*statements, *updated_node.body.body))
         return updated_node.with_changes(body=updated_body)
 
-    def visit_ListComp(self, node: libcst.ListComp) -> bool:
+    def visit_ListComp(self, _node: libcst.ListComp) -> bool:
         return False
 
-    def visit_SetComp(self, node: libcst.SetComp) -> bool:
+    def visit_SetComp(self, _node: libcst.SetComp) -> bool:
         return False
 
-    def visit_GeneratorExp(self, node: libcst.GeneratorExp) -> bool:
+    def visit_GeneratorExp(self, _node: libcst.GeneratorExp) -> bool:
         return False
 
-    def visit_DictComp(self, node: libcst.DictComp) -> bool:
+    def visit_DictComp(self, _node: libcst.DictComp) -> bool:
         return False
 
     def leave_ListComp(
-        self, original_node: libcst.ListComp, updated_node: libcst.ListComp
+        self, _original_node: libcst.ListComp, updated_node: libcst.ListComp
     ) -> libcst.ListComp:
         # Note that we visit here and not in the visit_ListComp, as we wish to visit in
         # the order following the semantics of evaluations. Quantization annotations are on the
@@ -251,21 +251,21 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_SetComp(
-        self, original_node: libcst.SetComp, updated_node: libcst.SetComp
+        self, _original_node: libcst.SetComp, updated_node: libcst.SetComp
     ) -> libcst.SetComp:
         for_in = updated_node.for_in.visit(self)
         elt = updated_node.elt.visit(self)
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_GeneratorExp(
-        self, original_node: libcst.GeneratorExp, updated_node: libcst.GeneratorExp
+        self, _original_node: libcst.GeneratorExp, updated_node: libcst.GeneratorExp
     ) -> libcst.GeneratorExp:
         for_in = updated_node.for_in.visit(self)
         elt = updated_node.elt.visit(self)
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_DictComp(
-        self, original_node: libcst.DictComp, updated_node: libcst.DictComp
+        self, _original_node: libcst.DictComp, updated_node: libcst.DictComp
     ) -> libcst.DictComp:
         for_in = updated_node.for_in.visit(self)
         key = updated_node.key.visit(self)
