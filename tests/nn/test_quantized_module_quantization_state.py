@@ -290,9 +290,9 @@ def test_load_quantization_state_integration_with_save(
     ff.quantize_model(model)
     ff.quantize_model(duplicated_model)
 
-    q1 = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    q1 = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)), quantized_dtype=torch.float32)
     q1.quantization_range = (-10, 10)
-    q2 = ff.nn.LinearQuantizer(16, granularity=ff.PerChannel())
+    q2 = ff.nn.LinearQuantizer(16, granularity=ff.PerChannel(), device=torch.device("cpu"))
     q2.quantization_range = (-5, 5)
 
     model.register_quantizer("input_quantizer", q1)
@@ -305,12 +305,14 @@ def test_load_quantization_state_integration_with_save(
     # THEN: deserialized quantizers have the same settings
     assert duplicated_model.input_quantizer.quantization_range == q1.quantization_range
     assert duplicated_model.input_quantizer.granularity == q1.granularity
+    assert duplicated_model.input_quantizer.quantized_dtype == q1.quantized_dtype
     torch.testing.assert_close(duplicated_model.input_quantizer.scale, q1.scale)
     torch.testing.assert_close(duplicated_model.input_quantizer.offset, q1.offset)
     assert duplicated_model.output_quantizer.quantization_range == q2.quantization_range
     assert duplicated_model.output_quantizer.granularity == q2.granularity
     torch.testing.assert_close(duplicated_model.output_quantizer.scale, q2.scale)
     torch.testing.assert_close(duplicated_model.output_quantizer.offset, q2.offset)
+    assert duplicated_model.output_quantizer.scale.device == q2.scale.device
 
     with ff.strict_quantization(False):
         # WHEN: Feed to both models the same input

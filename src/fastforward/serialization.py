@@ -6,6 +6,7 @@ import functools
 
 from typing import Any
 
+import torch
 import yaml
 
 
@@ -92,6 +93,8 @@ def register_yaml_handlers() -> None:
         newargs, newkwargs = values.pop("newargs", ((), {}))
         initargs, initkwargs = values.pop("initargs", ((), {}))
         cls = QualifiedNameReference(class_name).import_()
+        if not isinstance(cls, type):
+            return cls
         if _has_custom_method(cls, "__new__"):
             obj = cls.__new__(cls, *newargs, **newkwargs)
         if _has_custom_method(cls, "__init__"):
@@ -105,4 +108,7 @@ def register_yaml_handlers() -> None:
     yaml.add_multi_representer(Granularity, _ff_obj_yaml_representer)  # type: ignore[type-abstract]
     yaml.add_multi_representer(Quantizer, _ff_obj_yaml_representer)
     yaml.add_multi_representer(Tag, _ff_obj_yaml_representer)
+    yaml.add_multi_representer(
+        torch.dtype, lambda dumper, data: dumper.represent_mapping("!ff.obj", {"name": f"{data}"})
+    )
     yaml.add_multi_constructor("!ff.obj", _ff_obj_yaml_constructor)  # type: ignore[arg-type]
