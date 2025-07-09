@@ -77,7 +77,9 @@ def register_yaml_handlers() -> None:
             state.update(newargs=data.__getnewargs_ex__())
         if hasattr(data, "__getinitargs_ex__"):
             state.update(initargs=data.__getinitargs_ex__())
-        if hasattr(data, "__getstate__"):
+        # in python 3.11+ object provides a default implementation of `__getstate__`.
+        # state is stored only if there is a way to restore it.
+        if hasattr(data, "__setstate__") and hasattr(data, "__getstate__"):
             state.update(state=data.__getstate__())
         return dumper.represent_mapping(
             "!ff.obj",
