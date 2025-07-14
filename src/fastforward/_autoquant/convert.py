@@ -35,14 +35,19 @@ def convert_method(src: PySource, optable: OperatorTable) -> FunctionBuilder:
         to `clsbuilder`, but its required quantizers are.
     """
     src_cst = src.cst(NodeType=libcst.FunctionDef)
-
-    src_cst = _rewrite_quantized_operators(src_cst, optable)
-    dst_cst = _add_input_quantizers(src_cst)
+    dst_cst = autoquantize_funcdef(src_cst, optable)
 
     assert isinstance(dst_cst, libcst.FunctionDef)
     required_imports = _infer_imports(src, dst_cst)
 
     return QuantizedFunctionBuilder(dst_cst, required_imports)
+
+
+def autoquantize_funcdef(src_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:
+    """Autoquantize a single `FuncDef` with given `optable`."""
+    src_cst = _rewrite_quantized_operators(src_cst, optable)
+    dst_cst = _add_input_quantizers(src_cst)
+    return dst_cst
 
 
 def _rewrite_quantized_operators(

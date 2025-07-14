@@ -4,10 +4,11 @@
 
 import pathlib
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from types import ModuleType
 
+import libcst
 import torch
 
 from fastforward._autoquant.pysource.scope import ImportSymbol
@@ -25,14 +26,16 @@ def default_source_context() -> pysource.SourceContext:
 
     If no source context is provided, this context is used.
     """
-    return pysource.SourceContext(
-        preprocessing_passes=[
-            passes.ConvertSemicolonJoinedStatements(),
-            passes.MarkReplacementCandidates(),
-            passes.IsolateReplacementCandidates(),
-            passes.WrapAssignments(),
-        ]
-    )
+    return pysource.SourceContext(preprocessing_passes=default_preprocessing_passes())
+
+
+def default_preprocessing_passes() -> Sequence[libcst.CSTTransformer]:
+    return [
+        passes.ConvertSemicolonJoinedStatements(),
+        passes.MarkReplacementCandidates(),
+        passes.IsolateReplacementCandidates(),
+        passes.WrapAssignments(),
+    ]
 
 
 def default_optable() -> optable.OperatorTable:

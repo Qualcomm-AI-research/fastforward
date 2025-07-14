@@ -6,6 +6,9 @@ import random
 import numpy as np
 import torch
 
+from . import autoquant as autoquant
+from . import metrics as metrics
+
 
 def is_close_to_rounding(tensor: torch.Tensor, eps: float = 0.0001) -> bool:
     """Return True if one of the tensor elements close to 0.5.
