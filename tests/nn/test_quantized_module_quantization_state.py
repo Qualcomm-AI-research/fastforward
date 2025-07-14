@@ -143,6 +143,7 @@ def test_load_quantization_state_with_name_or_path(tmp_path: Path) -> None:
 
     # GIVEN: A quantized module
     new_model = ff.nn.QuantizedModule()
+    new_model.test_quantizer = ff.nn.QuantizerStub()
     # WHEN: Loading the quantization state
     new_model.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
     # THEN: No errors raised
@@ -169,6 +170,7 @@ def test_load_quantization_state_with_config_name_or_path(tmp_path: Path) -> Non
     # GIVEN: A quantized module with `config.name_or_path` attibute to simulate
     # models from transformers (https://huggingface.co/docs/transformers/model_doc/auto#transformers.AutoModel)
     new_model = ff.nn.QuantizedModule()
+    new_model.test_quantizer = ff.nn.QuantizerStub()
     with patch.object(
         new_model,
         "config",

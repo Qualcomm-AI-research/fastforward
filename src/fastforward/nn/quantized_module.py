@@ -5,6 +5,7 @@ import logging
 import textwrap
 import warnings
 
+from operator import attrgetter
 from pathlib import Path
 from typing import Any, Iterator, TypeAlias, Union, cast
 
@@ -496,16 +497,14 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                     raise RuntimeError(msg)
 
         for name, quantizer in quantizers.items():
-
-            def _quantizer_factory(_name: str, _: torch.nn.Module) -> Quantizer:
-                if name != _name:
-                    msg = f"Requested quantizer {_name} does not match the {name}"
-                    raise RuntimeError(msg)
-                return quantizer
-
-            ff.find_quantizers(self, name).initialize(
-                _quantizer_factory, overwrite_policy="overwrite"
-            )
+            parts = name.rsplit(".", 1)
+            parent = self if len(parts) == 1 else attrgetter(parts[0])(self)
+            parent_attribute = parts[-1]
+            if not isinstance(getattr(parent, parent_attribute, None), QuantizerStub):
+                raise RuntimeError(
+                    f"'{name}' is an initialized quantizer or not even a quantizer at all."
+                )
+            setattr(parent, parent_attribute, quantizer)
 
 
 class SkipQuantization:
