@@ -201,6 +201,13 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
                 case libcst.SimpleStatementLine([libcst.Break()]):
                     self._active_scope.terminate(reason="break")
                     return
+                case libcst.SimpleStatementLine([libcst.Raise(exc, cause)]):
+                    if exc is not None:
+                        exc.visit(self)
+                    if cause is not None:
+                        cause.visit(self)
+                    self._active_scope.terminate(reason="raise")
+                    return
                 case libcst.SimpleStatementLine(body):
                     for statement in body:
                         statement.visit(self)
@@ -725,7 +732,7 @@ class _Assignments:
             self._assignments[var] = {**producers}
 
 
-TerminationStatus: TypeAlias = Literal["return"] | Literal["break"] | None
+TerminationStatus: TypeAlias = Literal["return"] | Literal["break"] | Literal["raise"] | None
 
 
 @dataclasses.dataclass(repr=False)
@@ -786,7 +793,9 @@ class Scope:
             raise RuntimeError(msg)
         self.assignments.record_assignment(name, producer, is_quantized)
 
-    def terminate(self, reason: Literal["return"] | Literal["break"] = "return") -> None:
+    def terminate(
+        self, reason: Literal["return"] | Literal["break"] | Literal["raise"] = "return"
+    ) -> None:
         """Terminates the current scope.
 
         Args:
@@ -858,11 +867,11 @@ class Scope:
             return scope if inplace else scope.clone()
 
         match self._termination_status, other._termination_status:
-            case "return", "return":
+            case "return" | "raise", "return" | "raise":
                 return type(self)(parent=self.parent)
-            case _, "return":
+            case _, "return" | "raise":
                 return _no_merge_required(self)
-            case "return", _:
+            case "return" | "raise", _:
                 return _no_merge_required(other)
             case _:
                 return self._merge(other, inplace=inplace)
