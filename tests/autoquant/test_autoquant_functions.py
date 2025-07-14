@@ -60,3 +60,25 @@ test_autoquant_ignore_annotations = autoquant_case(
         return z
     """,
 )
+
+test_autoquant_skip_isolation_for_if_expr = autoquant_case(
+    # Autoquant must not isolate expressions in the `body` or `orelse` of an
+    # if-expression since isolation would lead to unnecessary compute (i.e.,
+    # both branches are evaluated).
+    input="""
+    def my_func_with_annotations(self, x: Tensor, y: Tensor, flag: bool) -> Tensor:
+        out = x + y if flag else y - x
+        return out
+    """,
+    expected="""
+    def my_func_with_annotations(self, x: Tensor, y: Tensor, flag: bool) -> Tensor:
+        x = self.quantizer_x(x)
+        y = self.quantizer_y(y)
+        out = (
+            fastforward.nn.functional.add(x, y, output_quantizer=self.quantizer_add)
+            if flag
+            else fastforward.nn.functional.sub(y, x, output_quantizer=self.quantizer_sub)
+        )
+        return out
+    """,
+)

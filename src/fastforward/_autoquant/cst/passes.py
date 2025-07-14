@@ -329,6 +329,8 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         result = _tmp_2 + _tmp_3
     """
 
+    _SKIP_ISOLATION_NODES = (libcst.BaseComp, libcst.IfExp)
+
     # _visit_stack is a stack of nodes that are currently visited, a node is
     # added to the stack after visit and popped from the stack before leave.
     # This means that during visit and leave calls, the parent of the current
@@ -346,7 +348,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         super().__init__()
         self._visit_stack = []
         self._insertions = _Insertions()
-        self._nested_in_comprehension = 0
+        self._nested_in_no_isolation_subtree = 0
         self._count = 1
 
     def parent(self) -> libcst.CSTNode | None:
@@ -362,8 +364,8 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
     def on_visit(self, node: libcst.CSTNode) -> bool:
         visit_children = super().on_visit(node)
         self._visit_stack.append(node)
-        if isinstance(node, libcst.BaseComp):
-            self._nested_in_comprehension += 1
+        if isinstance(node, self._SKIP_ISOLATION_NODES):
+            self._nested_in_no_isolation_subtree += 1
         return visit_children
 
     @override
@@ -371,8 +373,8 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
     ) -> libcst.CSTNodeT | libcst.RemovalSentinel:
         top = self._visit_stack.pop()
-        if isinstance(top, libcst.BaseComp):
-            self._nested_in_comprehension -= 1
+        if isinstance(top, self._SKIP_ISOLATION_NODES):
+            self._nested_in_no_isolation_subtree -= 1
 
         result_node = super().on_leave(original_node, updated_node)
 
@@ -458,8 +460,9 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
             case _:
                 pass
 
-        # Within a list comprehension, we skip it, too.
-        if self._is_nested_in_a_comprehension():
+        # Skip isolation if inside one or more subtrees that have a root that is marked
+        # as "no isolated" (i.e., a member of `_SKIP_ISOLATION_NODES`).
+        if self._is_nested_in_no_isolation_subtree():
             return updated_node
 
         assign_name = libcst.Name(f"_tmp_{self._count}")
@@ -491,8 +494,8 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 
         return assign_name
 
-    def _is_nested_in_a_comprehension(self) -> bool:
-        return self._nested_in_comprehension > 0
+    def _is_nested_in_no_isolation_subtree(self) -> bool:
+        return self._nested_in_no_isolation_subtree > 0
 
     @override
     def leave_IndentedBlock(
@@ -505,12 +508,6 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self, original_node: libcst.Module, updated_node: libcst.Module
     ) -> libcst.Module:
         return self._resolve_insertions(original_node, updated_node)
-
-
-class _QuantizerList(Protocol):
-    def add_quantizer(self, name: str) -> str:
-        """Add quantizer to the collection."""
-        raise NotImplementedError
 
 
 class QuantizedCounterpartReplacer(libcst.CSTTransformer):
