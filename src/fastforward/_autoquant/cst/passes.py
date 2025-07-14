@@ -181,6 +181,11 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
         else:
             return ReplacementCandidate(updated_node)
 
+    @override
+    def visit_Annotation(self, node: libcst.Annotation) -> bool:
+        # Inside an annotation we never want to replace anything
+        return False
+
 
 def _is_simple_literal(node: libcst.CSTNode) -> bool:
     """True if node is a literal that is not a collection, False otherwise."""

@@ -41,3 +41,22 @@ test_raise = autoquant_case(
         return fastforward.nn.functional.mul(x, x, output_quantizer=self.quantizer_mul)
     """,
 )
+
+
+test_autoquant_ignore_annotations = autoquant_case(
+    # Autoquant must ignore all annotations and leave them unchanged.
+    input="""
+    def my_func_with_annotations(self, x: int | float, y: float | int) -> str | bool:
+        z: str | bool = y | x
+        return z
+    """,
+    expected="""
+    def my_func_with_annotations(self, x: int | float, y: float | int) -> str | bool:
+        x = self.quantizer_x(x)
+        y = self.quantizer_y(y)
+        z: str | bool = fastforward.nn.functional.bitwise_or(
+            y, x, output_quantizer=self.quantizer_bitwise_or
+        )
+        return z
+    """,
+)
