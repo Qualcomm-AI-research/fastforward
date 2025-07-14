@@ -442,7 +442,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
                 # If the replacement candidate is already in an assign node we
                 # don't have to move it
                 return updated_node
-            case libcst.Return() | libcst.Yield():
+            case libcst.Return() | libcst.Yield() | libcst.Raise():
                 # If the replacement candidate is the expression in a return or yield
                 # statement, we don't have to move it.
                 return updated_node
