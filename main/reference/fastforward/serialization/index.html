@@ -1928,6 +1928,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../testing/autoquant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    autoquant
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/cfg/" class="md-nav__link">
         
   
@@ -2124,8 +2147,7 @@ objects to/from YAML format using the !ff.obj tag.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/serialization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 56</span>
-<span class="normal"> 57</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 57</span>
 <span class="normal"> 58</span>
 <span class="normal"> 59</span>
 <span class="normal"> 60</span>
@@ -2174,7 +2196,15 @@ objects to/from YAML format using the !ff.obj tag.</p>
 <span class="normal">103</span>
 <span class="normal">104</span>
 <span class="normal">105</span>
-<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_yaml_handlers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_yaml_handlers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Register YAML handlers for custom object serialization and deserialization.</span>
 
 <span class="sd">    Sets up custom YAML representers and constructors for Quantizer, Tag, and</span>
@@ -2198,7 +2228,9 @@ objects to/from YAML format using the !ff.obj tag.</p>
             <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">newargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getnewargs_ex__</span><span class="p">())</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">):</span>
             <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getinitargs_ex__</span><span class="p">())</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getstate__&quot;</span><span class="p">):</span>
+        <span class="c1"># in python 3.11+ object provides a default implementation of `__getstate__`.</span>
+        <span class="c1"># state is stored only if there is a way to restore it.</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__setstate__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getstate__&quot;</span><span class="p">):</span>
             <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">())</span>
         <span class="k">return</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span>
             <span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span>
@@ -2211,6 +2243,8 @@ objects to/from YAML format using the !ff.obj tag.</p>
         <span class="n">newargs</span><span class="p">,</span> <span class="n">newkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;newargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
         <span class="n">initargs</span><span class="p">,</span> <span class="n">initkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;initargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
         <span class="bp">cls</span> <span class="o">=</span> <span class="n">QualifiedNameReference</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span><span class="o">.</span><span class="n">import_</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span>
         <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__new__&quot;</span><span class="p">):</span>
             <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">newargs</span><span class="p">,</span> <span class="o">**</span><span class="n">newkwargs</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">):</span>
@@ -2224,6 +2258,9 @@ objects to/from YAML format using the !ff.obj tag.</p>
     <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Granularity</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>  <span class="c1"># type: ignore[type-abstract]</span>
     <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
     <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Tag</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">dumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span><span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+    <span class="p">)</span>
     <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_constructor</span><span class="p">(</span><span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span> <span class="n">_ff_obj_yaml_constructor</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2304,8 +2341,7 @@ implementations.</p>
 
             <details class="quote">
               <summary>Source code in <code>fastforward/serialization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">28</span>
-<span class="normal">29</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
 <span class="normal">30</span>
 <span class="normal">31</span>
 <span class="normal">32</span>
@@ -2329,7 +2365,8 @@ implementations.</p>
 <span class="normal">50</span>
 <span class="normal">51</span>
 <span class="normal">52</span>
-<span class="normal">53</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+<span class="normal">53</span>
+<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Class decorator that stores initialization arguments for YAML serialization.</span>
 
 <span class="sd">    Wraps the class&#39;s __init__ method to store their respective args/kwargs in __getinitargs_ex__</span>

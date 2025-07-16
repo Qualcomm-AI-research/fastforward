@@ -10,28 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/range_setting/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/testing/autoquant/">
       
       
-        <link rel="prev" href="../quantized_tensor/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="common/">
+        <link rel="next" href="../cfg/">
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
-        <title>range_setting - FastForward</title>
+        <title>autoquant - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.342714a4.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -50,11 +50,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -77,6 +77,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#fastforward.testing.autoquant.assert_autoquantize_result" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -91,7 +96,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -111,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              range_setting
+              autoquant
             
           </span>
         </div>
@@ -198,7 +203,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../.." class="md-tabs__link">
+        <a href="../../../.." class="md-tabs__link">
           
   
   
@@ -216,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../examples/" class="md-tabs__link">
+      <a href="../../../../examples/" class="md-tabs__link">
         
   
   
@@ -239,7 +244,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+        <a href="../../" class="md-tabs__link">
           
   
   
@@ -275,7 +280,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -346,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   
@@ -376,7 +381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/" class="md-nav__link">
+      <a href="../../../../examples/" class="md-nav__link">
         
   
   
@@ -461,7 +466,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -494,7 +499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../autoquant/" class="md-nav__link">
+      <a href="../../autoquant/" class="md-nav__link">
         
   
   
@@ -517,7 +522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cache/" class="md-nav__link">
+      <a href="../../cache/" class="md-nav__link">
         
   
   
@@ -540,7 +545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../common/" class="md-nav__link">
+      <a href="../../common/" class="md-nav__link">
         
   
   
@@ -563,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dispatcher/" class="md-nav__link">
+      <a href="../../dispatcher/" class="md-nav__link">
         
   
   
@@ -586,7 +591,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../exceptions/" class="md-nav__link">
+      <a href="../../exceptions/" class="md-nav__link">
         
   
   
@@ -624,7 +629,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../export/" class="md-nav__link ">
+            <a href="../../export/" class="md-nav__link ">
               
   
   
@@ -657,7 +662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export/export/" class="md-nav__link">
+      <a href="../../export/export/" class="md-nav__link">
         
   
   
@@ -680,7 +685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export/graph_operations/" class="md-nav__link">
+      <a href="../../export/graph_operations/" class="md-nav__link">
         
   
   
@@ -703,7 +708,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export/module_export/" class="md-nav__link">
+      <a href="../../export/module_export/" class="md-nav__link">
         
   
   
@@ -734,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flags/" class="md-nav__link">
+      <a href="../../flags/" class="md-nav__link">
         
   
   
@@ -757,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../forward_override/" class="md-nav__link">
+      <a href="../../forward_override/" class="md-nav__link">
         
   
   
@@ -780,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logging_utils/" class="md-nav__link">
+      <a href="../../logging_utils/" class="md-nav__link">
         
   
   
@@ -818,7 +823,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../mpath/" class="md-nav__link ">
+            <a href="../../mpath/" class="md-nav__link ">
               
   
   
@@ -851,7 +856,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/fragments/" class="md-nav__link">
+      <a href="../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -874,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/selector/" class="md-nav__link">
+      <a href="../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -920,7 +925,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/" class="md-nav__link ">
+            <a href="../../nn/" class="md-nav__link ">
               
   
   
@@ -953,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/activations/" class="md-nav__link">
+      <a href="../../nn/activations/" class="md-nav__link">
         
   
   
@@ -976,7 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/container/" class="md-nav__link">
+      <a href="../../nn/container/" class="md-nav__link">
         
   
   
@@ -999,7 +1004,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/conv/" class="md-nav__link">
+      <a href="../../nn/conv/" class="md-nav__link">
         
   
   
@@ -1022,7 +1027,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1045,7 +1050,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/embedding/" class="md-nav__link">
+      <a href="../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1068,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/functional/" class="md-nav__link">
+      <a href="../../nn/functional/" class="md-nav__link">
         
   
   
@@ -1091,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear/" class="md-nav__link">
+      <a href="../../nn/linear/" class="md-nav__link">
         
   
   
@@ -1114,7 +1119,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1137,7 +1142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/normalization/" class="md-nav__link">
+      <a href="../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -1160,7 +1165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantized_module/" class="md-nav__link">
+      <a href="../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -1183,7 +1188,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantizer/" class="md-nav__link">
+      <a href="../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -1214,7 +1219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overrides/" class="md-nav__link">
+      <a href="../../overrides/" class="md-nav__link">
         
   
   
@@ -1252,7 +1257,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/" class="md-nav__link ">
+            <a href="../../quantization/" class="md-nav__link ">
               
   
   
@@ -1300,7 +1305,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/affine/" class="md-nav__link ">
+            <a href="../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -1333,7 +1338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -1356,7 +1361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/function/" class="md-nav__link">
+      <a href="../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -1379,7 +1384,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/range/" class="md-nav__link">
+      <a href="../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -1402,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/static/" class="md-nav__link">
+      <a href="../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -1433,7 +1438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/function/" class="md-nav__link">
+      <a href="../../quantization/function/" class="md-nav__link">
         
   
   
@@ -1456,7 +1461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/granularity/" class="md-nav__link">
+      <a href="../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -1479,7 +1484,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/local_error/" class="md-nav__link">
+      <a href="../../quantization/local_error/" class="md-nav__link">
         
   
   
@@ -1502,7 +1507,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/output_mse/" class="md-nav__link">
+      <a href="../../quantization/output_mse/" class="md-nav__link">
         
   
   
@@ -1525,7 +1530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quant_init/" class="md-nav__link">
+      <a href="../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -1548,7 +1553,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/random/" class="md-nav__link">
+      <a href="../../quantization/random/" class="md-nav__link">
         
   
   
@@ -1571,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/ste/" class="md-nav__link">
+      <a href="../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -1594,7 +1599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -1617,7 +1622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -1648,7 +1653,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_tensor/" class="md-nav__link">
+      <a href="../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -1668,8 +1673,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1680,15 +1683,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../../range_setting/" class="md-nav__link ">
               
   
   
@@ -1701,13 +1704,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_3_1_15" id="__nav_3_1_15_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_15" id="__nav_3_1_15_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_15">
             <span class="md-nav__icon md-icon"></span>
             range_setting
@@ -1721,7 +1724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="common/" class="md-nav__link">
+      <a href="../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -1744,7 +1747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="min_error/" class="md-nav__link">
+      <a href="../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -1767,7 +1770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="minmax/" class="md-nav__link">
+      <a href="../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -1798,7 +1801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../serialization/" class="md-nav__link">
+      <a href="../../serialization/" class="md-nav__link">
         
   
   
@@ -1818,6 +1821,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1828,15 +1833,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_17" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_17" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../testing/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1855,7 +1860,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_17_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_17_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_17">
             <span class="md-nav__icon md-icon"></span>
             testing
@@ -1866,10 +1871,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../testing/autoquant/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    autoquant
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1880,6 +1905,42 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.testing.autoquant.assert_autoquantize_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      assert_autoquantize_result
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.testing.autoquant.autoquantize_str" class="md-nav__link">
+    <span class="md-ellipsis">
+      autoquantize_str
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1892,7 +1953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/cfg/" class="md-nav__link">
+      <a href="../cfg/" class="md-nav__link">
         
   
   
@@ -1915,7 +1976,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/initialization/" class="md-nav__link">
+      <a href="../initialization/" class="md-nav__link">
         
   
   
@@ -1938,7 +1999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -1961,7 +2022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/string/" class="md-nav__link">
+      <a href="../string/" class="md-nav__link">
         
   
   
@@ -1992,7 +2053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../type_common/" class="md-nav__link">
+      <a href="../../type_common/" class="md-nav__link">
         
   
   
@@ -2042,7 +2103,7 @@
   
 
 
-  <h1>range_setting</h1>
+  <h1>autoquant</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -2068,6 +2129,301 @@
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.testing.autoquant.assert_autoquantize_result" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#fastforward.testing.autoquant.assert_autoquantize_result" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Asserts that the autoquantization of the given input string matches the expected output.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>input</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The input string to be autoquantized.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>expected</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The expected output string after autoquantization.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>as_module</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to autoquantize as a module. Defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/testing/autoquant.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asserts that the autoquantization of the given input string matches the expected output.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        input: The input string to be autoquantized.</span>
+<span class="sd">        expected: The expected output string after autoquantization.</span>
+<span class="sd">        as_module: Whether to autoquantize as a module. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">autoquantize_str</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="n">as_module</span><span class="p">)</span>
+    <span class="n">formatted_expected</span> <span class="o">=</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">expected</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">assert_strings_match_verbose</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">formatted_expected</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.testing.autoquant.autoquantize_str" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#fastforward.testing.autoquant.autoquantize_str" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Autoquantizes Python function string and returns the quantized code as a string.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>src</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The input Python function as a string.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>as_module</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, returns the quantized code as a module. Defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The quantized Python function or module as a string.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>This function assumes the provided function is a method of module and will
+introduce function calls to members on <code>self</code>. This function will raise <code>ValueError</code>
+if <code>src</code> is not a function that has <code>self</code> as first parameter.</p>
+</details>
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/testing/autoquant.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Autoquantizes Python function string and returns the quantized code as a string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        src : The input Python function as a string.</span>
+<span class="sd">        as_module: If True, returns the quantized code as a module. Defaults to False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The quantized Python function or module as a string.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        This function assumes the provided function is a method of module and will</span>
+<span class="sd">        introduce function calls to members on `self`. This function will raise `ValueError`</span>
+<span class="sd">        if `src` is not a function that has `self` as first parameter.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">src_cst</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">parse_statement</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">src</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">),</span> <span class="s2">&quot;Expected function statement&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">src_cst</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="s2">&quot;self&quot;</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Expected `src` to be a function with `self` as first parameter&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">proc_pass</span> <span class="ow">in</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">default_preprocessing_passes</span><span class="p">():</span>
+        <span class="n">src_cst</span> <span class="o">=</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">proc_pass</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">),</span> <span class="s2">&quot;Processing pass did not return FuncDef&quot;</span>
+
+    <span class="n">converted_cst</span> <span class="o">=</span> <span class="n">autoquantize_funcdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">default_optable</span><span class="p">())</span>
+
+    <span class="n">dst_class</span> <span class="o">=</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">QuantizedModuleBuilder</span><span class="p">(</span>
+        <span class="s2">&quot;QuantizedTestModule&quot;</span><span class="p">,</span> <span class="n">bases</span><span class="o">=</span><span class="p">(),</span> <span class="n">required_imports</span><span class="o">=</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">dst_class</span><span class="o">.</span><span class="n">add_method</span><span class="p">(</span><span class="n">pybuilder</span><span class="o">.</span><span class="n">QuantizedFunctionBuilder</span><span class="p">(</span><span class="n">converted_cst</span><span class="p">,</span> <span class="n">required_imports</span><span class="o">=</span><span class="p">()))</span>
+
+    <span class="n">dst_cst</span><span class="p">:</span> <span class="n">libcst</span><span class="o">.</span><span class="n">CSTNode</span> <span class="o">=</span> <span class="n">dst_class</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">as_module</span><span class="p">:</span>
+        <span class="n">func_name</span> <span class="o">=</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">for</span> <span class="n">funcdef</span> <span class="ow">in</span> <span class="n">node_filter</span><span class="o">.</span><span class="n">filter_nodes_by_type</span><span class="p">(</span><span class="n">dst_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">funcdef</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">func_name</span><span class="p">:</span>
+                <span class="n">dst_cst</span> <span class="o">=</span> <span class="n">funcdef</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Converted CST does not contain original function&quot;</span><span class="p">)</span>
+
+    <span class="n">dst_str</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">Module</span><span class="p">([</span><span class="n">dst_cst</span><span class="p">])</span><span class="o">.</span><span class="n">code</span>  <span class="c1"># type: ignore[list-item]</span>
+    <span class="k">return</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dst_str</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -2124,10 +2480,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>
