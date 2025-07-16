@@ -28,7 +28,7 @@ dev = [
   "setuptools_scm[toml]>=6.2",
   # and the rest
   "isort",
-  "mypy",
+  "mypy<1.17",
   "notebook",
 ]
 test = [
