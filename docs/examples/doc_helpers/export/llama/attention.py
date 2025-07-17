@@ -11,13 +11,14 @@ import fastforward as ff
 import fastforward.nn.functional as FFF
 import torch
 
-from doc_helpers.export.llama.rotary_embedding import apply_quantized_rotary_pos_emb
 from fastforward.nn import QuantizedModule, QuantizerMetadata
 from torch import nn
 from transformers import Cache
 from transformers.models.llama.modeling_llama import (
     LlamaAttention,
 )
+
+from doc_helpers.export.llama.rotary_embedding import apply_quantized_rotary_pos_emb
 
 
 class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):

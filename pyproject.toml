@@ -173,7 +173,7 @@ notice-rgx = "Copyright \\(c\\) Qualcomm Technologies, Inc. and/or its subsidiar
 
 [tool.ruff.lint.isort]
 lines-between-types = 1
-known-local-folder = ["funcgen"]
+known-local-folder = ["funcgen", "doc_helpers"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F403"]
