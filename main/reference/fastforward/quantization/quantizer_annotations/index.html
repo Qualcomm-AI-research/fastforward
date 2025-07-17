@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/quantization/output_mse/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/quantization/quantizer_annotations/">
       
       
-        <link rel="prev" href="../local_error/">
+        <link rel="prev" href="../quant_init/">
       
       
-        <link rel="next" href="../quant_init/">
+        <link rel="next" href="../random/">
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>output_mse - FastForward</title>
+        <title>quantizer_annotations - FastForward</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.output_mse.OutputMSE" class="md-skip">
+        <a href="#fastforward.quantization.quantizer_annotations.TraceTensor" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              output_mse
+              quantizer_annotations
             
           </span>
         </div>
@@ -1506,30 +1506,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    output_mse
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../output_mse/" class="md-nav__link">
         
   
   
@@ -1540,126 +1520,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE" class="md-nav__link">
-    <span class="md-ellipsis">
-      OutputMSE
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OutputMSE">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.alternative_context" class="md-nav__link">
-    <span class="md-ellipsis">
-      alternative_context
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      cleanup
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="md-nav__link">
-    <span class="md-ellipsis">
-      conclude_partition
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.prepare" class="md-nav__link">
-    <span class="md-ellipsis">
-      prepare
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.propagate" class="md-nav__link">
-    <span class="md-ellipsis">
-      propagate
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSE.update" class="md-nav__link">
-    <span class="md-ellipsis">
-      update
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSEOverride" class="md-nav__link">
-    <span class="md-ellipsis">
-      OutputMSEOverride
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OutputMSEOverride">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="md-nav__link">
-    <span class="md-ellipsis">
-      passthrough
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="md-nav__link">
-    <span class="md-ellipsis">
-      __call__
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1692,10 +1552,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../quantizer_annotations/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    quantizer_annotations
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1706,6 +1586,93 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.TraceTensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      TraceTensor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TraceTensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.TraceTensor.previous_function" class="md-nav__link">
+    <span class="md-ellipsis">
+      previous_function
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.TraceTensor.previous_quantizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      previous_quantizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.TraceTensor.__new__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __new__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.TraceTensor.__torch_function__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __torch_function__
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.annotate_operator_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      annotate_operator_metadata
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.quantizer_annotations.quantizer_override" class="md-nav__link">
+    <span class="md-ellipsis">
+      quantizer_override
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2187,7 +2154,7 @@
   
 
 
-  <h1>output_mse</h1>
+  <h1>quantizer_annotations</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -2217,18 +2184,22 @@
 
 
 
-<h3 id="fastforward.quantization.output_mse.OutputMSE" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">output_mse</span><span class="o">.</span><span class="n">OutputMSE</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">optimizer_factory</span><span class="p">)</span></code>
+<h3 id="fastforward.quantization.quantizer_annotations.TraceTensor" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quantizer_annotations</span><span class="o">.</span><span class="n">TraceTensor</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSE" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.quantization.quantizer_annotations.TraceTensor" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.local_error.LocalErrorMethod&lt;/code&gt;" href="../local_error/#fastforward.quantization.local_error.LocalErrorMethod">LocalErrorMethod</a></code></p>
+              Bases: <code><span title="torch.Tensor">Tensor</span></code></p>
 
 
-        <p>Local error method for output Mean Squared Error (MSE) minimization.</p>
+        <p>A <code>torch.Tensor</code> subclass that tracks the preceding operation and quantizer.</p>
+<p><code>TraceTensor</code> instances store a reference to the <code>previous_function</code> (the operation that produced this tensor, set via <code>__torch_function__</code>) and
+the <code>previous_quantizer</code> (the quantizer layer that consumed or produced this tensor,
+set via <code>quantizer_override</code>). This tracking facilitates the annotation of <code>Quantizer</code>
+layers with <code>Tag(before/after:func_name)</code> metadata, allowing the user to search specific layers in the graph.</p>
 
 
 
@@ -2237,494 +2208,14 @@
 
 
                   <details class="quote">
-                    <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">modules</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">QuantizedModule</span><span class="p">],</span> <span class="n">optimizer_factory</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span> <span class="o">=</span> <span class="n">modules</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_override</span> <span class="o">=</span> <span class="n">OutputMSEOverride</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_Handle</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span> <span class="o">=</span> <span class="n">optimizer_factory</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.alternative_context" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">alternative_context</span><span class="p">()</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.alternative_context" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Provide an alternative context with passthrough mode enabled.</p>
-
-
-    <p><span class="doc-section-title">Yields:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code>None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Generator[None, None, None]: A generator for the alternative context.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@execution_context</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">alternative_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provide an alternative context with passthrough mode enabled.</span>
-
-<span class="sd">    Yields:</span>
-<span class="sd">        Generator[None, None, None]: A generator for the alternative context.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">yield</span>
-    <span class="k">finally</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.cleanup" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">cleanup</span><span class="p">()</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.cleanup" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Clean up by removing all registered hooks.</p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clean up by removing all registered hooks.&quot;&quot;&quot;</span>
-    <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="p">:</span>
-        <span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">conclude_partition</span><span class="p">()</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.conclude_partition" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Conclude the current partition by zeroing the gradients.</p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">conclude_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Conclude the current partition by zeroing the gradients.&quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.prepare" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">prepare</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.prepare" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Prepare the context by registering hooks for quantizers.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>ctx</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.local_error.RunnerContext&lt;/code&gt;" href="../local_error/#fastforward.quantization.local_error.RunnerContext">RunnerContext</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The runner context.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">RunnerContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prepare the context by registering hooks for quantizers.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        ctx: The runner context.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-    <span class="k">for</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_quantizers</span><span class="p">():</span>
-        <span class="n">metadata</span> <span class="o">=</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span>
-        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">metadata</span><span class="o">.</span><span class="n">parameter_quantizer</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">quantizer</span><span class="o">.</span><span class="n">register_override</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_override</span><span class="p">))</span>
-
-    <span class="k">for</span> <span class="n">output_quantizer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_outputs</span><span class="p">():</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_quantizer</span><span class="o">.</span><span class="n">register_forward_pre_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">))</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.propagate" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">replay_value</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.propagate" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Propagate the replay value to the default and alternative context.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>replay_value</code>
-            </td>
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The replay value tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="tuple">tuple</span>[<span title="torch.Tensor">Tensor</span>, <span title="torch.Tensor">Tensor</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>tuple[torch.Tensor, torch.Tensor]: The detached and dequantized replay value.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">propagate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replay_value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Propagate the replay value to the default and alternative context.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        replay_value: The replay value tensor.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        tuple[torch.Tensor, torch.Tensor]: The detached and dequantized replay value.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">replay_value</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">replay_value</span><span class="o">.</span><span class="n">dequantize</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.quantization.output_mse.OutputMSE.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">quantized</span><span class="p">,</span> <span class="n">unquantized</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSE.update" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Update the model parameters based on the MSE between quantized and unquantized tensors.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>quantized</code>
-            </td>
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The quantized tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>unquantized</code>
-            </td>
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The unquantized tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantized</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">unquantized</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the model parameters based on the MSE between quantized and unquantized tensors.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        quantized: The quantized tensor.</span>
-<span class="sd">        unquantized: The unquantized tensor.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-    <span class="n">error</span> <span class="o">=</span> <span class="p">(</span><span class="n">quantized</span> <span class="o">-</span> <span class="n">unquantized</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">error</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_factory</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="fastforward.quantization.output_mse.OutputMSEOverride" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">output_mse</span><span class="o">.</span><span class="n">OutputMSEOverride</span><span class="p">()</span></code>
-
-<a href="#fastforward.quantization.output_mse.OutputMSEOverride" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-
-        <p>Override class for output Mean Squared Error (MSE) calculation.</p>
-
-
-<p><span class="doc-section-title">Attributes:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;passthrough&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;False&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.output_mse.OutputMSEOverride.passthrough&lt;/code&gt;)" href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough">passthrough</a></code></td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Flag to enable passthrough mode.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-                  <details class="quote">
-                    <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">41</span>
-<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span>
+                    <summary>Source code in <code>fastforward/quantization/quantizer_annotations.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: ARG002</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">previous_function</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">previous_quantizer</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
@@ -2742,14 +2233,34 @@
 
 
 
-<h4 id="fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">passthrough</span> <span class="o">=</span> <span class="kc">False</span></code>
+<h4 id="fastforward.quantization.quantizer_annotations.TraceTensor.previous_function" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">previous_function</span> <span class="o">=</span> <span class="kc">None</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.output_mse.OutputMSEOverride.passthrough" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.quantization.quantizer_annotations.TraceTensor.previous_function" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.quantization.quantizer_annotations.TraceTensor.previous_quantizer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">previous_quantizer</span> <span class="o">=</span> <span class="kc">None</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.quantization.quantizer_annotations.TraceTensor.previous_quantizer" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2763,15 +2274,278 @@
 <div class="doc doc-object doc-function">
 
 
-<h4 id="fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__call__</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span></code>
+<h4 id="fastforward.quantization.quantizer_annotations.TraceTensor.__new__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="fm">__new__</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.output_mse.OutputMSEOverride.__call__" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.quantization.quantizer_annotations.TraceTensor.__new__" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Call the override with the given quantizer, callback, and arguments.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quantizer_annotations.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">23</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TraceTensor&quot;</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
+    <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_subclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">require_grad</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.quantization.quantizer_annotations.TraceTensor.__torch_function__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">__torch_function__</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#fastforward.quantization.quantizer_annotations.TraceTensor.__torch_function__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Intercepts PyTorch operations on <code>TraceTensor</code> instances.</p>
+<p>This method enables the tracking of computational graph flow. It annotates the <code>previous_quantizer</code> of input
+<code>TraceTensor</code>s with a <code>Tag("before") / func.__name__</code> before the operation is performed. It also records the <code>func</code>
+(the PyTorch operation) as the <code>_previous_function</code> on the resulting <code>TraceTensor</code>.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quantizer_annotations.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">__torch_function__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Intercepts PyTorch operations on `TraceTensor` instances.</span>
+
+<span class="sd">    This method enables the tracking of computational graph flow. It annotates the `previous_quantizer` of input</span>
+<span class="sd">    `TraceTensor`s with a `Tag(&quot;before&quot;) / func.__name__` before the operation is performed. It also records the `func`</span>
+<span class="sd">    (the PyTorch operation) as the `_previous_function` on the resulting `TraceTensor`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_annotate_input</span><span class="p">(</span><span class="n">arg</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">TraceTensor</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">previous_quantizer</span><span class="p">,</span> <span class="n">Quantizer</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">previous_quantizer</span><span class="o">.</span><span class="n">quant_metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">arg</span><span class="o">.</span><span class="n">previous_quantizer</span><span class="o">.</span><span class="n">quant_metadata</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;before&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">arg</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_annotate_output</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">TraceTensor</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">TraceTensor</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">TraceTensor</span><span class="p">):</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">previous_function</span> <span class="o">=</span> <span class="n">func</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">optree</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">_annotate_input</span><span class="p">,</span> <span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>  <span class="c1"># type: ignore[arg-type]</span>
+
+    <span class="k">with</span> <span class="n">_C</span><span class="o">.</span><span class="n">DisableTorchFunctionSubclass</span><span class="p">():</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">output</span><span class="p">,)</span> <span class="o">=</span> <span class="n">optree</span><span class="o">.</span><span class="n">tree_map</span><span class="p">(</span><span class="n">_annotate_output</span><span class="p">,</span> <span class="p">(</span><span class="n">output</span><span class="p">,))</span>  <span class="c1"># type: ignore[arg-type]</span>
+    <span class="k">return</span> <span class="n">output</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.quantization.quantizer_annotations.annotate_operator_metadata" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quantizer_annotations</span><span class="o">.</span><span class="n">annotate_operator_metadata</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">sample_input</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.quantizer_annotations.annotate_operator_metadata" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Trace model execution and annotate Quantizer metadata with preceding and succeeding operators.</p>
+<p>This function performs a lightweight tracing of the model's forward pass using a special
+tracing tensor (<code>TraceTensor</code>) and quantizer overrides. It identifies the operators that immediately
+precede and follow each <code>ff.nn.Quantizer</code> instance in the execution flow and adds
+this information as Tags to the metadata (<code>quant_metadata</code>) within the Quantizer objects.</p>
+<p>The annotation happens in-place on the <code>Quantizer</code> objects within the provided model.
+We assume that <code>ff.quantize</code> has been called on the model to ensure that the model
+contains <code>Quantizer</code> instances that need to be annotated.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The <code>torch.nn.Module</code> instance to be traced and annotated. It is assumed that
+   <code>ff.quantize</code> has been called on this model.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sample_input</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A sample input tensor to the model. This is used to drive
+          the forward pass for tracing purposes. If the module has conditional logic based on
+          input data, ensure that <code>sample_input</code> covers all possible branches or that you run
+          this function with multiple sample inputs to cover all branches.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="quote">
+              <summary>Source code in <code>fastforward/quantization/quantizer_annotations.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">annotate_operator_metadata</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">sample_input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trace model execution and annotate Quantizer metadata with preceding and succeeding operators.</span>
+
+<span class="sd">    This function performs a lightweight tracing of the model&#39;s forward pass using a special</span>
+<span class="sd">    tracing tensor (`TraceTensor`) and quantizer overrides. It identifies the operators that immediately</span>
+<span class="sd">    precede and follow each `ff.nn.Quantizer` instance in the execution flow and adds</span>
+<span class="sd">    this information as Tags to the metadata (`quant_metadata`) within the Quantizer objects.</span>
+
+<span class="sd">    The annotation happens in-place on the `Quantizer` objects within the provided model.</span>
+<span class="sd">    We assume that `ff.quantize` has been called on the model to ensure that the model</span>
+<span class="sd">    contains `Quantizer` instances that need to be annotated.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model: The `torch.nn.Module` instance to be traced and annotated. It is assumed that</span>
+<span class="sd">               `ff.quantize` has been called on this model.</span>
+<span class="sd">        sample_input: A sample input tensor to the model. This is used to drive</span>
+<span class="sd">                      the forward pass for tracing purposes. If the module has conditional logic based on</span>
+<span class="sd">                      input data, ensure that `sample_input` covers all possible branches or that you run</span>
+<span class="sd">                      this function with multiple sample inputs to cover all branches.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trace_tensor</span> <span class="o">=</span> <span class="n">TraceTensor</span><span class="p">(</span><span class="n">sample_input</span><span class="p">)</span>
+    <span class="n">handles</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_quantizers</span><span class="p">(</span><span class="n">skip_stubs</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">quantizer</span><span class="o">.</span><span class="n">register_override</span><span class="p">(</span><span class="n">quantizer_override</span><span class="p">))</span>
+
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">(),</span> <span class="n">ff</span><span class="o">.</span><span class="n">disable_quantization</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+            <span class="n">model</span><span class="p">(</span><span class="n">trace_tensor</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="n">handles</span><span class="p">:</span>
+            <span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.quantization.quantizer_annotations.quantizer_override" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quantizer_annotations</span><span class="o">.</span><span class="n">quantizer_override</span><span class="p">(</span><span class="n">quantizer</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.quantizer_annotations.quantizer_override" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Register the operations that precede and follow this quantizer forward pass as Tags.</p>
+<p>Combined with <code>TraceTensor</code>, this function will add both the preceeding and following operators
+to each quantizer layer as Tag objects: (<code>Tag("before") / func.__name__</code>)<code>and</code>Tag("after") / func.<strong>name</strong>`).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2790,11 +2564,11 @@
                 <code>quantizer</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.quantizer.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantizer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.nn.Quantizer&lt;/code&gt;)" href="../../nn/quantizer/#fastforward.nn.quantizer.Quantizer">Quantizer</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The quantizer instance.</p>
+                <p>A quantizer layer.</p>
               </div>
             </td>
             <td>
@@ -2806,11 +2580,11 @@
                 <code>callback</code>
             </td>
             <td>
-                  <code><span title="typing.Callable">Callable</span>[[<span title="torch.Tensor">Tensor</span>], <span title="torch.Tensor">Tensor</span>]</code>
+                  <code><span title="typing.Callable">Callable</span>[..., <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The callback function.</p>
+                <p>The quantizer layer forward call.</p>
               </div>
             </td>
             <td>
@@ -2826,7 +2600,7 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Positional arguments for the callback.</p>
+                <p>The arguments passed to the quantizer layer forward call.</p>
               </div>
             </td>
             <td>
@@ -2842,7 +2616,7 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments for the callback.</p>
+                <p>Any key-word arguments passed to the quantizer layer forward call.</p>
               </div>
             </td>
             <td>
@@ -2853,94 +2627,80 @@
     </table>
 
 
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>torch.Tensor: The result of the callback or the data tensor if passthrough is enabled.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
             <details class="quote">
-              <summary>Source code in <code>fastforward/quantization/output_mse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
+              <summary>Source code in <code>fastforward/quantization/quantizer_annotations.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
 <span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span>
-    <span class="n">quantizer</span><span class="p">:</span> <span class="n">Quantizer</span><span class="p">,</span>
-    <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">quantizer_override</span><span class="p">(</span>
+    <span class="n">quantizer</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Quantizer</span><span class="p">,</span>
+    <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Call the override with the given quantizer, callback, and arguments.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register the operations that precede and follow this quantizer forward pass as Tags.</span>
+
+<span class="sd">    Combined with `TraceTensor`, this function will add both the preceeding and following operators</span>
+<span class="sd">    to each quantizer layer as Tag objects: (`Tag(&quot;before&quot;) / func.__name__`)` and `Tag(&quot;after&quot;) / func.__name__`).</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        quantizer: The quantizer instance.</span>
-<span class="sd">        callback: The callback function.</span>
-<span class="sd">        args: Positional arguments for the callback.</span>
-<span class="sd">        kwargs: Keyword arguments for the callback.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        torch.Tensor: The result of the callback or the data tensor if passthrough is enabled.</span>
+<span class="sd">        quantizer: A quantizer layer.</span>
+<span class="sd">        callback: The quantizer layer forward call.</span>
+<span class="sd">        args: The arguments passed to the quantizer layer forward call.</span>
+<span class="sd">        kwargs: Any key-word arguments passed to the quantizer layer forward call.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">del</span> <span class="n">quantizer</span>
 
-    <span class="n">data</span> <span class="o">=</span> <span class="n">_data_from_args</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">passthrough</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_data</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">_args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">data</span>
 
-    <span class="k">return</span> <span class="n">callback</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">_data</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">TraceTensor</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">previous_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">quantizer</span><span class="o">.</span><span class="n">quant_metadata</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;after&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">data</span><span class="o">.</span><span class="n">previous_function</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="n">quantized</span> <span class="o">=</span> <span class="n">callback</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quantized</span><span class="p">,</span> <span class="n">TraceTensor</span><span class="p">):</span>
+        <span class="n">quantized</span> <span class="o">=</span> <span class="n">TraceTensor</span><span class="p">(</span><span class="n">quantized</span><span class="p">)</span>
+    <span class="n">quantized</span><span class="o">.</span><span class="n">previous_quantizer</span> <span class="o">=</span> <span class="n">quantizer</span>
+    <span class="k">return</span> <span class="n">quantized</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
 
 </div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
 
 
 

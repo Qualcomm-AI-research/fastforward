@@ -1540,6 +1540,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/fastforward/quantization/quantizer_annotations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    quantizer_annotations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/fastforward/quantization/random/" class="md-nav__link">
         
   
@@ -1865,29 +1888,6 @@
   
   <span class="md-ellipsis">
     autoquant
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/fastforward/testing/cfg/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    cfg
     
   </span>
   
@@ -2468,7 +2468,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1877b4a1">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8afdfd77">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2486,7 +2486,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4390ec4d">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e19c7f96">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2527,7 +2527,7 @@ from typing_extensions import override</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2bb33ac6">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a6241f3b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2540,7 +2540,7 @@ from typing_extensions import override</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=71817888">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=22a7e5bc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2551,7 +2551,7 @@ from typing_extensions import override</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=aea289c4">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=495b43a3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2589,14 +2589,14 @@ data</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>tensor([[-0.1949, -0.0852,  0.4205,  0.3533]])</pre>
+<pre>tensor([[-0.2499, -0.2448,  0.4162,  0.2388]])</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a3e6a34c">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=97cf1b79">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2607,7 +2607,7 @@ data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=09113cf4">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9496f724">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2647,7 +2647,7 @@ quantized_data</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>QuantizedTensor([[-2., -1.,  4.,  4.]],
+<pre>QuantizedTensor([[-2., -2.,  4.,  2.]],
                 quant_func=AffineQuantizationFunction, quant_args=StaticAffineQuantParams(scale=tensor([0.1000]), offset=None, num_bits=8, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))</pre>
 </div>
 </div>
@@ -2655,7 +2655,7 @@ quantized_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e893166e">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1b1f6972">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2670,7 +2670,7 @@ This makes it very easy to see in FastForward if your data is actually quantized
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=8d944b74">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=88ace877">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2702,14 +2702,14 @@ This makes it very easy to see in FastForward if your data is actually quantized
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[4]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>tensor([[-0.2000, -0.1000,  0.4000,  0.4000]])</pre>
+<pre>tensor([[-0.2000, -0.2000,  0.4000,  0.2000]])</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c1546729">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3ba76bc4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2723,7 +2723,7 @@ This makes it very easy to see in FastForward if your data is actually quantized
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=4af85b56">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=737b4897">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2764,7 +2764,7 @@ quantizer</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=159710db">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=95ba2f86">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2775,7 +2775,7 @@ quantizer</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=fa86d93b">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0f564f7e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2830,7 +2830,7 @@ quantizer.quantization_range=(None, None)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1104613e">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d58eb4eb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2845,7 +2845,7 @@ that need to be fitted before we can quantize any data. As a result, the quantiz
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=79a8623f">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=170466d7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2888,8 +2888,8 @@ print(f"{data.min()=} {data.max()=}")</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>quantizer.has_uninitialized_params=False
-quantizer.quantization_range=(tensor([-0.8410], grad_fn=&lt;MulBackward0&gt;), tensor([0.4205], grad_fn=&lt;MulBackward0&gt;))
-data.min()=tensor(-0.1949) data.max()=tensor(0.4205)
+quantizer.quantization_range=(tensor([-0.8325], grad_fn=&lt;MulBackward0&gt;), tensor([0.4162], grad_fn=&lt;MulBackward0&gt;))
+data.min()=tensor(-0.2499) data.max()=tensor(0.4162)
 </pre>
 </div>
 </div>
@@ -2897,7 +2897,7 @@ data.min()=tensor(-0.1949) data.max()=tensor(0.4205)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=13782a3a">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1370ab68">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2910,7 +2910,7 @@ data.min()=tensor(-0.1949) data.max()=tensor(0.4205)
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=99a9a720">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=77e70b9b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2946,16 +2946,16 @@ quantized_data</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>QuantizedTensor([[-0., -0., 1., 1.]], grad_fn=&lt;AliasBackward0&gt;,
+<pre>QuantizedTensor([[-1., -1.,  1.,  1.]], grad_fn=&lt;AliasBackward0&gt;,
                 quant_func=AffineQuantizationFunction, quant_args=StaticAffineQuantParams(scale=Parameter containing:
-tensor([0.4205], requires_grad=True), offset=tensor([0.]), num_bits=2, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))</pre>
+tensor([0.4162], requires_grad=True), offset=tensor([0.]), num_bits=2, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7cb72e06">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ec305738">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2967,7 +2967,7 @@ tensor([0.4205], requires_grad=True), offset=tensor([0.]), num_bits=2, granulari
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=853c5cf2">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=ad86cc7f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3013,7 +3013,7 @@ print(unquantized_linear)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a5d96f23">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=903de87c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3034,7 +3034,7 @@ print(unquantized_linear)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b2e48b4e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3808291e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3088,7 +3088,7 @@ print(quantized_linear)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b23505d2">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=642d81f3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3104,7 +3104,7 @@ print(quantized_linear)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e9335a40">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=948538aa">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3151,7 +3151,7 @@ except ff.exceptions.QuantizationError as e:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0aadabc6">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8149dee1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3167,7 +3167,7 @@ except ff.exceptions.QuantizationError as e:
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=22294cff">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=2c90125c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3211,9 +3211,9 @@ print(f"{quantized_output=}")</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>unquantized_output=tensor([[-0.2630, -0.1810, -0.2776, -0.0846,  0.2538, -0.4196,  0.2782, -0.1031]],
+<pre>unquantized_output=tensor([[-0.3134, -0.0218, -0.0915,  0.2281,  0.3228, -0.0669,  0.1934, -0.2135]],
        grad_fn=&lt;AddmmBackward0&gt;)
-quantized_output=tensor([[-0.2630, -0.1810, -0.2776, -0.0846,  0.2538, -0.4196,  0.2782, -0.1031]],
+quantized_output=tensor([[-0.3134, -0.0218, -0.0915,  0.2281,  0.3228, -0.0669,  0.1934, -0.2135]],
        grad_fn=&lt;AddmmBackward0&gt;)
 </pre>
 </div>
@@ -3222,7 +3222,7 @@ quantized_output=tensor([[-0.2630, -0.1810, -0.2776, -0.0846,  0.2538, -0.4196, 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b64de3c6">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8a6116b9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3234,7 +3234,7 @@ quantized_output=tensor([[-0.2630, -0.1810, -0.2776, -0.0846,  0.2538, -0.4196, 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e82974cc">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=491dc163">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3286,7 +3286,7 @@ print(quantized_linear)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=71ff97fb">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cc08b573">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3297,7 +3297,7 @@ print(quantized_linear)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a4205683">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e24ce013">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3363,9 +3363,9 @@ quantized_linear.weight_quantizer.quantization_range=(None, None)
 quantized_linear.output_quantizer.quantization_range=(None, None)
 
 After range estimation
-quantized_linear.input_quantizer.quantization_range=(tensor([-0.8410], grad_fn=&lt;MulBackward0&gt;), tensor([0.4205], grad_fn=&lt;MulBackward0&gt;))
-quantized_linear.weight_quantizer.quantization_range=(tensor([-0.7626], grad_fn=&lt;MulBackward0&gt;), tensor([0.3813], grad_fn=&lt;MulBackward0&gt;))
-quantized_linear.output_quantizer.quantization_range=(tensor([-0.6008], grad_fn=&lt;MulBackward0&gt;), tensor([0.3004], grad_fn=&lt;MulBackward0&gt;))
+quantized_linear.input_quantizer.quantization_range=(tensor([-0.8325], grad_fn=&lt;MulBackward0&gt;), tensor([0.4162], grad_fn=&lt;MulBackward0&gt;))
+quantized_linear.weight_quantizer.quantization_range=(tensor([-0.9715], grad_fn=&lt;MulBackward0&gt;), tensor([0.4858], grad_fn=&lt;MulBackward0&gt;))
+quantized_linear.output_quantizer.quantization_range=(tensor([-1.0688], grad_fn=&lt;MulBackward0&gt;), tensor([0.5344], grad_fn=&lt;MulBackward0&gt;))
 
 </pre>
 </div>
@@ -3374,7 +3374,7 @@ quantized_linear.output_quantizer.quantization_range=(tensor([-0.6008], grad_fn=
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=765431e4">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2b28b674">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3386,7 +3386,7 @@ quantized_linear.output_quantizer.quantization_range=(tensor([-0.6008], grad_fn=
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1ea78a42">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=50457d17">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3432,15 +3432,15 @@ print(f"{quantized_output.dequantize()=}")</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>unquantized_output=tensor([[-0.2630, -0.1810, -0.2776, -0.0846,  0.2538, -0.4196,  0.2782, -0.1031]],
+<pre>unquantized_output=tensor([[-0.3134, -0.0218, -0.0915,  0.2281,  0.3228, -0.0669,  0.1934, -0.2135]],
        grad_fn=&lt;AddmmBackward0&gt;)
 
-quantized_output=QuantizedTensor([[-1., -0., -1., -1.,  1., -1.,  1., -0.]],
+quantized_output=QuantizedTensor([[-0.,  0., -0.,  1.,  1., -0.,  1., -1.]],
                 grad_fn=&lt;AliasBackward0&gt;,
                 quant_func=AffineQuantizationFunction, quant_args=StaticAffineQuantParams(scale=Parameter containing:
-tensor([0.3004], requires_grad=True), offset=tensor([0.]), num_bits=2, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))
+tensor([0.5344], requires_grad=True), offset=tensor([0.]), num_bits=2, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))
 
-quantized_output.dequantize()=tensor([[-0.3004,  0.0000, -0.3004, -0.3004,  0.3004, -0.3004,  0.3004,  0.0000]],
+quantized_output.dequantize()=tensor([[ 0.0000,  0.0000,  0.0000,  0.5344,  0.5344,  0.0000,  0.5344, -0.5344]],
        grad_fn=&lt;DequantizeAffineBackward&gt;)
 </pre>
 </div>
@@ -3449,7 +3449,7 @@ quantized_output.dequantize()=tensor([[-0.3004,  0.0000, -0.3004, -0.3004,  0.30
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6737779d">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=03f809d8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3464,7 +3464,7 @@ quantized_output.dequantize()=tensor([[-0.3004,  0.0000, -0.3004, -0.3004,  0.30
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=27494c99">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d1ed46fc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3481,7 +3481,7 @@ quantized_output.dequantize()=tensor([[-0.3004,  0.0000, -0.3004, -0.3004,  0.30
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=03a11aa8">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=32c51db4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3492,7 +3492,7 @@ quantized_output.dequantize()=tensor([[-0.3004,  0.0000, -0.3004, -0.3004,  0.30
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=541322ac">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=84fe3cf1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3560,7 +3560,7 @@ unquantized_model</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b3fcf847">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=57264341">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3575,7 +3575,7 @@ unquantized_model</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=2db042b1">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=371d074b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3625,7 +3625,7 @@ unquantized_model</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a0ac6eec">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=85f13395">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3640,7 +3640,7 @@ unquantized_model</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5cb2ce5d">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=cfde4fef">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3717,7 +3717,7 @@ quantized_model</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3fe5cc24">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=08d63b7e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3729,7 +3729,7 @@ quantized_model</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=540b8b31">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=d2526440">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3773,9 +3773,9 @@ print(f"{quantized_output=}")</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>unquantized_output=tensor([[0.0732, 0.4803, 0.6472, 0.0000, 0.1874, 0.6045, 0.1203, 0.0000]],
+<pre>unquantized_output=tensor([[0.0817, 0.2083, 0.0000, 0.0000, 0.6051, 0.0000, 0.2734, 0.0000]],
        grad_fn=&lt;ReluBackward0&gt;)
-quantized_output=tensor([[0.0732, 0.4803, 0.6472, 0.0000, 0.1874, 0.6045, 0.1203, 0.0000]],
+quantized_output=tensor([[0.0817, 0.2083, 0.0000, 0.0000, 0.6051, 0.0000, 0.2734, 0.0000]],
        grad_fn=&lt;ReluBackward0&gt;)
 </pre>
 </div>
@@ -3784,7 +3784,7 @@ quantized_output=tensor([[0.0732, 0.4803, 0.6472, 0.0000, 0.1874, 0.6045, 0.1203
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=749ea45b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=652b7cb5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3802,7 +3802,7 @@ quantized_output=tensor([[0.0732, 0.4803, 0.6472, 0.0000, 0.1874, 0.6045, 0.1203
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0225aa1e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b1eac0ad">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3903,7 +3903,7 @@ config</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d8587940">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d8b429f8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3917,7 +3917,7 @@ can be an initialized quantizer or a QuantizerStub.</p>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=7622e07a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=506d6fb4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3992,7 +3992,7 @@ quantized_model</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=913cfd11">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=038c0be7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4004,7 +4004,7 @@ quantized_model</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=dae6be9d">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5c96122f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4042,10 +4042,10 @@ quantized_model(data)</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[22]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>QuantizedTensor([[ -99.,   60.,  127., -128.,  -54.,  110.,  -81., -128.]],
+<pre>QuantizedTensor([[ -93.,  -41., -128., -128.,  127., -128.,  -12., -128.]],
                 grad_fn=&lt;AliasBackward0&gt;,
                 quant_func=AffineQuantizationFunction, quant_args=StaticAffineQuantParams(scale=Parameter containing:
-tensor([0.0025], requires_grad=True), offset=Parameter containing:
+tensor([0.0024], requires_grad=True), offset=Parameter containing:
 tensor([128.], requires_grad=True), num_bits=8, granularity=PerTensor(), quantized_dtype=None, dequantize_dtype=torch.float32))</pre>
 </div>
 </div>
@@ -4053,7 +4053,7 @@ tensor([128.], requires_grad=True), num_bits=8, granularity=PerTensor(), quantiz
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=62938246">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8b2ef40a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4064,7 +4064,7 @@ tensor([128.], requires_grad=True), num_bits=8, granularity=PerTensor(), quantiz
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e99d3b37">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ecbb1183">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4149,7 +4149,7 @@ tensor([128.], requires_grad=True), num_bits=8, granularity=PerTensor(), quantiz
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=fb5f6339">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=27e1d53b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4207,7 +4207,7 @@ my_unquantized_layer</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f9cca80c">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=21e07bc9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4262,9 +4262,9 @@ ff.quantized_module_map():
 {&lt;class 'torch.nn.modules.linear.Linear'&gt;: &lt;class 'fastforward.nn.linear.QuantizedLinear'&gt;,
  &lt;class 'torch.nn.modules.activation.ReLU'&gt;: &lt;class 'fastforward.nn.activations.QuantizedRelu'&gt;,
  &lt;class 'torch.nn.modules.container.Sequential'&gt;: &lt;class 'fastforward.nn.container.QuantizedSequential'&gt;,
- &lt;class 'torch.nn.modules.container.ParameterList'&gt;: &lt;class 'fastforward.nn.container.QuantizedParameterList'&gt;,
  &lt;class 'torch.nn.modules.container.ModuleList'&gt;: &lt;class 'fastforward.nn.container.QuantizedModuleList'&gt;,
  &lt;class 'torch.nn.modules.container.ModuleDict'&gt;: &lt;class 'fastforward.nn.container.QuantizedModuleDict'&gt;,
+ &lt;class 'torch.nn.modules.container.ParameterList'&gt;: &lt;class 'fastforward.nn.container.QuantizedParameterList'&gt;,
  &lt;class 'torch.nn.modules.container.ParameterDict'&gt;: &lt;class 'fastforward.nn.container.QuantizedParameterDict'&gt;,
  &lt;class 'torch.nn.modules.activation.SiLU'&gt;: &lt;class 'fastforward.nn.activations.QuantizedSilu'&gt;,
  &lt;class 'torch.nn.modules.conv.Conv1d'&gt;: &lt;class 'fastforward.nn.conv.QuantizedConv1d'&gt;,
@@ -4278,7 +4278,7 @@ ff.quantized_module_map():
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1a0490b3">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a15e5761">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4290,7 +4290,7 @@ ff.quantized_module_map():
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ff665a56">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cef5db34">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4399,7 +4399,7 @@ ff.quantized_module_map():
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0d6bf813">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d413008a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4427,7 +4427,7 @@ ff.quantized_module_map():
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f93ccee6">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=41eb9b1b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4483,7 +4483,7 @@ Calling MyQuantizedSelfAttentionLayer.__init_quantization__
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=456e4cfc">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3654f9aa">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4501,7 +4501,7 @@ Calling MyQuantizedSelfAttentionLayer.__init_quantization__
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3161adca">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c94a2c44">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4544,7 +4544,7 @@ pprint(ff.quantized_module_map()[MySelfAttentionLayer])</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=aab17918">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=643f3265">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4557,7 +4557,7 @@ pprint(ff.quantized_module_map()[MySelfAttentionLayer])</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=919dfcec">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c317b9dc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4635,7 +4635,7 @@ Calling MyQuantizedSelfAttentionLayer.quantize_children
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ca3e3d94">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=590b76b3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
