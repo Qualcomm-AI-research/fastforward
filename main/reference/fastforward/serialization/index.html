@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.serialization.register_yaml_handlers" class="md-skip">
+        <a href="#fastforward.serialization.yamlable" class="md-skip">
           Skip to content
         </a>
       
@@ -1847,20 +1847,26 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.serialization.register_yaml_handlers" class="md-nav__link">
-    <span class="md-ellipsis">
-      register_yaml_handlers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.serialization.yamlable" class="md-nav__link">
     <span class="md-ellipsis">
       yamlable
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="yamlable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.serialization.yamlable--objects-can-now-be-serialized-tofrom-yaml-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objects can now be serialized to/from YAML automatically
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2131,158 +2137,24 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.serialization.register_yaml_handlers" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">register_yaml_handlers</span><span class="p">()</span></code>
-
-<a href="#fastforward.serialization.register_yaml_handlers" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Register YAML handlers for custom object serialization and deserialization.</p>
-<p>Sets up custom YAML representers and constructors for Quantizer, Tag, and
-Granularity classes to enable proper serialization/deserialization of these
-objects to/from YAML format using the !ff.obj tag.</p>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/serialization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_yaml_handlers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register YAML handlers for custom object serialization and deserialization.</span>
-
-<span class="sd">    Sets up custom YAML representers and constructors for Quantizer, Tag, and</span>
-<span class="sd">    Granularity classes to enable proper serialization/deserialization of these</span>
-<span class="sd">    objects to/from YAML format using the !ff.obj tag.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">._import</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualifiedNameReference</span><span class="p">,</span> <span class="n">fully_qualified_name</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.nn.quantizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Quantizer</span><span class="p">,</span> <span class="n">Tag</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.quantization.granularity</span><span class="w"> </span><span class="kn">import</span> <span class="n">Granularity</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_ff_obj_yaml_representer</span><span class="p">(</span><span class="n">dumper</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Dumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">yaml</span><span class="o">.</span><span class="n">MappingNode</span><span class="p">:</span>
-        <span class="n">type_</span> <span class="o">=</span> <span class="n">fully_qualified_name</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getnewargs_ex__&quot;</span><span class="p">):</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;The object can not be serialized to yaml because it is not clear what arguments should be passed to the __init__ to deserialize object. Please define &#39;__getnewargs_ex__&#39; attribute in the type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">type_</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="p">}</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getnewargs_ex__&quot;</span><span class="p">):</span>
-            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">newargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getnewargs_ex__</span><span class="p">())</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">):</span>
-            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initargs</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getinitargs_ex__</span><span class="p">())</span>
-        <span class="c1"># in python 3.11+ object provides a default implementation of `__getstate__`.</span>
-        <span class="c1"># state is stored only if there is a way to restore it.</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__setstate__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;__getstate__&quot;</span><span class="p">):</span>
-            <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span>
-            <span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span>
-            <span class="n">state</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_ff_obj_yaml_constructor</span><span class="p">(</span><span class="n">loader</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">,</span> <span class="n">_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">yaml</span><span class="o">.</span><span class="n">MappingNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">construct_mapping</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">class_name</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
-        <span class="n">newargs</span><span class="p">,</span> <span class="n">newkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;newargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
-        <span class="n">initargs</span><span class="p">,</span> <span class="n">initkwargs</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;initargs&quot;</span><span class="p">,</span> <span class="p">((),</span> <span class="p">{}))</span>
-        <span class="bp">cls</span> <span class="o">=</span> <span class="n">QualifiedNameReference</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span><span class="o">.</span><span class="n">import_</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">cls</span>
-        <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__new__&quot;</span><span class="p">):</span>
-            <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">newargs</span><span class="p">,</span> <span class="o">**</span><span class="n">newkwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">):</span>
-            <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="o">*</span><span class="n">initargs</span><span class="p">,</span> <span class="o">**</span><span class="n">initkwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;cant deserialise an object&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;state&quot;</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">__setstate__</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">obj</span>
-
-    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Granularity</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>  <span class="c1"># type: ignore[type-abstract]</span>
-    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Quantizer</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
-    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="n">Tag</span><span class="p">,</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">)</span>
-    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span>
-        <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">dumper</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">dumper</span><span class="o">.</span><span class="n">represent_mapping</span><span class="p">(</span><span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
-    <span class="p">)</span>
-    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_constructor</span><span class="p">(</span><span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span> <span class="n">_ff_obj_yaml_constructor</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
 <h3 id="fastforward.serialization.yamlable" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">&#39;!ff.obj&#39;</span><span class="p">,</span> <span class="n">yaml_constructor</span><span class="o">=</span><span class="n">_ff_obj_yaml_constructor</span><span class="p">,</span> <span class="n">yaml_representer</span><span class="o">=</span><span class="n">_ff_obj_yaml_representer</span><span class="p">)</span></code>
 
 <a href="#fastforward.serialization.yamlable" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Class decorator that stores initialization arguments for YAML serialization.</p>
-<p>Wraps the class's <strong>init</strong> method to store their respective args/kwargs in <strong>getinitargs_ex</strong>
-for later reconstruction from YAML. Only wraps methods that are not the default superclass
-implementations.</p>
+        <p>Decorator that makes a class serializable to/from YAML.</p>
+<p>This decorator wraps the <strong>init</strong> and <strong>new</strong> methods of a class to store their
+arguments, enabling automatic YAML serialization and deserialization. It also
+registers custom YAML constructor and representer functions for the class.</p>
+<p>When a class uses this decorator, instances will have the following attributes
+automatically added to store constructor arguments:
+- <strong>newargs_ex</strong>: tuple containing (args, kwargs) passed to <strong>new</strong>
+- <strong>initargs_ex</strong>: tuple containing (args, kwargs) passed to <strong>init</strong></p>
+<p>The decorator ensures that both the current class and all its subclasses
+have their <strong>init</strong> and <strong>new</strong> methods wrapped when they are overridden.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2301,15 +2173,65 @@ implementations.</p>
                 <code>cls</code>
             </td>
             <td>
-                  <code><span title="type">type</span></code>
+                  <code><span title="type">type</span>[<span title="fastforward.serialization._T">_T</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The class to be decorated.</p>
+                <p>The class to decorate.</p>
               </div>
             </td>
             <td>
                 <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tag</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>YAML tag to use for this class (default: "!ff.obj").</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;!ff.obj&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>yaml_constructor</code>
+            </td>
+            <td>
+                  <code><span title="typing.Callable">Callable</span>[[<span title="yaml.Loader">Loader</span> | <span title="yaml.FullLoader">FullLoader</span> | <span title="yaml.UnsafeLoader">UnsafeLoader</span>, <span title="str">str</span>, <span title="yaml.Node">Node</span>], <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Function to construct objects from YAML
+(default: _ff_obj_yaml_constructor).</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="fastforward.serialization._ff_obj_yaml_constructor">_ff_obj_yaml_constructor</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>yaml_representer</code>
+            </td>
+            <td>
+                  <code><span title="typing.Callable">Callable</span>[[<span title="yaml.Dumper">Dumper</span>, <span title="typing.Any">Any</span>], <span title="yaml.MappingNode">MappingNode</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Function to represent objects as YAML
+(default: _ff_obj_yaml_representer).</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="fastforward.serialization._ff_obj_yaml_representer">_ff_obj_yaml_representer</span></code>
             </td>
           </tr>
       </tbody>
@@ -2327,11 +2249,11 @@ implementations.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="type">type</span></code>
+                  <code><span title="type">type</span>[<span title="fastforward.serialization._T">_T</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The decorated class with wrapped <strong>new</strong> and/or <strong>init</strong> methods.</p>
+                <p>The decorated class with YAML serialization capabilities and wrapped methods.</p>
               </div>
             </td>
           </tr>
@@ -2339,58 +2261,160 @@ implementations.</p>
     </table>
 
 
+<details class="example" open>
+  <summary>Example</summary>
+  <p>@yamlable
+class MyClass:
+    def <strong>init</strong>(self, value: int):
+        self.value = value</p>
+<h4 id="fastforward.serialization.yamlable--objects-can-now-be-serialized-tofrom-yaml-automatically">Objects can now be serialized to/from YAML automatically<a class="headerlink" href="#fastforward.serialization.yamlable--objects-can-now-be-serialized-tofrom-yaml-automatically" title="Permanent link">#</a></h4>
+<p>obj = MyClass(42)
+yaml_str = yaml.dump(obj)
+restored_obj = yaml.load(yaml_str, Loader=yaml.Loader)</p>
+</details>
+
             <details class="quote">
               <summary>Source code in <code>fastforward/serialization.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yamlable</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class decorator that stores initialization arguments for YAML serialization.</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yamlable</span><span class="p">(</span>
+    <span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span>
+    <span class="o">/</span><span class="p">,</span>
+    <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;!ff.obj&quot;</span><span class="p">,</span>
+    <span class="n">yaml_constructor</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span>
+        <span class="p">[</span><span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span> <span class="o">|</span> <span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span> <span class="o">|</span> <span class="n">yaml</span><span class="o">.</span><span class="n">UnsafeLoader</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">Node</span><span class="p">],</span> <span class="n">Any</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="n">_ff_obj_yaml_constructor</span><span class="p">,</span>
+    <span class="n">yaml_representer</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">yaml</span><span class="o">.</span><span class="n">Dumper</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">yaml</span><span class="o">.</span><span class="n">MappingNode</span><span class="p">]</span> <span class="o">=</span> <span class="n">_ff_obj_yaml_representer</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator that makes a class serializable to/from YAML.</span>
 
-<span class="sd">    Wraps the class&#39;s __init__ method to store their respective args/kwargs in __getinitargs_ex__</span>
-<span class="sd">    for later reconstruction from YAML. Only wraps methods that are not the default superclass</span>
-<span class="sd">    implementations.</span>
+<span class="sd">    This decorator wraps the __init__ and __new__ methods of a class to store their</span>
+<span class="sd">    arguments, enabling automatic YAML serialization and deserialization. It also</span>
+<span class="sd">    registers custom YAML constructor and representer functions for the class.</span>
+
+<span class="sd">    When a class uses this decorator, instances will have the following attributes</span>
+<span class="sd">    automatically added to store constructor arguments:</span>
+<span class="sd">    - __newargs_ex__: tuple containing (args, kwargs) passed to __new__</span>
+<span class="sd">    - __initargs_ex__: tuple containing (args, kwargs) passed to __init__</span>
+
+<span class="sd">    The decorator ensures that both the current class and all its subclasses</span>
+<span class="sd">    have their __init__ and __new__ methods wrapped when they are overridden.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        cls: The class to be decorated.</span>
+<span class="sd">        cls: The class to decorate.</span>
+<span class="sd">        tag: YAML tag to use for this class (default: &quot;!ff.obj&quot;).</span>
+<span class="sd">        yaml_constructor: Function to construct objects from YAML</span>
+<span class="sd">            (default: _ff_obj_yaml_constructor).</span>
+<span class="sd">        yaml_representer: Function to represent objects as YAML</span>
+<span class="sd">            (default: _ff_obj_yaml_representer).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The decorated class with wrapped __new__ and/or __init__ methods.</span>
+<span class="sd">        The decorated class with YAML serialization capabilities and wrapped methods.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        @yamlable</span>
+<span class="sd">        class MyClass:</span>
+<span class="sd">            def __init__(self, value: int):</span>
+<span class="sd">                self.value = value</span>
+
+<span class="sd">        # Objects can now be serialized to/from YAML automatically</span>
+<span class="sd">        obj = MyClass(42)</span>
+<span class="sd">        yaml_str = yaml.dump(obj)</span>
+<span class="sd">        restored_obj = yaml.load(yaml_str, Loader=yaml.Loader)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">original_init</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">)</span>
+    <span class="n">_wrap_to_save_method_args</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__new__&quot;</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">)</span>
 
-    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">original_init</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper_init</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">initargs_ex</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">((</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
-        <span class="n">original_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;__initargs_ex__&quot;</span><span class="p">,</span> <span class="n">initargs_ex</span><span class="p">)</span>
-        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="s2">&quot;__getinitargs_ex__&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__initargs_ex__</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_init_subclass</span><span class="p">(</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">_DerivedT</span><span class="p">],</span> <span class="n">_P</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span> <span class="n">is_custom_impl</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">_DerivedT</span><span class="p">],</span> <span class="n">_P</span><span class="p">],</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="n">subcls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">_DerivedT</span><span class="p">],</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">_P</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">_P</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">is_custom_impl</span><span class="p">:</span>
+                <span class="c1"># since func is a classmethod, the first argument is passed automatically,</span>
+                <span class="c1"># subcls should not be passed to avoid an extra positional argument.</span>
+                <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">super</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">subcls</span><span class="p">)</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
+            <span class="n">_wrap_to_save_method_args</span><span class="p">(</span><span class="n">subcls</span><span class="p">,</span> <span class="s2">&quot;__new__&quot;</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Wrap __init__ method to save its arguments if a class defines own implementation</span>
-    <span class="k">if</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">):</span>
-        <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init__&quot;</span><span class="p">,</span> <span class="n">wrapper_init</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">classmethod</span><span class="p">(</span><span class="n">wrapper</span><span class="p">)</span>  <span class="c1"># type: ignore[return-value]</span>
+
+    <span class="nb">setattr</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="s2">&quot;__init_subclass__&quot;</span><span class="p">,</span>
+        <span class="n">wrap_init_subclass</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">,</span> <span class="n">_has_custom_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;__init_subclass__&quot;</span><span class="p">)),</span>  <span class="c1"># type: ignore[arg-type]</span>
+    <span class="p">)</span>
+
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_constructor</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">yaml_constructor</span><span class="p">)</span>
+    <span class="n">yaml</span><span class="o">.</span><span class="n">add_multi_representer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">yaml_representer</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="bp">cls</span>
 </code></pre></div></td></tr></table></div>
             </details>
