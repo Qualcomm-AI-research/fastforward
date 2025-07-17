@@ -28,6 +28,9 @@ from .quantization import granularity as granularity
 from .quantization import random as random
 from .quantization.quant_init import QuantizationConfig as QuantizationConfig
 from .quantization.quant_init import find_quantizers as find_quantizers
+from .quantization.quantizer_annotations import (
+    annotate_operator_metadata as annotate_operator_metadata,
+)
 from .quantization.strict_quantization import (
     strict_quantization_for_module as strict_quantization_for_module,
 )
