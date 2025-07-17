@@ -207,6 +207,12 @@ class BaseSelector(abc.ABC):
         if self.has_multi_wildcard_root():
             if simplified_selector := self.remove_multi_wildcard_root():
                 selector = "**" / simplified_selector
+            else:
+                from .fragments import WildcardFragment
+
+                # Selector is made up of only wildcard fragments.
+                selector = Selector(next=None, fragment=WildcardFragment(match_multiple=True))
+
         return selector
 
 
@@ -321,15 +327,6 @@ class Selector(BaseSelector):
         # for the tail
         if self.next:
             continuations.append(_SelectorContinuation(self.next.simplify(), self.fragment))
-
-        # If the current fragment is '**' any following '**' can be skipped as '**/**'
-        # is equivalent to '**'. This reduces the search tree.
-        if self.has_multi_wildcard_root():
-            trimmed = []
-            for continuation in continuations:
-                if continuation.selector is self:
-                    trimmed.append(continuation)
-                    continue
 
         # If there is no next, we have matched, but we can pottently match
         # more if the last fragment can be applied again.

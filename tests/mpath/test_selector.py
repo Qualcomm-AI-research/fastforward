@@ -89,3 +89,21 @@ def test_aliases() -> None:
                     assert part.fragment.match_multiple == part_expected.fragment.match_multiple
                 case _:
                     assert False, "Fragments do not match"
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        (mpath.query("**"), mpath.query("**")),
+        (mpath.query("**/**/**"), mpath.query("**")),
+        (mpath.query("**/[cls:torch.nn.Linear]"), mpath.query("**/[cls:torch.nn.Linear]")),
+        (mpath.query("**/**/[cls:torch.nn.Linear]"), mpath.query("**/[cls:torch.nn.Linear]")),
+    ],
+)
+def test_simplify(query: mpath.Selector, expected: mpath.Selector) -> None:
+    # GIVEN an mpath query
+    # WHEN the string query is simplified
+    simplified_query = query.simplify()
+
+    # THEN the simplified query should match the expected reference
+    assert str(simplified_query) == str(expected)
