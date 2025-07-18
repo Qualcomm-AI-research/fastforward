@@ -36,10 +36,11 @@ import fastforward as ff
 import torch
 
 from datasets import load_dataset
-from doc_helpers.quick_start.quick_start_utils import tokenize_dataset
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
+
+from doc_helpers.quick_start.quick_start_utils import tokenize_dataset
 
 datasets.utils.logging.get_logger("datasets.packaged_modules.cache").setLevel("ERROR")
 

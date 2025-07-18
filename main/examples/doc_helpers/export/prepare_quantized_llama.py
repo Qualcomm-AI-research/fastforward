@@ -9,15 +9,16 @@ import fastforward as ff
 import torch
 
 from datasets import load_dataset
-from doc_helpers.export.benchmark.dataset import preprocess_dataset
-from doc_helpers.export.benchmark.evaluate import evaluate_perplexity_metrics
-from doc_helpers.export.benchmark.util import _sliced_tqdm_iterator, generate_attention_mask
-from doc_helpers.export.llama import QuantizedLlamaForCausalLM as QuantizedLlamaForCausalLM
 from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.nn.quantized_module import quantize_model
 from fastforward.range_setting import estimate_ranges
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
+
+from doc_helpers.export.benchmark.dataset import preprocess_dataset
+from doc_helpers.export.benchmark.evaluate import evaluate_perplexity_metrics
+from doc_helpers.export.benchmark.util import _sliced_tqdm_iterator, generate_attention_mask
+from doc_helpers.export.llama import QuantizedLlamaForCausalLM as QuantizedLlamaForCausalLM
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
