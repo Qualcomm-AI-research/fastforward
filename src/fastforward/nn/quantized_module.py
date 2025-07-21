@@ -5,6 +5,7 @@ import logging
 import textwrap
 import warnings
 
+from collections import defaultdict
 from operator import attrgetter
 from pathlib import Path
 from typing import Any, Iterator, TypeAlias, Union, cast
@@ -364,8 +365,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             Path to the saved configuration file (config.yaml).
 
         Raises:
-            RuntimeError: If the model identifier cannot be determined or if
-                shared quantizers are detected (not yet supported).
+            RuntimeError: If the model identifier cannot be determined.
             ValueError: If the cache directory cannot be created due to an
                 existing file with the same name.
 
@@ -381,33 +381,6 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                 "Unable to detect the model identifier. Please provide it manually "
                 "if there is no `config.name_or_path` property in the model"
             )
-        transformers_version = getattr(getattr(self, "config", None), "transformers_version", None)
-        fastforward_version = ff.__version__
-        unique_quantizers = [q for q, _ in self.named_quantizers(remove_duplicate=False)]
-        shared_quantizers = [q for q, _ in self.named_quantizers(remove_duplicate=False)]
-        if len(unique_quantizers) != len(shared_quantizers):
-            msg = "Shared quantizers are not ssupported yet"
-            raise RuntimeError(msg)
-
-        quantizers = {
-            name: quantizer for name, quantizer in self.named_quantizers(remove_duplicate=False)
-        }
-        state = {
-            f"{name}.{key}": value
-            for name, quantizer in quantizers.items()
-            for key, value in quantizer.state_dict().items()
-        }
-        metadata = {
-            name: ",".join(f"{name}.{key}" for key in quantizer.state_dict().keys())
-            for name, quantizer in quantizers.items()
-        }
-        config = {
-            "version": "1.0",
-            "name_or_path": str(name_or_path),
-            "transformers_version": str(transformers_version),
-            "fastforward_version": str(fastforward_version),
-            "quantizers": quantizers,
-        }
         assets_path = get_assets_path(
             f"quantization-state/{name_or_path}", tag, cache_dir=cache_dir
         )
@@ -416,6 +389,48 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         except (FileExistsError, NotADirectoryError):
             msg = f"Cannot create directory {assets_path} because of an existing file."
             raise ValueError(msg)
+        transformers_version = getattr(getattr(self, "config", None), "transformers_version", None)
+        fastforward_version = ff.__version__
+        quantizers = defaultdict(list)
+        for name, quantizer in self.named_quantizers(remove_duplicate=False):
+            quantizers[quantizer].append(name)
+        # State dictionary containing quantizer parameters keyed by
+        # "first_quantizer_name.param_name". For shared quantizers (same quantizer instance used
+        # in multiple locations), parameters are stored only once using the lexicographically first
+        # quantizer name to avoid duplication.
+        # Example: {
+        #     "layer1.weight_quantizer.scale": tensor([1.0]),
+        #     "layer1.weight_quantizer.offset": tensor([0])
+        # }
+        state = {}
+        # Metadata mapping each quantizer name to its parameter keys in the format
+        # "param=tensor_key". This enables reconstruction of individual quantizer state_dicts during
+        # loading by mapping parameter names to their corresponding tensor keys in the SafeTensors
+        # file.
+        # Example: {
+        #     "layer1.weight_quantizer":
+        #         "scale=layer1.weight_quantizer.scale,offset=layer1.weight_quantizer.offset",
+        #     "layer2.weight_quantizer":
+        #         "scale=layer1.weight_quantizer.scale,offset=layer1.weight_quantizer.offset",
+        # }
+        metadata = {}
+        for quantizer, names in quantizers.items():
+            first_name = min(names)
+            for key, value in quantizer.state_dict().items():
+                state[f"{first_name}.{key}"] = value
+            for name in names:
+                metadata[name] = ",".join(
+                    f"{key}={first_name}.{key}" for key in quantizer.state_dict().keys()
+                )
+        config = {
+            "version": "1.0",
+            "name_or_path": str(name_or_path),
+            "transformers_version": str(transformers_version),
+            "fastforward_version": str(fastforward_version),
+            "quantizers": {
+                name: quantizer for quantizer, names in quantizers.items() for name in names
+            },
+        }
         save_file(state, assets_path / "model.safetensors", metadata=metadata)
         config_path = assets_path / "config.yaml"
         with open(config_path, "w") as f:
@@ -482,17 +497,24 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             logger.error(msg)
             raise RuntimeError(msg)
 
-        # Restore quantizers
         quantizers: dict[str, Quantizer] = config.get("quantizers", {})
+        # Reconstruct quantizer state_dict by parsing metadata to map parameter names to tensor keys.
+        # The metadata format "param=tensor_key" allows to load the correct tensors for each
+        # parameter. For shared quantizers, multiple quantizer names may reference the same tensor
+        # keys.
         with safe_open(model_path, framework="pt") as f:
             metadata = f.metadata()
             for name, quantizer in quantizers.items():
                 missing_keys, unexpected_keys = quantizer.load_state_dict({
-                    key.removeprefix(f"{name}."): f.get_tensor(key)
+                    state_key: f.get_tensor(tensor_key)
                     for key in metadata[f"{name}"].split(",")
+                    for state_key, tensor_key in (key.split("="),)
                 })
                 if missing_keys or unexpected_keys:
-                    msg = f"{missing_keys} or {unexpected_keys}"
+                    msg = (
+                        f"There are some missing ({missing_keys}) or unexpected "
+                        f"({unexpected_keys}) keys during loading state_dict"
+                    )
                     logger.error(msg)
                     raise RuntimeError(msg)
 

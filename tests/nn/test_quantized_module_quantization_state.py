@@ -57,7 +57,7 @@ def test_model_save_quantization_state_with_name_or_path(tmp_path: Path) -> None
 
 
 def test_model_save_quantization_state_with_shared_quantizer(tmp_path: Path) -> None:
-    """Test if error is raised when shared quantizers are saved."""
+    """Test shared quantizers survive save/load."""
     # GIVEN: A Quantized module with a shared quantizer
     name_or_path = "test"
     model = ff.nn.QuantizedModule()
@@ -67,10 +67,17 @@ def test_model_save_quantization_state_with_shared_quantizer(tmp_path: Path) -> 
     model.register_quantizer("input_quantizer", q)
     model.register_quantizer("output_quantizer", q)
 
-    # WHEN: Saving the quantization state with a shared quantizer
-    # THEN: exception should be raised
-    with pytest.raises(RuntimeError):
-        model.save_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+    # GIVEN: A Quantized module with quantizer stubs
+    new_model = ff.nn.QuantizedModule()
+    new_model.register_quantizer("input_quantizer", ff.nn.QuantizerStub())
+    new_model.register_quantizer("output_quantizer", ff.nn.QuantizerStub())
+
+    # WHEN: Saving quantization state with a shared quantizer and loading it back
+    model.save_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+    new_model.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+
+    # THEN: Shared quantizer is present in loaded quantization state
+    assert new_model.input_quantizer is new_model.output_quantizer
 
 
 def test_model_save_quantization_state_with_config_name_or_path(tmp_path: Path) -> None:
