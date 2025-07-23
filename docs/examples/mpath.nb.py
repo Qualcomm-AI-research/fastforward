@@ -224,5 +224,50 @@ ff.find_quantizers(my_quantized_module, "**/[quantizer:input]")
 # For example, `top_module/sub_module/**/[quantizer:parameter/weight]` will match all quantizers in `top_module.sub_module` that have the `parameter/weight` tag.
 #
 #
+
+# %% [markdown]
+# ## Enhancing mpath queries with operator metadata
+# You can enhance mpath search functionality using `ff.annotate_operator_metadata()`. This function traces through a quantized network with sample input, automatically annotating layers with information about their preceding and following operations.
+#
+# - **Common use case:** Preserving precision for critical operations like softmax, which we demonstrate in the example below.
+#
+# - **Important:** For networks with branching logic (conditional paths, multiple outputs), run this function multiple times with representative inputs that exercise each branch to ensure complete coverage.
+
+
+# %%
+class QuantizedSimpleAttention(ff.nn.QuantizedModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.q = ff.nn.QuantizedLinear(3, 3)
+        self.k = ff.nn.QuantizedLinear(3, 3)
+        self.v = ff.nn.QuantizedLinear(3, 3)
+
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_scores = ff.nn.QuantizerStub()
+        self.quantizer_softmax = ff.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        q, k, v = self.q(x), self.k(x), self.v(x)
+        unnormalized_scores = ff.nn.functional.mm(q, k.T, output_quantizer=self.quantizer_scores)
+        scores = ff.nn.functional.softmax(
+            unnormalized_scores, output_quantizer=self.quantizer_softmax, dim=-1
+        )
+        return scores @ v
+
+
+sample_input = torch.randn(1, 3)
+quantized_simple_attention = QuantizedSimpleAttention()
+ff.annotate_operator_metadata(quantized_simple_attention, sample_input)
+
+# %% [markdown]
+# We can identify what precedes the softmax as follows:
+# %%
+ff.mpath.search("**/[quantizer:before/softmax]", quantized_simple_attention)
+
+# %% [markdown]
+# As expected, this returns the quantizer_scores module, which quantizes the unnormalized attention scores before they are passed to the softmax operation.
+
+# %% [markdown]
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
