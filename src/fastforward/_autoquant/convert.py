@@ -2,15 +2,14 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-from typing import cast
-
 import libcst
 
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
 from fastforward._autoquant.pysource.scope import ImportSymbol, find_required_imports
 from fastforward._quantops import OperatorTable
 
-from .cst.quantizer_analysis import introduce_input_quantizers
+from .cst.quantizer_analysis.transformer import QuantizerFunctionTransformer
+from .pass_manager import MetadataTransformer, PassManager
 from .pybuilder import FunctionBuilder, QuantizedFunctionBuilder
 from .pysource import PySource
 
@@ -45,28 +44,13 @@ def convert_method(src: PySource, optable: OperatorTable) -> FunctionBuilder:
 
 def autoquantize_funcdef(src_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:
     """Autoquantize a single `FuncDef` with given `optable`."""
-    src_cst = _rewrite_quantized_operators(src_cst, optable)
-    dst_cst = _add_input_quantizers(src_cst)
-    return dst_cst
-
-
-def _rewrite_quantized_operators(
-    cst: libcst.FunctionDef, optable: OperatorTable
-) -> libcst.FunctionDef:
-    """Rewrite function call to quantized function calls.
-
-    Replaces all function calls in `cst` that appear in `optable` to a
-    quantized function call. Also introduces the appropriate quantizers on
-    `clsbuilder`.
-    """
-    function_replacement = QuantizedCounterpartReplacer(optable=optable)
-    new_cst = cast(libcst.FunctionDef, cst.visit(function_replacement))
-
-    return new_cst
-
-
-def _add_input_quantizers(cst: libcst.FunctionDef) -> libcst.FunctionDef:
-    return introduce_input_quantizers(cst)
+    pm = PassManager(
+        passes=[
+            QuantizedCounterpartReplacer(optable=optable),
+            MetadataTransformer(QuantizerFunctionTransformer(), wrap_in_module=True),
+        ]
+    )
+    return pm(src_cst)
 
 
 def _infer_imports(src: PySource, cst: libcst.FunctionDef) -> set[ImportSymbol]:
