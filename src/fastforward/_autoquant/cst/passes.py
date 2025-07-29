@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import re
 
 from collections.abc import Sequence
 from typing import Protocol, TypeAlias, TypeVar, cast, runtime_checkable
@@ -10,12 +11,14 @@ import libcst
 import libcst.helpers
 import libcst.matchers as m
 
+from libcst.metadata.scope_provider import Scope
 from typing_extensions import override
 
 from fastforward._autoquant.cst.node_creation import (
     get_keyword_argument_node,
     get_quantized_function_counterpart,
 )
+from fastforward._autoquant.pysource.scope import ScopeProvider
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
@@ -573,6 +576,162 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
             original_name=original_name,
             operator=operator,
         )
+
+
+class FoldSimpleTemporaries(libcst.CSTTransformer):
+    r"""Transformer that folds simple temporary variable assignments.
+
+    This transformer identifies temporary variables (with names matching the pattern 'tmp_\d+')
+    that are assigned once and used once. It then replaces the usage of these variables
+    with their assigned value and removes the original assignment statement.
+
+    For example, code like:
+        tmp_1 = x + y
+        result = tmp_1 * z
+
+    Would be transformed to:
+        result = (x + y) * z
+
+    This helps simplify code that has been previously transformed by passes like
+    IsolateReplacementCandidates, which may have introduced many temporary variables.
+
+    The transformer only folds temporaries that:
+    1. Match the naming pattern 'tmp_\d+'
+    2. Are assigned exactly once
+    3. Are accessed exactly once as a simple Name node
+    """
+
+    METADATA_DEPENDENCIES = (ScopeProvider,)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._tmp_vars_stack: list[dict[str, GeneralAssignment]] = []
+
+    @property
+    def _tmp_vars(self) -> dict[str, GeneralAssignment]:
+        return self._tmp_vars_stack[-1]
+
+    def _is_tmp_var(self, name: str) -> bool:
+        return re.fullmatch(r"tmp_\d+", name) is not None
+
+    def _target_name(self, node: libcst.BaseAssignTargetExpression) -> str | None:
+        match node:
+            case libcst.Name(name):
+                return name
+            case _:
+                return None
+
+    def _remove_temporaries(
+        self,
+        original_node: libcst.FunctionDef,
+        updated_node: libcst.FunctionDef,
+    ) -> libcst.FunctionDef:
+        if (scope := self.get_metadata(ScopeProvider, original_node.body)) is None:
+            return original_node
+        assert isinstance(scope, Scope)
+
+        removals: set[libcst.CSTNode] = set()
+        replacements: dict[libcst.CSTNode, libcst.BaseExpression] = {}
+
+        for tmp_var, assign_node in self._tmp_vars.items():
+            if assign_node.value is None:
+                continue
+
+            # We can assume there is a single target due to `visit_GeneralAssignment`
+            assert len(assign_node.targets) == 1
+            target = assign_node.targets[0]
+            assignments = scope[tmp_var]
+            # Remove assignment from accesses
+            accesses = [access for access in scope.accesses[tmp_var] if access.node is not target]
+            if len(assignments) != 1 or len(accesses) != 1:
+                # We don't remove variables that are assigned more than once or
+                # accessed more than once.
+                continue
+
+            access_node = accesses[0].node
+            if not isinstance(access_node, libcst.Name):
+                # Skip over everything that is not a `Name`
+                continue
+
+            removals.add(assign_node)
+            replacements[access_node] = assign_node.value
+
+        result = updated_node.visit(_NodeReplacer(removals, replacements))
+        assert isinstance(result, libcst.FunctionDef)
+        return result
+
+    def visit_GeneralAssignment(self, node: GeneralAssignment) -> bool:
+        # Do not remove possible aliases
+        if len(node.targets) != 1:
+            return True
+
+        target = node.targets[0]
+
+        # If target is not a `Name`, no tracking is required
+        if (target_name := self._target_name(target)) is None:
+            return True
+
+        if self._is_tmp_var(target_name):
+            self._tmp_vars[target_name] = node
+
+        return False
+
+    def visit_FunctionDef(self, node: libcst.FunctionDef) -> bool:
+        del node
+        self._tmp_vars_stack.append({})
+        return True
+
+    def leave_FunctionDef(
+        self, original_node: libcst.FunctionDef, updated_node: libcst.FunctionDef
+    ) -> libcst.FunctionDef:
+        result = self._remove_temporaries(original_node, updated_node)
+        self._tmp_vars_stack.pop()
+        return result
+
+
+class _NodeReplacer(libcst.CSTTransformer):
+    """A CST transformer that replaces or removes nodes in the syntax tree.
+
+    This transformer performs two operations:
+    1. Replaces specific nodes with new expressions (adding parentheses around them)
+    2. Removes specific nodes from the tree
+
+    It's used by FoldSimpleTemporaries to replace temporary variable references with
+    their values and remove the original assignment statements.
+
+    Args:
+        removals: A set of CST nodes that should be removed from the tree
+        replacements: A dictionary mapping CST nodes to their replacement expressions
+    """
+
+    def __init__(
+        self,
+        removals: set[libcst.CSTNode],
+        replacements: dict[libcst.CSTNode, libcst.BaseExpression],
+    ) -> None:
+        super().__init__()
+        self.removals = removals
+        self.replacements = replacements
+
+    def on_leave(
+        self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
+    ) -> libcst.CSTNodeT | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
+        # Replace nodes
+        if original_node in self.replacements:
+            expr = self.replacements[original_node]
+            return expr.with_changes(  # type: ignore[return-value]
+                lpar=(libcst.LeftParen(),) + tuple(expr.lpar),
+                rpar=tuple(expr.rpar) + (libcst.RightParen(),),
+            )
+
+        if original_node in self.removals:
+            return libcst.RemoveFromParent()
+
+        if isinstance(original_node, libcst.SimpleStatementLine):
+            if len(original_node.body) == 1 and original_node.body[0] in self.removals:
+                return libcst.RemoveFromParent()
+
+        return super().on_leave(original_node, updated_node)
 
 
 def _get_name_and_torch_name_for_operation(

@@ -4,7 +4,9 @@
 from collections.abc import Sequence
 
 import libcst as libcst
+import pytest
 
+from fastforward._autoquant.autoquant import codeformat_with_defaults
 from fastforward._autoquant.cst import passes
 from fastforward.testing.string import assert_strings_match_verbose, dedent_strip
 
@@ -126,3 +128,149 @@ def assert_input_transforms_as_expected(
 
     transformed = module.code
     assert_strings_match_verbose(transformed, output_module)
+
+
+FOLD_TMPS_EXAMPLE_1, FOLD_TMPS_EXPECTED_1 = (
+    """
+    def test_function():
+        tmp_1 = 42
+        x = tmp_1
+        return x
+    """,
+    """
+    def test_function():
+        x = 42
+        return x
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_2, FOLD_TMPS_EXPECTED_2 = (
+    """
+    def test_function():
+        tmp_1 = 42
+        x = tmp_1
+        y = tmp_1  # Multiple accesses should prevent folding
+        return x + y
+    """,
+    """
+    def test_function():
+        tmp_1 = 42
+        x = tmp_1
+        y = tmp_1  # Multiple accesses should prevent folding
+        return x + y
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_3, FOLD_TMPS_EXPECTED_3 = (
+    """
+    def test_function():
+        tmp_1 = 42
+        tmp_1 = 43  # Multiple assignments should prevent folding
+        x = tmp_1
+        return x
+    """,
+    """
+    def test_function():
+        tmp_1 = 42
+        tmp_1 = 43  # Multiple assignments should prevent folding
+        x = tmp_1
+        return x
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_4, FOLD_TMPS_EXPECTED_4 = (
+    """
+    def test_function():
+        a[0] = 42  # Not a simple name target
+        x = a[0]
+        return x
+    """,
+    """
+    def test_function():
+        a[0] = 42  # Not a simple name target
+        x = a[0]
+        return x
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_5, FOLD_TMPS_EXPECTED_5 = (
+    """
+    def test_function():
+        regular_var = 42  # Not a tmp_X variable
+        x = regular_var
+        return x
+    """,
+    """
+    def test_function():
+        regular_var = 42  # Not a tmp_X variable
+        x = regular_var
+        return x
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_6, FOLD_TMPS_EXPECTED_6 = (
+    """
+    def test_function():
+        tmp_1 = 40 + 2
+        x = tmp_1 * 3
+        return x
+    """,
+    """
+    def test_function():
+        x = (40 + 2) * 3
+        return x
+    """,
+)
+
+FOLD_TMPS_EXAMPLE_7, FOLD_TMPS_EXPECTED_7 = (
+    """
+    def outer_function():
+        tmp_1 = 42
+
+        def inner_function():
+            tmp_2 = 43
+            y = tmp_2
+            return y
+
+        x = tmp_1
+        return x + inner_function()
+    """,
+    """
+    def outer_function():
+
+        def inner_function():
+            y = 43
+            return y
+
+        x = 42
+        return x + inner_function()
+    """,
+)
+
+
+@pytest.mark.parametrize(
+    "code,expected",
+    [
+        (FOLD_TMPS_EXAMPLE_1, FOLD_TMPS_EXPECTED_1),
+        (FOLD_TMPS_EXAMPLE_2, FOLD_TMPS_EXPECTED_2),
+        (FOLD_TMPS_EXAMPLE_3, FOLD_TMPS_EXPECTED_3),
+        (FOLD_TMPS_EXAMPLE_4, FOLD_TMPS_EXPECTED_4),
+        (FOLD_TMPS_EXAMPLE_5, FOLD_TMPS_EXPECTED_5),
+        (FOLD_TMPS_EXAMPLE_6, FOLD_TMPS_EXPECTED_6),
+        (FOLD_TMPS_EXAMPLE_7, FOLD_TMPS_EXPECTED_7),
+    ],
+    ids=[f"case-{i}" for i in range(1, 8)],
+)
+def test_fold_temporaries(code: str, expected: str) -> None:
+    # GIVEN a python function
+    module = libcst.parse_module(dedent_strip(code)[0])
+    module = module.visit(passes.WrapAssignments())
+
+    # WHEN the transformer is applied
+    wrapper = libcst.MetadataWrapper(module)
+    transformed = wrapper.visit(passes.FoldSimpleTemporaries())
+
+    # THEN the temporary variable should be folded into its usage
+    actual = codeformat_with_defaults(transformed.code)
+    expected = codeformat_with_defaults(dedent_strip(expected)[0])
+    assert_strings_match_verbose(actual, expected)
