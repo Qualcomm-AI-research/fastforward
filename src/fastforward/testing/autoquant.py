@@ -12,15 +12,18 @@ from fastforward._autoquant.convert import autoquantize_funcdef
 from .string import assert_strings_match_verbose, dedent_strip
 
 
-def autoquantize_str(src: str, as_module: bool = False) -> str:
+def autoquantize_str(
+    src: str, *, as_module: bool = False, as_cst: bool = False
+) -> str | libcst.FunctionDef | libcst.ClassDef:
     """Autoquantizes Python function string and returns the quantized code as a string.
 
     Args:
         src : The input Python function as a string.
         as_module: If True, returns the quantized code as a module. Defaults to False.
+        as_cst: If True, return a CST instead of a string.
 
     Returns:
-        The quantized Python function or module as a string.
+        The quantized Python function or module as a string or CST.
 
     Notes:
         This function assumes the provided function is a method of module and will
@@ -29,7 +32,20 @@ def autoquantize_str(src: str, as_module: bool = False) -> str:
     """
     src_cst = libcst.parse_statement(dedent_strip(src)[0])
     assert isinstance(src_cst, libcst.FunctionDef), "Expected function statement"
+    dst_cst = (
+        _autoquantize_str_to_classdef(src_cst)
+        if as_module
+        else _autoquantize_str_to_funcdef(src_cst)
+    )
 
+    if as_cst:
+        return dst_cst
+    else:
+        dst_str = libcst.Module([dst_cst]).code
+        return autoquant.codeformat_with_defaults(dst_str)
+
+
+def _autoquantize_str_to_classdef(src_cst: libcst.FunctionDef) -> libcst.ClassDef:
     if len(src_cst.params.params) == 0 or src_cst.params.params[0].name.value != "self":
         msg = "Expected `src` to be a function with `self` as first parameter"
         raise ValueError(msg)
@@ -45,18 +61,17 @@ def autoquantize_str(src: str, as_module: bool = False) -> str:
     )
     dst_class.add_method(pybuilder.QuantizedFunctionBuilder(converted_cst, required_imports=()))
 
-    dst_cst: libcst.CSTNode = dst_class.build()
-    if not as_module:
-        func_name = src_cst.name.value
-        for funcdef in node_filter.filter_nodes_by_type(dst_cst, libcst.FunctionDef):
-            if funcdef.name.value == func_name:
-                dst_cst = funcdef
-                break
-        else:
-            raise RuntimeError("Converted CST does not contain original function")
+    return dst_class.build()
 
-    dst_str = libcst.Module([dst_cst]).code  # type: ignore[list-item]
-    return autoquant.codeformat_with_defaults(dst_str)
+
+def _autoquantize_str_to_funcdef(src_cst: libcst.FunctionDef) -> libcst.FunctionDef:
+    func_name = src_cst.name.value
+    dst_cst = _autoquantize_str_to_classdef(src_cst)
+    for funcdef in node_filter.filter_nodes_by_type(dst_cst, libcst.FunctionDef):
+        if funcdef.name.value == func_name:
+            return funcdef
+    else:
+        raise RuntimeError("Converted CST does not contain original function")
 
 
 def assert_autoquantize_result(input: str, expected: str, as_module: bool = False) -> None:
@@ -67,7 +82,8 @@ def assert_autoquantize_result(input: str, expected: str, as_module: bool = Fals
         expected: The expected output string after autoquantization.
         as_module: Whether to autoquantize as a module. Defaults to False.
     """
-    actual = autoquantize_str(input, as_module=as_module)
+    actual = autoquantize_str(input, as_module=as_module, as_cst=False)
+    assert isinstance(actual, str)
     formatted_expected = autoquant.codeformat_with_defaults(dedent_strip(expected)[0])
 
     assert_strings_match_verbose(actual, formatted_expected)
