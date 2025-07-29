@@ -43,6 +43,8 @@ import datasets
 import fastforward as ff
 import torch
 
+from fastforward.export.export import export
+from fastforward.export.module_export import export_modules
 
 # Helper function for generating the attention mask
 from doc_helpers.export.benchmark.util import generate_attention_mask
@@ -50,8 +52,6 @@ from doc_helpers.export.benchmark.util import generate_attention_mask
 # Imports to get the prepared LLaMA model and quantize it appropriately
 from doc_helpers.export.prepare_quantized_llama import get_llama_and_dataloaders
 from doc_helpers.utils import create_output_directory
-from fastforward.export.export import export
-from fastforward.export.module_export import export_modules
 
 warnings.filterwarnings("ignore")
 logging.getLogger("torch.onnx._internal._registration").setLevel(logging.ERROR)

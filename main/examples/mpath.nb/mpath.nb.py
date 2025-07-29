@@ -227,11 +227,28 @@ ff.find_quantizers(my_quantized_module, "**/[quantizer:input]")
 
 # %% [markdown]
 # ## Enhancing mpath queries with operator metadata
-# You can enhance mpath search functionality using `ff.annotate_operator_metadata()`. This function traces through a quantized network with sample input, automatically annotating layers with information about their preceding and following operations.
+# You can enhance mpath search functionality using
+# `ff.annotate_operator_metadata()`. This function traces through a quantized
+# network with sample input, automatically annotating layers with information
+# about their preceding and following operations.
 #
-# - **Common use case:** Preserving precision for critical operations like softmax, which we demonstrate in the example below.
+# This "dynamic annotation" leverages the computational graph structure to enrich
 #
-# - **Important:** For networks with branching logic (conditional paths, multiple outputs), run this function multiple times with representative inputs that exercise each branch to ensure complete coverage.
+# the metadata associated with each operator. This is crucial for queries that
+# depend on an operator's context, such as identifying operations that feed into
+# a specific activation function.
+#
+# - **Example use case:** Preserving precision for critical operations like
+#   softmax, which we demonstrate in the example below. You might want to
+#   identify the layers *before* a softmax to ensure they are kept at a higher
+#   precision, for instance.
+#
+# - **Important:** For networks with branching logic (conditional paths,
+#   multiple outputs), run this function multiple times with representative
+#   inputs that exercise each branch to ensure complete coverage.
+#
+# Let's define a model that we'll use as an example to demonstrate this
+# functionality.
 
 
 # %%
@@ -256,17 +273,41 @@ class QuantizedSimpleAttention(ff.nn.QuantizedModule):
         return scores @ v
 
 
-sample_input = torch.randn(1, 3)
 quantized_simple_attention = QuantizedSimpleAttention()
+
+# %% [markdown]
+# Let's try to identify what precedes the softmax *before* calling
+# `ff.annotate_operator_metadata()`. At this point, the graph structure
+# is not yet analyzed for operator relationships, so the `before` metadata
+# will not be available.
+
+# %%
+print("mpath search results BEFORE annotation:")
+# This query relies on 'before' metadata which isn't present yet. This means
+# the the result collection will be empty
+print(ff.mpath.search("**/[quantizer:before/softmax]", quantized_simple_attention))
+
+# %% [markdown]
+# Now, we run `ff.annotate_operator_metadata()` to perform the dynamic
+# annotation. This process traverses the graph and populates the
+# `before` and `after` metadata for each operation.
+
+# %%
+sample_input = torch.randn(1, 3)
 ff.annotate_operator_metadata(quantized_simple_attention, sample_input)
 
 # %% [markdown]
-# We can identify what precedes the softmax as follows:
+# With the graph now dynamically annotated, we can successfully identify
+# the operation that immediately precedes the softmax.
+
 # %%
-ff.mpath.search("**/[quantizer:before/softmax]", quantized_simple_attention)
+print("mpath search results AFTER annotation:")
+print(ff.mpath.search("**/[quantizer:before/softmax]", quantized_simple_attention))
 
 # %% [markdown]
-# As expected, this returns the quantizer_scores module, which quantizes the unnormalized attention scores before they are passed to the softmax operation.
+# As expected, this returns the quantizer_scores module, which quantizes the
+# unnormalized attention scores before they are passed to the softmax
+# operation.
 
 # %% [markdown]
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
