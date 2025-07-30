@@ -6,9 +6,11 @@ import libcst
 import pytest
 
 from fastforward._autoquant.cst.quantizer_analysis.scope import (
+    QuantizationMetadata,
     Scope,
+    _Assignment,
     _Assignments,
-    _QuantizationStatus,
+    _QuantizedAssignments,
 )
 
 
@@ -19,7 +21,7 @@ def node() -> libcst.CSTNode:
 
 def test_Assignments_record_assignment(node: libcst.CSTNode) -> None:
     # GIVEN: An empty _Assignments object
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
 
     # WHEN: An assignment is recorded
     assignments.record_assignment("ant", node, True)
@@ -30,24 +32,37 @@ def test_Assignments_record_assignment(node: libcst.CSTNode) -> None:
     assert ("ant", node.with_changes()) not in assignments
 
 
-@pytest.mark.parametrize("init_quant_status", [True, False])
-def test_Assignments_record_assignment_update(
-    node: libcst.CSTNode, init_quant_status: bool
-) -> None:
+@pytest.mark.parametrize("init_metadata", [True, False])
+def test_Assignments_record_assignment_update(node: libcst.CSTNode, init_metadata: bool) -> None:
     # GIVEN: An _Assignments object with an existing assignment
-    assignments = _Assignments({})
-    assignments.record_assignment("ant", node, not init_quant_status)
+    assignments = _Assignments[bool]({})
+    assignments.record_assignment("ant", node, not init_metadata)
 
     # WHEN: The same assignment is recorded again with a different quantization status
-    assignments.record_assignment("ant", node, init_quant_status)
+    assignments.record_assignment("ant", node, init_metadata)
 
     # THEN: The quantization status of the existing assignment is updated
-    assert assignments["ant", node].is_quantized
+    assert assignments["ant", node].metadata == init_metadata
+
+
+@pytest.mark.parametrize("init_metadata", [True, False])
+def test_QuantizedAssignments_record_assignment_update(
+    node: libcst.CSTNode, init_metadata: bool
+) -> None:
+    # GIVEN: An _Assignments object with an existing assignment
+    assignments = _QuantizedAssignments({})
+    assignments.record_assignment("ant", node, QuantizationMetadata(not init_metadata))
+
+    # WHEN: The same assignment is recorded again with a different quantization status
+    assignments.record_assignment("ant", node, QuantizationMetadata(init_metadata))
+
+    # THEN: The quantization status of the existing assignment is updated
+    assert assignments["ant", node].metadata.is_quantized
 
 
 def test_Assignments_getitem_variable(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with multiple assignments for different variables
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
     assignments.record_assignment("bat", node, True)
 
@@ -61,21 +76,21 @@ def test_Assignments_getitem_variable(node: libcst.CSTNode) -> None:
 
 def test_Assignments_getitem_producer(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with an assignment
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
 
     # WHEN: The assignment for a specific variable and node is retrieved
-    status: _QuantizationStatus = assignments[("ant", node)]
+    status = assignments[("ant", node)]
 
     # THEN: The assignment is returned with the correct producer and name
-    assert isinstance(status, _QuantizationStatus)
+    assert isinstance(status, _Assignment)
     assert status.producer is node
     assert status.name == "ant"
 
 
 def test_Assignments_getitem_not_found(node: libcst.CSTNode) -> None:
     # GIVEN: An empty _Assignments object
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
 
     # WHEN: An assignment for a non-existent variable and node is retrieved
     # THEN: A KeyError is raised
@@ -85,7 +100,7 @@ def test_Assignments_getitem_not_found(node: libcst.CSTNode) -> None:
 
 def test_Assignments_contains_variable(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with an assignment
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
 
     # WHEN: The presence of a variable in the assignments is checked
@@ -95,7 +110,7 @@ def test_Assignments_contains_variable(node: libcst.CSTNode) -> None:
 
 def test_Assignments_contains_producer(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with an assignment
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
 
     # WHEN: The presence of a variable and node in the assignments is checked
@@ -105,7 +120,7 @@ def test_Assignments_contains_producer(node: libcst.CSTNode) -> None:
 
 def test_Assignments_iter() -> None:
     # GIVEN: An _Assignments object with multiple assignments
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
 
     node1: libcst.CSTNode = libcst.Module([])
     node2: libcst.CSTNode = libcst.IndentedBlock([])
@@ -122,7 +137,7 @@ def test_Assignments_iter() -> None:
 
 def test_Assignments_variables(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with an assignment
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
 
     # WHEN: The variables in the assignments are retrieved
@@ -135,7 +150,7 @@ def test_Assignments_variables(node: libcst.CSTNode) -> None:
 
 def test_Assignments_clone(node: libcst.CSTNode) -> None:
     # GIVEN: An _Assignments object with an assignment
-    assignments = _Assignments({})
+    assignments = _Assignments[bool]({})
     assignments.record_assignment("ant", node, True)
 
     # WHEN: The assignments are cloned
@@ -148,8 +163,8 @@ def test_Assignments_clone(node: libcst.CSTNode) -> None:
 
 def test_Assignments_merge() -> None:
     # GIVEN: Two _Assignments objects with different assignments
-    assignments1 = _Assignments({})
-    assignments2 = _Assignments({})
+    assignments1 = _Assignments[bool]({})
+    assignments2 = _Assignments[bool]({})
 
     node1: libcst.CSTNode = libcst.Module([])
     node2: libcst.CSTNode = libcst.IndentedBlock([])
@@ -168,8 +183,8 @@ def test_Assignments_merge() -> None:
 
 def test_Assignments_overwrite() -> None:
     # GIVEN: Two _Assignments objects with assignments for the same variable but different nodes
-    assignments1 = _Assignments({})
-    assignments2 = _Assignments({})
+    assignments1 = _Assignments[bool]({})
+    assignments2 = _Assignments[bool]({})
 
     node1: libcst.CSTNode = libcst.Module([])
     node2: libcst.CSTNode = libcst.IndentedBlock([])
@@ -188,8 +203,8 @@ def test_Assignments_overwrite() -> None:
 
 def test_Scope_clone() -> None:
     # GIVEN: A Scope instance with some attributes set
-    scope = Scope()
-    scope.parent = Scope()
+    scope = Scope[bool]()
+    scope.parent = Scope[bool]()
     scope.assignments = _Assignments({})
     scope.record_assignment("ant", libcst.Module([]), True)
     scope.is_looping_branch = True
@@ -207,19 +222,19 @@ def test_Scope_clone() -> None:
 
 def test_Scope_record_assignment() -> None:
     # GIVEN: A Scope instance
-    scope = Scope()
+    scope = Scope[bool]()
 
     # WHEN: Recording an assignment
     node = libcst.IndentedBlock([])
     scope.record_assignment("ant", node, True)
 
     # THEN: The assignment should be added to the scope's assignments
-    assert list(scope.assignments["ant"]) == list([_QuantizationStatus("ant", node, True)])
+    assert list(scope.assignments["ant"]) == list([_Assignment("ant", node, True)])
 
 
 def test_Scope_record_assignment_in_terminated_scope() -> None:
     # GIVEN: A terminated Scope instance
-    scope = Scope()
+    scope = Scope[bool]()
     scope.terminate("return")
 
     # WHEN: Recording an assignment
@@ -230,7 +245,7 @@ def test_Scope_record_assignment_in_terminated_scope() -> None:
 
 def test_Scope_terminate() -> None:
     # GIVEN: A Scope instance
-    scope = Scope()
+    scope = Scope[bool]()
 
     # WHEN: Terminating the scope
     scope.terminate("return")
@@ -241,7 +256,7 @@ def test_Scope_terminate() -> None:
 
 def test_Scope_terminate_with_break() -> None:
     # GIVEN: A Scope instance
-    scope = Scope()
+    scope = Scope[bool]()
     scope.is_looping_branch = True
     scope.repeated_evaluation = True
 
@@ -254,25 +269,25 @@ def test_Scope_terminate_with_break() -> None:
     assert scope.assignments == _Assignments({})
 
 
-@pytest.mark.parametrize("quant_status", [True, False])
-def test_Scope_getitem(quant_status: bool) -> None:
+@pytest.mark.parametrize("metadata", [True, False])
+def test_Scope_getitem(metadata: bool) -> None:
     # GIVEN: A Scope instance with some assignments
-    scope = Scope()
+    scope = Scope[bool]()
     node = libcst.IndentedBlock([])
-    scope.record_assignment("a", node, quant_status)
+    scope.record_assignment("a", node, metadata)
 
-    # WHEN: Getting the quantization status for a variable
+    # WHEN: Getting the assignment for a variable
     status = list(scope["a"])[0]
 
-    # THEN: The quantization status should be returned
+    # THEN: The metadata should be returned
     assert status.producer == node
-    assert status.is_quantized == quant_status
+    assert status.metadata == metadata
 
 
 def test_Scope_merge() -> None:
     # GIVEN: Two Scope instances
-    scope1 = Scope()
-    scope2 = Scope()
+    scope1 = Scope[bool]()
+    scope2 = Scope[bool]()
     node1 = libcst.Module([])
     node2 = libcst.IndentedBlock([])
     scope1.record_assignment("ant", node1, True)
@@ -282,14 +297,14 @@ def test_Scope_merge() -> None:
     merged_scope = scope1.merge(scope2)
 
     # THEN: The merged scope should have the correct attributes
-    assert list(merged_scope.assignments["ant"]) == [_QuantizationStatus("ant", node1, True)]
-    assert list(merged_scope.assignments["bat"]) == [_QuantizationStatus("bat", node2, False)]
+    assert list(merged_scope.assignments["ant"]) == [_Assignment("ant", node1, True)]
+    assert list(merged_scope.assignments["bat"]) == [_Assignment("bat", node2, False)]
 
 
 def test_Scope_merge_with_termination() -> None:
     # GIVEN: Two Scope instances with termination
-    scope1 = Scope()
-    scope2 = Scope()
+    scope1 = Scope[bool]()
+    scope2 = Scope[bool]()
 
     node1 = libcst.Module([])
     node2 = libcst.IndentedBlock([])
@@ -311,8 +326,8 @@ def test_Scope_merge_with_termination() -> None:
 
 def test_Scope_overwrite() -> None:
     # GIVEN: Two Scope instances
-    scope1 = Scope()
-    scope2 = Scope()
+    scope1 = Scope[bool]()
+    scope2 = Scope[bool]()
 
     node1 = libcst.Module([])
     node2 = libcst.IndentedBlock([])
@@ -322,4 +337,4 @@ def test_Scope_overwrite() -> None:
     # WHEN: Overwriting one scope with another
     scope1.overwrite(scope2)
     # THEN: The overwritten scope should have the correct attributes
-    assert list(scope1.assignments["ant"]) == [_QuantizationStatus("ant", node2, False)]
+    assert list(scope1.assignments["ant"]) == [_Assignment("ant", node2, False)]

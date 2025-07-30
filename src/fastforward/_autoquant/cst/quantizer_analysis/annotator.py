@@ -38,7 +38,8 @@ from typing_extensions import overload
 
 from fastforward._autoquant.cst import node_processing, nodes
 
-from .scope import Scope
+from .scope import QuantizationMetadata
+from .scope import QuantizationScope as Scope
 
 
 class _ExpressionContextVisitor(ExpressionContextVisitor):
@@ -314,7 +315,7 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         match target:
             case libcst.Name(value=var):
                 self._active_scope.record_assignment(
-                    name=var, producer=producer, is_quantized=is_quantized
+                    name=var, producer=producer, metadata=QuantizationMetadata(is_quantized)
                 )
             case _:
                 pass
@@ -508,17 +509,18 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         quantization. The actual quantization transformation is handled in a
         downstream transformer.
         """
-        for quant_status in self._active_scope[var]:
-            if not quant_status.is_quantized:
-                annotation = QuantizationAnnotation(target=var, uses=quant_status.uses[:])
-                producer = quant_status.producer
+        for assignment in self._active_scope[var]:
+            is_quantized = assignment.metadata.is_quantized
+            if not is_quantized:
+                annotation = QuantizationAnnotation(target=var, uses=assignment.uses[:])
+                producer = assignment.producer
 
                 annotation_set = self.get_annotations(producer)
                 assert isinstance(annotation_set, set)
                 annotation_set.add(annotation)
-                self._provider.set_metadata(quant_status.producer, annotation_set)
+                self._provider.set_metadata(assignment.producer, annotation_set)
 
-                quant_status.is_quantized = True
+                assignment.metadata.is_quantized = True
 
     @overload
     def get_annotations(
@@ -549,14 +551,6 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
             return annotation_set
         else:
             return (a for a in annotation_set if a.target == target)
-
-
-@dataclasses.dataclass
-class _QuantizationStatus:
-    name: str
-    producer: libcst.CSTNode = dataclasses.field(repr=False)
-    is_quantized: bool
-    uses: list[libcst.CSTNode] = dataclasses.field(default_factory=list)
 
 
 def _if_node_is_exhaustive(node: libcst.If) -> bool:

@@ -4,23 +4,25 @@
 
 import dataclasses
 
-from typing import Iterator, Literal, TypeAlias
+from typing import Generic, Iterator, Literal, TypeAlias, TypeVar
 
 import libcst
 
 from typing_extensions import Self, overload
 
+_MetadataT = TypeVar("_MetadataT")
+
 
 @dataclasses.dataclass
-class _QuantizationStatus:
+class _Assignment(Generic[_MetadataT]):
     name: str
     producer: libcst.CSTNode = dataclasses.field(repr=False)
-    is_quantized: bool
-    uses: list[libcst.CSTNode] = dataclasses.field(default_factory=list)
+    metadata: _MetadataT
+    uses: list[libcst.CSTNode] = dataclasses.field(default_factory=list[libcst.CSTNode])
 
 
 @dataclasses.dataclass(repr=False)
-class _Assignments:
+class _Assignments(Generic[_MetadataT]):
     """A collection to store and manage assignments of a scope scope.
 
     This class provides methods to record assignments, merge assignments from
@@ -31,9 +33,9 @@ class _Assignments:
             producers and their corresponding quantization statuses.
     """
 
-    _assignments: dict[str, dict[libcst.CSTNode, _QuantizationStatus]]
+    _assignments: dict[str, dict[libcst.CSTNode, _Assignment[_MetadataT]]]
 
-    def record_assignment(self, name: str, producer: libcst.CSTNode, is_quantized: bool) -> None:
+    def record_assignment(self, name: str, producer: libcst.CSTNode, metadata: _MetadataT) -> None:
         """Records an assignment in the current scope.
 
         This method updates the internal state of the _Assignments instance to
@@ -45,7 +47,7 @@ class _Assignments:
         Args:
             name: The name of the variable being assigned.
             producer: The node that produced the assignment.
-            is_quantized: Whether the assignment is quantized.
+            metadata: Metadata related to the assignment.
 
         Returns:
             None
@@ -54,13 +56,12 @@ class _Assignments:
             self._assignments[name] = {}
 
         if producer in self._assignments[name]:
-            self._assignments[name][producer].is_quantized |= is_quantized
-        else:
-            self._set_status(
-                _QuantizationStatus(name=name, producer=producer, is_quantized=is_quantized)
-            )
+            self.update_metadata(self._assignments[name][producer], metadata)
 
-    def _set_status(self, status: _QuantizationStatus, *, overwrite: bool = True) -> None:
+        else:
+            self._set_status(_Assignment(name=name, producer=producer, metadata=metadata))
+
+    def _set_status(self, status: _Assignment[_MetadataT], *, overwrite: bool = True) -> None:
         var, producer = status.name, status.producer
         if overwrite:
             self._assignments[var] = {producer: status}
@@ -68,22 +69,74 @@ class _Assignments:
             if var not in self._assignments:
                 self._assignments[var] = {}
 
-            current_status = self._assignments[var].get(producer)
-            if current_status is not None and current_status.is_quantized != status.is_quantized:
+            current = self._assignments[var].get(producer)
+            if current is not None and not self.can_overwrite_assignment(current, status):
                 msg = f"A status was already recorded for ({var}, {type(producer)})"
                 raise ValueError(msg)
 
             self._assignments[var][producer] = status
 
-    @overload
-    def __getitem__(self, key: tuple[str, libcst.CSTNode]) -> _QuantizationStatus: ...
+    def update_metadata(self, assignment: _Assignment[_MetadataT], metadata: _MetadataT) -> None:
+        """Updates the metadata of an existing assignment.
+
+        This method updates the metadata associated with an assignment. It replaces
+        the current metadata with the provided metadata value.
+
+        Args:
+            assignment: The assignment whose metadata needs to be updated.
+            metadata: The new metadata value to be assigned.
+        """
+        assignment.metadata = metadata
+
+    def can_overwrite_assignment(
+        self, current: _Assignment[_MetadataT], new: _Assignment[_MetadataT]
+    ) -> bool:
+        """Determines if a new assignment can overwrite an existing one.
+
+        This method checks whether it's permissible to replace an existing assignment
+        with a new one for the same variable and producer. The default implementation
+        always returns True, allowing any assignment to be overwritten. Subclasses may
+        override this method to implement more specific overwrite policies.
+
+        Args:
+            current: The existing assignment that would be overwritten.
+            new: The new assignment that would replace the current one.
+
+        Returns:
+            True if the new assignment can overwrite the current one, False otherwise.
+        """
+        del current, new
+        return True
+
+    def can_merge_assignment(
+        self, current: _Assignment[_MetadataT], new: _Assignment[_MetadataT]
+    ) -> bool:
+        """Determines if a new assignment can be merged with an existing one.
+
+        This method checks whether it's permissible to merge a new assignment
+        with an existing one for the same variable and producer. The default
+        implementation always returns True, allowing any assignments to be merged.
+        Subclasses may override this method to implement more specific merge policies.
+
+        Args:
+            current: The existing assignment that would be merged with.
+            new: The new assignment that would be merged.
+
+        Returns:
+            True if the new assignment can be merged with the current one, False otherwise.
+        """
+        del current, new
+        return True
 
     @overload
-    def __getitem__(self, key: str) -> Iterator[_QuantizationStatus]: ...
+    def __getitem__(self, key: tuple[str, libcst.CSTNode]) -> _Assignment[_MetadataT]: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Iterator[_Assignment[_MetadataT]]: ...
 
     def __getitem__(
         self, key: tuple[str, libcst.CSTNode] | str
-    ) -> _QuantizationStatus | Iterator[_QuantizationStatus]:
+    ) -> _Assignment[_MetadataT] | Iterator[_Assignment[_MetadataT]]:
         """Retrieves the quantization status for a given variable or producer.
 
         If a tuple of (variable name, producer) is provided, this method returns the
@@ -121,7 +174,7 @@ class _Assignments:
             case _:
                 return False
 
-    def __iter__(self) -> Iterator[_QuantizationStatus]:
+    def __iter__(self) -> Iterator[_Assignment[_MetadataT]]:
         for producers in self._assignments.values():
             yield from producers.values()
 
@@ -168,7 +221,7 @@ class _Assignments:
             key = (status.name, status.producer)
             if key not in self:
                 self._set_status(status, overwrite=False)
-            elif self[key].is_quantized != status.is_quantized:
+            elif not self.can_merge_assignment(self[key], status):
                 msg = (
                     "Tried to merge two assignments with mismatched quantization status for "
                     + "the same variable name and producer"
@@ -193,7 +246,7 @@ TerminationStatus: TypeAlias = Literal["return"] | Literal["break"] | Literal["r
 
 
 @dataclasses.dataclass(repr=False)
-class Scope:
+class Scope(Generic[_MetadataT]):
     """Represents a scope in the code, a region of the code where variables are defined and used.
 
     A scope can have a parent scope, which is the scope that contains it. It
@@ -218,12 +271,14 @@ class Scope:
         _breaking_scopes: The scopes that are broken out of.
     """
 
-    parent: "Scope | None" = None
-    assignments: _Assignments = dataclasses.field(default_factory=lambda: _Assignments({}))
+    parent: "Self | None" = None
+    assignments: _Assignments[_MetadataT] = dataclasses.field(
+        default_factory=lambda: _Assignments({})
+    )
     is_looping_branch: bool = False
     repeated_evaluation: bool = False
     _termination_status: TerminationStatus = dataclasses.field(default=None)
-    _breaking_scopes: list["Scope"] = dataclasses.field(default_factory=list)
+    _breaking_scopes: list[Self] = dataclasses.field(default_factory=list[Self])
 
     @property
     def is_terminated(self) -> bool:
@@ -237,18 +292,18 @@ class Scope:
         """
         return dataclasses.replace(self, assignments=self.assignments.clone())
 
-    def record_assignment(self, name: str, producer: libcst.CSTNode, is_quantized: bool) -> None:
+    def record_assignment(self, name: str, producer: libcst.CSTNode, metadata: _MetadataT) -> None:
         """Records an assignment in the current scope.
 
         Args:
             name: The name of the variable being assigned.
             producer: The node that produced the assignment.
-            is_quantized: Whether the assignment is quantized.
+            metadata: Metadata associated with the assignment.
         """
         if self._termination_status is not None:
             msg = "Trying to record assignment in terminated scope"
             raise RuntimeError(msg)
-        self.assignments.record_assignment(name, producer, is_quantized)
+        self.assignments.record_assignment(name, producer, metadata)
 
     def terminate(
         self, reason: Literal["return"] | Literal["break"] | Literal["raise"] = "return"
@@ -290,7 +345,7 @@ class Scope:
             scope._breaking_scopes.append(patched_scope)
         self.assignments = _Assignments({})
 
-    def __getitem__(self, key: str) -> Iterator[_QuantizationStatus]:
+    def __getitem__(self, key: str) -> Iterator[_Assignment[_MetadataT]]:
         """Retrieves the quantization status for a given variable.
 
         Args:
@@ -303,7 +358,7 @@ class Scope:
         if (parent := self.parent) is not None:
             yield from parent[key]
 
-    def merge(self, other: "Scope", *, inplace: bool = False) -> "Scope":
+    def merge(self, other: Self, *, inplace: bool = False) -> Self:
         """Merges the current scope with another scope.
 
         `other` can be a `Scope` with the same parent or with this scope as
@@ -320,7 +375,7 @@ class Scope:
             msg = "Cannot merges scopes with different parent scopes"
             raise ValueError(msg)
 
-        def _no_merge_required(scope: Scope) -> Scope:
+        def _no_merge_required(scope: Self) -> Self:
             return scope if inplace else scope.clone()
 
         match self._termination_status, other._termination_status:
@@ -333,7 +388,7 @@ class Scope:
             case _:
                 return self._merge(other, inplace=inplace)
 
-    def _merge(self, other: "Scope", inplace: bool = False) -> "Scope":
+    def _merge(self, other: Self, inplace: bool = False) -> Self:
         """Merges the current scope with another scope.
 
         Args:
@@ -372,3 +427,33 @@ class Scope:
             msg = "Cannot overwrite scope with scope that has different parent scopes"
             raise ValueError(msg)
         self.assignments.overwrite(other.assignments)
+
+
+@dataclasses.dataclass
+class QuantizationMetadata:
+    is_quantized: bool
+
+
+@dataclasses.dataclass(repr=False)
+class _QuantizedAssignments(_Assignments[QuantizationMetadata]):
+    def update_metadata(
+        self, assignment: _Assignment[QuantizationMetadata], metadata: QuantizationMetadata
+    ) -> None:
+        assignment.metadata.is_quantized |= metadata.is_quantized
+
+    def can_overwrite_assignment(
+        self, current: _Assignment[QuantizationMetadata], new: _Assignment[QuantizationMetadata]
+    ) -> bool:
+        return current.metadata == new.metadata
+
+    def can_merge_assignment(
+        self, current: _Assignment[QuantizationMetadata], new: _Assignment[QuantizationMetadata]
+    ) -> bool:
+        return current.metadata == new.metadata
+
+
+@dataclasses.dataclass(repr=False)
+class QuantizationScope(Scope[QuantizationMetadata]):
+    assignments: _Assignments[QuantizationMetadata] = dataclasses.field(
+        default_factory=lambda: _QuantizedAssignments({})
+    )
