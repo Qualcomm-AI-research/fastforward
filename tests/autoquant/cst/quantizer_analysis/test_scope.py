@@ -5,7 +5,7 @@
 import libcst
 import pytest
 
-from fastforward._autoquant.cst.quantizer_analysis.annotator import (
+from fastforward._autoquant.cst.quantizer_analysis.scope import (
     Scope,
     _Assignments,
     _QuantizationStatus,
