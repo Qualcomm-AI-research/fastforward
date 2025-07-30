@@ -2209,18 +2209,19 @@
 
             <details class="quote">
               <summary>Source code in <code>fastforward/testing/autoquant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asserts that the autoquantization of the given input string matches the expected output.</span>
 
 <span class="sd">    Args:</span>
@@ -2228,7 +2229,8 @@
 <span class="sd">        expected: The expected output string after autoquantization.</span>
 <span class="sd">        as_module: Whether to autoquantize as a module. Defaults to False.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">actual</span> <span class="o">=</span> <span class="n">autoquantize_str</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="n">as_module</span><span class="p">)</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">autoquantize_str</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="n">as_module</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
     <span class="n">formatted_expected</span> <span class="o">=</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">expected</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
 
     <span class="n">assert_strings_match_verbose</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">formatted_expected</span><span class="p">)</span>
@@ -2242,7 +2244,7 @@
 
 
 <h3 id="fastforward.testing.autoquant.autoquantize_str" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#fastforward.testing.autoquant.autoquantize_str" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -2294,6 +2296,22 @@
                   <code>False</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>as_cst</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, return a CST instead of a string.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2309,11 +2327,11 @@
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="str">str</span></code>
+                  <code><span title="str">str</span> | <span title="libcst.FunctionDef">FunctionDef</span> | <span title="libcst.ClassDef">ClassDef</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The quantized Python function or module as a string.</p>
+                <p>The quantized Python function or module as a string or CST.</p>
               </div>
             </td>
           </tr>
@@ -2360,29 +2378,18 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 <span class="normal">42</span>
 <span class="normal">43</span>
 <span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize_str</span><span class="p">(</span>
+    <span class="n">src</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span> <span class="o">|</span> <span class="n">libcst</span><span class="o">.</span><span class="n">ClassDef</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Autoquantizes Python function string and returns the quantized code as a string.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        src : The input Python function as a string.</span>
 <span class="sd">        as_module: If True, returns the quantized code as a module. Defaults to False.</span>
+<span class="sd">        as_cst: If True, return a CST instead of a string.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The quantized Python function or module as a string.</span>
+<span class="sd">        The quantized Python function or module as a string or CST.</span>
 
 <span class="sd">    Notes:</span>
 <span class="sd">        This function assumes the provided function is a method of module and will</span>
@@ -2391,34 +2398,17 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">src_cst</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">parse_statement</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">src</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">),</span> <span class="s2">&quot;Expected function statement&quot;</span>
-
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">src_cst</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="s2">&quot;self&quot;</span><span class="p">:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Expected `src` to be a function with `self` as first parameter&quot;</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">proc_pass</span> <span class="ow">in</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">default_preprocessing_passes</span><span class="p">():</span>
-        <span class="n">src_cst</span> <span class="o">=</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">proc_pass</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">),</span> <span class="s2">&quot;Processing pass did not return FuncDef&quot;</span>
-
-    <span class="n">converted_cst</span> <span class="o">=</span> <span class="n">autoquantize_funcdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">default_optable</span><span class="p">())</span>
-
-    <span class="n">dst_class</span> <span class="o">=</span> <span class="n">pybuilder</span><span class="o">.</span><span class="n">QuantizedModuleBuilder</span><span class="p">(</span>
-        <span class="s2">&quot;QuantizedTestModule&quot;</span><span class="p">,</span> <span class="n">bases</span><span class="o">=</span><span class="p">(),</span> <span class="n">required_imports</span><span class="o">=</span><span class="p">()</span>
+    <span class="n">dst_cst</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_autoquantize_str_to_classdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">as_module</span>
+        <span class="k">else</span> <span class="n">_autoquantize_str_to_funcdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="n">dst_class</span><span class="o">.</span><span class="n">add_method</span><span class="p">(</span><span class="n">pybuilder</span><span class="o">.</span><span class="n">QuantizedFunctionBuilder</span><span class="p">(</span><span class="n">converted_cst</span><span class="p">,</span> <span class="n">required_imports</span><span class="o">=</span><span class="p">()))</span>
 
-    <span class="n">dst_cst</span><span class="p">:</span> <span class="n">libcst</span><span class="o">.</span><span class="n">CSTNode</span> <span class="o">=</span> <span class="n">dst_class</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">as_module</span><span class="p">:</span>
-        <span class="n">func_name</span> <span class="o">=</span> <span class="n">src_cst</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span>
-        <span class="k">for</span> <span class="n">funcdef</span> <span class="ow">in</span> <span class="n">node_filter</span><span class="o">.</span><span class="n">filter_nodes_by_type</span><span class="p">(</span><span class="n">dst_cst</span><span class="p">,</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">funcdef</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">func_name</span><span class="p">:</span>
-                <span class="n">dst_cst</span> <span class="o">=</span> <span class="n">funcdef</span>
-                <span class="k">break</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Converted CST does not contain original function&quot;</span><span class="p">)</span>
-
-    <span class="n">dst_str</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">Module</span><span class="p">([</span><span class="n">dst_cst</span><span class="p">])</span><span class="o">.</span><span class="n">code</span>  <span class="c1"># type: ignore[list-item]</span>
-    <span class="k">return</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dst_str</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">as_cst</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dst_cst</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">dst_str</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">Module</span><span class="p">([</span><span class="n">dst_cst</span><span class="p">])</span><span class="o">.</span><span class="n">code</span>
+        <span class="k">return</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dst_str</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
