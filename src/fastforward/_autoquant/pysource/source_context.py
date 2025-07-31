@@ -17,6 +17,7 @@ import libcst.metadata
 from typing_extensions import override
 
 from fastforward._autoquant.cst.validation import ensure_type
+from fastforward._autoquant.pass_manager import PassManager
 from fastforward._autoquant.pysource.scope import infer_scopes
 from fastforward._import import QualifiedNameReference, fully_qualified_name
 
@@ -230,8 +231,9 @@ class _ModuleSource:
     def _read_module_cst(self, module: ModuleType) -> libcst.Module:
         src = inspect.getsource(module)
         module_cst = libcst.parse_module(textwrap.dedent(src))
-        for cst_pass in self._preprocessing_passes:
-            module_cst = module_cst.visit(cst_pass)
+
+        pm = PassManager(self._preprocessing_passes)
+        module_cst = pm(module_cst)
         return module_cst
 
     def qualified_name(self) -> str:

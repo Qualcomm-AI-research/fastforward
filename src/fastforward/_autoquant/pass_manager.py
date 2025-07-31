@@ -25,7 +25,7 @@ class MetadataTransformer:
                         available at the module level.
     """
 
-    transformer: libcst.CSTTransformer
+    transformer: libcst.CSTTransformer | libcst.CSTVisitor
     wrap_in_module: bool = False
 
 
@@ -112,15 +112,27 @@ class PassManager:
     def _apply_cst_transformer(
         self, pass_: libcst.CSTTransformer, cst: libcst.CSTNodeT
     ) -> PassResult[libcst.CSTNodeT]:
-        result_cst = _visit_cst_same(cst, pass_)
-        return PassResult(cst=result_cst, altered=result_cst is not cst)
+        if len(pass_.METADATA_DEPENDENCIES) > 0:
+            return self._apply_pass(
+                MetadataTransformer(transformer=pass_, wrap_in_module=True),
+                cst,
+            )
+        else:
+            result_cst = _visit_cst_same(cst, pass_)
+            return PassResult(cst=result_cst, altered=result_cst is not cst)
 
     @_apply_pass.register
     def _apply_cst_visitor(
         self, pass_: libcst.CSTVisitor, cst: libcst.CSTNodeT
     ) -> PassResult[libcst.CSTNodeT]:
-        result_cst = _visit_cst_same(cst, pass_)
-        return PassResult(cst=result_cst, altered=result_cst is not cst)
+        if len(pass_.METADATA_DEPENDENCIES) > 0:
+            return self._apply_pass(
+                MetadataTransformer(transformer=pass_, wrap_in_module=True),
+                cst,
+            )
+        else:
+            result_cst = _visit_cst_same(cst, pass_)
+            return PassResult(cst=result_cst, altered=result_cst is not cst)
 
     @_apply_pass.register
     def _apply_metadata_transformer(
