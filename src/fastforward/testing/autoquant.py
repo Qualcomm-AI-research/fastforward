@@ -8,6 +8,7 @@ import fastforward._autoquant.cst.filter as node_filter
 import fastforward._autoquant.pybuilder as pybuilder
 
 from fastforward._autoquant.convert import autoquantize_funcdef
+from fastforward._autoquant.pass_manager import PassManager
 
 from .string import assert_strings_match_verbose, dedent_strip
 
@@ -30,8 +31,7 @@ def autoquantize_str(
         introduce function calls to members on `self`. This function will raise `ValueError`
         if `src` is not a function that has `self` as first parameter.
     """
-    src_cst = libcst.parse_statement(dedent_strip(src)[0])
-    assert isinstance(src_cst, libcst.FunctionDef), "Expected function statement"
+    src_cst = libcst.parse_module(dedent_strip(src)[0])
     dst_cst = (
         _autoquantize_str_to_classdef(src_cst)
         if as_module
@@ -45,16 +45,17 @@ def autoquantize_str(
         return autoquant.codeformat_with_defaults(dst_str)
 
 
-def _autoquantize_str_to_classdef(src_cst: libcst.FunctionDef) -> libcst.ClassDef:
-    if len(src_cst.params.params) == 0 or src_cst.params.params[0].name.value != "self":
+def _autoquantize_str_to_classdef(src_cst: libcst.Module) -> libcst.ClassDef:
+    funcdef = _retrieve_funcdef(src_cst)
+    if len(funcdef.params.params) == 0 or funcdef.params.params[0].name.value != "self":
         msg = "Expected `src` to be a function with `self` as first parameter"
         raise ValueError(msg)
 
-    for proc_pass in autoquant.default_preprocessing_passes():
-        src_cst = src_cst.visit(proc_pass)  # type: ignore[assignment]
-        assert isinstance(src_cst, libcst.FunctionDef), "Processing pass did not return FuncDef"
+    pm = PassManager(autoquant.default_preprocessing_passes())
+    src_cst = pm(src_cst)
 
-    converted_cst = autoquantize_funcdef(src_cst, autoquant.default_optable())
+    funcdef = _retrieve_funcdef(src_cst)
+    converted_cst = autoquantize_funcdef(funcdef, autoquant.default_optable())
 
     dst_class = pybuilder.QuantizedModuleBuilder(
         "QuantizedTestModule", bases=(), required_imports=()
@@ -64,14 +65,32 @@ def _autoquantize_str_to_classdef(src_cst: libcst.FunctionDef) -> libcst.ClassDe
     return dst_class.build()
 
 
-def _autoquantize_str_to_funcdef(src_cst: libcst.FunctionDef) -> libcst.FunctionDef:
-    func_name = src_cst.name.value
+def _autoquantize_str_to_funcdef(src_cst: libcst.Module) -> libcst.FunctionDef:
+    original_funcdef = _retrieve_funcdef(src_cst)
+    func_name = original_funcdef.name.value
     dst_cst = _autoquantize_str_to_classdef(src_cst)
-    for funcdef in node_filter.filter_nodes_by_type(dst_cst, libcst.FunctionDef):
-        if funcdef.name.value == func_name:
-            return funcdef
+    funcdef = _retrieve_funcdef(dst_cst, needle=func_name)
+    return funcdef
+
+
+def _retrieve_funcdef(
+    cst: libcst.Module | libcst.ClassDef, needle: str | None = None
+) -> libcst.FunctionDef:
+    funcdefs = list(node_filter.filter_nodes_by_type(cst, libcst.FunctionDef))
+    if needle is None:
+        if len(funcdefs) == 0:
+            msg = "Module does not contain a function"
+            raise ValueError(msg)
+        if len(funcdefs) > 1:
+            msg = "Module contains multiple functions. Only 1 is expected"
+            raise ValueError(msg)
+        return funcdefs[0]
     else:
-        raise RuntimeError("Converted CST does not contain original function")
+        for funcdef in funcdefs:
+            if funcdef.name.value == needle:
+                return funcdef
+        else:
+            raise RuntimeError(f"CST does not contain a function with name '{needle}'")
 
 
 def assert_autoquantize_result(input: str, expected: str, as_module: bool = False) -> None:
