@@ -250,7 +250,7 @@ class ExampleModule5(torch.nn.Module):
         return x
 
     def do_something(self, x: torch.Tensor) -> torch.Tensor:
-        return x
+        return x * x
 
 
 FLOAT_MODULE_5 = ExampleModule5()
@@ -270,6 +270,8 @@ class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
         self.quantizer_x_2 = fastforward.nn.QuantizerStub()
         self.quantizer_relu = fastforward.nn.QuantizerStub()
         self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+        self.quantizer_x_3 = fastforward.nn.QuantizerStub()
+        self.quantizer_mul = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x_1(x)
@@ -279,6 +281,10 @@ class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
         x = self.quantizer_x_2(x)
         x = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
         return x
+
+    def do_something(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x_3(x)
+        return fastforward.nn.functional.mul(x, x, output_quantizer=self.quantizer_mul)
 """
 
 

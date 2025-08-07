@@ -91,6 +91,9 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
         """Add a method to the class represented by this `Builder`."""
         self._methods.append(funcbuilder)
 
+    def has_method(self, method_name: str) -> bool:
+        return any(meth.name == method_name for meth in self._methods)
+
     @property
     def required_imports(self) -> tuple[ImportSymbol, ...]:
         """Imports that are required for this class."""
@@ -158,6 +161,9 @@ class _FunctionBuilderP(Protocol):
 
     def build(self) -> libcst.FunctionDef: ...
 
+    @property
+    def name(self) -> str: ...
+
 
 class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
     """Builder for FunctionDef.
@@ -184,6 +190,10 @@ class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
         # which is returned.
         return self._funcdef
 
+    @property
+    def name(self) -> str:
+        return self._funcdef.name.value
+
 
 class InitQuantizationMethod(_FunctionBuilderP):
     """Builder for `__init_quantization__` method."""
@@ -198,9 +208,13 @@ class InitQuantizationMethod(_FunctionBuilderP):
         """Imports that are required for this function."""
         return self._required_imports
 
+    @property
+    def name(self) -> str:
+        return "__init_quantization__"
+
     @override
     def build(self) -> libcst.FunctionDef:
-        body_statements = [libcst.parse_statement("super().__init_quantization__()")]
+        body_statements = [libcst.parse_statement(f"super().{self.name}()")]
 
         for quantizer_info in self.quantizers:
             quantizer_name = nodes.QuantizerReference.from_quantizer_info(quantizer_info)
@@ -211,7 +225,8 @@ class InitQuantizationMethod(_FunctionBuilderP):
             )
 
         init_quant_method_node = libcst.helpers.parse_template_statement(
-            "def __init_quantization__(self) -> None:{body}",
+            "def {name}(self) -> None:{body}",
+            name=libcst.Name(self.name),
             body=libcst.IndentedBlock(body_statements),
         )
         assert isinstance(init_quant_method_node, libcst.FunctionDef)

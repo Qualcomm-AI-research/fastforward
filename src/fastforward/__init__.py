@@ -9,6 +9,7 @@ from . import nn as nn
 from . import quantization as quantization
 from . import range_setting as range_setting
 from . import testing as testing
+from . import type_common as type_common
 from ._version import version
 from .autoquant import autoquantize as autoquantize
 from .flags import export_mode as export_mode

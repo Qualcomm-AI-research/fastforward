@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import collections
 import pathlib
 
 from collections.abc import Iterator, Sequence
@@ -11,6 +12,10 @@ from types import ModuleType
 import libcst
 import torch
 
+import fastforward as ff
+import fastforward._autoquant.cst.nodes as nodes
+
+from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
@@ -90,29 +95,47 @@ def autoquant(
     operator_table: optable.OperatorTable,
 ) -> str:
     """Autoquantizes a `torch.nn.Module`."""
-    pre_quantized_modules: set[type[torch.nn.Module]] = _find_known_quantized_modules()
+    pre_quantized_modules = _find_known_quantized_modules()
     dst_module = pybuilder.ModuleBuilder()
 
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
-        mod_type = type(mod)
-        qualified_class_name = fully_qualified_name(mod_type)
-        src_class = source_context.get(qualified_class_name)
-
-        base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
-
-        dst_class = pybuilder.QuantizedModuleBuilder(
-            f"Quantized{mod_type.__name__}",
-            bases=(mod_type.__name__,),
-            required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
-        )
-
-        forward_src = src_class.member("forward")
-        quantized_forward = convert_method(forward_src, operator_table)
-
-        dst_class.add_method(quantized_forward)
-        dst_module.add_class(dst_class)
+        dst_module.add_class(_autoquantize_pytorch_module(mod, source_context, operator_table))
 
     return dst_module.build().code
+
+
+def _autoquantize_pytorch_module(
+    module: torch.nn.Module,
+    source_context: pysource.SourceContext,
+    operator_table: optable.OperatorTable,
+) -> pybuilder.ClassBuilder:
+    mod_type = type(module)
+    qualified_class_name = fully_qualified_name(mod_type)
+    src_class = source_context.get(qualified_class_name)
+
+    base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
+
+    dst_class = pybuilder.QuantizedModuleBuilder(
+        f"Quantized{mod_type.__name__}",
+        bases=(mod_type.__name__,),
+        required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
+    )
+    method_queue = collections.deque[str](["forward"])
+
+    while method_queue:
+        func_name = method_queue.popleft()
+        if dst_class.has_method(func_name):
+            continue
+
+        method_src = src_class.member(func_name)
+        method_queue.extend(_find_dependent_methods(method_src, mod_type))
+        quantized_forward = convert_method(
+            src=method_src,
+            optable=operator_table,
+        )
+        dst_class.add_method(quantized_forward)
+
+    return dst_class
 
 
 def _find_unquantized_submodules(
@@ -131,6 +154,56 @@ def _find_unquantized_submodules(
         if module_type not in discovered_modules:
             discovered_modules.add(module_type)
             yield module
+
+
+MethodType = ff.type_common.MethodType
+
+
+def _find_dependent_methods(
+    func_src: pysource.PySource, ModuleType: type[torch.nn.Module]
+) -> Iterator[str]:
+    """Find methods that are called by the given function within the same module.
+
+    This function analyzes the source code of a method to identify other methods of the same
+    class that are called within it.
+
+    Args:
+        func_src: The source code representation of the function to analyze.
+        ModuleType: The PyTorch module class that contains the function.
+
+    Returns:
+        An iterator of method names that are called by the given function.
+
+    Raises:
+        ValueError: If the function is expected to have a 'self' parameter but doesn't.
+    """
+    funcdef = func_src.cst(NodeType=libcst.FunctionDef)
+    func_name = funcdef.name.value
+    self_name = None
+
+    method_type = ff.type_common.method_type(ModuleType, func_name)
+    if method_type in (MethodType.CLASS_METHOD, MethodType.METHOD):
+        try:
+            self_name = funcdef.params.params[0].name.value
+        except IndexError:
+            msg = f"Expected function '{funcdef.name.value}' to have at least one parameter"
+            raise ValueError(msg)
+
+    for candidate in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
+        if not isinstance(call_expr := candidate.original, libcst.Call):
+            continue
+
+        match call_expr.func:
+            case libcst.Attribute(value=libcst.Name(obj), attr=libcst.Name(attr)):
+                if obj != self_name and obj != ModuleType.__name__:
+                    continue
+
+                # Only instance methods are currently supported. Class and
+                # static methods require additional analysis and will be added
+                # in the future. See GitHub issue #359 for tracking progress on
+                # this feature.
+                if ff.type_common.method_type(ModuleType, attr) is MethodType.METHOD:
+                    yield attr
 
 
 def _all_subclasses(cls: type[torch.nn.Module]) -> set[type[torch.nn.Module]]:
