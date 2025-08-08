@@ -286,11 +286,11 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
                 self.record_assignment(target, producer, is_quantized=False)
         else:
             operator = assign.value.operator
+            # Assume not quantized if we have no evidence. This wil insert a quantizer later.
+            is_quantized = operator.returns_quantized if operator is not None else False
             match assign.targets:
                 case [target]:
-                    self.record_assignment(
-                        target, producer, is_quantized=operator.returns_quantized
-                    )
+                    self.record_assignment(target, producer, is_quantized=is_quantized)
                 case [*_]:  # more than one target
                     msg = "Quantized operators and multiple return values are not yet supported"
                     raise NotImplementedError(msg)
@@ -589,6 +589,8 @@ def _iter_quantized_arguments(
          A tuple containing the argument expression and a boolean indicating
          whether the argument is quantized.
     """
+    if node.operator is None:
+        return
     args: list[libcst.BaseExpression] = []
     kwargs: dict[str, libcst.BaseExpression] = {}
     seen_kwarg = False

@@ -273,13 +273,13 @@ class OperatorTable:
         self._py_op_aliases[alias] = py_op
 
 
-UNARY_OPS_LIBCST_TO_TORCH_MAPPING = {
+UNARY_OPS_LIBCST_TO_TORCH_MAPPING: dict[type[libcst.CSTNode], Callable[..., Any]] = {
     libcst.BitInvert: torch.bitwise_not,
     libcst.Minus: torch.negative,
     libcst.Plus: torch.positive,
 }
 
-BINARY_OPS_LIBCST_TO_TORCH_MAPPING = {
+BINARY_OPS_LIBCST_TO_TORCH_MAPPING: dict[type[libcst.CSTNode], Callable[..., Any]] = {
     libcst.Add: torch.add,
     libcst.BitAnd: torch.bitwise_and,
     libcst.BitOr: torch.bitwise_or,

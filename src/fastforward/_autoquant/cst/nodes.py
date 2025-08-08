@@ -12,13 +12,12 @@ CST and can be used during code generation.
 
 import dataclasses
 
-from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import libcst
 
-from libcst._nodes.internal import CodegenState, visit_optional, visit_required, visit_sequence
-from typing_extensions import Self, override
+from libcst._nodes.internal import visit_optional, visit_required, visit_sequence
+from typing_extensions import override
 
 from fastforward._quantops.operator import Operator
 
@@ -126,7 +125,7 @@ class ReplacementCandidate(libcst.BaseExpression):
         return self.original._check_left_right_word_concatenation_safety(*args, **kwargs)
 
 
-@dataclass(slots=True, frozen=True)
+@dataclasses.dataclass(slots=True, frozen=True)
 class QuantizedCall(libcst.Call):
     """A metadata node that carries extra information and wraps a `libcst.Call`.
 
@@ -135,10 +134,39 @@ class QuantizedCall(libcst.Call):
     """
 
     original_name: str = dataclasses.field(kw_only=True)
-    operator: Operator = dataclasses.field(kw_only=True)
+    operator: Operator | None = dataclasses.field(kw_only=True, default=None)
+    func_ref: Callable[..., Any] | None = dataclasses.field(kw_only=True, default=None)
+
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "QuantizedCall":
+        # This method must be implemented to prevent a 'downcast' to a
+        # libcst.Call node during arbitrary transformer application
+        visited_call = libcst.Call._visit_and_replace_children(self, visitor)
+        return QuantizedCall(
+            **node_asdict(visited_call), original_name=self.original_name, operator=self.operator
+        )
 
 
-@dataclass(slots=True, frozen=True)
+@dataclasses.dataclass(slots=True, frozen=True)
+class UnresolvedQuantizedCall(libcst.Call):
+    """A metadata node that carries extra information and wraps a `libcst.Call`.
+
+    This wrapper node contains extra information on the quantized
+    operation that is 'called'. This can be helpful in further analysis.
+    """
+
+    original_name: str = dataclasses.field(kw_only=True)
+    func_ref: Callable[..., Any] = dataclasses.field(kw_only=True)
+
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "UnresolvedQuantizedCall":
+        # This method must be implemented to prevent a 'downcast' to a
+        # libcst.Call node during arbitrary transformer application
+        visited_call = libcst.Call._visit_and_replace_children(self, visitor)
+        return UnresolvedQuantizedCall(
+            **node_asdict(visited_call), original_name=self.original_name, func_ref=self.func_ref
+        )
+
+
+@dataclasses.dataclass(slots=True, frozen=True)
 class QuantizerReference(libcst.Name):
     """Node that references a specific quantizer.
 
@@ -154,54 +182,16 @@ class QuantizerReference(libcst.Name):
     trees may reference the same `QuantizerInfo` object.
     """
 
-    @dataclass(eq=False)
-    class QuantizerInfo:
-        """Quantizer specific information."""
-
-        base_name: str
-
-    quantizer_info: QuantizerInfo = field(init=False)
-
-    @classmethod
-    def from_quantizer_info(cls, quantizer_info: QuantizerInfo) -> "QuantizerReference":
-        """Construct a new `QuantizerReference` from a `QuantizerInfo` object."""
-        quantizer_ref = cls(quantizer_info.base_name)
-        quantizer_ref._set_quantizer_info(quantizer_info)
-        return quantizer_ref
-
-    def __post_init__(self) -> None:
-        self._set_quantizer_info(QuantizerReference.QuantizerInfo(self.value))
-
-    def _set_quantizer_info(self, name_info: QuantizerInfo) -> None:
-        # In LibCST, CST nodes are immutable and new nodes are created after
-        # visiting/transforming. This means we cannot identify a node in a tree
-        # across visits or transforms by means of the node's id. Here, we
-        # introduces a `QuantizerInfo` object that holds both contextual
-        # information about the quantizer  and acts as a 'identification
-        # token'. I.e., every `QuantizerReference` node that has the same
-        # `quantizer_info` object references the same quantizer.
-        object.__setattr__(self, "quantizer_info", name_info)
+    refid: int = dataclasses.field(kw_only=True, repr=False)
 
     @override
     def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "QuantizerReference":
-        node = QuantizerReference(
+        return QuantizerReference(
             lpar=visit_sequence(self, "lpar", self.lpar, visitor),
             value=self.value,
             rpar=visit_sequence(self, "rpar", self.rpar, visitor),
+            refid=self.refid,
         )
-        node._set_quantizer_info(self.quantizer_info)
-        return node
-
-    @override
-    def with_changes(self, **changes: Any) -> Self:
-        if "value" in changes:
-            raise ValueError(f"Cannot change the 'value' attribute of a {type(self).__name__}")
-        return super().with_changes(**changes)
-
-    @override
-    def _codegen_impl(self, state: CodegenState) -> None:
-        with self._parenthesize(state):
-            state.add_token(self.quantizer_info.base_name)
 
     @override
     def deep_clone(self: "QuantizerReference") -> "QuantizerReference":
@@ -209,6 +199,10 @@ class QuantizerReference(libcst.Name):
             lpar=tuple(elem.deep_clone() for elem in self.lpar),
             value=self.value,
             rpar=tuple(elem.deep_clone() for elem in self.rpar),
+            refid=self.refid,
         )
-        node._set_quantizer_info(self.quantizer_info)
         return node
+
+
+def node_asdict(node: libcst.CSTNode) -> dict[str, Any]:
+    return {field.name: getattr(node, field.name) for field in dataclasses.fields(node)}

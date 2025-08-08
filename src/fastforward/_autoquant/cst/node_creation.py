@@ -4,12 +4,13 @@
 import libcst
 import libcst.helpers
 
-from fastforward._autoquant.cst import nodes
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.operator import Operator
 
 
-def get_keyword_argument_node(keyword: str, expression: libcst.BaseExpression) -> libcst.Arg:
+def get_keyword_argument_node(
+    keyword: str | libcst.BaseExpression, expression: libcst.BaseExpression
+) -> libcst.Arg:
     """Constructs a keyword argument node for `keyword` and `expression`.
 
     Args:
@@ -19,12 +20,43 @@ def get_keyword_argument_node(keyword: str, expression: libcst.BaseExpression) -
     Returns:
         A keyword argument node for `keyword`.
     """
+    if isinstance(keyword, str):
+        keyword = libcst.Name(keyword)
+
     dummy_arg = libcst.helpers.parse_template_expression(
-        "dummy_fn({keyword}={expression})", keyword=libcst.Name(keyword), expression=expression
+        "dummy_fn({keyword}={expression})", keyword=keyword, expression=expression
     )
     assert isinstance(dummy_arg, libcst.Call)
     quantizer_args = dummy_arg.args[-1]
     return quantizer_args
+
+
+def get_parameter_node(
+    name: str | libcst.Name, annotation: libcst.BaseExpression | str | None
+) -> libcst.Param:
+    """Constructs a parameter node for `keyword` and `annotation`.
+
+    Args:
+        name: The parameter name.
+        annotation: The parameter annotation.
+
+    Returns:
+        A keyword argument node for `keyword`.
+    """
+    if isinstance(name, str):
+        name = libcst.Name(name)
+    if isinstance(annotation, str):
+        annotation = libcst.parse_expression(annotation)
+
+    if annotation is None:
+        funcdef = libcst.helpers.parse_template_statement("def f({name}): ...", name=name)
+    else:
+        funcdef = libcst.helpers.parse_template_statement(
+            "def f({name}: {annotation}): ...", name=name, annotation=annotation
+        )
+
+    assert isinstance(funcdef, libcst.FunctionDef)
+    return funcdef.params.params[0]
 
 
 def get_quantized_function_counterpart(
@@ -50,22 +82,23 @@ def get_quantized_function_counterpart(
 
 
 def create_quantize_statement(
-    name: str, quantizer_name: nodes.QuantizerReference
+    name: str,
+    quantizer_ref: libcst.BaseExpression,
 ) -> libcst.SimpleStatementLine:
     """Create a quantize statement.
 
     Args:
         name: The name of the variable to be quantized.
-        quantizer_name: The name of the quantizer.
+        quantizer_ref: The reference to the quantizer.
 
     Returns:
         The quantize statement.
     """
     name_node = libcst.Name(name)
     quantize_statement = libcst.helpers.parse_template_statement(
-        "{name} = self.{quantizer_name}({name})",
+        "{name} = {quantizer_ref}({name})",
         name=name_node,
-        quantizer_name=quantizer_name,
+        quantizer_ref=quantizer_ref,
     )
     assert isinstance(quantize_statement, libcst.SimpleStatementLine)
     return quantize_statement

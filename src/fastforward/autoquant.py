@@ -42,7 +42,9 @@ a particular module is important to you.</small>
 
 """  # noqa: D205, D212
 
+import dataclasses
 import pathlib
+import types
 
 from typing import overload
 
@@ -50,7 +52,6 @@ import torch
 
 from fastforward._autoquant import pybuilder
 from fastforward._autoquant.autoquant import (
-    AutoQuantizedCode,
     autoquant_with_defaults,
     codeformat_with_defaults,
     emit_code_of_module,
@@ -69,7 +70,7 @@ def autoquantize(
     force_overwrite: bool = False,
     auto_import: bool = False,
     use_type_inference: bool = True,
-) -> AutoQuantizedCode: ...
+) -> "AutoQuantizedCode": ...
 
 
 @overload
@@ -81,7 +82,7 @@ def autoquantize(
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
     use_type_inference: bool = True,
-) -> AutoQuantizedCode: ...
+) -> "AutoQuantizedCode": ...
 
 
 def autoquantize(
@@ -94,7 +95,7 @@ def autoquantize(
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
     use_type_inference: bool = True,
-) -> AutoQuantizedCode:
+) -> "AutoQuantizedCode":
     """Create Python source code for quantized version of `module`.
 
     Args:
@@ -132,3 +133,12 @@ def autoquantize(
         pymodule=pymodule,
         pymodule_name=pymodule_name,
     )
+
+
+@dataclasses.dataclass
+class AutoQuantizedCode:
+    """Contains the generated code and the corresponding Python module."""
+
+    code: str
+    pymodule: types.ModuleType | None
+    pymodule_name: str

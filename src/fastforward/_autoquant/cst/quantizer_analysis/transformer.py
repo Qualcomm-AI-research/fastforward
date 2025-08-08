@@ -15,12 +15,13 @@ from fastforward._autoquant.cst import nodes
 from fastforward._autoquant.cst.node_creation import create_quantize_statement
 from fastforward._autoquant.cst.passes import ConvertSemicolonJoinedStatements
 from fastforward._autoquant.cst.quantizer_analysis.unimplemented import NotImplementedMixin
+from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 
 from .annotator import QuantizationAnnotation, QuantizationAnnotationProvider
 
 
 def _create_inline_quantize_statement(
-    expr: libcst.BaseExpression, quantizer_name: nodes.QuantizerReference
+    expr: libcst.BaseExpression, quantizer_name: libcst.BaseExpression
 ) -> libcst.Call:
     """Create a quantize statement.
 
@@ -61,10 +62,11 @@ class _InlineQuantization:
     These three cases align with the values of ExprOccurrence.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, quantizer_refs: QuantizerReferenceCollection) -> None:
         self._node_annotations: dict[libcst.CSTNode, QuantizationAnnotation] = {}
         self._occurrence: dict[QuantizationAnnotation, ExprOccurrence] = {}
         self._named_expr_tracker: dict[QuantizationAnnotation, int] = {}
+        self._quantizer_refs = quantizer_refs
 
     def add_annotations(self, annotations: Iterable[QuantizationAnnotation]) -> None:
         """Keeps track of annotations that should be replaced."""
@@ -96,7 +98,8 @@ class _InlineQuantization:
 
         usage = self._occurrence[annotation]
         quantized_statement = _create_inline_quantize_statement(
-            expr=updated_node, quantizer_name=nodes.QuantizerReference(annotation.target)
+            expr=updated_node,
+            quantizer_name=self._quantizer_refs.create_quantizer_expression(annotation.target),
         )
 
         if usage is ExprOccurrence.UNIQUE:
@@ -119,9 +122,13 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
 
     METADATA_DEPENDENCIES = (QuantizationAnnotationProvider,)
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        quantizer_refs: QuantizerReferenceCollection,
+    ) -> None:
         super().__init__()
-        self._inline_quantization = _InlineQuantization()
+        self._inline_quantization = _InlineQuantization(quantizer_refs)
+        self._quantizer_refs = quantizer_refs
 
     def _get_annotations(
         self,
@@ -146,7 +153,9 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
                 continue
             statement = create_quantize_statement(
                 name=updated_param.name.value,
-                quantizer_name=nodes.QuantizerReference(updated_param.name.value),
+                quantizer_ref=self._quantizer_refs.create_quantizer_expression(
+                    updated_param.name.value
+                ),
             )
             statements.append(statement)
 
@@ -169,7 +178,8 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         for annotation in annotations:
             target = annotation.target
             statement = create_quantize_statement(
-                name=target, quantizer_name=nodes.QuantizerReference(target)
+                name=target,
+                quantizer_ref=self._quantizer_refs.create_quantizer_expression(target),
             )
             statements.append(statement.body[0])
 
@@ -183,7 +193,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         for annotation in annotations:
             statement = create_quantize_statement(
                 name=annotation.target,
-                quantizer_name=nodes.QuantizerReference(annotation.target),
+                quantizer_ref=self._quantizer_refs.create_quantizer_expression(annotation.target),
             )
             statements.append(statement)
 
@@ -216,33 +226,39 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
                         name=libcst.Name(value),
                     )
                 ):
-                    statement = create_quantize_statement(
-                        name=value,
-                        quantizer_name=nodes.QuantizerReference(value),
+                    statements.append(
+                        create_quantize_statement(
+                            name=value,
+                            quantizer_ref=self._quantizer_refs.create_quantizer_expression(value),
+                        )
                     )
                 case _:
                     self.warn_not_implemented(
                         f"Unexpected QuantizationAnnotation of type {type(updated_item)}"
                     )
-            statements.append(statement)
         updated_body = updated_node.body.with_changes(body=(*statements, *updated_node.body.body))
         return updated_node.with_changes(body=updated_body)
 
-    def visit_ListComp(self, _node: libcst.ListComp) -> bool:
+    def visit_ListComp(self, node: libcst.ListComp) -> bool:
+        del node
         return False
 
-    def visit_SetComp(self, _node: libcst.SetComp) -> bool:
+    def visit_SetComp(self, node: libcst.SetComp) -> bool:
+        del node
         return False
 
-    def visit_GeneratorExp(self, _node: libcst.GeneratorExp) -> bool:
+    def visit_GeneratorExp(self, node: libcst.GeneratorExp) -> bool:
+        del node
         return False
 
-    def visit_DictComp(self, _node: libcst.DictComp) -> bool:
+    def visit_DictComp(self, node: libcst.DictComp) -> bool:
+        del node
         return False
 
     def leave_ListComp(
-        self, _original_node: libcst.ListComp, updated_node: libcst.ListComp
+        self, original_node: libcst.ListComp, updated_node: libcst.ListComp
     ) -> libcst.ListComp:
+        del original_node
         # Note that we visit here and not in the visit_ListComp, as we wish to visit in
         # the order following the semantics of evaluations. Quantization annotations are on the
         # `for_in`, so we need to get that info before descending into `elt`.
@@ -251,22 +267,25 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_SetComp(
-        self, _original_node: libcst.SetComp, updated_node: libcst.SetComp
+        self, original_node: libcst.SetComp, updated_node: libcst.SetComp
     ) -> libcst.SetComp:
+        del original_node
         for_in = updated_node.for_in.visit(self)
         elt = updated_node.elt.visit(self)
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_GeneratorExp(
-        self, _original_node: libcst.GeneratorExp, updated_node: libcst.GeneratorExp
+        self, original_node: libcst.GeneratorExp, updated_node: libcst.GeneratorExp
     ) -> libcst.GeneratorExp:
+        del original_node
         for_in = updated_node.for_in.visit(self)
         elt = updated_node.elt.visit(self)
         return updated_node.with_changes(for_in=for_in, elt=elt)
 
     def leave_DictComp(
-        self, _original_node: libcst.DictComp, updated_node: libcst.DictComp
+        self, original_node: libcst.DictComp, updated_node: libcst.DictComp
     ) -> libcst.DictComp:
+        del original_node
         for_in = updated_node.for_in.visit(self)
         key = updated_node.key.visit(self)
         value = updated_node.value.visit(self)
@@ -275,9 +294,9 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
     @override
     def visit_CompFor(
         self,
-        original_node: libcst.CompFor,
+        node: libcst.CompFor,
     ) -> bool:
-        if (annotations := self._get_annotations(original_node.target)) is None:
+        if (annotations := self._get_annotations(node.target)) is None:
             return True
         self._inline_quantization.add_annotations(annotations)
         return True

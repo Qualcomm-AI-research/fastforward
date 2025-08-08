@@ -3,11 +3,15 @@
 
 
 import collections
+import contextlib
+import dataclasses
+import inspect
+import logging
 import pathlib
+import types
 
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
-from types import ModuleType
+from typing import Any, Callable, TypeAlias
 
 import libcst
 import torch
@@ -15,15 +19,119 @@ import torch
 import fastforward as ff
 import fastforward._autoquant.cst.nodes as nodes
 
+from fastforward._autoquant import pybuilder, pysource
+from fastforward._autoquant.convert import convert_function
+from fastforward._autoquant.cst import node_creation, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
+from fastforward._autoquant.function_context import FunctionContext
+from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
 from fastforward.nn.quantized_module import QuantizedModule
 
-from . import pybuilder, pysource
-from .convert import convert_funcdef
-from .cst import passes
+_FuncRef: TypeAlias = Callable[..., Any]
+MethodType = ff.type_common.MethodType
+
+logger = logging.getLogger(__name__)
+
+
+def autoquant(
+    module: torch.nn.Module,
+    source_context: pysource.SourceContext,
+    operator_table: optable.OperatorTable,
+) -> str:
+    """Autoquantizes a torch.nn.Module and its submodules by quantizing all methods.
+
+    Args:
+        module: The PyTorch module to quantize
+        source_context: Source code context for accessing module definitions
+        operator_table: Table of quantization operators to use
+
+    Returns:
+        Generated Python code for the quantized module
+    """
+    quantizer_refs = QuantizerReferenceCollection()
+    module_builder = pybuilder.ModuleBuilder(origin=type(module))
+    class_builders: dict[type, pybuilder.QuantizedModuleBuilder] = {}
+
+    # Skip modules that are already quantized
+    pre_quantized_modules = _find_known_quantized_modules()
+    for mod in _find_unquantized_submodules(module, pre_quantized_modules):
+        mod_type = type(mod)
+        class_builders[mod_type] = _cls_builder_for_module(mod_type)
+
+    # Queue all forward methods for processing
+    func_queue = collections.deque[_AqTask]()
+    for mod in _find_unquantized_submodules(module, pre_quantized_modules):
+        mod_type = type(mod)
+        func_queue.append(_AqTask(module=mod_type, function=mod_type.forward))
+
+    # Process each method and its dependencies
+    while func_queue:
+        task = func_queue.popleft()
+        func_name = task.function.__name__
+
+        if inspect.ismodule(task.module):
+            # Here the case for 'normal' function is handled in follow-up work.
+            pass
+        elif issubclass(task.module, torch.nn.Module):
+            if task.module not in class_builders:
+                class_builders[task.module] = _cls_builder_for_module(task.module)
+            cls_builder = class_builders[task.module]
+            if cls_builder.has_method(func_name):
+                continue
+
+            # Convert method to quantized version
+            qualified_class_name = fully_qualified_name(task.module)
+            src_class = source_context.get(qualified_class_name)
+            method_src = src_class.member(func_name)
+            method_ctx = FunctionContext.from_method(task.module, func_name)
+            with quantizer_refs.push_context(method_ctx):
+                func_builder = convert_function(
+                    src=method_src,
+                    optable=operator_table,
+                    func_ctx=method_ctx,
+                    quantizer_refs=quantizer_refs,
+                )
+                cls_builder.add_method(func_builder)
+
+            # Queue dependent methods for processing
+            for dep_method_name in _find_dependent_methods(method_src, method_ctx):
+                func_queue.append(_AqTask(task.module, getattr(task.module, dep_method_name)))
+
+        else:
+            msg = (  # type: ignore[unreachable]
+                f"Failed to quantize '{task.function.__name__}' of '{task.module}' because "
+                + f"'{task.module}' is not a Python or Pytorch module."
+            )
+            logger.warning(msg)
+
+    for class_builder in class_builders.values():
+        module_builder.add_class(class_builder)
+
+    _resolve_all_quantized_calls(module_builder, quantizer_refs)
+
+    return module_builder.build(quantizer_refs).code
+
+
+@dataclasses.dataclass
+class _AqTask:
+    """Autoquant task element for task queue."""
+
+    function: Callable[..., Any]
+    module: type[torch.nn.Module] | types.ModuleType
+
+
+def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
+    qualified_class_name = fully_qualified_name(module_type)
+    base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
+    return pybuilder.QuantizedModuleBuilder(
+        f"Quantized{module_type.__name__}",
+        bases=(module_type.__name__,),
+        required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
+        origin=module_type,
+    )
 
 
 def default_source_context(use_type_inference: bool = True) -> pysource.SourceContext:
@@ -101,58 +209,6 @@ def emit_code_of_module(
     return code_writer.module_name
 
 
-def autoquant(
-    module: torch.nn.Module,
-    source_context: pysource.SourceContext,
-    operator_table: optable.OperatorTable,
-) -> str:
-    """Autoquantizes a `torch.nn.Module`."""
-    pre_quantized_modules = _find_known_quantized_modules()
-    dst_module = pybuilder.ModuleBuilder(origin=type(module))
-
-    for mod in _find_unquantized_submodules(module, pre_quantized_modules):
-        dst_module.add_class(_autoquantize_pytorch_module(mod, source_context, operator_table))
-
-    return dst_module.build().code
-
-
-def _autoquantize_pytorch_module(
-    module: torch.nn.Module,
-    source_context: pysource.SourceContext,
-    operator_table: optable.OperatorTable,
-) -> pybuilder.ClassBuilder:
-    mod_type = type(module)
-    qualified_class_name = fully_qualified_name(mod_type)
-    src_class = source_context.get(qualified_class_name)
-
-    base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
-
-    dst_class = pybuilder.QuantizedModuleBuilder(
-        f"Quantized{mod_type.__name__}",
-        bases=(mod_type.__name__,),
-        required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
-        origin=mod_type,
-    )
-    method_queue = collections.deque[str](["forward"])
-
-    while method_queue:
-        func_name = method_queue.popleft()
-        if dst_class.has_method(func_name):
-            continue
-
-        method_src = src_class.member(func_name)
-        method_ref = getattr(mod_type, func_name, None)
-        method_queue.extend(_find_dependent_methods(method_src, mod_type))
-        quantized_forward = convert_funcdef(
-            src=method_src,
-            optable=operator_table,
-            func_ref=method_ref,
-        )
-        dst_class.add_method(quantized_forward)
-
-    return dst_class
-
-
 def _find_unquantized_submodules(
     torch_module: torch.nn.Module, pre_quantized_modules: set[type[torch.nn.Module]]
 ) -> Iterator[torch.nn.Module]:
@@ -171,62 +227,6 @@ def _find_unquantized_submodules(
             yield module
 
 
-MethodType = ff.type_common.MethodType
-
-
-def _find_dependent_methods(
-    func_src: pysource.PySource, ModuleType: type[torch.nn.Module]
-) -> Iterator[str]:
-    """Find methods that are called by the given function within the same module.
-
-    This function analyzes the source code of a method to identify other methods of the same
-    class that are called within it.
-
-    Args:
-        func_src: The source code representation of the function to analyze.
-        ModuleType: The PyTorch module class that contains the function.
-
-    Returns:
-        An iterator of method names that are called by the given function.
-
-    Raises:
-        ValueError: If the function is expected to have a 'self' parameter but doesn't.
-    """
-    funcdef = func_src.cst(NodeType=libcst.FunctionDef)
-    func_name = funcdef.name.value
-    self_name = None
-
-    method_type = ff.type_common.method_type(ModuleType, func_name)
-    if method_type in (MethodType.CLASS_METHOD, MethodType.METHOD):
-        try:
-            self_name = funcdef.params.params[0].name.value
-        except IndexError:
-            msg = f"Expected function '{funcdef.name.value}' to have at least one parameter"
-            raise ValueError(msg)
-
-    for candidate in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
-        if not isinstance(call_expr := candidate.original, libcst.Call):
-            continue
-
-        match call_expr.func:
-            case libcst.Attribute(value=libcst.Name(obj), attr=libcst.Name(attr)):
-                if obj != self_name and obj != ModuleType.__name__:
-                    continue
-
-                # Only instance methods are currently supported. Class and
-                # static methods require additional analysis and will be added
-                # in the future. See GitHub issue #359 for tracking progress on
-                # this feature.
-                if ff.type_common.method_type(ModuleType, attr) is MethodType.METHOD:
-                    yield attr
-
-
-def _all_subclasses(cls: type[torch.nn.Module]) -> set[type[torch.nn.Module]]:
-    return set(cls.__subclasses__()).union([
-        c for subcls in cls.__subclasses__() for c in _all_subclasses(subcls)
-    ])
-
-
 def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:
     """Find the modules that are manually quantized in FastForward."""
     subclasses = _all_subclasses(QuantizedModule)
@@ -240,10 +240,354 @@ def _find_known_quantized_modules() -> set[type[torch.nn.Module]]:
     return immediate_superclasses
 
 
-@dataclass
-class AutoQuantizedCode:
-    """Contains the generated code and the corresponding Python module."""
+def _all_subclasses(cls: type[torch.nn.Module]) -> set[type[torch.nn.Module]]:
+    """Used in _find_known_quantized_modules."""
+    return set(cls.__subclasses__()).union([
+        c for subcls in cls.__subclasses__() for c in _all_subclasses(subcls)
+    ])
 
-    code: str
-    pymodule: ModuleType | None
-    pymodule_name: str
+
+@dataclasses.dataclass
+class _QuantizerRefTrace:
+    """Tracks the propagation path of a quantizer reference through function calls.
+
+    This class represents a quantizer reference along with its source path, which is used
+    during the quantizer propagation phase to track how quantizers flow through the call
+    graph and to prevent circular dependencies.
+
+    Attributes:
+        src: Tuple of function references representing the propagation path of the quantizer.
+             The first element is the original function where the quantizer was defined,
+             and subsequent elements represent the call chain through which it propagated.
+             For example, (func_a, func_b, func_c) means the quantizer originated in func_a,
+             was passed to func_b, and then to func_c.
+        ref: The quantizer reference object that is being tracked through the call graph.
+    """
+
+    src: tuple[_FuncRef, ...]
+    ref: nodes.QuantizerReference
+
+
+@dataclasses.dataclass
+class _QuantizedFunctionSpec:
+    """Specification for a quantized function including its quantizer dependencies and calls.
+
+    This class represents the quantization specification for a single function, tracking:
+    1. Local quantizers that are defined within the function
+    2. Calls to other quantized functions
+    3. The complete set of quantizers needed by this function (local + propagated)
+
+    The class is used during the quantizer propagation phase to build a dependency graph
+    of quantizer usage across function boundaries and determine which quantizer arguments
+    need to be passed between functions.
+
+    Attributes:
+        func_ref: Reference to the function this specification describes
+        calls: Mapping of unresolved quantized calls to their required quantizer arguments.
+               Each call maps to a list of quantizer traces that represent the quantizers
+               that need to be passed as arguments to that call.
+        local_quantizers: List of quantizers that are locally defined within this function.
+                         Each quantizer is wrapped in a trace that tracks its source path.
+    """
+
+    func_ref: _FuncRef
+    calls: dict[nodes.UnresolvedQuantizedCall, list[_QuantizerRefTrace]] = dataclasses.field(
+        default_factory=dict
+    )
+    local_quantizers: list[_QuantizerRefTrace] = dataclasses.field(default_factory=list)
+
+    def quantizers(self, skip_forwarded: bool = False) -> Iterator[_QuantizerRefTrace]:
+        """Iterate over all quantizers needed by this function.
+
+        Args:
+            skip_forwarded: If True, skip quantizers that passed to other functions and not
+                used locally within this function.
+        """
+        yield from self.local_quantizers
+        for quant_args in self.calls.values():
+            for arg in quant_args:
+                if not skip_forwarded or len(arg.src) > 1:
+                    yield arg
+
+
+@dataclasses.dataclass
+class _CallArg:
+    """Represents a keyword argument for a quantized function call.
+
+    This class encapsulates the mapping between a quantizer reference (used as the
+    parameter name) and its corresponding value expression (the actual argument to pass).
+    It is used during the call resolution phase to construct concrete function calls
+    with the appropriate quantizer arguments.
+    """
+
+    keyword: nodes.QuantizerReference
+    value: libcst.BaseExpression
+
+
+def _resolve_all_quantized_calls(
+    builder: pybuilder.ModuleBuilder, quantizer_refs: QuantizerReferenceCollection
+) -> None:
+    """Resolve quantized function calls.
+
+    Resolve remaining unresolved quantized function calls by creating a complete mapping of
+    quantizer arguments across function boundaries.
+    """
+    # The algorithm builds a dependency graph of quantizer usage across functions and then
+    # "threads" the quantizer arguments through the call chain.
+    # See the inline annotations for more detailed explanation.
+
+    # Mappings of function references to their builders, contexts, and specs
+    func_builder_map: dict[_FuncRef, pybuilder.QuantizedFunctionBuilder] = {}
+    func_contexts: dict[_FuncRef, FunctionContext] = {}
+    func_specs: dict[_FuncRef, _QuantizedFunctionSpec] = {}
+
+    # 1. Discovery Phase: Collect all quantized functions and identify their local quantizers
+    #    and unresolved calls to other quantized functions
+    for funcbuilder in builder.quantized_functions():
+        if funcbuilder.origin.func is None:
+            continue
+
+        func_ref = funcbuilder.origin.func
+        func_builder_map[func_ref] = funcbuilder
+        func_contexts[func_ref] = funcbuilder.origin
+
+    # Initialize function specs with local quantizers and unresolved calls
+    for func_ref, funcbuilder in func_builder_map.items():
+        spec = _QuantizedFunctionSpec(func_ref)
+        func_specs[func_ref] = spec
+
+        # Add local quantizers for this function
+        for ref in quantizer_refs.local_quantizers_for_func(func_ref):
+            spec.local_quantizers.append(_QuantizerRefTrace(src=(func_ref,), ref=ref))
+
+        # Collect unresolved calls (excluding method calls)
+        for unresolved_call in filter_nodes_by_type(funcbuilder.cst, nodes.UnresolvedQuantizedCall):
+            call_func_context = func_contexts[unresolved_call.func_ref]
+            if call_func_context.method_type != MethodType.METHOD:
+                spec.calls[unresolved_call] = []
+
+    # 2. Propagation Phase: Use _propagate_quantizers() to determine which quantizer arguments
+    #    need to flow between functions based on the call graph and propagate quantizers across
+    #    function call boundaries.
+    _propagate_quantizers(func_specs)
+
+    # 3. Signature Generation Phase: For each function, create a signature that includes all
+    #    quantizers it needs (both local and propagated from callers), generating unique
+    #    parameter names for propagated quantizers using prefixed naming.
+    signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]] = {}
+    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]] = {}
+    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]] = {}
+
+    for func_ref, spec in func_specs.items():
+        if func_contexts[func_ref].method_type == MethodType.METHOD:
+            # Instance functions don't require an updated signature.
+            continue
+
+        # Create function signature from quantizer arguments
+        signature = []
+        ref_map = {}
+        for arg in spec.quantizers(skip_forwarded=True):
+            if arg.src == (func_ref,):
+                # Local quantizer: use original reference
+                sigref = arg.ref
+            else:
+                # Propagated quantizer: create new reference with prefixed name
+                with quantizer_refs.push_context(func_contexts[func_ref]):
+                    prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
+                    name = f"{prefix}_{arg.ref.value}"
+                    sigref = quantizer_refs.create_reference(name)
+            signature.append(sigref)
+            ref_map[arg.ref] = sigref
+        signature_ref_map[func_ref] = ref_map
+        signatures[func_ref] = tuple(signature)
+
+    # 4. Call Resolution Phase: For each unresolved call, determine the concrete arguments
+    #    to pass by mapping the caller's quantizer references to the callee's expected
+    #    parameters (regular functions use signature references, instance methods use
+    #    quantizer expressions)
+    for func_ref, spec in func_specs.items():
+        for unresolved_call, args in spec.calls.items():
+            call_args = []
+            calling_func_ref = unresolved_call.func_ref
+            for arg in args:
+                keyword = signature_ref_map[calling_func_ref][arg.ref]
+                if func_ref not in signature_ref_map:
+                    # Target is instance method. Create quantizer expression.
+                    with quantizer_refs.push_context(func_contexts[func_ref]):
+                        prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
+                        name = f"{prefix}_{arg.ref.value}"
+                        value = quantizer_refs.create_quantizer_expression(name)
+                else:
+                    # Target is regular function - use signature reference
+                    value = signature_ref_map[func_ref][arg.ref]
+                call_args.append(_CallArg(keyword=keyword, value=value))
+            calls[unresolved_call] = tuple(call_args)
+
+    # 5. Transformation Phase: Apply a CST transformer to replace all unresolved calls
+    #    with concrete function calls containing the resolved quantizer arguments.
+    #    Update the function builder `quantizer_signature` list based on the inferred
+    #    signature.
+    call_transformer = _ResolveQuantizedCallsTransformer(calls)
+    for func_ref, func_builder in func_builder_map.items():
+        new_funcdef = func_builder.cst.visit(call_transformer)
+        assert isinstance(new_funcdef, libcst.FunctionDef)
+        func_builder.cst = new_funcdef
+        func_builder.quantizer_signature = signatures.get(func_ref, ())
+
+
+def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) -> None:
+    """Propagate quantizer dependencies through the function call graph.
+
+    This function implements an iterative algorithm that ensures each function in the
+    call graph has access to all quantizers it needs, either directly or through
+    functions it calls.
+
+    The algorithm works by:
+    1. Iterating through all function specifications until no changes occur
+    2. For each function, examining all the functions it calls
+    3. Collecting quantizers from called functions and adding them as dependencies
+    4. Tracking the source path of each quantizer to handle circular dependencies:
+       - If a quantizer originates from the current function, truncate the path
+       - Otherwise, extend the path to include the current function
+    5. Updating call arguments when new quantizer dependencies are discovered
+
+    Circular dependency resolution:
+    When function A calls function B, and B (directly or indirectly) calls A,
+    the algorithm prevents infinite propagation by recognizing when a quantizer's
+    source path would create a cycle and truncating it appropriately.
+
+    Args:
+        func_specs: Dictionary mapping function references to their quantized
+                   specifications, including local quantizers and function calls
+
+    Side effects:
+        Modifies the `calls` attribute of function specifications in-place to
+        include all required quantizer arguments for each function call.
+    """
+    # Iterate until no more quantizers need propagation
+    changed = True
+    while changed:
+        changed = False
+
+        for func_ref, spec in func_specs.items():
+            # Check each function call to see if it needs additional quantizer args
+            for unresolved_call, call_args in spec.calls.items():
+                call_func_ref = unresolved_call.func_ref
+                new_call_args = []
+
+                # Collect all quantizers needed by the called function
+                for quant_arg in func_specs[call_func_ref].quantizers(skip_forwarded=True):
+                    # Break circular dependencies by truncating the source path.
+                    # This marks the quantizer as 'forwarded' since it's passed
+                    # to another function, causing it to be skipped in subsequent
+                    # iterations due to `skip_forwarded=True`, effectively
+                    # preventing infinite loops in the dependency graph.
+                    if quant_arg.src[0] is func_ref:
+                        new_call_args.append(
+                            _QuantizerRefTrace(src=quant_arg.src[:1], ref=quant_arg.ref)
+                        )
+                    else:
+                        # Extend source path to track propagation chain
+                        new_call_args.append(
+                            _QuantizerRefTrace(src=quant_arg.src + (func_ref,), ref=quant_arg.ref)
+                        )
+
+                # Update call args if new quantizers were discovered
+                if len(new_call_args) != len(call_args):
+                    spec.calls[unresolved_call] = new_call_args
+                    changed = True
+
+
+class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):
+    """CST transformer that resolves unresolved quantized function calls.
+
+    This transformer replaces UnresolvedQuantizedCall nodes in the CST with concrete
+    QuantizedCall nodes that include the appropriate quantizer arguments.
+
+    Arguments:
+        call_args: Mapping from UnresolvedQuantizedCall nodes to their resolved
+                   quantizer arguments.
+    """
+
+    def __init__(self, call_args: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]]):
+        self._call_args = call_args
+
+    def leave_UnresolvedQuantizedCall(
+        self,
+        original_node: nodes.UnresolvedQuantizedCall,
+        updated_node: nodes.UnresolvedQuantizedCall,
+    ) -> nodes.QuantizedCall | nodes.UnresolvedQuantizedCall:
+        if (quantizer_args := self._call_args.get(original_node, None)) is None:
+            return updated_node
+
+        new_args = []
+        for arg in quantizer_args:
+            new_args.append(node_creation.get_keyword_argument_node(arg.keyword, arg.value))
+
+        # TODO: if updated_node.func references the old class, this should be updated.
+        #       This can be done in the QuantizerCounterPart pass
+        params = nodes.node_asdict(updated_node)
+        params["args"] = tuple(updated_node.args) + tuple(new_args)
+
+        return nodes.QuantizedCall(**params)
+
+
+def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -> Iterator[str]:
+    """Find methods that are called by the given function within the same module.
+
+    This function analyzes the source code of a method to identify other methods of the same
+    class that are called within it. It handles instance methods, class methods, and static
+    methods, tracking references through 'self', class references, and closure variables.
+
+    Args:
+        func_src: The source code representation of the function to analyze.
+        ctx: The `FunctionContext` of `func_src`.
+
+    Returns:
+        An iterator of method names that are dependencies of the given function.
+        Only yields method names that exist as actual methods on the ModuleType.
+
+    Example:
+        For a method that calls `self.forward()` and `<ClassName>.helper()`, this would
+        yield both "forward" and "helper" if they are methods on the module.
+
+    Exceptions:
+        Dynamic resolutions to the class are not detected. For example, `type(self).helper()`
+        will not be identified as a call to the class method `helper`.
+    """
+    funcdef = func_src.cst(NodeType=libcst.FunctionDef)
+    func_name = funcdef.name.value
+
+    ModuleType = ctx.torch_module
+    method_type = ctx.method_type
+
+    assert ModuleType is not None
+    assert method_type is not None
+
+    # Holds all references to ModuleType within function (e.g., cls in class method)
+    module_refs = {ctx.class_var} if ctx.class_var else set[str]()
+    if func_ref := getattr(ModuleType, func_name, None):
+        with contextlib.suppress(TypeError):  # getclosurevars raises TypeError on builtins
+            # Extract variable names that reference ModuleType from function closure
+            closure_vars = inspect.getclosurevars(func_ref)
+            for name, value in {**closure_vars.nonlocals, **closure_vars.globals}.items():
+                if value is ModuleType:
+                    module_refs.add(name)
+
+    for candidate in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
+        if not isinstance(call_expr := candidate.original, libcst.Call):
+            continue
+
+        match call_expr.func:
+            case libcst.Attribute(value=libcst.Name(obj), attr=libcst.Name(attr)):
+                if obj != ctx.instance_var and obj not in module_refs:
+                    continue
+
+                if ff.type_common.method_type(ModuleType, attr) is not MethodType.NO_METHOD:
+                    yield attr
+
+            case libcst.Call(func=libcst.Name(call_func_name)):
+                if method_type == MethodType.METHOD and call_func_name == ctx.instance_var:
+                    # When calling self() in a torch.nn.Module subclass, this invokes
+                    # __call__ which delegates to forward(). Track as "forward" call.
+                    yield "forward"

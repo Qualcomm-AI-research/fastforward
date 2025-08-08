@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import inspect
 import re
+import types
 
 from collections.abc import Sequence
-from typing import Protocol, TypeAlias, TypeVar, cast, runtime_checkable
+from typing import Any, Callable, Protocol, TypeAlias, TypeVar, cast, runtime_checkable
 
 import libcst
 import libcst.helpers
@@ -18,7 +20,9 @@ from fastforward._autoquant.cst.node_creation import (
     get_keyword_argument_node,
     get_quantized_function_counterpart,
 )
+from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
+from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ScopeProvider
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
@@ -28,8 +32,9 @@ from fastforward._quantops.optable import (
 from .nodes import (
     GeneralAssignment,
     QuantizedCall,
-    QuantizerReference,
     ReplacementCandidate,
+    UnresolvedQuantizedCall,
+    node_asdict,
 )
 
 
@@ -595,20 +600,39 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 class QuantizedCounterpartReplacer(libcst.CSTTransformer):
     """Replaces function calls with their quantized counterparts in the CST.
 
-    For example, torch.sigmoid(*args, **kwargs) is replaced with
-    ff.nn.functional.sigmoid(*args, output_quantizer=self.quantizer_sigmoid_1).
+    This transformer identifies function calls, unary operations, and binary operations
+    that have quantized equivalents and replaces them with their quantized counterparts.
+    The exact replacements are determined by the provided operator table (optable).
 
-    Similarly, binary operators are replaced:
-    a + b is replaced with
-    ff.nn.functional.add(a, b, output_quantizer=self.quantizer_add_1).
+    For example:
+    - torch.sigmoid(*args, **kwargs) becomes
+      ff.nn.functional.sigmoid(*args, **kwargs, output_quantizer=self.quantizer_sigmoid_1)
+    - Binary operations like a + b become
+      ff.nn.functional.add(a, b, output_quantizer=self.quantizer_add_1)
+    - Unary operations like -x become
+      ff.nn.functional.neg(x, output_quantizer=self.quantizer_neg_1)
+
+    The transformer handles both resolved calls (where a quantized counterpart exists
+    in the operator table) and unresolved calls (which are wrapped with relevant metadata
+    for later processing).
+
+    Args:
+        optable: The operator table containing mappings from original functions
+            to their quantized counterparts.
+        func_ctx: Function context providing information about the current function
+            being transformed.
     """
 
     def __init__(
         self,
         optable: OperatorTable,
+        func_ctx: FunctionContext,
+        quantizer_refs: QuantizerReferenceCollection,
     ) -> None:
         super().__init__()
         self._optable = optable
+        self._func_ctx = func_ctx
+        self._quantizer_refs = quantizer_refs
 
     def leave_ReplacementCandidate(
         self,
@@ -618,43 +642,90 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         """Leave function for `ReplacementCandidate`."""
         del original_node
 
-        existing_args: Sequence[libcst.Arg]
+        original_args: Sequence[libcst.Arg]
         match orig := updated_node.original:
             case libcst.UnaryOperation():
-                original_name, func_name = _get_name_and_torch_name_for_operation(orig)
-                existing_args = (libcst.Arg(orig.expression),)
+                original_func, _, orignal_func_name = _get_name_and_torch_name_for_operation(orig)
+                original_args = (libcst.Arg(orig.expression),)
             case libcst.BinaryOperation():
-                original_name, func_name = _get_name_and_torch_name_for_operation(orig)
-                existing_args = (libcst.Arg(orig.left), libcst.Arg(orig.right))
+                original_func, _, orignal_func_name = _get_name_and_torch_name_for_operation(orig)
+                original_args = (libcst.Arg(orig.left), libcst.Arg(orig.right))
             case libcst.Call():
-                func_name = libcst.helpers.get_full_name_for_node(orig)
-                existing_args = orig.args
-                original_name = func_name
+                orignal_func_name = libcst.helpers.get_full_name_for_node(orig)
+                original_args = orig.args
+                original_func = _resolve_reference(orignal_func_name, self._func_ctx)
             case _:
                 return updated_node
-        # We cannot determine the name of the function called, skip it.
-        if func_name is None or original_name is None:
+
+        if orignal_func_name is None:
+            # We cannot determine the name of the function called, skip it.
             return updated_node
 
+        if original_func is None:
+            # We have no reference on how to quantize, skip it.
+            return updated_node
+
+        return self._create_quantized_call(
+            updated_node, orignal_func_name, original_func, original_args
+        )
+
+    def _create_quantized_call(
+        self,
+        node: ReplacementCandidate,
+        fn_name: str,
+        func_ref: Any,
+        orig_args: Sequence[libcst.Arg],
+    ) -> libcst.BaseExpression:
+        if (call_node := self._create_resolved_quantized_call(fn_name, orig_args)) is not None:
+            return call_node
+        return self._create_unresolved_quantized_call(node, fn_name, func_ref, orig_args)
+
+    def _create_resolved_quantized_call(
+        self,
+        func_name: str,
+        original_args: Sequence[libcst.Arg],
+    ) -> libcst.BaseExpression | None:
         # We don't have a quantized replacement for this function, skip it.
         if func_name not in self._optable:
-            return updated_node
+            return None
 
         func, operator = get_quantized_function_counterpart(
             optable=self._optable, func_name=func_name
         )
 
-        quantizer_var = libcst.helpers.parse_template_expression(
-            "self.{name}", name=QuantizerReference(func_name.split(".")[-1])
-        )
-        arg = get_keyword_argument_node("output_quantizer", quantizer_var)
+        extra_args: list[libcst.Arg] = []
+
+        for i in range(operator.num_output_quantizers):
+            quantizer_var = self._quantizer_refs.create_quantizer_expression(
+                func_name.split(".")[-1]
+            )
+
+            arg_name = "output_quantizer" + (f"_{i}" if operator.num_output_quantizers > 1 else "")
+            extra_args.append(get_keyword_argument_node(arg_name, quantizer_var))
 
         return QuantizedCall(
             func=func,
-            args=(*existing_args, arg),
-            original_name=original_name,
+            args=(*original_args, *extra_args),
+            original_name=func_name,
             operator=operator,
         )
+
+    def _create_unresolved_quantized_call(
+        self,
+        node: ReplacementCandidate,
+        func_name: str,
+        func_ref: Callable[..., Any],
+        original_args: Sequence[libcst.Arg],
+    ) -> libcst.BaseExpression:
+        if not isinstance(node.original, libcst.Call):
+            # This happens when an operator isn't supported by `_create_resolved_quantized_call`.
+            # We leave it unchanged but keep it wrapped in ReplacementCandidate so later passes
+            # can identify it.
+            return node
+
+        call_params = node_asdict(node.original)
+        call_params["args"] = original_args
+        return UnresolvedQuantizedCall(**call_params, original_name=func_name, func_ref=func_ref)
 
 
 class FoldSimpleTemporaries(libcst.CSTTransformer):
@@ -815,7 +886,7 @@ class _NodeReplacer(libcst.CSTTransformer):
 
 def _get_name_and_torch_name_for_operation(
     node: libcst.UnaryOperation | libcst.BinaryOperation,
-) -> tuple[str, str] | tuple[None, None]:
+) -> tuple[Callable[..., Any], str, str] | tuple[None, None, None]:
     """Maps a BinaryOperation node to its corresponding common name and torch name.
 
     Examples:
@@ -824,6 +895,48 @@ def _get_name_and_torch_name_for_operation(
     """
     op = OPS_LIBCST_TO_TORCH_MAPPING.get(type(node.operator))
     if op is None:
-        return None, None
+        return None, None, None
 
-    return op.__name__, f"{op.__module__}.{op.__name__}"
+    return op, op.__name__, f"{op.__module__}.{op.__name__}"
+
+
+def _resolve_reference(reference: str | None, func_ctx: FunctionContext) -> Any | None:
+    """Resolve reference within function context.
+
+    Resolves a string reference to an actual object by looking up the reference
+    in the closure variables of the function context.
+
+    Args:
+        reference: A string representing a variable or attribute path (e.g. "torch.nn.Linear")
+        func_ctx: The function context containing information about the wrapping function
+                 and its environment
+
+    Returns:
+        The resolved object if found, None otherwise
+    """
+    if reference is None:
+        return None
+    if (wrapping_func := func_ctx.func) is None:
+        return None
+
+    closure_vars = inspect.getclosurevars(wrapping_func)
+    scope_vars = {**closure_vars.builtins, **closure_vars.globals, **closure_vars.nonlocals}
+
+    if func_ctx.torch_module:
+        if func_ctx.instance_var:
+            scope_vars[func_ctx.instance_var] = func_ctx.torch_module
+        if func_ctx.class_var:
+            scope_vars[func_ctx.class_var] = func_ctx.torch_module
+
+    root, *parts = reference.split(".")
+
+    try:
+        if (obj := scope_vars.get(root, None)) is None:
+            return None
+        for part in parts:
+            obj = getattr(obj, part)
+        if isinstance(obj, types.MethodType):
+            obj = obj.__func__
+        return obj
+    except AttributeError:
+        return None

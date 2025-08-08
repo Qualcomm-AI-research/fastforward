@@ -40,22 +40,25 @@ class MethodType(enum.Enum):
     NO_METHOD = enum.auto()
 
 
-def method_type(cls: type, method_name: str, /) -> MethodType:
+def method_type(cls_or_module: type | types.ModuleType, method_name: str, /) -> MethodType:
     """Determine the type of a method in a class.
 
     Args:
-        cls: The class to inspect.
+        cls_or_module: The class or module to inspect.
         method_name: The name of the method to check.
 
     Returns:
         A MethodType enum value indicating the type of the method:
     """
-    match cls.__dict__.get(method_name, None):
-        case classmethod():
+    if not isinstance(cls_or_module, (type, types.ModuleType)):
+        msg = "'cls_or_module' must be a module or class"  # type: ignore[unreachable]
+        raise ValueError(msg)
+    match cls_or_module, cls_or_module.__dict__.get(method_name, None):
+        case type(), classmethod():
             return MethodType.CLASS_METHOD
-        case staticmethod():
+        case type(), staticmethod():
             return MethodType.STATIC_METHOD
-        case types.FunctionType():
+        case type(), types.FunctionType():
             return MethodType.METHOD
         case _:
             return MethodType.NO_METHOD
