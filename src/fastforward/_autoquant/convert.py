@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+from typing import Any, Callable
+
 import libcst
 
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
@@ -14,7 +16,11 @@ from .pybuilder import FunctionBuilder, QuantizedFunctionBuilder
 from .pysource import PySource
 
 
-def convert_method(src: PySource, optable: OperatorTable) -> FunctionBuilder:
+def convert_funcdef(
+    src: PySource,
+    optable: OperatorTable,
+    func_ref: Callable[..., Any] | None,
+) -> FunctionBuilder:
     """Convert a single method to a quantized method.
 
     The function represented by `src` is considered a method of the class built
@@ -28,6 +34,9 @@ def convert_method(src: PySource, optable: OperatorTable) -> FunctionBuilder:
             newly quantized method will be part of.
         optable: The `OperatorTable` that is used as 'ground-truth' for
             operator replacement.
+        method_type: Specifies the type of method, use `MethodType.NO_METHOD`
+            for non-method functions.
+        func_ref: A reference to the Python function that is converted.
 
     Returns:
         A CST that represents a quantized method. This method is not yet added
@@ -39,7 +48,7 @@ def convert_method(src: PySource, optable: OperatorTable) -> FunctionBuilder:
     assert isinstance(dst_cst, libcst.FunctionDef)
     required_imports = _infer_imports(src, dst_cst)
 
-    return QuantizedFunctionBuilder(dst_cst, required_imports)
+    return QuantizedFunctionBuilder(dst_cst, required_imports, origin=func_ref)
 
 
 def autoquantize_funcdef(src_cst: libcst.FunctionDef, optable: OperatorTable) -> libcst.FunctionDef:

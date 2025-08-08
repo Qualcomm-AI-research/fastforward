@@ -22,7 +22,7 @@ from fastforward._quantops import optable
 from fastforward.nn.quantized_module import QuantizedModule
 
 from . import pybuilder, pysource
-from .convert import convert_method
+from .convert import convert_funcdef
 from .cst import passes
 
 
@@ -108,7 +108,7 @@ def autoquant(
 ) -> str:
     """Autoquantizes a `torch.nn.Module`."""
     pre_quantized_modules = _find_known_quantized_modules()
-    dst_module = pybuilder.ModuleBuilder()
+    dst_module = pybuilder.ModuleBuilder(origin=type(module))
 
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
         dst_module.add_class(_autoquantize_pytorch_module(mod, source_context, operator_table))
@@ -131,6 +131,7 @@ def _autoquantize_pytorch_module(
         f"Quantized{mod_type.__name__}",
         bases=(mod_type.__name__,),
         required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
+        origin=mod_type,
     )
     method_queue = collections.deque[str](["forward"])
 
@@ -140,10 +141,12 @@ def _autoquantize_pytorch_module(
             continue
 
         method_src = src_class.member(func_name)
+        method_ref = getattr(mod_type, func_name, None)
         method_queue.extend(_find_dependent_methods(method_src, mod_type))
-        quantized_forward = convert_method(
+        quantized_forward = convert_funcdef(
             src=method_src,
             optable=operator_table,
+            func_ref=method_ref,
         )
         dst_class.add_method(quantized_forward)
 
