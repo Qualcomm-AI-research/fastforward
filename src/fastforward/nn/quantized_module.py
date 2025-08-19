@@ -8,7 +8,7 @@ import warnings
 from collections import defaultdict
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, Iterator, TypeAlias, Union, cast
+from typing import Any, Iterator, Literal, TypeAlias, Union, cast
 
 import torch
 import yaml
@@ -126,6 +126,9 @@ def _record_quantized_module(cls: type["QuantizedModule"]) -> None:
 
     module = module_bases[0]
     _QUANTIZED_MODULE_MAP.setdefault(module, []).append(cls)
+
+
+_OverwriteOptions: TypeAlias = Literal["overwrite"] | Literal["skip"] | Literal["error"]
 
 
 class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylint: disable=abstract-method
@@ -443,6 +446,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         tag: str = "main",
         name_or_path: str | Path | None = None,
         cache_dir: Path | None = None,
+        overwrite_policy: _OverwriteOptions = "error",
     ) -> None:
         """Load quantization state from saved files.
 
@@ -451,6 +455,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             name_or_path: Model identifier used when saving. If None, attempts to get from config.
             cache_dir: Directory where the quantization state was cached. If None, uses
                 default cache.
+            overwrite_policy: The policy to use when a loader quantizer is already present
+                in the model. Options are 'skip', 'overwrite' and 'error'.
 
         Raises:
             RuntimeError: If the model identifier cannot be determined.
@@ -522,10 +528,33 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             parts = name.rsplit(".", 1)
             parent = self if len(parts) == 1 else attrgetter(parts[0])(self)
             parent_attribute = parts[-1]
-            if not isinstance(getattr(parent, parent_attribute, None), QuantizerStub):
-                raise RuntimeError(
-                    f"'{name}' is an initialized quantizer or not even a quantizer at all."
+            current_quantizer = getattr(parent, parent_attribute, None)
+
+            is_quantizer = isinstance(current_quantizer, Quantizer)
+            is_quantizer_stub = isinstance(current_quantizer, QuantizerStub)
+            if is_quantizer and not is_quantizer_stub:
+                if overwrite_policy == "error":
+                    msg = (
+                        f"'{name}' is a quantizer, but is already initialized. If "
+                        + 'you want to overwrite the existing quantizer, use overwrite_policy="overwrite" '
+                        + "or if you want to skip loading existing quantizers use "
+                        + 'overwrite_policy="skip"'
+                    )
+                    raise QuantizationError()
+                elif overwrite_policy == "skip":
+                    continue
+                elif overwrite_policy != "overwrite":
+                    msg = (  # type: ignore[unreachable]
+                        "Encountered a quantizer that was already initialized. Since "
+                        + f"overwrite_policy={overwrite_policy} is illegal cannot resolve conflict."
+                        + "please use 'error', 'skip', or 'overwrite"
+                    )
+                    raise QuantizationError(msg)
+            if not is_quantizer:
+                raise ValueError(
+                    f"'{name}' is not a quantizer or was overwritten by a non-quantizer object"
                 )
+
             setattr(parent, parent_attribute, quantizer)
 
 

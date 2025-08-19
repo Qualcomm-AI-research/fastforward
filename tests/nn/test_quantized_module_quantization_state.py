@@ -327,3 +327,43 @@ def test_load_quantization_state_integration_with_save(
         # WHEN: Feed to both models the same input
         # THEN: Models produce the same output
         torch.testing.assert_close(model(data).dequantize(), duplicated_model(data).dequantize())
+
+
+def test_load_quantization_existing_quantizer(tmp_path: Path) -> None:
+    # Given: A quantized linear module with an existing weight quantizer
+    name_or_path = "partial_load_test_model"
+    module: ff.nn.QuantizedLinear = ff.nn.QuantizedLinear(10, 10)
+    module.weight_quantizer = ff.nn.LinearQuantizer(num_bits=8)
+    module.weight_quantizer.quantization_range = (-1.5, 1.5)
+    saved_range = module.weight_quantizer.quantization_range
+
+    # When: Saving the quantization state and then modifying the range
+    module.save_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+    module.weight_quantizer.quantization_range = (-15.0, 15.0)
+    new_range = module.weight_quantizer.quantization_range
+
+    # When: Loading with skip policy
+    module.load_quantization_state(
+        name_or_path=name_or_path, cache_dir=tmp_path, overwrite_policy="skip"
+    )
+    # Then: The range should remain unchanged (new_range)
+    assert module.weight_quantizer.quantization_range == new_range
+
+    # When: Loading with overwrite policy
+    module.load_quantization_state(
+        name_or_path=name_or_path, cache_dir=tmp_path, overwrite_policy="overwrite"
+    )
+    # Then: The range should be restored to the saved value
+    assert module.weight_quantizer.quantization_range == saved_range
+
+    # When: Loading with error policy on existing quantizer
+    # Then: Should raise QuantizationError
+    with pytest.raises(ff.exceptions.QuantizationError):
+        module.load_quantization_state(
+            name_or_path=name_or_path, cache_dir=tmp_path, overwrite_policy="error"
+        )
+
+    # When: Loading without specifying overwrite policy (defaults to error)
+    # Then: Should raise QuantizationError
+    with pytest.raises(ff.exceptions.QuantizationError):
+        module.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
