@@ -568,7 +568,9 @@ def export(
         if old_output_name in quantization_logs:
             quantization_logs[new_output_name] = quantization_logs.pop(old_output_name)
 
-    proto = onnxscript.ir.to_proto(torch_onnx_model)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="onnx_ir.*")
+        proto = onnxscript.ir.to_proto(torch_onnx_model)
     onnx.save(proto, onnx_location)
 
     used_inputs, _unused_inputs = get_inputs(
