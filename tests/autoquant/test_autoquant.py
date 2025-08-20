@@ -51,7 +51,7 @@ class _AssertNoAssignments(libcst.CSTVisitor):
 @pytest.mark.slow
 def test_default_source_context_wraps_assignment_nodes() -> None:
     # GIVEN the default source context
-    source_context = default_source_context()
+    source_context = default_source_context(use_type_inference=False)
 
     # WHEN a CST is obtained through default source context
     cst = source_context.get_cst("torch.nn.modules.conv", NodeType=libcst.Module)
@@ -762,7 +762,7 @@ def test_autoquant_end_to_end(input_module: torch.nn.Module, expected_codegen: s
     )
 
     # GIVEN a default SourceContext
-    source_context = default_source_context()
+    source_context = default_source_context(use_type_inference=False)
 
     # WHEN we autoquantize the example module
     autoquantized = autoquant(

@@ -52,11 +52,7 @@ test_autoquant_ignore_annotations = autoquant_case(
     """,
     expected="""
     def my_func_with_annotations(self, x: int | float, y: float | int) -> str | bool:
-        x = self.quantizer_x(x)
-        y = self.quantizer_y(y)
-        z: str | bool = fastforward.nn.functional.bitwise_or(
-            y, x, output_quantizer=self.quantizer_bitwise_or
-        )
+        z: str | bool = y | x
         return z
     """,
 )

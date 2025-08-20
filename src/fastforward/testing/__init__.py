@@ -8,6 +8,7 @@ import torch
 
 from . import autoquant as autoquant
 from . import metrics as metrics
+from . import string as string
 
 
 def is_close_to_rounding(tensor: torch.Tensor, eps: float = 0.0001) -> bool:

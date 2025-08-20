@@ -7,7 +7,8 @@ import libcst as libcst
 import pytest
 
 from fastforward._autoquant.autoquant import codeformat_with_defaults
-from fastforward._autoquant.cst import passes
+from fastforward._autoquant.cst import nodes, passes
+from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward.testing.string import assert_strings_match_verbose, dedent_strip
 
 _STATEMENT_SUITE_TO_BLOCK_IN = """
@@ -111,6 +112,67 @@ def test_isolate_replacement_candidates() -> None:
         ],
         expected,
     )
+
+
+_EXTENDED_MARK_REPLACEMENT_CANDIDATES_IN = """
+import torch
+from typing import TypeVar
+
+_T = TypeVar("_T", torch.Tensor)
+
+def do_something(a_: _T, b_: _T) -> _T:
+    return a_ + b_
+
+def some_function(a: list[int]):
+    b = [1,2,3]
+    c = [4, 5, 6]
+    d = a + b
+    e = b + c
+    f = do_something(d, e)
+    
+    g = 5
+    h = -g
+    
+    a_tensor = torch.tensor([1,2,3])
+    b_tensor = torch.tensor([4,5,6])
+    c_tensor = a_tensor + b_tensor
+    d_tensor = do_something(b_tensor, c_tensor)
+    e_tensor = -a_tensor
+    
+    return d, e, c_tensor
+"""
+
+
+@pytest.mark.slow
+def test_extended_mark_replacement_candidates() -> None:
+    # GIVEN: A code snippet that contains tensor operations
+    (input,) = dedent_strip(_EXTENDED_MARK_REPLACEMENT_CANDIDATES_IN)
+    cst = libcst.parse_module(input)
+    wrapped_cst = libcst.MetadataWrapper(cst, unsafe_skip_copy=True)
+
+    # WHEN: We apply the ExtendedMarkReplacementCandidates transformer
+    transformer_mark_candidates = passes.ExtendedMarkReplacementCandidates()
+    cst = wrapped_cst.visit(transformer_mark_candidates)
+
+    # THEN: The transformer should identify the expected tensor operations as
+    # replacement candidates and not the non-tensor operations.
+    expected_replacement_candidates = {
+        "a_tensor + b_tensor",
+        "do_something(b_tensor, c_tensor)",
+        "-a_tensor",
+    }
+
+    codegen_module = libcst.Module([])
+    for funcdef in filter_nodes_by_type(cst, libcst.FunctionDef):
+        if funcdef.name.value != "some_function":
+            continue
+
+        for node in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
+            code_str = codegen_module.code_for_node(node)
+            assert code_str in expected_replacement_candidates
+            expected_replacement_candidates.remove(code_str)
+
+    assert len(expected_replacement_candidates) == 0, "expected to be empty"
 
 
 def assert_input_transforms_as_expected(

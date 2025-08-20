@@ -139,8 +139,8 @@ class TraverserVisitor:
     def visit(self, node: Node) -> None:
         _visit(node, self)
 
-    def enter_node(self, node: Node) -> None:
-        pass
+    def enter_node(self, node: Node) -> bool:
+        return True
 
     def leave_node(self, node: Node) -> None:
         pass
@@ -539,580 +539,580 @@ def _visit(node: Node, visitor: TraverserVisitor, /) -> None:
 
 @_visit.register
 def _(node: MypyFile, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_mypy_file(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_mypy_file(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: Block, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_block(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_block(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: FuncItem, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_func(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_func(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: FuncDef, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_func_def(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_func_def(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: OverloadedFuncDef, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_overloaded_func_def(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_overloaded_func_def(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ClassDef, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_class_def(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_class_def(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: Decorator, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_decorator(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_decorator(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ExpressionStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_expression_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_expression_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AssignmentStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_assignment_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_assignment_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: OperatorAssignmentStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_operator_assignment_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_operator_assignment_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: WhileStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_while_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_while_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ForStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_for_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_for_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ReturnStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_return_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_return_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AssertStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_assert_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_assert_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: DelStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_del_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_del_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: IfStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_if_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_if_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: RaiseStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_raise_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_raise_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TryStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_try_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_try_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: WithStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_with_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_with_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: MatchStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_match_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_match_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeAliasStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_alias_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_alias_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: MemberExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_member_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_member_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: YieldFromExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_yield_from_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_yield_from_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: YieldExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_yield_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_yield_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: CallExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_call_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_call_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: OpExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_op_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_op_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ComparisonExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_comparison_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_comparison_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SliceExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_slice_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_slice_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: CastExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_cast_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_cast_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AssertTypeExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_assert_type_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_assert_type_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: RevealExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_reveal_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_reveal_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AssignmentExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_assignment_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_assignment_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: UnaryExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_unary_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_unary_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ListExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_list_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_list_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TupleExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_tuple_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_tuple_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: DictExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_dict_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_dict_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SetExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_set_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_set_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: IndexExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_index_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_index_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: GeneratorExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_generator_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_generator_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: DictionaryComprehension, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_dictionary_comprehension(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_dictionary_comprehension(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ListComprehension, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_list_comprehension(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_list_comprehension(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SetComprehension, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_set_comprehension(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_set_comprehension(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ConditionalExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_conditional_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_conditional_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeApplication, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_application(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_application(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: LambdaExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_lambda_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_lambda_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: StarExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_star_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_star_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AwaitExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_await_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_await_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SuperExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_super_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_super_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: AsPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_as_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_as_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: OrPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_or_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_or_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ValuePattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_value_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_value_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SequencePattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_sequence_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_sequence_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: StarredPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_starred_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_starred_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: MappingPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_mapping_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_mapping_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ClassPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_class_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_class_pattern(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: Import, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_import(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_import(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ImportFrom, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_import_from(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_import_from(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: NameExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_name_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_name_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: StrExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_str_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_str_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: IntExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_int_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_int_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: FloatExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_float_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_float_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: BytesExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_bytes_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_bytes_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: EllipsisExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_ellipsis(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_ellipsis(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: Var, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_var(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_var(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ContinueStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_continue_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_continue_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: PassStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_pass_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_pass_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: BreakStmt, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_break_stmt(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_break_stmt(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TempNode, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_temp_node(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_temp_node(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: NonlocalDecl, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_nonlocal_decl(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_nonlocal_decl(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: GlobalDecl, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_global_decl(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_global_decl(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ImportAll, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_import_all(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_import_all(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeVarExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_var_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_var_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ParamSpecExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_paramspec_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_paramspec_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeVarTupleExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_var_tuple_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_var_tuple_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeAliasExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_alias_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_alias_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypeAlias, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_type_alias(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_type_alias(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: NamedTupleExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_namedtuple_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_namedtuple_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: TypedDictExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_typeddict_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_typeddict_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: NewTypeExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_newtype_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_newtype_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: PromoteExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit__promote_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit__promote_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: ComplexExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_complex_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_complex_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: EnumCallExpr, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_enum_call_expr(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_enum_call_expr(node)
+        visitor.leave_node(node)
 
 
 @_visit.register
 def _(node: SingletonPattern, visitor: TraverserVisitor, /) -> None:
-    visitor.enter_node(node)
-    visitor.visit_singleton_pattern(node)
-    visitor.leave_node(node)
+    if visitor.enter_node(node):
+        visitor.visit_singleton_pattern(node)
+        visitor.leave_node(node)

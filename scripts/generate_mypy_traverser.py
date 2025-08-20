@@ -217,8 +217,8 @@ class _InvertAcceptCalls(libcst.CSTTransformer):
     """).strip()
 
     _enter_method_src = textwrap.dedent("""
-    def enter_node(self, node: Node) -> None:
-        pass
+    def enter_node(self, node: Node) -> bool:
+        return True
     """).strip()
 
     _leave_method_src = textwrap.dedent("""
@@ -229,9 +229,9 @@ class _InvertAcceptCalls(libcst.CSTTransformer):
     _visit_impl_template = textwrap.dedent("""
     @_visit.register
     def _(node: {node_type}, visitor: TraverserVisitor, /) -> None:
-        visitor.enter_node(node)
-        visitor.{visitor_method}(node)
-        visitor.leave_node(node)
+        if visitor.enter_node(node):
+            visitor.{visitor_method}(node)
+            visitor.leave_node(node)
     """).strip()
 
     def __init__(self) -> None:

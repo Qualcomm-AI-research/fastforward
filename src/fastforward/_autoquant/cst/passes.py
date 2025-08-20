@@ -18,6 +18,7 @@ from fastforward._autoquant.cst.node_creation import (
     get_keyword_argument_node,
     get_quantized_function_counterpart,
 )
+from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
 from fastforward._autoquant.pysource.scope import ScopeProvider
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
@@ -188,6 +189,84 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
     def visit_Annotation(self, node: libcst.Annotation) -> bool:
         # Inside an annotation we never want to replace anything
         return False
+
+
+_ExpressionT = TypeVar("_ExpressionT", bound=libcst.BaseExpression)
+
+
+class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
+    METADATA_DEPENDENCIES = (MypyTypeProvider,)
+
+    def _determine_replacement_candidate(
+        self, type_info: Sequence[TypeInfo | None], updated_node: _ExpressionT
+    ) -> ReplacementCandidate | _ExpressionT | None:
+        """Determine if a node should be marked as a replacement candidate based on type info.
+
+        This method analyzes the type information of expressions to decide if they should be
+        marked for replacement with quantized operations. It specifically looks for tensor types
+        that would benefit from quantization.
+
+        Args:
+            type_info: A sequence of TypeInfo objects or None values representing the types
+                      of expressions involved in the operation.
+            updated_node: The CST node being considered for replacement.
+
+        Returns:
+            - ReplacementCandidate wrapping the node if any involved type is a torch.Tensor
+            - The original node unchanged if no tensor types are detected
+            - None if type information is missing, indicating the caller should fall back to
+              a non-type-informed implementation
+        """
+        if all(info is None for info in type_info):
+            # If type information is missing, fall back to a non-type informed implementation.
+            return None
+
+        if any(_is_subtype(info, "torch.Tensor") for info in type_info):
+            return ReplacementCandidate(updated_node)
+        else:
+            return updated_node
+
+    @override
+    def leave_Call(
+        self, original_node: libcst.Call, updated_node: libcst.Call
+    ) -> libcst.BaseExpression:
+        type_info = []
+        for arg in original_node.args:
+            type_info.append(self.get_metadata(MypyTypeProvider, arg, None))
+
+        result = self._determine_replacement_candidate(type_info, updated_node)
+        return result or super().leave_Call(original_node, updated_node)
+
+    @override
+    def leave_UnaryOperation(
+        self,
+        original_node: libcst.UnaryOperation,
+        updated_node: libcst.UnaryOperation,
+    ) -> libcst.BaseExpression:
+        expr_type_info = self.get_metadata(MypyTypeProvider, original_node.expression, None)
+        out_type_info = self.get_metadata(MypyTypeProvider, original_node, None)
+        type_info = [expr_type_info, out_type_info]
+
+        result = self._determine_replacement_candidate(type_info, updated_node)
+        return result or super().leave_UnaryOperation(original_node, updated_node)
+
+    @override
+    def leave_BinaryOperation(
+        self,
+        original_node: libcst.BinaryOperation,
+        updated_node: libcst.BinaryOperation,
+    ) -> libcst.BaseExpression:
+        lhs_type_info = self.get_metadata(MypyTypeProvider, original_node.left, None)
+        rhs_type_info = self.get_metadata(MypyTypeProvider, original_node.right, None)
+        out_type_info = self.get_metadata(MypyTypeProvider, original_node, None)
+        type_info = [lhs_type_info, rhs_type_info, out_type_info]
+
+        result = self._determine_replacement_candidate(type_info, updated_node)
+        return result or super().leave_BinaryOperation(original_node, updated_node)
+
+
+def _is_subtype(type_info: TypeInfo | None, type_name: str) -> bool:
+    return False if type_info is None else type_info.is_subtype(type_name)
 
 
 def _is_simple_literal(node: libcst.CSTNode) -> bool:

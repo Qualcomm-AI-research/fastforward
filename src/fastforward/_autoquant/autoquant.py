@@ -26,18 +26,25 @@ from .convert import convert_method
 from .cst import passes
 
 
-def default_source_context() -> pysource.SourceContext:
+def default_source_context(use_type_inference: bool = True) -> pysource.SourceContext:
     """Default source context for Autoquant.
 
     If no source context is provided, this context is used.
     """
-    return pysource.SourceContext(preprocessing_passes=default_preprocessing_passes())
+    return pysource.SourceContext(
+        preprocessing_passes=default_preprocessing_passes(use_type_inferece=use_type_inference)
+    )
 
 
-def default_preprocessing_passes() -> Sequence[libcst.CSTTransformer]:
+def default_preprocessing_passes(use_type_inferece: bool = True) -> Sequence[libcst.CSTTransformer]:
+    MarkReplacementCandidatesPass = (
+        passes.ExtendedMarkReplacementCandidates()
+        if use_type_inferece
+        else passes.MarkReplacementCandidates()
+    )
     return [
         passes.ConvertSemicolonJoinedStatements(),
-        passes.MarkReplacementCandidates(),
+        MarkReplacementCandidatesPass,
         passes.IsolateReplacementCandidates(),
         passes.WrapAssignments(),
     ]
@@ -52,10 +59,15 @@ def default_optable() -> optable.OperatorTable:
 
 
 def autoquant_with_defaults(
-    module: torch.nn.Module, operator_table: optable.OperatorTable | None = None
+    module: torch.nn.Module,
+    operator_table: optable.OperatorTable | None = None,
+    use_type_inference: bool = True,
 ) -> str:
-    operator_table = operator_table or default_optable()
-    return autoquant(module, default_source_context(), operator_table)
+    return autoquant(
+        module=module,
+        source_context=default_source_context(use_type_inference=use_type_inference),
+        operator_table=operator_table or default_optable(),
+    )
 
 
 def codeformat_with_defaults(

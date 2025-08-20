@@ -9,6 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
   "importlib-metadata",
   "libcst",
+  "mypy<1.17",
   "numpy>=1.24,<2.0",
   "onnx",
   "onnxruntime",
@@ -28,7 +29,6 @@ dev = [
   "setuptools_scm[toml]>=6.2",
   # and the rest
   "isort",
-  "mypy<1.17",
   "notebook",
 ]
 test = [

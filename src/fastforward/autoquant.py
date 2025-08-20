@@ -68,6 +68,7 @@ def autoquantize(
     output_path: pathlib.Path | str | None = None,
     force_overwrite: bool = False,
     auto_import: bool = False,
+    use_type_inference: bool = True,
 ) -> AutoQuantizedCode: ...
 
 
@@ -79,6 +80,7 @@ def autoquantize(
     code_formatter: pybuilder.CodeFormatter | None = None,
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
+    use_type_inference: bool = True,
 ) -> AutoQuantizedCode: ...
 
 
@@ -91,6 +93,7 @@ def autoquantize(
     force_overwrite: bool = False,
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
+    use_type_inference: bool = True,
 ) -> AutoQuantizedCode:
     """Create Python source code for quantized version of `module`.
 
@@ -105,8 +108,13 @@ def autoquantize(
         code_writer: The code writer to use for writing the generated code. Mutually exclusive with
             output_path.
         auto_import: If True, automatically import the written module.
+        use_type_inference: If True, use type inference to reduce false
+            positive function rewrites in autoquant at the cost of a longer
+            runtime.
     """
-    autoquant_code = autoquant_with_defaults(module, operator_table)
+    autoquant_code = autoquant_with_defaults(
+        module, operator_table, use_type_inference=use_type_inference
+    )
     formatted_code = codeformat_with_defaults(autoquant_code, code_formatter=code_formatter)
     pymodule_name = emit_code_of_module(
         formatted_code,
