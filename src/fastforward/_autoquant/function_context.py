@@ -51,10 +51,10 @@ class FunctionContext:
             return cls._from_torch_module(type(module), func_ref)
         elif isinstance(module, type) and issubclass(module, torch.nn.Module):
             return cls._from_torch_module(module, func_ref)
-        elif isinstance(module, types.MethodType):
+        elif isinstance(module, types.ModuleType):
             return cls._from_py_module(module, func_ref)
         else:
-            return cls()
+            return cls()  # type: ignore[unreachable]
 
     @classmethod
     def _from_torch_module(
