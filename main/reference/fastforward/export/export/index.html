@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.17">
     
     
       
@@ -3915,7 +3915,9 @@ view-type operations in the graph as possible.</p>
 <span class="normal">590</span>
 <span class="normal">591</span>
 <span class="normal">592</span>
-<span class="normal">593</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ff</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="normal">593</span>
+<span class="normal">594</span>
+<span class="normal">595</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ff</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
@@ -4066,7 +4068,9 @@ view-type operations in the graph as possible.</p>
         <span class="k">if</span> <span class="n">old_output_name</span> <span class="ow">in</span> <span class="n">quantization_logs</span><span class="p">:</span>
             <span class="n">quantization_logs</span><span class="p">[</span><span class="n">new_output_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantization_logs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">old_output_name</span><span class="p">)</span>
 
-    <span class="n">proto</span> <span class="o">=</span> <span class="n">onnxscript</span><span class="o">.</span><span class="n">ir</span><span class="o">.</span><span class="n">to_proto</span><span class="p">(</span><span class="n">torch_onnx_model</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;onnx_ir.*&quot;</span><span class="p">)</span>
+        <span class="n">proto</span> <span class="o">=</span> <span class="n">onnxscript</span><span class="o">.</span><span class="n">ir</span><span class="o">.</span><span class="n">to_proto</span><span class="p">(</span><span class="n">torch_onnx_model</span><span class="p">)</span>
     <span class="n">onnx</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">proto</span><span class="p">,</span> <span class="n">onnx_location</span><span class="p">)</span>
 
     <span class="n">used_inputs</span><span class="p">,</span> <span class="n">_unused_inputs</span> <span class="o">=</span> <span class="n">get_inputs</span><span class="p">(</span>
@@ -4305,10 +4309,10 @@ modification/logging</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.50899def.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>
