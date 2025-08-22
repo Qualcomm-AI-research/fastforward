@@ -29,12 +29,12 @@ class QuantizedAutoquantTestModel(fastforward.nn.QuantizedModule, AutoquantTestM
 class QuantizedAutoquantTestBlock(fastforward.nn.QuantizedModule, AutoquantTestBlock):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_h_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_h_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
-        self.quantizer_add = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_h_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_h_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x(x)
@@ -57,8 +57,8 @@ class QuantizedAutoquantTestBlock(fastforward.nn.QuantizedModule, AutoquantTestB
 class QuantizedAutoquantClassifier(fastforward.nn.QuantizedModule, AutoquantClassifier):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_h = fastforward.nn.QuantizerStub()
-        self.quantizer_softmax = fastforward.nn.QuantizerStub()
+        self.quantizer_softmax: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_h: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Transform from 3d to 1d representation.

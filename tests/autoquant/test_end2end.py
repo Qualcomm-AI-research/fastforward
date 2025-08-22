@@ -68,7 +68,7 @@ def test_autoquant_end_to_end(module: torch.nn.Module, expected_output: str) -> 
     # GIVEN a PyTorch module
     # WHEN the module is autoquantized
     code_writer = TextIOWriter("TestModule", writer=(buffer := io.StringIO()))
-    ff.autoquantize(module, code_writer=code_writer, auto_import=False)
+    ff.autoquantize(module, code_writer=code_writer, auto_import=False, use_type_inference=False)
 
     # Then the generated code must match expectations
-    assert_strings_match_verbose(expected_output, buffer.getvalue())
+    assert_strings_match_verbose(expected_output.strip(), buffer.getvalue().strip())

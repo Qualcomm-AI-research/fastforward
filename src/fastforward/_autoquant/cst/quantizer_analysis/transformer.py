@@ -33,7 +33,7 @@ def _create_inline_quantize_statement(
         The quantize statement.
     """
     quantize_statement = libcst.helpers.parse_template_expression(
-        "self.{quantizer_name}({expr})",
+        "{quantizer_name}({expr})",
         expr=expr,
         quantizer_name=quantizer_name,
     )
@@ -97,18 +97,22 @@ class _InlineQuantization:
             return updated_node
 
         usage = self._occurrence[annotation]
-        quantized_statement = _create_inline_quantize_statement(
-            expr=updated_node,
-            quantizer_name=self._quantizer_refs.create_quantizer_expression(annotation.target),
-        )
+
+        # _quantizer_refs.create_quantizer_expression has side effects. Only
+        # call it when the result is actually used.
+        def quant_statement() -> libcst.Call:
+            return _create_inline_quantize_statement(
+                expr=updated_node,
+                quantizer_name=self._quantizer_refs.create_quantizer_expression(annotation.target),
+            )
 
         if usage is ExprOccurrence.UNIQUE:
-            return quantized_statement
+            return quant_statement()
 
         varname = f"__ff{self._named_expr_tracker[annotation]}"
         if usage is ExprOccurrence.PRIMARY:
             self._occurrence[annotation] = ExprOccurrence.SECONDARY
-            return _expr_to_named_expr(name=varname, expr=quantized_statement)
+            return _expr_to_named_expr(name=varname, expr=quant_statement())
 
         return libcst.Name(value=varname)
 

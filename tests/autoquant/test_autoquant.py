@@ -66,7 +66,7 @@ def test_default_source_context_wraps_assignment_nodes() -> None:
     # WHEN a CST is obtained through this source context
     cst = source_context.get_cst("torch.nn.modules.conv", NodeType=libcst.Module)
 
-    # THEN it is expected that the CST contains assignment nodes
+    # THEN it is expected that the CST contains no assignment nodes
     with pytest.raises(AssertionError):
         _ = cst.visit(_AssertNoAssignments())
 
@@ -97,9 +97,9 @@ from tests.autoquant.test_autoquant import ExampleModule1
 class QuantizedExampleModule1(fastforward.nn.QuantizedModule, ExampleModule1):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> tuple[TensorAlias, torch.Tensor]:
         x = self.quantizer_x(x)
@@ -128,9 +128,9 @@ from tests.autoquant.test_autoquant import ExampleModule2
 class QuantizedExampleModule2(fastforward.nn.QuantizedModule, ExampleModule2):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_conv2d = fastforward.nn.QuantizerStub()
-        self.quantizer_linear = fastforward.nn.QuantizerStub()
+        self.quantizer_conv2d: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_linear: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x(x)
@@ -170,20 +170,20 @@ from tests.autoquant.test_autoquant import ExampleModule3
 class QuantizedExampleModule3(fastforward.nn.QuantizedModule, ExampleModule3):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_y = fastforward.nn.QuantizerStub()
-        self.quantizer_add = fastforward.nn.QuantizerStub()
-        self.quantizer_bitwise_or = fastforward.nn.QuantizerStub()
-        self.quantizer_bitwise_xor = fastforward.nn.QuantizerStub()
-        self.quantizer_div = fastforward.nn.QuantizerStub()
-        self.quantizer_floor_divide = fastforward.nn.QuantizerStub()
-        self.quantizer_bitwise_left_shift = fastforward.nn.QuantizerStub()
-        self.quantizer_matmul = fastforward.nn.QuantizerStub()
-        self.quantizer_remainder = fastforward.nn.QuantizerStub()
-        self.quantizer_mul = fastforward.nn.QuantizerStub()
-        self.quantizer_pow = fastforward.nn.QuantizerStub()
-        self.quantizer_bitwise_right_shift = fastforward.nn.QuantizerStub()
-        self.quantizer_sub = fastforward.nn.QuantizerStub()
+        self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_bitwise_or: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_bitwise_xor: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_div: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_floor_divide: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_bitwise_left_shift: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_matmul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_remainder: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_mul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_pow: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_bitwise_right_shift: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sub: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x(x)
@@ -226,10 +226,10 @@ from tests.autoquant.test_autoquant import ExampleModule4
 class QuantizedExampleModule4(fastforward.nn.QuantizedModule, ExampleModule4):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_positive = fastforward.nn.QuantizerStub()
-        self.quantizer_negative = fastforward.nn.QuantizerStub()
-        self.quantizer_bitwise_not = fastforward.nn.QuantizerStub()
+        self.quantizer_positive: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_negative: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_bitwise_not: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x(x)
@@ -266,19 +266,19 @@ from tests.autoquant.test_autoquant import ExampleModule5
 class QuantizedExampleModule5(fastforward.nn.QuantizedModule, ExampleModule5):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_x_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
-        self.quantizer_x_3 = fastforward.nn.QuantizerStub()
-        self.quantizer_mul = fastforward.nn.QuantizerStub()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_mul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_3: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.quantizer_x_1(x)
+        x = self.quantizer_x_2(x)
         x = fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu)
         x = self.do_something(x)
         x = self.do_something(x)
-        x = self.quantizer_x_2(x)
+        x = self.quantizer_x_1(x)
         x = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
         return x
 
@@ -480,14 +480,14 @@ from tests.autoquant.test_autoquant import ExampleModule9, Tensor, _my_func
 class QuantizedExampleModule9(fastforward.nn.QuantizedModule, ExampleModule9):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
-        self.quantizer_x_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.quantizer_x_1(x)
+        x = self.quantizer_x_2(x)
         for _ in range(3):
             x = fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
         x = fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu_1)
@@ -495,7 +495,7 @@ class QuantizedExampleModule9(fastforward.nn.QuantizedModule, ExampleModule9):
         while test:
             for _ in range(3):
                 x = _my_func(x)
-                x = self.quantizer_x_2(x)
+                x = self.quantizer_x_1(x)
             test = False
         return fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu_2)
 """
@@ -530,10 +530,10 @@ from tests.autoquant.test_autoquant import ExampleModule10, Tensor
 class QuantizedExampleModule10(fastforward.nn.QuantizedModule, ExampleModule10):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_a_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_a_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_a_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_a_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: Tensor) -> Any:
         for a in x:
@@ -575,10 +575,10 @@ from tests.autoquant.test_autoquant import ExampleModule11, Tensor, _my_context
 class QuantizedExampleModule11(fastforward.nn.QuantizedModule, ExampleModule11):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_xx = fastforward.nn.QuantizerStub()
-        self.quantizer_yy = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_xx: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_yy: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
         with _my_context(x) as xx, _my_context(y) as yy, _my_context(x):
@@ -616,9 +616,9 @@ from tests.autoquant.test_autoquant import FloatModule12
 class QuantizedFloatModule12(fastforward.nn.QuantizedModule, FloatModule12):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_y = fastforward.nn.QuantizerStub()
-        self.quantizer_add = fastforward.nn.QuantizerStub()
+        self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """I am an important docstring.
@@ -653,14 +653,14 @@ from tests.autoquant.test_autoquant import ExampleModule13
 class QuantizedExampleModule13(fastforward.nn.QuantizedModule, ExampleModule13):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu = fastforward.nn.QuantizerStub()
-        self.quantizer_add = fastforward.nn.QuantizerStub()
-        self.quantizer_z = fastforward.nn.QuantizerStub()
-        self.quantizer_x_2 = fastforward.nn.QuantizerStub()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_z: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[Any]]:
-        x = self.quantizer_x_1(x)
+        x = self.quantizer_x_2(x)
         return [
             fastforward.nn.functional.relu(
                 self.quantizer_z(z), output_quantizer=self.quantizer_relu
@@ -669,7 +669,7 @@ class QuantizedExampleModule13(fastforward.nn.QuantizedModule, ExampleModule13):
             for z in y
         ], [
             fastforward.nn.functional.add(
-                (__ff0 := self.quantizer_x_2(x)), __ff0, output_quantizer=self.quantizer_add
+                (__ff0 := self.quantizer_x_1(x)), __ff0, output_quantizer=self.quantizer_add
             )
             for x in x
             if x > 0
@@ -702,14 +702,14 @@ from tests.autoquant.test_autoquant import ExampleModule14, Tensor
 class QuantizedExampleModule14(fastforward.nn.QuantizedModule, ExampleModule14):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_relu_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_y_1 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_y_2 = fastforward.nn.QuantizerStub()
-        self.quantizer_relu_3 = fastforward.nn.QuantizerStub()
-        self.quantizer_sigmoid = fastforward.nn.QuantizerStub()
-        self.quantizer_y_3 = fastforward.nn.QuantizerStub()
-        self.quantizer_z = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_relu_3: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_y_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_y_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_y_3: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_z: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> Iterable[Tensor]:
         if 0 > 0:
@@ -797,7 +797,7 @@ class QuantizedExampleExpression(fastforward.nn.QuantizedModule, ExampleExpressi
 @pytest.mark.slow
 def test_expressions_not_quantized() -> None:
     """Tests that expressions are not quantized (fixes #80)."""
-    actual = autoquant_with_defaults(ExampleExpression())
+    actual = autoquant_with_defaults(ExampleExpression(), use_type_inference=False)
     actual = codeformat_with_defaults(code=actual).strip()
 
     (expected_output,) = dedent_strip(EXPECTED_OUTPUT)
@@ -841,9 +841,9 @@ from tests.autoquant.test_autoquant import ExampleModule1B
 class QuantizedExampleModule1B(fastforward.nn.QuantizedModule, ExampleModule1B):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
-        self.quantizer_x = fastforward.nn.QuantizerStub()
-        self.quantizer_conv2d = fastforward.nn.QuantizerStub()
-        self.quantizer_linear = fastforward.nn.QuantizerStub()
+        self.quantizer_conv2d: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_linear: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.quantizer_x(x)
@@ -865,6 +865,7 @@ def test_autoquant_emits_code_to_stdout(capsys: pytest.CaptureFixture[str]) -> N
         module=input,
         code_writer=pybuilder.StdoutWriter(module_name="dummy_name"),
         auto_import=False,
+        use_type_inference=False,
     )
     actual_output = autoquantized.code
 
@@ -892,6 +893,7 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
         module=input,
         output_path=out_dir,
         auto_import=False,
+        use_type_inference=False,
     )
 
     # THEN the output directory was created
@@ -912,6 +914,7 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
             module=input,
             output_path=out_dir,
             auto_import=False,
+            use_type_inference=False,
         )
 
     # WHEN we try to overwrite the `__init__.py` file with force-overwrite
@@ -921,6 +924,7 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
         output_path=out_dir,
         force_overwrite=True,
         auto_import=False,
+        use_type_inference=False,
     )
 
     # WHEN we autoquantize the example code and specify to write to a `.py`-file instead
@@ -930,6 +934,7 @@ def test_autoquant_writes_to_file(tmp_path: pathlib.Path) -> None:
         module=input,
         output_path=output_path,
         auto_import=False,
+        use_type_inference=False,
     )
     # THEN we wrote to the `some_file.py`, and not to `__init__.py`
     assert output_path.is_file()
@@ -952,6 +957,7 @@ def test_auto_import(tmp_path: pathlib.Path) -> None:
         module=input,
         output_path=output_path,
         auto_import=True,
+        use_type_inference=False,
     )
 
     # THEN the system modules are extended by exactly one module

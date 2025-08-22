@@ -8,10 +8,16 @@ import pytest
 
 
 def autoquant_case(
-    input: str, expected: str, as_module: bool = False, mark_slow: bool = True
+    input: str,
+    expected: str,
+    as_module: bool = False,
+    mark_slow: bool = True,
+    use_type_inference: bool = False,
 ) -> Callable[[], None]:
     def test_function() -> None:
-        ff.testing.autoquant.assert_autoquantize_result(input, expected, as_module)
+        ff.testing.autoquant.assert_autoquantize_result(
+            input, expected, as_module, use_type_inference=use_type_inference
+        )
 
     if mark_slow:
         test_function = pytest.mark.slow(test_function)
@@ -55,6 +61,7 @@ test_autoquant_ignore_annotations = autoquant_case(
         z: str | bool = y | x
         return z
     """,
+    use_type_inference=True,
 )
 
 test_autoquant_skip_isolation_for_if_expr = autoquant_case(

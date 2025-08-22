@@ -645,39 +645,40 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         original_args: Sequence[libcst.Arg]
         match orig := updated_node.original:
             case libcst.UnaryOperation():
-                original_func, _, orignal_func_name = _get_name_and_torch_name_for_operation(orig)
+                original_func, _, original_func_name = _get_name_and_torch_name_for_operation(orig)
                 original_args = (libcst.Arg(orig.expression),)
             case libcst.BinaryOperation():
-                original_func, _, orignal_func_name = _get_name_and_torch_name_for_operation(orig)
+                original_func, _, original_func_name = _get_name_and_torch_name_for_operation(orig)
                 original_args = (libcst.Arg(orig.left), libcst.Arg(orig.right))
             case libcst.Call():
-                orignal_func_name = libcst.helpers.get_full_name_for_node(orig)
+                original_func_name = libcst.helpers.get_full_name_for_node(orig)
                 original_args = orig.args
-                original_func = _resolve_reference(orignal_func_name, self._func_ctx)
+                original_func = _resolve_reference(original_func_name, self._func_ctx)
             case _:
                 return updated_node
 
-        if orignal_func_name is None:
+        if original_func_name is None:
             # We cannot determine the name of the function called, skip it.
             return updated_node
 
-        if original_func is None:
-            # We have no reference on how to quantize, skip it.
-            return updated_node
-
         return self._create_quantized_call(
-            updated_node, orignal_func_name, original_func, original_args
+            node=updated_node,
+            fn_name=original_func_name,
+            func_ref=original_func,
+            orig_args=original_args,
         )
 
     def _create_quantized_call(
         self,
         node: ReplacementCandidate,
         fn_name: str,
-        func_ref: Any,
+        func_ref: Any | None,
         orig_args: Sequence[libcst.Arg],
     ) -> libcst.BaseExpression:
         if (call_node := self._create_resolved_quantized_call(fn_name, orig_args)) is not None:
             return call_node
+        if func_ref is None:
+            return node
         return self._create_unresolved_quantized_call(node, fn_name, func_ref, orig_args)
 
     def _create_resolved_quantized_call(

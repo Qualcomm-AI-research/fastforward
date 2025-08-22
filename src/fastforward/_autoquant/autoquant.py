@@ -69,24 +69,24 @@ def autoquant(
 
     # Process each method and its dependencies
     while func_queue:
-        task = func_queue.popleft()
-        func_name = task.function.__name__
+        new_task = func_queue.popleft()
+        func_name = new_task.function.__name__
 
-        if inspect.ismodule(task.module):
+        if inspect.ismodule(new_task.module):
             # Here the case for 'normal' function is handled in follow-up work.
             pass
-        elif issubclass(task.module, torch.nn.Module):
-            if task.module not in class_builders:
-                class_builders[task.module] = _cls_builder_for_module(task.module)
-            cls_builder = class_builders[task.module]
+        elif issubclass(new_task.module, torch.nn.Module):
+            if new_task.module not in class_builders:
+                class_builders[new_task.module] = _cls_builder_for_module(new_task.module)
+            cls_builder = class_builders[new_task.module]
             if cls_builder.has_method(func_name):
                 continue
 
             # Convert method to quantized version
-            qualified_class_name = fully_qualified_name(task.module)
+            qualified_class_name = fully_qualified_name(new_task.module)
             src_class = source_context.get(qualified_class_name)
             method_src = src_class.member(func_name)
-            method_ctx = FunctionContext.from_method(task.module, func_name)
+            method_ctx = FunctionContext.from_method(new_task.module, func_name)
             with quantizer_refs.push_context(method_ctx):
                 func_builder = convert_function(
                     src=method_src,
@@ -98,12 +98,15 @@ def autoquant(
 
             # Queue dependent methods for processing
             for dep_method_name in _find_dependent_methods(method_src, method_ctx):
-                func_queue.append(_AqTask(task.module, getattr(task.module, dep_method_name)))
+                new_task = _AqTask(
+                    module=new_task.module, function=getattr(new_task.module, dep_method_name)
+                )
+                func_queue.append(new_task)
 
         else:
             msg = (  # type: ignore[unreachable]
-                f"Failed to quantize '{task.function.__name__}' of '{task.module}' because "
-                + f"'{task.module}' is not a Python or Pytorch module."
+                f"Failed to quantize '{new_task.function.__name__}' of '{new_task.module}' because "
+                + f"'{new_task.module}' is not a Python or Pytorch module."
             )
             logger.warning(msg)
 
@@ -362,6 +365,8 @@ def _resolve_all_quantized_calls(
 
         # Collect unresolved calls (excluding method calls)
         for unresolved_call in filter_nodes_by_type(funcbuilder.cst, nodes.UnresolvedQuantizedCall):
+            if unresolved_call.func_ref not in func_contexts:
+                continue
             call_func_context = func_contexts[unresolved_call.func_ref]
             if call_func_context.method_type != MethodType.METHOD:
                 spec.calls[unresolved_call] = []

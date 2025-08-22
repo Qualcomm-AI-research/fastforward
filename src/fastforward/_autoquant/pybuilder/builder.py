@@ -273,7 +273,7 @@ class InitQuantizationMethod(NodeBuilder[libcst.FunctionDef]):
     def build(self, quantizer_refs: QuantizerReferenceCollection) -> libcst.FunctionDef:
         body_statements = [libcst.parse_statement(f"super().{self.name}()")]
 
-        body_statements = [
+        body_statements += [
             libcst.helpers.parse_template_statement(
                 "self.{name}: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()",
                 name=ref,
