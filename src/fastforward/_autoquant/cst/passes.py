@@ -685,6 +685,13 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func_name: str,
         original_args: Sequence[libcst.Arg],
     ) -> libcst.BaseExpression | None:
+        """Create a resolved quantized call if a quantized counterpart exists.
+
+        This method attempts to create a quantized version of a function call by looking up
+        the function name in the operator table. If a quantized counterpart is found, it
+        creates a new call with the original arguments plus additional output quantizer
+        arguments.
+        """
         # We don't have a quantized replacement for this function, skip it.
         if func_name not in self._optable:
             return None
@@ -717,6 +724,13 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func_ref: Callable[..., Any],
         original_args: Sequence[libcst.Arg],
     ) -> libcst.BaseExpression:
+        """Create an unresolved quantized call for functions without quantized counterparts.
+
+        This method handles cases where a function call cannot be directly replaced with
+        a quantized counterpart (i.e., when _create_resolved_quantized_call returns None).
+        It wraps the original call in an UnresolvedQuantizedCall node that preserves
+        the original call structure along with metadata for potential later processing.
+        """
         if not isinstance(node.original, libcst.Call):
             # This happens when an operator isn't supported by `_create_resolved_quantized_call`.
             # We leave it unchanged but keep it wrapped in ReplacementCandidate so later passes

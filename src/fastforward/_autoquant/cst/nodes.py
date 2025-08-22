@@ -150,8 +150,11 @@ class QuantizedCall(libcst.Call):
 class UnresolvedQuantizedCall(libcst.Call):
     """A metadata node that carries extra information and wraps a `libcst.Call`.
 
-    This wrapper node contains extra information on the quantized
-    operation that is 'called'. This can be helpful in further analysis.
+    This wrapper node represents a quantized function call that has been identified
+    but not yet fully resolved or transformed. Unlike `QuantizedCall`, this node
+    maintains the original function reference and name for later processing during
+    the quantization pipeline. It serves as an intermediate representation that
+    preserves metadata needed for subsequent analysis and transformation steps.
     """
 
     original_name: str = dataclasses.field(kw_only=True)
