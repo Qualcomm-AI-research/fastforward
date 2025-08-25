@@ -3,6 +3,8 @@
 
 
 import dataclasses
+import keyword as libkeyword
+import re
 
 from collections.abc import Iterator, Sequence
 
@@ -214,3 +216,36 @@ def unpack_sequence_expression(
                     yield from unpack_sequence_expression(elem.value)
         case _:
             yield expr
+
+
+def expr_to_ident(expr: libcst.BaseExpression) -> str:
+    """Convert a libcst.BaseExpression into a valid Python identifier.
+
+    Args:
+        expr: The libcst expression to convert
+
+    Returns:
+        A valid Python identifier string that resembles the input expression
+    """
+    identifier = libcst.Module([]).code_for_node(expr)
+
+    replacements = {
+        "+": "_plus_",
+        "-": "_minus_",
+        "*": "_mul_",
+        "//": "_div_",
+        "/": "_div_",
+    }
+
+    for symbol, replacement in replacements.items():
+        identifier = identifier.replace(symbol, replacement)
+    identifier = re.sub(r"[^a-zA-Z0-9_]", "_", identifier)
+    identifier = re.sub(r"_+", "_", identifier)
+    identifier = identifier.rstrip("_")
+
+    assert len(identifier) > 0
+
+    if identifier[0].isdigit() or libkeyword.iskeyword(identifier):
+        identifier = f"_{identifier}"
+
+    return identifier

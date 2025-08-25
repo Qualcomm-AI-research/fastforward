@@ -3,7 +3,7 @@
 
 
 from enum import Enum, auto
-from typing import Iterable, Iterator, NoReturn
+from typing import Iterable, Iterator, NoReturn, TypeVar, cast
 
 import libcst
 import libcst.helpers
@@ -133,10 +133,12 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         super().__init__()
         self._inline_quantization = _InlineQuantization(quantizer_refs)
         self._quantizer_refs = quantizer_refs
+        self._expr_replacements: dict[libcst.CSTNode, libcst.CSTNode] = {}
+        self._quantizer_refs_by_id: dict[int, libcst.BaseExpression] = {}
 
     def _get_annotations(
         self,
-        original_node: libcst.CSTNodeT,
+        original_node: libcst.CSTNode,
     ) -> Iterator[QuantizationAnnotation] | set[QuantizationAnnotation] | None:
         try:
             return self.get_metadata(QuantizationAnnotationProvider, original_node)
@@ -156,7 +158,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
             if self._get_annotations(original_param) is None:
                 continue
             statement = create_quantize_statement(
-                name=updated_param.name.value,
+                target=updated_param.name.value,
                 quantizer_ref=self._quantizer_refs.create_quantizer_expression(
                     updated_param.name.value
                 ),
@@ -164,11 +166,52 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
             statements.append(statement)
 
         # Keep docstring in its original place
-        if _function_has_docstring(updated_node):
-            updated_body = [updated_node.body.body[0], *statements, *updated_node.body.body[1:]]
-        else:
-            updated_body = [*statements, *updated_node.body.body]
-        return updated_node.with_changes(body=updated_node.body.with_changes(body=updated_body))
+        updated_body = _insert_in_indented_block(updated_node.body, statements)
+        return updated_node.with_changes(body=updated_body)
+
+    def visit_IndentedBlock(self, node: libcst.IndentedBlock) -> bool:
+        # Record expression replacements for quantized variables. all uses of the original
+        # expression will be replaced with the quantization target variable name.
+        # The actual replacement occurs in `on_leave`.
+        # The quantizer calls for these expressions are introduced in leave_IndentedBlock.
+        if (annotations := self._get_annotations(node)) is not None:
+            for annotation in annotations:
+                replacement = libcst.Name(annotation.target)
+                self._expr_replacements.update((use, replacement) for use in annotation.uses)
+
+        return True
+
+    def leave_IndentedBlock(
+        self, original_node: libcst.IndentedBlock, updated_node: libcst.IndentedBlock
+    ) -> libcst.IndentedBlock:
+        if (annotations := self._get_annotations(original_node)) is None:
+            return updated_node
+
+        # Insert quantizer call statements at the beginning of the block for
+        # each annotated expression. These statements assign the quantized
+        # result to a target variable, which will replace all uses of the
+        # original expression (as set up in visit_IndentedBlock).
+        quantize_statements = []
+        for annotation in annotations:
+            quantizer_id = annotation.quantizer_id
+
+            # Reuse quantizer expressions with the same ID to avoid creating duplicates
+            if quantizer_id is not None and quantizer_id in self._quantizer_refs_by_id:
+                quantizer_ref = self._quantizer_refs_by_id[quantizer_id]
+            else:
+                quantizer_ref = self._quantizer_refs.create_quantizer_expression(annotation.target)
+                if quantizer_id is not None:
+                    self._quantizer_refs_by_id[quantizer_id] = quantizer_ref
+
+            # Create quantizer call statement: target = quantizer(original_expression)
+            statement = create_quantize_statement(
+                target=annotation.target,
+                source=cast(libcst.BaseExpression, annotation.uses[0]),
+                quantizer_ref=quantizer_ref,
+            )
+            quantize_statements.append(statement)
+
+        return _insert_in_indented_block(updated_node, quantize_statements)
 
     def leave_GeneralAssignment(
         self, original_node: nodes.GeneralAssignment, updated_node: nodes.GeneralAssignment
@@ -182,7 +225,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         for annotation in annotations:
             target = annotation.target
             statement = create_quantize_statement(
-                name=target,
+                target=target,
                 quantizer_ref=self._quantizer_refs.create_quantizer_expression(target),
             )
             statements.append(statement.body[0])
@@ -196,7 +239,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         statements = []
         for annotation in annotations:
             statement = create_quantize_statement(
-                name=annotation.target,
+                target=annotation.target,
                 quantizer_ref=self._quantizer_refs.create_quantizer_expression(annotation.target),
             )
             statements.append(statement)
@@ -232,7 +275,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
                 ):
                     statements.append(
                         create_quantize_statement(
-                            name=value,
+                            target=value,
                             quantizer_ref=self._quantizer_refs.create_quantizer_expression(value),
                         )
                     )
@@ -306,35 +349,50 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         return True
 
     @override
-    def on_leave(
+    def on_leave(  # type: ignore[override]
         self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
-    ) -> libcst.CSTNodeT | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
+    ) -> libcst.CSTNode | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
         """Looks for inline replacements of quantized expressions."""
+        # If original node is included in _expr_replacements, use the replacement and don't
+        # process further. The `_expr_replacements` map is updated `visit_IndentedBlock`.
+        if original_node in self._expr_replacements:
+            return self._expr_replacements[original_node]
+
         modified_updated_node = super().on_leave(original_node, updated_node)
         if not isinstance(modified_updated_node, libcst.CSTNode):
             return modified_updated_node
-        return self._inline_quantization.maybe_quantize_expression(  # type: ignore[return-value]
+
+        return self._inline_quantization.maybe_quantize_expression(
             original_node, modified_updated_node
         )
 
 
-def _function_has_docstring(node: libcst.FunctionDef) -> bool:
+_BaseSuiteT = TypeVar("_BaseSuiteT", libcst.BaseSuite, libcst.IndentedBlock)
+
+
+def _has_docstring(node: _BaseSuiteT) -> bool:
     return m.matches(
         node,
-        m.FunctionDef(
-            body=m.IndentedBlock(
-                body=[
-                    m.SimpleStatementLine(
-                        body=[
-                            m.Expr(value=m.SimpleString()),
-                            m.ZeroOrMore(),
-                        ]
-                    ),
-                    m.ZeroOrMore(),
-                ]
-            )
+        m.IndentedBlock(
+            body=[
+                m.SimpleStatementLine(body=[m.Expr(value=m.SimpleString()), m.ZeroOrMore()]),
+                m.ZeroOrMore(),
+            ]
         ),
     )
+
+
+def _insert_in_indented_block(
+    node: _BaseSuiteT,
+    nodes: Iterable[libcst.SimpleStatementLine | libcst.BaseCompoundStatement],
+) -> _BaseSuiteT:
+    """Insert `statements` at the beginning of a `node`, preserving docstrings."""
+    assert not isinstance(node, libcst.SimpleStatementSuite)
+    if _has_docstring(node):
+        updated_body = (node.body[0], *nodes, *node.body[1:])
+    else:
+        updated_body = (*nodes, *node.body)
+    return node.with_changes(body=updated_body)
 
 
 def _fail_due_to_mismatch() -> NoReturn:

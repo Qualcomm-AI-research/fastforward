@@ -35,6 +35,7 @@ from .nodes import (
     QuantizedCall,
     ReplacementCandidate,
     UnresolvedQuantizedCall,
+    is_simple_literal,
     node_asdict,
 )
 
@@ -174,7 +175,7 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
         updated_node: libcst.BinaryOperation,
     ) -> libcst.BaseExpression:
         del original_node
-        if _is_simple_literal(updated_node.left) and _is_simple_literal(updated_node.right):
+        if is_simple_literal(updated_node.left) and is_simple_literal(updated_node.right):
             return updated_node
         else:
             return ReplacementCandidate(updated_node)
@@ -186,7 +187,7 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
         updated_node: libcst.UnaryOperation,
     ) -> libcst.BaseExpression:
         del original_node
-        if _is_simple_literal(updated_node.expression):
+        if is_simple_literal(updated_node.expression):
             return updated_node
         else:
             return ReplacementCandidate(updated_node)
@@ -273,27 +274,6 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
 
 def _is_subtype(type_info: TypeInfo | None, type_name: str) -> bool:
     return False if type_info is None else type_info.is_subtype(type_name)
-
-
-def _is_simple_literal(node: libcst.CSTNode) -> bool:
-    """True if node is a literal that is not a collection, False otherwise."""
-    match node:
-        case libcst.Integer() | libcst.Float() | libcst.Imaginary():
-            return True
-        case libcst.BaseString():
-            return True
-        case libcst.Name("True") | libcst.Name("False"):
-            return True
-        case libcst.Name("None"):
-            return True
-        case libcst.Ellipsis():
-            return True
-        case libcst.UnaryOperation(expression=expr):
-            return _is_simple_literal(expr)
-        case libcst.BinaryOperation(left=lhs, right=rhs):
-            return _is_simple_literal(lhs) and _is_simple_literal(rhs)
-        case _:
-            return False
 
 
 @dataclasses.dataclass

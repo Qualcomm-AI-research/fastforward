@@ -22,10 +22,12 @@ metadata provider that stores the quantization annotations for a given node and
 can be used by any libcst visitor or transformer.
 """
 
+import collections
 import contextlib
 import dataclasses
+import logging
 
-from typing import Iterator
+from typing import Iterator, Sequence, TypeAlias, cast
 
 import libcst
 
@@ -37,9 +39,12 @@ from libcst.metadata.expression_context_provider import (
 from typing_extensions import overload
 
 from fastforward._autoquant.cst import node_processing, nodes
+from fastforward._autoquant.cst.nodes import is_simple_literal
 
 from .scope import QuantizationMetadata
 from .scope import QuantizationScope as Scope
+
+logger = logging.getLogger(__name__)
 
 
 class _ExpressionContextVisitor(ExpressionContextVisitor):
@@ -67,10 +72,14 @@ class QuantizationAnnotation:
     Attributes:
         target: The target variable name that is being quantized.
         uses: The nodes that use the target.
+        quantizer_id: Shared identifier for annotations that should use the same
+            quantizer instance (used for expressions quantized across branches).
+            If not set, the quantizer is used once.
     """
 
     target: str
     uses: list[libcst.CSTNode] = dataclasses.field(compare=False, hash=False, default_factory=list)
+    quantizer_id: None | int = None
 
 
 class QuantizationAnnotationProvider(libcst.BatchableMetadataProvider[set[QuantizationAnnotation]]):
@@ -82,6 +91,181 @@ class QuantizationAnnotationProvider(libcst.BatchableMetadataProvider[set[Quanti
         annotator = _QuantizationAnnotator(self)
         node.visit(annotator)
         return None
+
+
+_BranchBlock: TypeAlias = (
+    libcst.IndentedBlock | libcst.BaseSuite | libcst.If | libcst.Else | libcst.FunctionDef | None
+)
+
+
+@dataclasses.dataclass
+class _NLBResolveContext:
+    """Context for resolving non-local branch expressions.
+
+    This class tracks quantizer IDs and annotations for code blocks during the resolution
+    of expressions that need quantization across branch boundaries.
+
+    Attributes:
+        quantizer_ids: Maps code representations to unique quantizer IDs to ensure
+            consistent quantizer usage across related expressions.
+        block_annotations: Maps code blocks to their associated quantization annotations.
+    """
+
+    quantizer_ids: dict[str, int] = dataclasses.field(default_factory=dict)
+    block_annotations: dict[libcst.IndentedBlock, list[QuantizationAnnotation]] = dataclasses.field(
+        default_factory=lambda: collections.defaultdict(list)
+    )
+
+    def add_annotation_for_block(
+        self, block: _BranchBlock, uses: Sequence[libcst.BaseExpression]
+    ) -> None:
+        # This assumes all nodes in uses represent the same expression.
+        # We do not assert this here for efficiency reasons.
+
+        if not uses or block is None:
+            return
+
+        match block:
+            case libcst.IndentedBlock():
+                # Generate or reuse quantizer ID for expression deduplication.
+                # Identical expressions across usage sites share the same quantizer
+                # to maintain consistency in quantization behavior.
+                quantizer_id = self.quantizer_ids.setdefault(
+                    libcst.Module([]).code_for_node(uses[0]), len(self.quantizer_ids)
+                )
+
+                name = node_processing.expr_to_ident(uses[0])
+                annotation = QuantizationAnnotation(
+                    target=name,
+                    uses=cast(list[libcst.CSTNode], uses),
+                    quantizer_id=quantizer_id,
+                )
+                self.block_annotations[block].append(annotation)
+
+            # Recursively call `add_annotation_for_block` block is a node that
+            # wraps an `IndentedBlock`.
+            case libcst.If():
+                self.add_annotation_for_block(block.body, uses)
+            case libcst.Else():
+                self.add_annotation_for_block(block.body, uses)
+            case libcst.FunctionDef():
+                self.add_annotation_for_block(block.body, uses)
+            case _:
+                pass
+
+
+class _NonLocalBranchScope:
+    """Manages quantization of expressions across branch boundaries.
+
+    Tracks non-local expressions requiring quantization and determines optimal
+    quantizer placement scope.
+
+    Unlike local variable tracking which requires complex scope management, this
+    analyzer tracks quantization-requiring expressions within code blocks. When
+    an expression needs quantization across all child scopes (e.g., all branches
+    of an if statement), the quantizer is placed in the parent scope for efficiency.
+    Scope resolution is handled by `_NonLocalBranchScope.resolve`.
+
+    Args:
+        block: The CST node that represents the scope.
+    """
+
+    def __init__(self, block: _BranchBlock | None = None) -> None:
+        self._block = block
+        self._children: list[_NonLocalBranchScope] = []
+        self._recorded_nodes: dict[str, list[libcst.BaseExpression]] = collections.defaultdict(list)
+        self._active_scope = self
+
+    @contextlib.contextmanager
+    def inner_scope(self, block: _BranchBlock) -> Iterator[None]:
+        """Creates a new inner scope for a branch block.
+
+        This context manager creates a nested scope for branch blocks like if/else statements
+        or function bodies, allowing proper tracking of expressions across branch boundaries.
+
+        Args:
+            block: The branch block to create a scope for.
+
+        Yields:
+            None
+        """
+        if self._block is None:
+            self._block = block
+            yield
+
+        elif self._active_scope is not self:
+            with self._active_scope.inner_scope(block):
+                yield
+        else:
+            current_scope = self._active_scope
+            self._children.append(_NonLocalBranchScope(block))
+            self._active_scope = self._children[-1]
+            try:
+                yield
+            finally:
+                self._active_scope = current_scope
+
+    def resolve(self) -> Iterator[tuple[libcst.IndentedBlock, set[QuantizationAnnotation]]]:
+        """Resolves all recorded expressions and returns quantization annotations.
+
+        This method determines where quantizers should be inserted for all recorded
+        expressions and returns the appropriate annotations for each block.
+
+        Returns:
+            Iterator of tuples containing a block and its associated quantization annotations.
+        """
+        self._resolve(ctx := _NLBResolveContext())
+        for block, annotations in ctx.block_annotations.items():
+            yield block, set(annotations)
+
+    def _resolve(
+        self, ctx: _NLBResolveContext, *, _depth: int = 0
+    ) -> dict[str, list[libcst.BaseExpression]]:
+        """Recursively resolves expressions in this scope and all child scopes.
+
+        This method determines which expressions should be hoisted to parent scopes
+        and which should have quantizers inserted in their specific branches.
+
+        Args:
+            ctx: Context for resolving non-local branch expressions.
+            _depth: Current recursion depth (used to identify the root call).
+
+        Returns:
+            Dictionary mapping code representations to expressions that should be hoisted.
+        """
+        # Empty recorded nodes by resolving
+        recorded_nodes = self._recorded_nodes
+        self._recorded_nodes = collections.defaultdict(list)
+
+        if not self._children:
+            return recorded_nodes
+
+        hoisted_nodes = [child._resolve(ctx, _depth=_depth + 1) for child in self._children]
+        common_nodes = set.intersection(*(set(child.keys()) for child in hoisted_nodes))
+
+        for node_map, child in zip(hoisted_nodes, self._children):
+            for code_repr, uses in node_map.items():
+                if code_repr in common_nodes:
+                    recorded_nodes[code_repr] += uses
+                else:
+                    ctx.add_annotation_for_block(child._block, uses)
+
+        if _depth == 0:
+            for uses in recorded_nodes.values():
+                ctx.add_annotation_for_block(self._block, uses)
+
+        return recorded_nodes
+
+    def record(self, node: libcst.BaseExpression) -> None:
+        """Records an expression that needs to be quantized.
+
+        Args:
+            node: The expression to record for quantization.
+        """
+        if self._active_scope is not self:
+            return self._active_scope.record(node)
+        code_repr = libcst.Module([]).code_for_node(node)
+        self._recorded_nodes[code_repr].append(node)
 
 
 class _QuantizationAnnotator(libcst.CSTVisitor):
@@ -114,6 +298,7 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
     def __init__(self, provider: QuantizationAnnotationProvider) -> None:
         self._active_scope: "Scope" = Scope()
         self._provider = provider
+        self._nonlocal_symbol_scope = _NonLocalBranchScope()
 
     @contextlib.contextmanager
     def enter_scope(self, *, is_loop: bool = False) -> Iterator["Scope"]:
@@ -177,9 +362,14 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
 
     def evaluate_FunctionDef(self, node: libcst.FunctionDef) -> None:
         """Create new scope and evaluate params and body."""
-        with self.enter_scope():
+        with self._nonlocal_symbol_scope.inner_scope(node), self.enter_scope():
             node.params.visit(self)
             node.body.visit(self)
+
+        for block, new_annotations in self._nonlocal_symbol_scope.resolve():
+            annotation_set = self.get_annotations(block)
+            annotation_set |= new_annotations
+            self._provider.set_metadata(block, annotation_set)
 
     def evaluate_IndentedBlock(self, node: libcst.IndentedBlock) -> None:
         """Evaluate `IndentedBlock`.
@@ -227,14 +417,20 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         node.test.visit(self)
 
         # Evaluate true branch in new scope
-        with self.enter_scope() as true_scope:
+        with (
+            self._nonlocal_symbol_scope.inner_scope(node),
+            self.enter_scope() as true_scope,
+        ):
             node.body.visit(self)
         if_scope = true_scope
 
         # If a orelse branch exists, evaluate it in its own scope and merge
         # with true scope.
         if node.orelse:
-            with self.enter_scope() as false_scope:
+            with (
+                self._nonlocal_symbol_scope.inner_scope(node.orelse),
+                self.enter_scope() as false_scope,
+            ):
                 node.orelse.visit(self)
 
             if_scope = true_scope.merge(false_scope)
@@ -499,8 +695,15 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         match node:
             case libcst.Name(value=var):
                 self._ensure_quantized_var(var)
+            case libcst.BaseExpression():
+                if not is_simple_literal(node):
+                    self._nonlocal_symbol_scope.record(node)
             case _:
-                pass
+                msg = (
+                    f"Quantization of {libcst.Module([]).code_for_node(node)} is required, "
+                    + f"but support for '{type(node)}' is missing."
+                )
+                logger.warning(msg)
 
     def _ensure_quantized_var(self, var: str) -> None:
         """Ensures that a variable, identified by name, is quantized.

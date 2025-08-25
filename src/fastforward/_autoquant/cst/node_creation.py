@@ -82,23 +82,33 @@ def get_quantized_function_counterpart(
 
 
 def create_quantize_statement(
-    name: str,
+    *,
+    target: str | libcst.Name,
     quantizer_ref: libcst.BaseExpression,
+    source: str | libcst.BaseExpression | None = None,
 ) -> libcst.SimpleStatementLine:
     """Create a quantize statement.
 
     Args:
-        name: The name of the variable to be quantized.
-        quantizer_ref: The reference to the quantizer.
+        target: Variable name to assign the quantized result to
+        quantizer_ref: Expression that evaluates to the quantizer function
+        source: Expression to quantize (defaults to target)
 
     Returns:
         The quantize statement.
     """
-    name_node = libcst.Name(name)
+    if not isinstance(target, libcst.Name):
+        target = libcst.Name(target)
+    if source is None:
+        source = target
+    if isinstance(source, str):
+        source = libcst.Name(source)
+
     quantize_statement = libcst.helpers.parse_template_statement(
-        "{name} = {quantizer_ref}({name})",
-        name=name_node,
+        "{target} = {quantizer_ref}({source})",
+        target=target,
         quantizer_ref=quantizer_ref,
+        source=source,
     )
     assert isinstance(quantize_statement, libcst.SimpleStatementLine)
     return quantize_statement

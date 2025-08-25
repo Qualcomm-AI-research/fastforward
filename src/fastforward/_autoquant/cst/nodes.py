@@ -229,3 +229,24 @@ class AbstractClassReference(libcst.Name):
 
 def node_asdict(node: libcst.CSTNode) -> dict[str, Any]:
     return {field.name: getattr(node, field.name) for field in dataclasses.fields(node)}
+
+
+def is_simple_literal(node: libcst.CSTNode) -> bool:
+    """True if node is a literal that is not a collection, False otherwise."""
+    match node:
+        case libcst.Integer() | libcst.Float() | libcst.Imaginary():
+            return True
+        case libcst.BaseString():
+            return True
+        case libcst.Name("True") | libcst.Name("False"):
+            return True
+        case libcst.Name("None"):
+            return True
+        case libcst.Ellipsis():
+            return True
+        case libcst.UnaryOperation(expression=expr):
+            return is_simple_literal(expr)
+        case libcst.BinaryOperation(left=lhs, right=rhs):
+            return is_simple_literal(lhs) and is_simple_literal(rhs)
+        case _:
+            return False
