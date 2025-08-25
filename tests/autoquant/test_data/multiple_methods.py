@@ -11,7 +11,7 @@ class ModuleWithMultipleMethods(torch.nn.Module):
 
     @classmethod
     def _forward_cls(cls, x: torch.Tensor) -> torch.Tensor:
-        return cls._forward_static_1(x) + cls._forward_static_2(x)
+        return cls._forward_static_1(x) + ModuleWithMultipleMethods._forward_static_2(x)
 
     @staticmethod
     def _forward_static_1(x: torch.Tensor) -> torch.Tensor:

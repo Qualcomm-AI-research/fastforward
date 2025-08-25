@@ -529,8 +529,6 @@ class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):
         for arg in quantizer_args:
             new_args.append(node_creation.get_keyword_argument_node(arg.keyword, arg.value))
 
-        # TODO: if updated_node.func references the old class, this should be updated.
-        #       This can be done in the QuantizerCounterPart pass
         params = nodes.node_asdict(updated_node)
         params["args"] = tuple(updated_node.args) + tuple(new_args)
 

@@ -30,6 +30,7 @@ from fastforward._quantops.optable import (
 )
 
 from .nodes import (
+    AbstractClassReference,
     GeneralAssignment,
     QuantizedCall,
     ReplacementCandidate,
@@ -739,8 +740,38 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
             return node
 
         call_params = node_asdict(node.original)
+
         call_params["args"] = original_args
+        call_params["func"] = _generalize_class_refs(node.original.func, self._func_ctx)
         return UnresolvedQuantizedCall(**call_params, original_name=func_name, func_ref=func_ref)
+
+
+def _get_root(expr: libcst.BaseExpression) -> libcst.BaseExpression:
+    """Get the 'root' expression of a (possibly nested) `Attribute` node."""
+    match expr:
+        case libcst.Attribute():
+            return _get_root(expr.value)
+        case _:
+            return expr
+
+
+def _generalize_class_refs(
+    expr: libcst.BaseExpression, func_ctx: FunctionContext
+) -> libcst.BaseExpression:
+    """Replace torch module class name references with `AbstractClassReference` nodes.
+
+    Args:
+        expr: The CST expression node to transform.
+        func_ctx: Function context containing the torch module information.
+    """
+    if (torch_module := func_ctx.torch_module) is None:
+        return expr
+
+    func_root = _get_root(expr)
+    if isinstance(func_root, libcst.Name) and func_root.value == torch_module.__name__:
+        return expr.deep_replace(func_root, AbstractClassReference(**node_asdict(func_root)))
+    else:
+        return expr
 
 
 class FoldSimpleTemporaries(libcst.CSTTransformer):

@@ -61,7 +61,7 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
             quantizer_x=quantizer__forward_static_1_x,
         )
         _tmp_1 = quantizer__tmp_1(_tmp_1)
-        _tmp_2 = cls._forward_static_2(
+        _tmp_2 = QuantizedModuleWithMultipleMethods._forward_static_2(
             x,
             quantizer_div=quantizer__forward_static_2_div,
             quantizer_x=quantizer__forward_static_2_x,

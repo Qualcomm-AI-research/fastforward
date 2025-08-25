@@ -207,5 +207,25 @@ class QuantizerReference(libcst.Name):
         return node
 
 
+@dataclasses.dataclass(slots=True, frozen=True)
+class AbstractClassReference(libcst.Name):
+    """Subclass of Name representing a deferred class reference resolved at module build time.
+
+    Used when the class name is not available during initial processing but can be determined later.
+
+    Example:
+        When creating quantized counterpart classes, we do not know the final
+        class name during initial CST construction. AbstractClassReference
+        allows us to reference this yet-to-be-determined class name in the CST,
+        with the actual name resolved when the module is built.
+    """
+
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "AbstractClassReference":
+        # This method must be implemented to prevent a 'downcast' to a
+        # libcst.Call node during arbitrary transformer application
+        visited_call = libcst.Name._visit_and_replace_children(self, visitor)
+        return AbstractClassReference(**node_asdict(visited_call))
+
+
 def node_asdict(node: libcst.CSTNode) -> dict[str, Any]:
     return {field.name: getattr(node, field.name) for field in dataclasses.fields(node)}

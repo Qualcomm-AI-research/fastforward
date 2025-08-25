@@ -153,8 +153,12 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
         bases = ", ".join(bases)
         base_def: libcst.ClassDef = libcst.parse_statement(f"class {self._name}({bases}): pass")  # type: ignore[assignment]
 
-        return base_def.with_changes(
+        class_def = base_def.with_changes(
             body=libcst.IndentedBlock([func.build(quantizer_refs) for func in methods])
+        )
+        return cast(
+            libcst.ClassDef,
+            class_def.visit(_ResolveAbstractClassReferences(libcst.Name(self._name))),
         )
 
     def methods(self) -> Iterator["FunctionBuilder"]:
@@ -361,3 +365,16 @@ class _DisambiguateQuantizerNameTransformer(libcst.CSTTransformer):
             lpar=updated_node.lpar,
             rpar=updated_node.rpar,
         )
+
+
+class _ResolveAbstractClassReferences(libcst.CSTTransformer):
+    def __init__(self, class_name: libcst.Name):
+        self._class_name = class_name
+
+    def leave_AbstractClassReference(
+        self,
+        original_node: nodes.AbstractClassReference,
+        updated_node: nodes.AbstractClassReference,
+    ) -> libcst.Name:
+        del original_node, updated_node
+        return self._class_name.deep_clone()
