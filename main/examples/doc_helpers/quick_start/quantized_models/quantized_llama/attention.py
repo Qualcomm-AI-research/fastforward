@@ -365,6 +365,20 @@ def scaled_dot_product_attention(
     )
 
 
+class quantized_sdpa_upcast_dtype:
+    _UPCAST_DTYPE = torch.float32
+
+    def __init__(self, dtype: torch.dtype):
+        self.orig_dtype = quantized_sdpa_upcast_dtype._UPCAST_DTYPE
+        self.dtype = dtype
+
+    def __enter__(self):
+        quantized_sdpa_upcast_dtype._UPCAST_DTYPE = self.dtype
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        quantized_sdpa_upcast_dtype._UPCAST_DTYPE = self.orig_dtype
+
+
 @register("scaled_dot_product_attention", None)
 def _scaled_dot_product_attention(
     query: QuantizedTensor,
@@ -373,7 +387,7 @@ def _scaled_dot_product_attention(
     attn_mask: QuantizedTensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
-    scale: float = None,
+    scale: float | None = None,
     matmul_k_quantizer: Quantizer | None = None,
     softmax_quantizer: Quantizer | None = None,
     dropout_quantizer: Quantizer | None = None,
@@ -382,7 +396,11 @@ def _scaled_dot_product_attention(
 ) -> QuantizedTensor | Tensor:
     """Quantized version of scaled_dot_product_attention from torch documentation.
 
-    Reference: https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
+    Reference implementation: https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
+
+    To improve and make it closer to the C++ ATEN implementation, follow:
+        - https://github.com/pytorch/pytorch/blob/371999782a0e2a977fa1be663dd34e8b581ea1e5/aten/src/ATen/native/transformers/attention.cpp#L836
+        - Or latest (exact line may vary): https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/transformers/attention.cpp#L836
     """
     # with torch.nn.attention.sdpa_kernel(SDPBackend.MATH):
     #     return torch.nn.functional.scaled_dot_product_attention(query, key, value, attn_mask, dropout_p, is_causal)
@@ -397,13 +415,27 @@ def _scaled_dot_product_attention(
         attn_bias.to(query.dtype)
 
     if attn_mask is not None:
+        if len(attn_mask.shape) == 4:
+            attn_bias = attn_bias.expand((attn_mask.shape[0], attn_mask.shape[1], L, S))
+        attn_bias = attn_bias.to(attn_mask.device)
         if attn_mask.dtype == torch.bool:
             attn_bias.masked_fill_(attn_mask.logical_not(), float("-inf"))
         else:
-            attn_bias += attn_mask
+            if attn_mask.is_cuda:
+                attn_bias += attn_mask
+            else:
+                attn_bias = attn_bias + attn_mask
+
+    # Due to activation outliers, when float16 is used Q @ K matmul is
+    # very sensitive to overflow, leading to inf values (NaNs later on).
+    # So when float16 is used we move to float32 for this operation.
+    orig_dtype = query.dtype
+    if query.dtype == torch.float16:
+        query = query.to(quantized_sdpa_upcast_dtype._UPCAST_DTYPE)
+        key = key.to(quantized_sdpa_upcast_dtype._UPCAST_DTYPE)
+        value = value.to(quantized_sdpa_upcast_dtype._UPCAST_DTYPE)
 
     with set_strict_quantization(False):
-        # with estimate_ranges([matmul_k_quantizer], running_minmax):
         attn_scores = FFF.matmul(
             query,
             key.transpose(-2, -1),
@@ -411,10 +443,7 @@ def _scaled_dot_product_attention(
             strict_quantization=strict_quantization,
         )
 
-        # attn_scores = attn_scores.dequantize()
-        # !!! This is breaking everything if attn_scores is quantized!!!
         attn_scores = FFF.mul(attn_scores, scale_factor)
-        # attn_scores *= scale_factor
         attn_scores += attn_bias.to(attn_scores.device)
 
     attn_weight = FFF.softmax(
@@ -431,40 +460,12 @@ def _scaled_dot_product_attention(
         output_quantizer=dropout_quantizer,
         strict_quantization=strict_quantization,
     )
-
-    return FFF.matmul(
+    # [B, H, S1, S2] * [B, H, S, F/H]
+    out = FFF.matmul(
         attn_weight,
         value,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )
-
-    #
-    # #####################
-    # def _get_sqnr_per_sample_markus(org_out, quant_out, in_db=True, eps=1e-15):
-    #     org_out = org_out.to(torch.float32)
-    #     quant_out = quant_out.to(torch.float32)
-    #
-    #     quant_error = org_out - quant_out
-    #     exp_noise = quant_error.pow(2).view(quant_error.shape[0], -1).mean(1) + eps
-    #     exp_signal = org_out.pow(2).view(org_out.shape[0], -1).mean(1)
-    #     sqnr = (exp_signal / exp_noise)
-    #     sqnr_db = 10 * torch.log10(sqnr)
-    #     return sqnr_db if in_db else sqnr
-    #
-    # attn_scores_orig = torch.matmul(query, key.transpose(-2, -1))
-    # sqnr = _get_sqnr_per_sample_markus(attn_scores_orig, attn_scores)
-    #
-    # if sqnr.min() < 60:
-    #     err = attn_scores_orig - attn_scores.dequantize()
-    #     max_err = err.max()
-    #     argmax = err.argmax()
-    #     argmax_multidim = torch.unravel_index(argmax, err.shape)
-    #     max_err2 = err[argmax_multidim]
-    #
-    #     print(max_err)
-    #     print(max_err2)
-    #
-    # attn_scores_orig = attn_scores_orig.cpu()
-    # del attn_scores_orig
-    ############################
+    out = out.to(orig_dtype)
+    return out
