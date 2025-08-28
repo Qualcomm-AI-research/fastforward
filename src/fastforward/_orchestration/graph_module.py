@@ -260,15 +260,14 @@ class GraphModule(torch.nn.Module):
                 case Const():
                     return arg
 
-        new_output_refs: list[NodeRef] = []
         for node in subgraph._nodes.values():
             node_args = [resolve_arg(arg) for arg in node.args]
             node_kwargs = {key: resolve_arg(arg) for key, arg in node.kwargs.items()}
             node_name = f"{name}.{node.name}"
-            node_ref = self.add_node(node_name, node.module, node_args, node_kwargs)
+            self.add_node(node_name, node.module, node_args, node_kwargs)
 
-            if node.name in subgraph._output_names:
-                new_output_refs.append(node_ref)
+        # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
+        new_output_refs = [NodeRef(f"{name}.{out_name}") for out_name in subgraph._output_names]
 
         return tuple(new_output_refs)
 
