@@ -238,7 +238,12 @@ class _NonLocalBranchScope:
         self._recorded_nodes = collections.defaultdict(list)
 
         if not self._children:
-            return recorded_nodes
+            if _depth > 0:
+                return recorded_nodes
+            else:
+                for uses in recorded_nodes.values():
+                    ctx.add_annotation_for_block(self._block, uses)
+                return {}
 
         hoisted_nodes = [child._resolve(ctx, _depth=_depth + 1) for child in self._children]
         common_nodes = set.intersection(*(set(child.keys()) for child in hoisted_nodes))
@@ -362,7 +367,7 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
 
     def evaluate_FunctionDef(self, node: libcst.FunctionDef) -> None:
         """Create new scope and evaluate params and body."""
-        with self._nonlocal_symbol_scope.inner_scope(node), self.enter_scope():
+        with self._nonlocal_symbol_scope.inner_scope(node.body), self.enter_scope():
             node.params.visit(self)
             node.body.visit(self)
 
