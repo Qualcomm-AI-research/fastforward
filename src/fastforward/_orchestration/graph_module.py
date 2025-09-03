@@ -12,14 +12,14 @@ Example:
     >>> input = graph.add_input("input")
     >>> linear_ref = graph.add_node("linear", nn.Linear(10, 5), [input])
     >>> graph.add_output(linear_ref)
-    >>> engine = ExecutionEngine(graph)
-    >>> result = engine(torch.randn(1, 10))
+    >>> result = graph(torch.randn(1, 10))
 """
 
 from __future__ import annotations
 
 import collections
 import dataclasses
+import enum
 
 from collections.abc import Collection, Iterable, Mapping
 from typing import Any
@@ -87,10 +87,6 @@ def resolve_node_arg(arg: NodeArg, context: dict[str, Any]) -> Any:
         case Const(value=v):
             return v
 
-        case _:
-            msg = f"Invalid node argument: {arg}"  # type: ignore[unreachable]
-            raise ValueError(msg)
-
 
 @dataclasses.dataclass
 class Node:
@@ -120,19 +116,13 @@ class GraphModule(torch.nn.Module):
     giving an explicit graph. This allows for explicit dependency management,
     custom execution orders, subgraph composition and reuse, and clear separation
     between graph structure and execution.
-
-    Attributes:
-        input_names: External inputs the graph expects
-        _nodes: Named Node objects representing operations
-        _output_names: Node names to return as outputs
-        _engine: Lazily-created ExecutionEngine for running the graph
     """
 
     def __init__(self) -> None:
         super().__init__()
         self.input_names: list[str] = []
+        self.output_names: list[str] = []
         self._nodes: dict[str, Node] = {}
-        self._output_names: list[str] = []
 
         self._engine: ExecutionEngine | None = None
 
@@ -141,10 +131,6 @@ class GraphModule(torch.nn.Module):
         if name in self.input_names:
             msg = f"Duplicate input name: {name}"
             raise ValueError(msg)
-
-        if not isinstance(name, str):
-            msg = f"Input name must be a str, not {type(name)}"  # type: ignore[unreachable]
-            raise TypeError(msg)
 
         self.input_names.append(name)
         return InputRef(name)
@@ -157,9 +143,9 @@ class GraphModule(torch.nn.Module):
         for node in nodes:
             name = node.name if isinstance(node, NodeRef) else node
             if name not in self._nodes:
-                msg = f"Unknown node {name}"
-                raise KeyError(msg)
-            self._output_names.append(name)
+                msg = f"Unknown node name: {name}"
+                raise ValueError(msg)
+            self.output_names.append(name)
 
     def add_node(
         self,
@@ -232,8 +218,9 @@ class GraphModule(torch.nn.Module):
             ValueError: If a keyword argument is not an input of the subgraph
             ValueError: If a keyword argument is already defined as an argument
         """
-        if not subgraph._output_names:
-            raise ValueError("Subgraph has no output nodes defined")
+        if not subgraph.output_names:
+            msg = "Subgraph has no output nodes defined"
+            raise ValueError(msg)
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
@@ -252,10 +239,10 @@ class GraphModule(torch.nn.Module):
 
         for key, value in kwargs.items():
             if key not in subgraph.input_names:
-                msg = f"Unknown subgraph input '{key}'"
+                msg = f"Subgraph does not have input '{key}'"
                 raise ValueError(msg)
             if key in input_binding:
-                msg = f"Multiple values for subgraph input '{key}'"
+                msg = f"Subgraph input has duplicate binding for '{key}'"
                 raise ValueError(msg)
             input_binding[key] = value
 
@@ -275,19 +262,22 @@ class GraphModule(torch.nn.Module):
             self.add_node(node_name, node.module, node_args, node_kwargs)
 
         # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
-        new_output_refs = [NodeRef(f"{name}.{out_name}") for out_name in subgraph._output_names]
+        new_output_refs = [NodeRef(f"{name}.{out_name}") for out_name in subgraph.output_names]
 
         return tuple(new_output_refs)
 
     def forward(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        """Execute the graph using the default ExecutionEngine.
+        """Forward inputs through the GraphModule.
 
-        Uses a topologically-sorted execution order that preserves the original
-        graph's execution semantics.
+        An internal execution engine is created on the first run, which executes nodes
+        in a topologically sorted order.
 
         Args:
-            *args: Positional arguments for graph inputs
-            **kwargs: Keyword arguments for graph inputs
+            *args: Positional inputs for the GraphModule, corresponding to the names defined with
+                `add_input`.
+            **kwargs: Key-word inputs for the GraphModule, corresponding to the names defined with
+                `add_input`.
+
 
         Returns:
             Output tensor(s) from the graph's output nodes
@@ -302,8 +292,7 @@ class ExecutionPlan:
     """Execution plan for a 'GraphModule'.
 
     This class stores an arbitrary execution order for a GraphModule, and dependencies
-    between nodes that are required for a node's execution. See `topological_execution_plan` for
-    a topological sort of the nodes of a GraphModule resulting in a ExecutionPlan.
+    between nodes that are required for a node's execution.
 
     Args:
         order: List of node names in execution order
@@ -312,60 +301,75 @@ class ExecutionPlan:
             using only external inputs).
     """
 
-    order: list[str]
-    dependencies: dict[str, set[str]]
+    order: list[NodeRef]
+    dependencies: dict[NodeRef, set[NodeRef]]
+    _dependents: dict[NodeRef, set[NodeRef]] | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+
+    @property
+    def dependents(self) -> dict[NodeRef, set[NodeRef]]:
+        """Mapping of each node to the set of nodes that depend on it."""
+        if self._dependents is None:
+            dependents = collections.defaultdict(set)
+
+            for node, predecessors in self.dependencies.items():
+                for predecessor in predecessors:
+                    dependents[predecessor].add(node)
+
+            self._dependents = dependents
+
+        return self._dependents
 
 
-def topological_execution_plan(graph: GraphModule) -> ExecutionPlan:
-    """Compute a topological execution plan for a 'GraphModule'.
+class TopologicalExecutionPlan(ExecutionPlan):
+    """Create an execution plan with nodes ordered topologically."""
 
-    Only NodeRef dependencies are considered edges. InputRef/Const are treated as sources.
+    @classmethod
+    def from_graph(cls, graph: GraphModule) -> TopologicalExecutionPlan:
+        """Generate an ExecutionPlan by topologically sorting the nodes of the given GraphModule."""
+        dependencies: dict[NodeRef, set[NodeRef]] = collections.defaultdict(set)
+        dependents: dict[NodeRef, set[NodeRef]] = collections.defaultdict(set)
 
-    Args:
-        graph: GraphModule to create execution plan for
+        for node_name, node in graph._nodes.items():
+            node_ref = NodeRef(node_name)
 
-    Returns:
-        ExecutionPlan: Topologically sorted execution order with dependencies
+            for arg in (*node.args, *node.kwargs.values()):
+                match arg:
+                    case NodeRef(name=dep_name) as dep_ref:
+                        if dep_name not in graph._nodes:
+                            msg = f"Node '{node_name}' depends on unknown node '{dep_name}'"
+                            raise ValueError(msg)
 
-    Raises:
-        ValueError: If circular dependency detected or dangling NodeRef found
-    """
-    dependencies = collections.defaultdict(set)
-    dependents = collections.defaultdict(set)
+                        dependencies[node_ref].add(dep_ref)
+                    case _:
+                        pass
 
-    for node_name, node in graph._nodes.items():
-        for arg in (*node.args, *node.kwargs.values()):
-            match arg:
-                case NodeRef(name=dep):
-                    if dep not in graph._nodes:
-                        msg = f"Node '{node_name}' depends on unknown node '{dep}'"
-                        raise ValueError(msg)
-                    dependencies[node_name].add(dep)
+            for dep in dependencies[node_ref]:
+                dependents[dep].add(node_ref)
 
-                case _:
-                    pass
+        # Topological sort using Kahn's algorithm
+        execution_order = []
+        in_degree = {
+            NodeRef(name): len(dependencies.get(NodeRef(name), [])) for name in graph._nodes.keys()
+        }
 
-        for dep in dependencies[node_name]:
-            dependents[dep].add(node_name)
+        queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
 
-    # Topological sort using Kahn's algorithm
-    execution_order = []
-    in_degree = {name: len(dependencies[name]) for name in dependencies.keys()}
-    queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
+        while queue:
+            current = queue.popleft()
+            execution_order.append(current)
 
-    while queue:
-        current = queue.popleft()
-        execution_order.append(current)
+            for dependent in dependents[current]:
+                in_degree[dependent] -= 1
+                if in_degree[dependent] == 0:
+                    queue.append(dependent)
 
-        for dependent in dependents[current]:
-            in_degree[dependent] -= 1
-            if in_degree[dependent] == 0:
-                queue.append(dependent)
+        if len(execution_order) != len(graph._nodes):
+            msg = "Circular dependency detected in graph!"
+            raise ValueError(msg)
 
-    if len(execution_order) != len(graph._nodes):
-        raise ValueError("Circular dependency detected in graph!")
-
-    return ExecutionPlan(order=execution_order, dependencies=dict(dependencies))
+        return cls(order=execution_order, dependencies=dict(dependencies))
 
 
 class ExecutionEngine:
@@ -414,30 +418,320 @@ class ExecutionEngine:
         and returns output node results.
 
         Args:
-            *args: Positional arguments for graph inputs
-            **kwargs: Keyword arguments for graph inputs
+            *args: Positional inputs for the GraphModule, corresponding to the names defined with
+                `add_input`.
+            **kwargs: Key-word inputs for the GraphModule, corresponding to the names defined with
+                `add_input`.
 
         Returns:
             Single output value or tuple of outputs depending on graph configuration
         """
-        if not self.graph._output_names:
-            raise RuntimeError("Graph has no nodes to produce outputs")
-
         if self._plan is None:
-            self._plan = topological_execution_plan(self.graph)
+            self._plan = TopologicalExecutionPlan.from_graph(self.graph)
 
         ctx = self._bind_args(*args, **kwargs)
 
-        for node_name in self._plan.order:
-            node = self.graph._nodes[node_name]
+        for node_ref in self._plan.order:
+            node = self.graph._nodes[node_ref.name]
 
             resolved_args = [resolve_node_arg(arg, ctx) for arg in node.args]
             resolved_kwargs = {key: resolve_node_arg(arg, ctx) for key, arg in node.kwargs.items()}
 
             out = node.module(*resolved_args, **resolved_kwargs)
-            ctx[node_name] = out
+            ctx[node_ref.name] = out
 
-        if len(self.graph._output_names) == 1:
-            return ctx[self.graph._output_names[0]]
+        if len(self.graph.output_names) == 1:
+            return ctx[self.graph.output_names[0]]
 
-        return tuple(ctx[name] for name in self.graph._output_names)
+        return tuple(ctx[name] for name in self.graph.output_names)
+
+
+class Direction(enum.Enum):
+    """Direction for traversal of a graph."""
+
+    FORWARD = enum.auto()
+    BACKWARD = enum.auto()
+    BIDIRECTIONAL = enum.auto()
+
+
+def find_reachable_nodes(
+    plan: ExecutionPlan,
+    start: NodeRef,
+    direction: Direction = Direction.FORWARD,
+    allowlist: Collection[NodeRef] | None = None,
+) -> set[NodeRef]:
+    """Return all nodes reachable from start under the specified traversal direction and allow-list.
+
+    Args:
+        plan: ExecutionPlan containing dependency information.
+        start: The node from which the search starts.
+        direction: Direction to traverse edges.
+        allowlist: Optional allowlist. If supplied, only nodes contained in this
+                collection will be visited/returned.
+
+    Returns:
+        set[NodeRef]: All nodes that are reachable from `start` while respecting the
+                  `allowlist` filter (if provided).  The returned set always contains
+                  `start` itself.
+    """
+    match direction:
+        case Direction.FORWARD:
+            adjacency = plan.dependents
+        case Direction.BACKWARD:
+            adjacency = plan.dependencies
+        case Direction.BIDIRECTIONAL:
+            adjacency = {
+                node: plan.dependencies[node] | plan.dependents[node]
+                for node in set(plan.dependencies.keys()) | set(plan.dependents.keys())
+            }
+
+    # If no allowlist is provided, *all* nodes are allowlisted.
+    if allowlist is None:
+        allowlist = set(plan.dependencies.keys()) | set(plan.dependents.keys())
+
+    # A simple DFS algorithm.
+    seen, stack = {start}, [start]
+    while stack:
+        node = stack.pop()
+        for neighbor in adjacency.get(node, ()):
+            if neighbor in allowlist and neighbor not in seen:
+                seen.add(neighbor)
+                stack.append(neighbor)
+
+    return seen
+
+
+def find_nodes_on_path(
+    graph: GraphModule,
+    plan: ExecutionPlan,
+    start: NodeRef,
+    end: NodeRef,
+) -> set[NodeRef]:
+    """Return the set of nodes on the path from `start` to `end` (inclusive).
+
+    Args:
+        graph: GraphModule to analyze.
+        plan: ExecutionPlan containing dependency information.
+        start: Reference to the first node on the path.
+        end: Reference to the last node on the path.
+
+    Returns:
+        A set with the NodeRefs of all nodes that participate in at least one
+        direct dependency path from `start` to `end`.
+
+    Raises:
+        ValueError: If either node is missing or if no path exists.
+    """
+    if start.name not in graph._nodes:
+        msg = f"Start node '{start.name}' not found in graph"
+        raise ValueError(msg)
+
+    if end.name not in graph._nodes:
+        msg = f"End node '{end.name}' not found in graph"
+        raise ValueError(msg)
+
+    nodes_on_path: set[NodeRef] = set()
+    visited: set[NodeRef] = set()
+
+    def _can_reach_end(current: NodeRef, target: NodeRef, visited: set[NodeRef]) -> bool:
+        """Depth-First recursive search that returns True if `target` is reachable from `current`."""
+        if current == target:
+            nodes_on_path.add(current)
+            return True
+
+        if current in visited:
+            return False
+
+        visited.add(current)
+        found_path = False
+
+        for dependent in plan.dependents.get(current, set()):
+            if _can_reach_end(dependent, target, visited):
+                found_path = True
+
+        if found_path:
+            nodes_on_path.add(current)
+
+        visited.remove(current)
+        return found_path
+
+    if not _can_reach_end(start, end, visited):
+        msg = f"Node {start.name} is not reachable from {end.name}"
+        raise ValueError(msg)
+
+    return nodes_on_path
+
+
+def create_subgraph(
+    graph: GraphModule,
+    plan: ExecutionPlan,
+    path_nodes: set[NodeRef],
+) -> GraphModule:
+    """Build and return a standalone GraphModule that contains exactly `path_nodes`.
+
+    Args:
+        graph: GraphModule to extract subgraph from.
+        plan: ExecutionPlan with dependency information for this GraphModule.
+        path_nodes: Names of nodes that must appear in the subgraph.
+
+    Returns:
+        A new GraphModule representing the extracted sub-graph.
+
+    Raises:
+        ValueError: If proposed subgraph has no external inputs.
+    """
+    node_names: set[str] = {ref.name for ref in path_nodes}
+
+    def _external_dependencies(node: Node) -> set[str]:
+        external_dependencies = set()
+        for arg in (*node.args, *node.kwargs.values()):
+            match arg:
+                case NodeRef(name=name) if name not in node_names:
+                    external_dependencies.add(name)
+                case InputRef(name=name):
+                    external_dependencies.add(name)
+        return external_dependencies
+
+    external_inputs = {
+        external_dependency
+        for node_name in node_names
+        for external_dependency in _external_dependencies(graph._nodes[node_name])
+    }
+
+    if not external_inputs:
+        msg = f"Nodes for subgraph have no (external) inputs: {path_nodes}"
+        raise ValueError(msg)
+
+    external_outputs = {
+        node_name
+        for node_name in node_names
+        if node_name in graph.output_names
+        or any(dep not in path_nodes for dep in plan.dependents[NodeRef(node_name)])
+    }
+
+    # Connect the inputs, nodes, and outputs to a new subgraph.
+    subgraph = GraphModule()
+    input_binding = {name: subgraph.add_input(name) for name in external_inputs}
+
+    def resolve_arg(arg: NodeArg) -> NodeArg:
+        match arg:
+            case InputRef(name=input_name):
+                return input_binding[input_name]
+            case NodeRef(name=node_name):
+                if node_name in node_names:
+                    return arg
+                else:
+                    return input_binding[node_name]
+            case Const():
+                return arg
+
+    for node_name in node_names:
+        source_node = graph._nodes[node_name]
+        subgraph.add_node(
+            name=node_name,
+            module=source_node.module,
+            args=[resolve_arg(arg) for arg in source_node.args],
+            kwargs={key: resolve_arg(arg) for key, arg in source_node.kwargs.items()},
+        )
+
+    subgraph.add_output([NodeRef(node_name) for node_name in external_outputs])
+    return subgraph
+
+
+@dataclasses.dataclass
+class SubgraphSpec:
+    """A Specification of a subgraph."""
+
+    input: NodeRef
+    output: NodeRef
+
+
+def partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> list[GraphModule]:
+    """Partition a GraphModule into multiple subgraphs based on specifications.
+
+    Creates subgraphs for each SubgraphSpec, then groups remaining unpartitioned
+    nodes into connected components. Each resulting partition is a standalone
+    GraphModule that can be executed independently.
+
+    Args:
+        graph: GraphModule to partition.
+        subgraph_specs: List of SubgraphSpec defining explicit partitions.
+
+    Returns:
+        List of GraphModule partitions, including both explicit specs and
+        remaining connected components.
+    """
+    plan = TopologicalExecutionPlan.from_graph(graph)
+
+    explicit_node_sets = _extract_node_sets_from_specs(graph, plan, subgraph_specs)
+
+    remaining_nodes = set(map(NodeRef, graph._nodes)) - set().union(*explicit_node_sets)
+    remaining_node_sets = _find_connected_components(plan, remaining_nodes)
+
+    partitions: list[GraphModule] = []
+    for node_set in (*explicit_node_sets, *remaining_node_sets):
+        partitions.append(create_subgraph(graph, plan, node_set))
+
+    return partitions
+
+
+def _extract_node_sets_from_specs(
+    graph: GraphModule,
+    plan: ExecutionPlan,
+    specs: list[SubgraphSpec],
+) -> list[set[NodeRef]]:
+    """Extract node sets from explicit SubgraphSpecs.
+
+    Args:
+        graph: GraphModule containing the nodes.
+        specs: List of SubgraphSpec to convert.
+        plan: ExecutionPlan for path finding between spec endpoints.
+
+    Returns:
+        List of NodeRef sets, one per SubgraphSpec.
+
+    Raises:
+        ValueError: If any specs have overlapping nodes.
+    """
+    used: set[NodeRef] = set()
+    node_sets: list[set[NodeRef]] = []
+
+    for spec in specs:
+        nodes = find_nodes_on_path(graph, plan, spec.input, spec.output)
+
+        if overlap := nodes & used:
+            msg = f"Overlapping nodes in subgraph specs: {overlap}"
+            raise ValueError(msg)
+
+        node_sets.append(nodes)
+        used |= nodes
+
+    return node_sets
+
+
+def _find_connected_components(
+    plan: ExecutionPlan,
+    nodes: set[NodeRef],
+) -> list[set[NodeRef]]:
+    """Finds the connected components within a given set of nodes.
+
+    Args:
+        plan: ExecutionPlan for connectivity information.
+        nodes: The set of nodes to analyze.
+
+    Returns:
+        A list of node sets, where each set represents a connected component.
+    """
+    nodes_to_visit = nodes.copy()
+
+    components: list[set[NodeRef]] = []
+    while nodes_to_visit:
+        root = next(iter(nodes_to_visit))
+
+        component = find_reachable_nodes(
+            plan, root, direction=Direction.BIDIRECTIONAL, allowlist=nodes_to_visit
+        )
+        components.append(component)
+        nodes_to_visit -= component
+
+    return components
