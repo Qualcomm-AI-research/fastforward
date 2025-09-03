@@ -10,7 +10,7 @@ import logging
 import pathlib
 import types
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, TypeAlias
 
 import libcst
@@ -339,13 +339,68 @@ def _resolve_all_quantized_calls(
     # "threads" the quantizer arguments through the call chain.
     # See the inline annotations for more detailed explanation.
 
+    # 1. Discovery Phase: Collect all quantized functions and identify their local quantizers
+    #    and unresolved calls to other quantized functions
+    func_builder_map, func_contexts, func_specs = _discover_quantized_functions(
+        builder, quantizer_refs
+    )
+
+    # 2. Propagation Phase: Use _propagate_quantizers() to determine which quantizer arguments
+    #    need to flow between functions based on the call graph and propagate quantizers across
+    #    function call boundaries.
+    _propagate_quantizers(func_specs)
+
+    # 3. Signature Generation Phase: For each function, create a signature that includes all
+    #    quantizers it needs (both local and propagated from callers), generating unique
+    #    parameter names for propagated quantizers using prefixed naming.
+    signatures, signature_ref_map, calls = _generate_signatures(
+        quantizer_refs, func_contexts, func_specs
+    )
+
+    # 4. Call Resolution Phase: For each unresolved call, determine the concrete arguments
+    #    to pass by mapping the caller's quantizer references to the callee's expected
+    #    parameters (regular functions use signature references, instance methods use
+    #    quantizer expressions)
+    #
+    _resolve_calls(quantizer_refs, func_contexts, func_specs, signature_ref_map, calls)
+
+    # 5. Transformation Phase: Apply a CST transformer to replace all unresolved calls
+    #    with concrete function calls containing the resolved quantizer arguments.
+    #    Update the function builder `quantizer_signature` list based on the inferred
+    #    signature.
+    call_transformer = _ResolveQuantizedCallsTransformer(calls)
+    for func_ref, func_builder in func_builder_map.items():
+        new_funcdef = func_builder.cst.visit(call_transformer)
+        assert isinstance(new_funcdef, libcst.FunctionDef)
+        func_builder.cst = new_funcdef
+        func_builder.quantizer_signature = signatures.get(func_ref, ())
+
+
+def _discover_quantized_functions(
+    builder: pybuilder.ModuleBuilder, quantizer_refs: QuantizerReferenceCollection
+) -> tuple[
+    dict[_FuncRef, pybuilder.QuantizedFunctionBuilder],
+    dict[_FuncRef, FunctionContext],
+    dict[_FuncRef, _QuantizedFunctionSpec],
+]:
+    """Discover and collect information about quantized functions in the module.
+
+    Args:
+        builder: The module builder containing quantized functions
+        quantizer_refs: Collection of quantizer references used across functions
+
+    Returns:
+        A tuple containing three dictionaries:
+        - Mapping from function references to their quantized function builders
+        - Mapping from function references to their function contexts
+        - Mapping from function references to their quantized function specifications
+          that track local quantizers and unresolved calls
+    """
     # Mappings of function references to their builders, contexts, and specs
     func_builder_map: dict[_FuncRef, pybuilder.QuantizedFunctionBuilder] = {}
     func_contexts: dict[_FuncRef, FunctionContext] = {}
     func_specs: dict[_FuncRef, _QuantizedFunctionSpec] = {}
 
-    # 1. Discovery Phase: Collect all quantized functions and identify their local quantizers
-    #    and unresolved calls to other quantized functions
     for funcbuilder in builder.quantized_functions():
         if funcbuilder.origin.func is None:
             continue
@@ -371,73 +426,7 @@ def _resolve_all_quantized_calls(
             if call_func_context.method_type != MethodType.METHOD:
                 spec.calls[unresolved_call] = []
 
-    # 2. Propagation Phase: Use _propagate_quantizers() to determine which quantizer arguments
-    #    need to flow between functions based on the call graph and propagate quantizers across
-    #    function call boundaries.
-    _propagate_quantizers(func_specs)
-
-    # 3. Signature Generation Phase: For each function, create a signature that includes all
-    #    quantizers it needs (both local and propagated from callers), generating unique
-    #    parameter names for propagated quantizers using prefixed naming.
-    signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]] = {}
-    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]] = {}
-    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]] = {}
-
-    for func_ref, spec in func_specs.items():
-        if func_contexts[func_ref].method_type == MethodType.METHOD:
-            # Instance functions don't require an updated signature.
-            continue
-
-        # Create function signature from quantizer arguments
-        signature = []
-        ref_map = {}
-        for arg in spec.quantizers(skip_forwarded=True):
-            if arg.src == (func_ref,):
-                # Local quantizer: use original reference
-                sigref = arg.ref
-            else:
-                # Propagated quantizer: create new reference with prefixed name
-                with quantizer_refs.push_context(func_contexts[func_ref]):
-                    prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
-                    name = f"{prefix}_{arg.ref.value}"
-                    sigref = quantizer_refs.create_reference(name)
-            signature.append(sigref)
-            ref_map[arg.ref] = sigref
-        signature_ref_map[func_ref] = ref_map
-        signatures[func_ref] = tuple(signature)
-
-    # 4. Call Resolution Phase: For each unresolved call, determine the concrete arguments
-    #    to pass by mapping the caller's quantizer references to the callee's expected
-    #    parameters (regular functions use signature references, instance methods use
-    #    quantizer expressions)
-    for func_ref, spec in func_specs.items():
-        for unresolved_call, args in spec.calls.items():
-            call_args = []
-            calling_func_ref = unresolved_call.func_ref
-            for arg in args:
-                keyword = signature_ref_map[calling_func_ref][arg.ref]
-                if func_ref not in signature_ref_map:
-                    # Target is instance method. Create quantizer expression.
-                    with quantizer_refs.push_context(func_contexts[func_ref]):
-                        prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
-                        name = f"{prefix}_{arg.ref.value}"
-                        value = quantizer_refs.create_quantizer_expression(name)
-                else:
-                    # Target is regular function - use signature reference
-                    value = signature_ref_map[func_ref][arg.ref]
-                call_args.append(_CallArg(keyword=keyword, value=value))
-            calls[unresolved_call] = tuple(call_args)
-
-    # 5. Transformation Phase: Apply a CST transformer to replace all unresolved calls
-    #    with concrete function calls containing the resolved quantizer arguments.
-    #    Update the function builder `quantizer_signature` list based on the inferred
-    #    signature.
-    call_transformer = _ResolveQuantizedCallsTransformer(calls)
-    for func_ref, func_builder in func_builder_map.items():
-        new_funcdef = func_builder.cst.visit(call_transformer)
-        assert isinstance(new_funcdef, libcst.FunctionDef)
-        func_builder.cst = new_funcdef
-        func_builder.quantizer_signature = signatures.get(func_ref, ())
+    return func_builder_map, func_contexts, func_specs
 
 
 def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) -> None:
@@ -501,6 +490,117 @@ def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) ->
                 if len(new_call_args) != len(call_args):
                     spec.calls[unresolved_call] = new_call_args
                     changed = True
+
+
+def _generate_signatures(
+    quantizer_refs: QuantizerReferenceCollection,
+    func_contexts: Mapping[_FuncRef, FunctionContext],
+    func_specs: Mapping[_FuncRef, _QuantizedFunctionSpec],
+) -> tuple[
+    dict[_FuncRef, tuple[nodes.QuantizerReference, ...]],
+    dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]],
+    dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]],
+]:
+    """Generate signatures for quantized functions based on their quantizer dependencies.
+
+    This function analyzes the quantizer dependencies of each function and creates appropriate
+    signatures that include all required quantizer parameters. For local quantizers, it uses
+    the original reference. For propagated quantizers from other functions, it creates new
+    references with prefixed names to avoid naming conflicts.
+
+    Note:
+        Only non-method functions (regular functions, static methods, class methods) receive
+        updated signatures, as instance methods handle quantizer propagation differently.
+
+    Args:
+        quantizer_refs: Collection of quantizer references used across functions
+        func_contexts: Mapping from function references to their function contexts
+        func_specs: Mapping from function references to their quantized function specifications
+
+    Returns:
+        A tuple containing three dictionaries:
+        - Mapping from function references to their quantizer parameter signatures
+        - Mapping from function references to dictionaries that map original quantizer
+          references to their corresponding signature references
+        - Empty dictionary for unresolved calls (populated in subsequent steps)
+    """
+    signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]] = {}
+    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]] = {}
+    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]] = {}
+
+    for func_ref, spec in func_specs.items():
+        if func_contexts[func_ref].method_type == MethodType.METHOD:
+            # Instance functions don't require an updated signature.
+            continue
+
+        # Create function signature from quantizer arguments
+        signature = []
+        ref_map = {}
+        for arg in spec.quantizers(skip_forwarded=True):
+            if arg.src == (func_ref,):
+                # Local quantizer: use original reference
+                sigref = arg.ref
+            else:
+                # Propagated quantizer: create new reference with prefixed name
+                with quantizer_refs.push_context(func_contexts[func_ref]):
+                    prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
+                    name = f"{prefix}_{arg.ref.value}"
+                    sigref = quantizer_refs.create_reference(name)
+            signature.append(sigref)
+            ref_map[arg.ref] = sigref
+        signature_ref_map[func_ref] = ref_map
+        signatures[func_ref] = tuple(signature)
+
+    return signatures, signature_ref_map, calls
+
+
+def _resolve_calls(
+    quantizer_refs: QuantizerReferenceCollection,
+    func_contexts: Mapping[_FuncRef, FunctionContext],
+    func_specs: Mapping[_FuncRef, _QuantizedFunctionSpec],
+    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]],
+    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]],
+) -> None:
+    """Resolve quantized function calls by mapping quantizer references between functions.
+
+    This function processes each unresolved quantized call and determines the concrete
+    arguments that need to be passed based on the quantizer dependencies identified
+    during the propagation phase. It handles two cases differently:
+
+    1. For instance methods: Creates quantizer expressions that reference the instance's
+       quantizers directly
+    2. For regular functions: Uses the signature references to map between caller and
+       callee parameter names
+
+    The resolved call arguments are stored in the `calls` dictionary for later use by
+    the _ResolveQuantizedCallsTransformer.
+
+    Args:
+        quantizer_refs: Collection of quantizer references used across functions
+        func_contexts: Mapping from function references to their function contexts
+        func_specs: Mapping from function references to their quantized function specs
+        signature_ref_map: Mapping from function references to dictionaries that map
+                          original quantizer references to their signature references
+        calls: Output dictionary that will be populated with resolved call arguments
+              for each unresolved quantized call
+    """
+    for func_ref, spec in func_specs.items():
+        for unresolved_call, args in spec.calls.items():
+            call_args = []
+            calling_func_ref = unresolved_call.func_ref
+            for arg in args:
+                keyword = signature_ref_map[calling_func_ref][arg.ref]
+                if func_ref not in signature_ref_map:
+                    # Target is instance method. Create quantizer expression.
+                    with quantizer_refs.push_context(func_contexts[func_ref]):
+                        prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
+                        name = f"{prefix}_{arg.ref.value}"
+                        value = quantizer_refs.create_quantizer_expression(name)
+                else:
+                    # Target is regular function - use signature reference
+                    value = signature_ref_map[func_ref][arg.ref]
+                call_args.append(_CallArg(keyword=keyword, value=value))
+            calls[unresolved_call] = tuple(call_args)
 
 
 class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):
