@@ -2136,7 +2136,7 @@
 
 
 <h3 id="fastforward.testing.autoquant.assert_autoquantize_result" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#fastforward.testing.autoquant.assert_autoquantize_result" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -2205,33 +2205,65 @@
                   <code>False</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>use_type_inference</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, use type inference to reduce false
+positive function rewrites in autoquant at the cost of a longer
+runtime.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
 
             <details class="quote">
               <summary>Source code in <code>fastforward/testing/autoquant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_autoquantize_result</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_autoquantize_result</span><span class="p">(</span>
+    <span class="nb">input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asserts that the autoquantization of the given input string matches the expected output.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        input: The input string to be autoquantized.</span>
 <span class="sd">        expected: The expected output string after autoquantization.</span>
 <span class="sd">        as_module: Whether to autoquantize as a module. Defaults to False.</span>
+<span class="sd">        use_type_inference: If True, use type inference to reduce false</span>
+<span class="sd">            positive function rewrites in autoquant at the cost of a longer</span>
+<span class="sd">            runtime.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">actual</span> <span class="o">=</span> <span class="n">autoquantize_str</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="n">as_module</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">autoquantize_str</span><span class="p">(</span>
+        <span class="nb">input</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="n">as_module</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="o">=</span><span class="n">use_type_inference</span>
+    <span class="p">)</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
     <span class="n">formatted_expected</span> <span class="o">=</span> <span class="n">autoquant</span><span class="o">.</span><span class="n">codeformat_with_defaults</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">expected</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
 
@@ -2246,7 +2278,7 @@
 
 
 <h3 id="fastforward.testing.autoquant.autoquantize_str" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">autoquant</span><span class="o">.</span><span class="n">autoquantize_str</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#fastforward.testing.autoquant.autoquantize_str" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -2314,6 +2346,24 @@
                   <code>False</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>use_type_inference</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, use type inference to reduce false
+positive function rewrites in autoquant at the cost of a longer
+runtime.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2350,10 +2400,7 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 
             <details class="quote">
               <summary>Source code in <code>fastforward/testing/autoquant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">19</span>
 <span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
@@ -2379,8 +2426,15 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 <span class="normal">42</span>
 <span class="normal">43</span>
 <span class="normal">44</span>
-<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize_str</span><span class="p">(</span>
-    <span class="n">src</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">autoquantize_str</span><span class="p">(</span>
+    <span class="n">src</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_module</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">as_cst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">libcst</span><span class="o">.</span><span class="n">FunctionDef</span> <span class="o">|</span> <span class="n">libcst</span><span class="o">.</span><span class="n">ClassDef</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Autoquantizes Python function string and returns the quantized code as a string.</span>
 
@@ -2388,6 +2442,10 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 <span class="sd">        src : The input Python function as a string.</span>
 <span class="sd">        as_module: If True, returns the quantized code as a module. Defaults to False.</span>
 <span class="sd">        as_cst: If True, return a CST instead of a string.</span>
+<span class="sd">        use_type_inference: If True, use type inference to reduce false</span>
+<span class="sd">            positive function rewrites in autoquant at the cost of a longer</span>
+<span class="sd">            runtime.</span>
+
 
 <span class="sd">    Returns:</span>
 <span class="sd">        The quantized Python function or module as a string or CST.</span>
@@ -2399,9 +2457,9 @@ if <code>src</code> is not a function that has <code>self</code> as first parame
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">src_cst</span> <span class="o">=</span> <span class="n">libcst</span><span class="o">.</span><span class="n">parse_module</span><span class="p">(</span><span class="n">dedent_strip</span><span class="p">(</span><span class="n">src</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
     <span class="n">dst_cst</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">_autoquantize_str_to_classdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">)</span>
+        <span class="n">_autoquantize_str_to_classdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="o">=</span><span class="n">use_type_inference</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">as_module</span>
-        <span class="k">else</span> <span class="n">_autoquantize_str_to_funcdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">_autoquantize_str_to_funcdef</span><span class="p">(</span><span class="n">src_cst</span><span class="p">,</span> <span class="n">use_type_inference</span><span class="o">=</span><span class="n">use_type_inference</span><span class="p">)</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">as_cst</span><span class="p">:</span>

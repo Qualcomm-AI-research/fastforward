@@ -2584,7 +2584,7 @@ is not a method.</p>
 
 
 <h3 id="fastforward.type_common.method_type" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">type_common</span><span class="o">.</span><span class="n">method_type</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">type_common</span><span class="o">.</span><span class="n">method_type</span><span class="p">(</span><span class="n">cls_or_module</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)</span></code>
 
 <a href="#fastforward.type_common.method_type" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -2607,14 +2607,14 @@ is not a method.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>cls</code>
+                <code>cls_or_module</code>
             </td>
             <td>
-                  <code><span title="type">type</span></code>
+                  <code><span title="type">type</span> | <span title="types.ModuleType">ModuleType</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The class to inspect.</p>
+                <p>The class or module to inspect.</p>
               </div>
             </td>
             <td>
@@ -2684,22 +2684,28 @@ is not a method.</p>
 <span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
-<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">method_type</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MethodType</span><span class="p">:</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">method_type</span><span class="p">(</span><span class="n">cls_or_module</span><span class="p">:</span> <span class="nb">type</span> <span class="o">|</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">,</span> <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MethodType</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Determine the type of a method in a class.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        cls: The class to inspect.</span>
+<span class="sd">        cls_or_module: The class or module to inspect.</span>
 <span class="sd">        method_name: The name of the method to check.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        A MethodType enum value indicating the type of the method:</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">match</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">method_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="k">case</span> <span class="nb">classmethod</span><span class="p">():</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_or_module</span><span class="p">,</span> <span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">)):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;&#39;cls_or_module&#39; must be a module or class&quot;</span>  <span class="c1"># type: ignore[unreachable]</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">match</span> <span class="n">cls_or_module</span><span class="p">,</span> <span class="n">cls_or_module</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">method_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">case</span> <span class="nb">type</span><span class="p">(),</span> <span class="nb">classmethod</span><span class="p">():</span>
             <span class="k">return</span> <span class="n">MethodType</span><span class="o">.</span><span class="n">CLASS_METHOD</span>
-        <span class="k">case</span> <span class="nb">staticmethod</span><span class="p">():</span>
+        <span class="k">case</span> <span class="nb">type</span><span class="p">(),</span> <span class="nb">staticmethod</span><span class="p">():</span>
             <span class="k">return</span> <span class="n">MethodType</span><span class="o">.</span><span class="n">STATIC_METHOD</span>
-        <span class="k">case</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">():</span>
+        <span class="k">case</span> <span class="nb">type</span><span class="p">(),</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">():</span>
             <span class="k">return</span> <span class="n">MethodType</span><span class="o">.</span><span class="n">METHOD</span>
         <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">MethodType</span><span class="o">.</span><span class="n">NO_METHOD</span>
