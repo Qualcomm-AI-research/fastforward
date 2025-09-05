@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
 import torch
@@ -11,21 +12,31 @@ from fastforward import mpath
 
 @pytest.fixture()
 def model() -> torch.nn.ModuleDict:
-    return torch.nn.ModuleDict(
+    module = torch.nn.ModuleDict(
         dict(
             layer1=torch.nn.ModuleList([torch.nn.Linear(10, 10), torch.nn.Linear(20, 20)]),
             layer2=torch.nn.ModuleList([torch.nn.Linear(30, 30), torch.nn.Linear(40, 40)]),
             layer3=torch.nn.ModuleList([torch.nn.Conv2d(30, 30, 3), torch.nn.Conv2d(40, 40, 3)]),
         )
     )
+    module.custom_aliases = {"alias": mpath.query("layer1/0")}  # type: ignore[assignment]
+    return module
 
 
 def _assert_search_result(
     module: torch.nn.Module,
     query: str | mpath.Selector,
     expected_modules: Sequence[tuple[str, torch.nn.Module]],
+    *,
+    aliases: str | dict[str, mpath.selector.BaseSelector] | None = None,
 ) -> None:
-    results = mpath.search(query, module)
+    alias_kwargs: dict[str, Any] = {}
+    if isinstance(aliases, str):
+        alias_kwargs["root_aliases_attribute"] = aliases
+    elif isinstance(aliases, dict):
+        alias_kwargs["aliases"] = aliases
+
+    results = mpath.search(query, module, **alias_kwargs)
     module_results = [(result.full_name, result.module) for result in results]
 
     for expected_module in expected_modules:
@@ -132,6 +143,31 @@ def test_regex_extension(model: torch.nn.Module) -> None:
             ("layer1.1", model.layer1[1]),
             ("layer2.1", model.layer2[1]),
         ],
+    )
+
+
+def test_root_aliases(model: torch.nn.Module) -> None:
+    # GIVEN a torch module with an aliases attribute
+    # WHEN searching for submodules using mpath using an aliases attribute
+    # THEN the aliases dictionary stored on `model` must be used.
+    _assert_search_result(
+        model,
+        r"&alias",
+        [
+            ("layer1.0", model.layer1[0]),
+        ],
+        aliases="custom_aliases",
+    )
+
+    # WHEN searching for submodules using mpath using an aliases dictionary
+    # THEN the given aliases dictionary should be used over the dict on `model`
+    _assert_search_result(
+        model,
+        r"&alias",
+        [
+            ("layer2.1", model.layer2[1]),
+        ],
+        aliases={"alias": mpath.query("layer2/1")},
     )
 
 

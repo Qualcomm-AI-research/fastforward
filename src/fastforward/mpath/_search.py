@@ -4,7 +4,7 @@
 import dataclasses
 
 from collections import abc
-from typing import Callable, Iterable, Iterator, TypeVar, overload
+from typing import Any, Callable, Iterable, Iterator, TypeGuard, TypeVar, overload
 
 import torch
 
@@ -247,6 +247,7 @@ def search(
     root: torch.nn.Module,
     *,
     aliases: dict[str, selector.BaseSelector] | None = None,
+    root_aliases_attribute: str = "aliases",
 ) -> MPathCollection:
     """Search/filter all submodules of `root` that satisfy query.
 
@@ -258,12 +259,21 @@ def search(
         root: Root module, all submodules of the root module are considered for inclusion
             in the result set. root itself is never part of the result set.
         aliases: Aliases to consider in the query. Any occurrence of `&<alias>`
-            is replaced by the corresponding query in aliases.
+            is replaced by the corresponding query in aliases. If no aliases
+            are provided, try to use `root.<root_aliases_attribute>` as an alias
+            dictionary. Otherwise, don't use aliases.
+        root_aliases_attribute: The attribute name on `root` that contains aliases
+            to use when no explicit aliases are provided.
 
     Returns:
-        Collection of (sub)modules that satisfy query.
+        Collection of (sub)modules that satisfy `query`.
     """
-    aliases = aliases or {}
+    if aliases is None:
+        module_aliases = getattr(root, root_aliases_attribute, None)
+        if module_aliases is not None and _is_aliases_dict(module_aliases):
+            aliases = module_aliases
+        else:
+            aliases = {}
     if isinstance(query, str):
         query = mpath_parser.parse(
             query, context=mpath_parser.get_caller_context(), aliases=aliases
@@ -311,3 +321,9 @@ def search(
                     active_modules.append(_ActiveSearchItem(continuation.selector, filter_result))
 
     return results
+
+
+def _is_aliases_dict(obj: Any) -> TypeGuard[dict[str, selector.BaseSelector]]:
+    if not isinstance(obj, dict):
+        return False
+    return all(isinstance(v, selector.BaseSelector) for v in obj.values())
