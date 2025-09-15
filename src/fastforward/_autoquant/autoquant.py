@@ -689,7 +689,7 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
                 if ff.type_common.method_type(ModuleType, attr) is not MethodType.NO_METHOD:
                     yield attr
 
-            case libcst.Call(func=libcst.Name(call_func_name)):
+            case libcst.Name(call_func_name):
                 if method_type == MethodType.METHOD and call_func_name == ctx.instance_var:
                     # When calling self() in a torch.nn.Module subclass, this invokes
                     # __call__ which delegates to forward(). Track as "forward" call.
