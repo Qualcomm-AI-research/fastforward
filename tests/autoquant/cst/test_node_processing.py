@@ -208,3 +208,21 @@ class _StripCommaMetadata(libcst.CSTTransformer):
         self, original_node: libcst.Element, updated_node: libcst.Element
     ) -> libcst.Element:
         return updated_node.with_changes(comma=libcst.MaybeSentinel.DEFAULT)
+
+
+def test_iter_attribute() -> None:
+    # Create a nested attribute: a.b.c
+    # GIVEN: an attribute cst node
+    code = "ant.bat.cat"
+    cst = libcst.parse_expression(code)
+    assert isinstance(cst, libcst.Attribute)
+
+    # WHEN the attribute is decomposed into elements
+    components = list(node_processing.iter_attribute(cst))
+
+    # THEN the resulting list must contain all elements in the original
+    # expression
+    assert len(components) == 3
+    assert components[0].deep_equals(libcst.Name("ant"))
+    assert components[1].deep_equals(libcst.Name("bat"))
+    assert components[2].deep_equals(libcst.Name("cat"))

@@ -249,3 +249,20 @@ def expr_to_ident(expr: libcst.BaseExpression) -> str:
         identifier = f"_{identifier}"
 
     return identifier
+
+
+def iter_attribute(attr: libcst.Attribute) -> Iterator[libcst.BaseExpression]:
+    """Iterate through the components of a nested attribute expression.
+
+    Args:
+        attr: A libcst.Attribute node representing an attribute access expression.
+
+    Returns:
+        An iterator yielding each component of the attribute.
+    """
+    match attr.value:
+        case libcst.Attribute():
+            yield from iter_attribute(attr.value)
+        case _:
+            yield attr.value
+    yield attr.attr

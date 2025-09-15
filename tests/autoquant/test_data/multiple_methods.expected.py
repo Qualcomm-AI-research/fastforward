@@ -1,7 +1,21 @@
 import fastforward
 import torch
 
-from tests.autoquant.test_data.multiple_methods import ModuleWithMultipleMethods
+from tests.autoquant.test_data.multiple_methods import (
+    ModuleWithMultipleMethods,
+    helper,
+    helper_no_quant,
+)
+
+
+def quantized_tests_autoquant_test_data_multiple_methods_helper(
+    x: torch.Tensor,
+    *,
+    quantizer_mul: fastforward.nn.Quantizer,
+    quantizer_x: fastforward.nn.Quantizer,
+) -> torch.Tensor:
+    x = quantizer_x(x)
+    return fastforward.nn.functional.mul(x, 2, output_quantizer=quantizer_mul)
 
 
 class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleWithMultipleMethods):
@@ -20,10 +34,10 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
         self.quantizer__forward_cls__forward_static_1_x: fastforward.nn.Quantizer = (
             fastforward.nn.QuantizerStub()
         )
-        self.quantizer__forward_cls__forward_static_2_div: fastforward.nn.Quantizer = (
+        self.quantizer__forward_cls__forward_static_2_helper_mul: fastforward.nn.Quantizer = (
             fastforward.nn.QuantizerStub()
         )
-        self.quantizer__forward_cls__forward_static_2_x: fastforward.nn.Quantizer = (
+        self.quantizer__forward_cls__forward_static_2_helper_x: fastforward.nn.Quantizer = (
             fastforward.nn.QuantizerStub()
         )
 
@@ -38,8 +52,8 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
             quantizer__tmp_2=self.quantizer__forward_cls__tmp_2,
             quantizer__forward_static_1_mul=self.quantizer__forward_cls__forward_static_1_mul,
             quantizer__forward_static_1_x=self.quantizer__forward_cls__forward_static_1_x,
-            quantizer__forward_static_2_div=self.quantizer__forward_cls__forward_static_2_div,
-            quantizer__forward_static_2_x=self.quantizer__forward_cls__forward_static_2_x,
+            quantizer__forward_static_2_helper_mul=self.quantizer__forward_cls__forward_static_2_helper_mul,
+            quantizer__forward_static_2_helper_x=self.quantizer__forward_cls__forward_static_2_helper_x,
         )
 
     @classmethod
@@ -52,8 +66,8 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
         quantizer__tmp_2: fastforward.nn.Quantizer,
         quantizer__forward_static_1_mul: fastforward.nn.Quantizer,
         quantizer__forward_static_1_x: fastforward.nn.Quantizer,
-        quantizer__forward_static_2_div: fastforward.nn.Quantizer,
-        quantizer__forward_static_2_x: fastforward.nn.Quantizer,
+        quantizer__forward_static_2_helper_mul: fastforward.nn.Quantizer,
+        quantizer__forward_static_2_helper_x: fastforward.nn.Quantizer,
     ) -> torch.Tensor:
         _tmp_1 = cls._forward_static_1(
             x,
@@ -63,8 +77,8 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
         _tmp_1 = quantizer__tmp_1(_tmp_1)
         _tmp_2 = QuantizedModuleWithMultipleMethods._forward_static_2(
             x,
-            quantizer_div=quantizer__forward_static_2_div,
-            quantizer_x=quantizer__forward_static_2_x,
+            quantizer_helper_mul=quantizer__forward_static_2_helper_mul,
+            quantizer_helper_x=quantizer__forward_static_2_helper_x,
         )
         _tmp_2 = quantizer__tmp_2(_tmp_2)
         return fastforward.nn.functional.add(_tmp_1, _tmp_2, output_quantizer=quantizer_add)
@@ -77,14 +91,16 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
         quantizer_x: fastforward.nn.Quantizer,
     ) -> torch.Tensor:
         x = quantizer_x(x)
+        helper_no_quant(x)
         return fastforward.nn.functional.mul(x, 2, output_quantizer=quantizer_mul)
 
     @staticmethod
     def _forward_static_2(
         x: torch.Tensor,
         *,
-        quantizer_div: fastforward.nn.Quantizer,
-        quantizer_x: fastforward.nn.Quantizer,
+        quantizer_helper_mul: fastforward.nn.Quantizer,
+        quantizer_helper_x: fastforward.nn.Quantizer,
     ) -> torch.Tensor:
-        x = quantizer_x(x)
-        return fastforward.nn.functional.div(x, 2, output_quantizer=quantizer_div)
+        return quantized_tests_autoquant_test_data_multiple_methods_helper(
+            x, quantizer_mul=quantizer_helper_mul, quantizer_x=quantizer_helper_x
+        )

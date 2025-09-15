@@ -61,6 +61,15 @@ class ModuleBuilder(NodeBuilder[libcst.Module]):
         """Add classbuilder to module."""
         self._statements.append(klass)
 
+    def add_function(self, builder: "FunctionBuilder") -> None:
+        self._statements.append(builder)
+
+    def remove_function(self, builder: "FunctionBuilder") -> None:
+        try:
+            del self._statements[self._statements.index(builder)]
+        except ValueError:
+            pass
+
     def build(self, quantizer_refs: QuantizerReferenceCollection) -> libcst.Module:
         """Build the module."""
         return libcst.Module(body=self.build_module(quantizer_refs))

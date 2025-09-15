@@ -6,8 +6,10 @@ import collections
 import contextlib
 import dataclasses
 import inspect
+import itertools
 import logging
 import pathlib
+import sys
 import types
 
 from collections.abc import Iterator, Mapping, Sequence
@@ -21,7 +23,7 @@ import fastforward._autoquant.cst.nodes as nodes
 
 from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.convert import convert_function
-from fastforward._autoquant.cst import node_creation, passes
+from fastforward._autoquant.cst import node_creation, node_processing, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
@@ -69,24 +71,48 @@ def autoquant(
 
     # Process each method and its dependencies
     while func_queue:
-        new_task = func_queue.popleft()
-        func_name = new_task.function.__name__
+        task = func_queue.popleft()
+        func_name = task.function.__name__
+        if any(b.origin.func is task.function for b in module_builder.functions()):
+            continue
 
-        if inspect.ismodule(new_task.module):
-            # Here the case for 'normal' function is handled in follow-up work.
-            pass
-        elif issubclass(new_task.module, torch.nn.Module):
-            if new_task.module not in class_builders:
-                class_builders[new_task.module] = _cls_builder_for_module(new_task.module)
-            cls_builder = class_builders[new_task.module]
+        if inspect.ismodule(task.module):
+            # If task.module is a Python module (in contrast to a PyTorch
+            # module), treat the function as a 'helper' function. Create a new
+            # quantized version of the function in the quantized (Python)
+            # module.
+            qualified_module_name = fully_qualified_name(task.module)
+            func_ctx = FunctionContext.from_function_reference(task.function, task.module)
+            module_src = source_context.get(qualified_module_name)
+            func_src = module_src.member(func_name)
+            with quantizer_refs.push_context(func_ctx):
+                func_builder = convert_function(
+                    src=func_src,
+                    optable=operator_table,
+                    func_ctx=func_ctx,
+                    quantizer_refs=quantizer_refs,
+                )
+            module_builder.add_function(func_builder)
+
+            # Queue dependent functions for processing
+            for new_task in _find_dependent_functions(func_src, func_ctx):
+                func_queue.append(new_task)
+
+        elif issubclass(task.module, torch.nn.Module):
+            # If task.module is a PyTorch module (in contrast to a Python module), create
+            # a new member function on the quantized module. This can be an instance, class, or
+            # static method.
+            if task.module not in class_builders:
+                class_builders[task.module] = _cls_builder_for_module(task.module)
+            cls_builder = class_builders[task.module]
             if cls_builder.has_method(func_name):
                 continue
 
             # Convert method to quantized version
-            qualified_class_name = fully_qualified_name(new_task.module)
+            qualified_class_name = fully_qualified_name(task.module)
             src_class = source_context.get(qualified_class_name)
             method_src = src_class.member(func_name)
-            method_ctx = FunctionContext.from_method(new_task.module, func_name)
+            method_ctx = FunctionContext.from_method(task.module, func_name)
             with quantizer_refs.push_context(method_ctx):
                 func_builder = convert_function(
                     src=method_src,
@@ -97,16 +123,16 @@ def autoquant(
                 cls_builder.add_method(func_builder)
 
             # Queue dependent methods for processing
-            for dep_method_name in _find_dependent_methods(method_src, method_ctx):
-                new_task = _AqTask(
-                    module=new_task.module, function=getattr(new_task.module, dep_method_name)
-                )
+            for new_task in itertools.chain(
+                _find_dependent_methods(method_src, method_ctx),
+                _find_dependent_functions(method_src, method_ctx),
+            ):
                 func_queue.append(new_task)
 
         else:
             msg = (  # type: ignore[unreachable]
-                f"Failed to quantize '{new_task.function.__name__}' of '{new_task.module}' because "
-                + f"'{new_task.module}' is not a Python or Pytorch module."
+                f"Failed to quantize '{task.function.__name__}' of '{task.module}' because "
+                + f"'{task.module}' is not a Python or Pytorch module."
             )
             logger.warning(msg)
 
@@ -364,11 +390,37 @@ def _resolve_all_quantized_calls(
     #
     _resolve_calls(quantizer_refs, func_contexts, func_specs, signature_ref_map, calls)
 
-    # 5. Transformation Phase: Apply a CST transformer to replace all unresolved calls
+    # 5. Cleanup phase: remove functions that were initially identified as
+    #    quantization candidates but have empty quantization signatures,
+    #    indicating they do not require any quantization operations and should
+    #    be excluded from the generated module.
+    for func, signature in list(signatures.items()):
+        if not signature:
+            builder.remove_function(func_builder_map[func])
+            del func_builder_map[func]
+            del func_specs[func]
+            del signatures[func]
+
+    # 6. Resolve function name phase: Rename helper functions to avoid naming
+    #    conflicts For functions that are not methods (NO_METHOD type), convert
+    #    their fully qualified names into valid Python identifiers prefixed
+    #    with "quantized_" and update both the function definition and the
+    #    mapping for later reference updates.
+    #    For example, `mod.submod.helper`` becomes `quantized_mod_submod_helper`.
+    helper_function_names: dict[_FuncRef, libcst.BaseExpression] = {}
+    for func_ref, func_builder in func_builder_map.items():
+        if func_builder.origin.method_type is MethodType.NO_METHOD:
+            full_name = fully_qualified_name(func_ref)
+            expr_name = node_processing.expr_to_ident(libcst.parse_expression(full_name))
+            new_name = f"quantized_{expr_name}"
+            func_builder.cst = func_builder.cst.with_changes(name=libcst.Name(new_name))
+            helper_function_names[func_ref] = libcst.Name(new_name)
+
+    # 7. Transformation Phase: Apply a CST transformer to replace all unresolved calls
     #    with concrete function calls containing the resolved quantizer arguments.
     #    Update the function builder `quantizer_signature` list based on the inferred
     #    signature.
-    call_transformer = _ResolveQuantizedCallsTransformer(calls)
+    call_transformer = _ResolveQuantizedCallsTransformer(calls, helper_function_names)
     for func_ref, func_builder in func_builder_map.items():
         new_funcdef = func_builder.cst.visit(call_transformer)
         assert isinstance(new_funcdef, libcst.FunctionDef)
@@ -614,8 +666,13 @@ class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):
                    quantizer arguments.
     """
 
-    def __init__(self, call_args: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]]):
+    def __init__(
+        self,
+        call_args: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]],
+        func_rename_map: dict[_FuncRef, libcst.BaseExpression],
+    ):
         self._call_args = call_args
+        self._func_rename_map = func_rename_map
 
     def leave_UnresolvedQuantizedCall(
         self,
@@ -631,11 +688,13 @@ class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):
 
         params = nodes.node_asdict(updated_node)
         params["args"] = tuple(updated_node.args) + tuple(new_args)
+        if original_node.func_ref in self._func_rename_map:
+            params["func"] = self._func_rename_map[original_node.func_ref]
 
         return nodes.QuantizedCall(**params)
 
 
-def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -> Iterator[str]:
+def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -> Iterator[_AqTask]:
     """Find methods that are called by the given function within the same module.
 
     This function analyzes the source code of a method to identify other methods of the same
@@ -667,15 +726,12 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
     assert ModuleType is not None
     assert method_type is not None
 
-    # Holds all references to ModuleType within function (e.g., cls in class method)
     module_refs = {ctx.class_var} if ctx.class_var else set[str]()
-    if func_ref := getattr(ModuleType, func_name, None):
-        with contextlib.suppress(TypeError):  # getclosurevars raises TypeError on builtins
-            # Extract variable names that reference ModuleType from function closure
-            closure_vars = inspect.getclosurevars(func_ref)
-            for name, value in {**closure_vars.nonlocals, **closure_vars.globals}.items():
-                if value is ModuleType:
-                    module_refs.add(name)
+    try:
+        _, extended_module_refs = _scope_vars_and_module_refs(ModuleType, func_name)
+        module_refs.update(extended_module_refs)
+    except ValueError:
+        pass
 
     for candidate in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
         if not isinstance(call_expr := candidate.original, libcst.Call):
@@ -687,10 +743,131 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
                     continue
 
                 if ff.type_common.method_type(ModuleType, attr) is not MethodType.NO_METHOD:
-                    yield attr
+                    yield _AqTask(module=ModuleType, function=getattr(ModuleType, attr))
 
             case libcst.Name(call_func_name):
                 if method_type == MethodType.METHOD and call_func_name == ctx.instance_var:
                     # When calling self() in a torch.nn.Module subclass, this invokes
                     # __call__ which delegates to forward(). Track as "forward" call.
-                    yield "forward"
+                    yield _AqTask(module=ModuleType, function=getattr(ModuleType, "forward"))
+
+
+def _find_dependent_functions(
+    func_src: pysource.PySource, ctx: FunctionContext
+) -> Iterator[_AqTask]:
+    """Find Python functions that are called by the given function.
+
+    This function analyzes the source code to identify calls to other Python functions
+    (not methods) that are referenced within the function. It handles both direct function
+    calls and calls through attributes, tracking references through closure variables.
+
+    Args:
+        func_src: The source code representation of the function to analyze.
+        ctx: The `FunctionContext` of `func_src`.
+
+    Returns:
+        An iterator of `_AqTask` objects representing Python functions that are called
+        by the given function. Only yields functions that can be inspected (Python-defined,
+        not built-ins).
+
+    Note:
+        Method calls (e.g., `self.method()`) are filtered out as they are handled separately
+        by `_find_dependent_methods()`.
+    """
+    funcdef = func_src.cst(NodeType=libcst.FunctionDef)
+    func_name = funcdef.name.value
+
+    method_type = ctx.method_type
+    ModuleType = ctx.torch_module or ctx.py_module
+    is_method = method_type is not MethodType.NO_METHOD  # whether func_src represents a method
+
+    assert ModuleType is not None
+
+    try:
+        scope_vars, module_refs = _scope_vars_and_module_refs(ModuleType, func_name)
+    except ValueError:
+        # Skip function: no reference available for source inspection and quantization rewriting
+        return
+
+    def _is_method_call(call: libcst.Call) -> bool:
+        if not is_method:
+            return False
+
+        match call.func:
+            case libcst.Attribute(value=libcst.Name(obj), attr=libcst.Name(attr)):
+                if obj != ctx.instance_var and obj not in module_refs:
+                    return False
+                return ff.type_common.method_type(ModuleType, attr) is not MethodType.NO_METHOD
+
+        return False
+
+    for candidate in filter_nodes_by_type(funcdef, nodes.ReplacementCandidate):
+        if not isinstance(call_expr := candidate.original, libcst.Call):
+            continue
+        if _is_method_call(call_expr):
+            continue
+
+        match call_expr.func:
+            # Direct function calls: `func_name(args)`
+            case libcst.Name(func_name):
+                ref = scope_vars.get(func_name)
+                module = sys.modules.get(ref.__module__) if ref is not None else None
+                if ref is not None and module is not None:
+                    yield _AqTask(module=module, function=ref)
+
+            # Attribute access: `module.submodule.func(args)`
+            case libcst.Attribute():
+                try:
+                    ref = _resolve_attribute(scope_vars, call_expr.func)
+                except AttributeError:
+                    continue
+
+                if (module := sys.modules.get(ref.__module__)) is None:
+                    continue
+
+                # Only queue functions that are inspectable (Python-defined).
+                # Builtin function calls are replaced to quantized versions based on
+                # the operator table during function conversion.
+                if not inspect.isbuiltin(ref) and inspect.isfunction(ref):
+                    yield _AqTask(module=module, function=ref)
+
+
+def _scope_vars_and_module_refs(
+    ModuleType: type[torch.nn.Module] | types.ModuleType, func_name: str
+) -> tuple[dict[str, Any], set[str]]:
+    """Extract closure variables and module reference names from a function's scope."""
+    scope_vars: dict[str, Any] = {}
+    module_refs: set[str] = set()
+    if ref := getattr(ModuleType, func_name, None):
+        with contextlib.suppress(TypeError):  # getclosurevars raises TypeError on builtins
+            # Extract variable names that reference ModuleType from function closure
+            closure_vars = inspect.getclosurevars(ref)
+            scope_vars = {**closure_vars.nonlocals, **closure_vars.globals}
+            for name, value in scope_vars.items():
+                if value is ModuleType:
+                    module_refs.add(name)
+    else:
+        msg = f"'{func_name}' is not a members of '{ModuleType}"
+        raise ValueError(msg)
+
+    return scope_vars, module_refs
+
+
+def _resolve_attribute(scope: dict[str, Any], attr: libcst.Attribute) -> Any:
+    """Resolves an attribute expression to its actual object using the given scope."""
+    attr_parts = list(node_processing.iter_attribute(attr))
+    full_attr_name = libcst.Module([]).code_for_node(attr)
+    if not attr_parts or not isinstance(attr_parts[0], libcst.Name):
+        msg = f"Cannot resolve attribute {full_attr_name}"
+        raise AttributeError(msg)
+
+    obj = scope.get(attr_parts[0].value)
+    current_path = attr_parts[0].value
+
+    for attr_part in attr_parts[1:]:
+        if obj is None or not isinstance(attr_part, libcst.Name):
+            msg = f"Cannot resolve attribute {full_attr_name} (failed at '{current_path}')"
+            raise AttributeError(msg)
+        obj = getattr(obj, attr_part.value, None)
+        current_path += f".{attr_part.value}"
+    return obj
