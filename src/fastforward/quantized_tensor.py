@@ -324,7 +324,8 @@ class QuantizedTensor(torch.Tensor):
         See PyTorch's documentation for arguments.
         """
         if (len(args) > 0 and isinstance(args[0], torch.Tensor)) or "other" in kwargs:
-            raise ValueError(f"{type(self).__name__}.to(other: Tensor, ...) is not supported")
+            msg = f"{type(self).__name__}.to(other: Tensor, ...) is not supported"
+            raise ValueError(msg)
 
         to_args = parse_to_args(*args, **kwargs)
         device, dtype_, non_blocking, memory_format = to_args
@@ -533,7 +534,7 @@ def _dequantize_qtensor(_object: _T) -> _T | torch.Tensor:
 
 def _dequantization_fallback(func: Callable[..., _U], *args: Any, **kwargs: Any) -> _U:
     if fastforward.get_strict_quantization():
-        raise QuantizationError(
+        msg = (
             f"{func} was called while `fastforward.get_strict_quantization() == True`. "
             f"Because of this, implicit dequantization is not allowed. "
             f"Implicit dequantization occurs when a non-quantized operator is applied to one or more quantized tensors. "
@@ -542,6 +543,7 @@ def _dequantization_fallback(func: Callable[..., _U], *args: Any, **kwargs: Any)
             f"by explicitly dequantizing the quantized tensors before the operations, "
             f"or by registering a quantized operator that handles this specific case."
         )
+        raise QuantizationError(msg)
     with DisableTorchFunctionSubclass():
         args = optree.tree_map(_dequantize_qtensor, args)  # type: ignore[arg-type, assignment]
         kwargs = optree.tree_map(_dequantize_qtensor, kwargs or {})  # type: ignore[arg-type, assignment]

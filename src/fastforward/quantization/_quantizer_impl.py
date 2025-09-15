@@ -253,9 +253,8 @@ def quantize_dynamic_by_tile_impl(
         min_range = torch.min(row_representation, dim=1).values
         max_range = torch.max(row_representation, dim=1).values
     except IndexError as e:
-        raise ff.exceptions.QuantizationError(
-            f"Cannot dynamically quantize an empty tensor of shape {data.shape}"
-        ) from e
+        msg = f"Cannot dynamically quantize an empty tensor of shape {data.shape}"
+        raise ff.exceptions.QuantizationError(msg) from e
 
     scale, offset = affine.parameters_for_range(
         min_range, max_range, num_bits, symmetric=False, allow_one_sided=True

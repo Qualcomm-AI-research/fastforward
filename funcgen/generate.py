@@ -57,11 +57,13 @@ def main() -> None:
 
     args = parser.parse_args()
     if not (args.input.is_file() and args.input.exists()):
-        raise RuntimeError(f"The input ({args.input}) should be an existed file")
+        msg = f"The input ({args.input}) should be an existed file"
+        raise RuntimeError(msg)
 
     args.output.mkdir(parents=True, exist_ok=True)
     if not args.output.is_dir():
-        raise RuntimeError(f"The output ({args.output}) should be a directory")
+        msg = f"The output ({args.output}) should be a directory"
+        raise RuntimeError(msg)
 
     operators = OperatorTable.from_yaml(args.input, _resolve_dispatch=False)
     gen_operators.generate(operators, source=args.input, destination=args.output)

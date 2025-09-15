@@ -27,7 +27,8 @@ _FLAGS: dict[str, bool] = {}
 
 def _context_flag(flag_name: str, init_value: bool) -> _FlagMethods:
     if flag_name in _FLAGS:
-        raise ValueError(f"Flag '{flag_name}' already exists")
+        msg = f"Flag '{flag_name}' already exists"
+        raise ValueError(msg)
     _FLAGS[flag_name] = init_value
 
     def _setter(value: bool) -> None:

@@ -106,7 +106,8 @@ def test_pysource_is_type_methods(name: str, expected_type: str) -> None:
             assert not source_object.is_function()
             assert source_object.is_module()
         case _:
-            raise ValueError(f"'{expected_type}' is not a valid expected_type")
+            msg = f"'{expected_type}' is not a valid expected_type"
+            raise ValueError(msg)
 
 
 def test_pysource_module() -> None:

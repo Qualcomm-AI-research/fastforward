@@ -130,7 +130,8 @@ def _create_TestFragment(expected_raw_str: str) -> type[Fragment]:
 
             Returns: Boolean indicating whether the fragment matches the current position
             """
-            raise NotImplementedError(f"match is not implemented on {type(self).__name__}")
+            msg = f"match is not implemented on {type(self).__name__}"
+            raise NotImplementedError(msg)
 
         @classmethod
         def from_raw_string(cls, raw_str: str) -> Selector:

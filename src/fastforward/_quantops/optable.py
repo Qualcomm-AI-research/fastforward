@@ -146,9 +146,8 @@ class OperatorTable:
         try:
             return QualifiedNameReference(qualified_name).import_()  # type: ignore[no-any-return]
         except (ImportError, AttributeError):
-            raise ValueError(
-                f"No dispatch op was specified for '{name}' and '{qualified_name}' does not exist"
-            )
+            msg = f"No dispatch op was specified for '{name}' and '{qualified_name}' does not exist"
+            raise ValueError(msg)
 
     def _clear_aliases(self, py_op: _PyOp) -> None:
         for alias, target in self._py_op_aliases.items():
@@ -199,9 +198,8 @@ class OperatorTable:
 
         if errors:
             error_list = "\n".join([f"  - [line: {line}] {err}" for line, err in errors])
-            raise RuntimeError(
-                f"Unable to parse {source} because of the following errors\n\n{error_list}"
-            )
+            msg = f"Unable to parse {source} because of the following errors\n\n{error_list}"
+            raise RuntimeError(msg)
 
         return table
 
@@ -232,7 +230,8 @@ class OperatorTable:
             spec_idx = self._py_op_index[key]
         except KeyError as e:
             name = alias or str(key)
-            raise KeyError(f"{type(self).__name__} contains no operator for {name}") from e
+            msg = f"{type(self).__name__} contains no operator for {name}"
+            raise KeyError(msg) from e
 
         return self._operator_specs[spec_idx]
 
@@ -253,7 +252,8 @@ class OperatorTable:
         try:
             return self._py_op_aliases[alias]
         except KeyError as e:
-            raise KeyError(f"'{alias}' is not a known alias") from e
+            msg = f"'{alias}' is not a known alias"
+            raise KeyError(msg) from e
 
     def add_alias(self, alias: str, py_op: str | _PyOp) -> None:
         """Add an string alias for an operation.

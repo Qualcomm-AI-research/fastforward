@@ -310,7 +310,6 @@ def _resolve_name(qualified_name: str) -> _ResolvedQualifiedName:
 def _get_full_name_or_fail(node: libcst.CSTNode) -> str:
     name = libcst.helpers.get_full_name_for_node(node)
     if name is None:
-        raise SourceContextError(
-            f"Expected {type(node).__name__} to have a name, but name resolution failed"
-        )
+        msg = f"Expected {type(node).__name__} to have a name, but name resolution failed"
+        raise SourceContextError(msg)
     return name

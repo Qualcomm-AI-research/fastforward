@@ -70,7 +70,8 @@ class GeneralAssignment(libcst.BaseSmallStatement):
                 assert len(self.targets) == 1, "Should not have additional augmentation targets."
                 assert self.value is not None, "Expected a value to assign to."
             case _:
-                raise TypeError(f"Unexpected node type: {type(self.original)}")
+                msg = f"Unexpected node type: {type(self.original)}"  # type: ignore[unreachable]
+                raise TypeError(msg)
 
     def _deflate(self) -> libcst.CSTNode:
         match self.original:
@@ -91,7 +92,8 @@ class GeneralAssignment(libcst.BaseSmallStatement):
             case libcst.AugAssign():
                 return self.original.with_changes(target=self.targets[0], value=self.value)
             case _:
-                raise TypeError(f"Unexpected node type: {type(self.original)}")
+                msg = f"Unexpected node type: {type(self.original)}"  # type: ignore[unreachable]
+                raise TypeError(msg)
 
     def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> libcst.CSTNode:
         return type(self)(

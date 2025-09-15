@@ -47,22 +47,24 @@ def get_input_spec_new_old_mapping(
     old_input_specs: Sequence[InputSpec], new_input_specs: Sequence[InputSpec]
 ) -> dict[str, str]:
     if len(old_input_specs) != len(new_input_specs):
-        raise IndexError(
+        msg = (
             f"Detected different number of input specs before ({len(old_input_specs)}) "
             f"and after ({len(new_input_specs)}) applying graph operations. "
             "These need to be the same."
         )
+        raise IndexError(msg)
 
     new_old_mapping = {}
     for old_input_spec, new_input_spec in zip(old_input_specs, new_input_specs):
         # Make sure we do not make some mistake and associate
         # arguments that have different targets.
         if old_input_spec.target != new_input_spec.target:
-            raise RuntimeError(
+            msg = (
                 "The target for the same input spec before and after graph operations "
                 f"has changed. InputSpec ({old_input_spec}) before had target: "
                 f"{old_input_spec.target}, now it has target: {new_input_spec.target}."
             )
+            raise RuntimeError(msg)
         old_name = getattr(old_input_spec.arg, "name")
         new_name = getattr(new_input_spec.arg, "name")
 
@@ -207,9 +209,8 @@ def get_parameters(
 
 def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     if not isinstance(value, int) and not value.is_integer():
-        raise ExportError(
-            f"QNN requires the {value_name} value to be an integer (instead got {value})"
-        )
+        msg = f"QNN requires the {value_name} value to be an integer (instead got {value})"
+        raise ExportError(msg)
 
     return int(value)
 

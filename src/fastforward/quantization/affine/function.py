@@ -85,7 +85,8 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             case DynamicAffineQuantParams():
                 return cls._dynamic_quantize(data, params)
 
-        raise TypeError(f"Unsupported type for argument 'params': '{type(params)}'")
+        msg = f"Unsupported type for argument 'params': '{type(params)}'"
+        raise TypeError(msg)
 
     @classmethod
     def _export_quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> torch.Tensor:

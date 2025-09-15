@@ -54,7 +54,8 @@ class GenericType(Type):
     def __post_init__(self) -> None:
         for param in self.parameters():
             if not isinstance(param, Type):
-                raise TypeError(f"{self.name} parameters must be of type Type")
+                msg = f"{self.name} parameters must be of type Type"  # type: ignore[unreachable]
+                raise TypeError(msg)
 
     def parameters(self) -> tuple["Type", ...]:
         return self._parameters
@@ -241,7 +242,8 @@ def str_to_type(name: str) -> Type:
             return EllipsisType
         case "dtype" | "DType" | "torch.dtype":
             return DType
-    raise ValueError(f"No known type with name '{name}'")
+    msg = f"No known type with name '{name}'"
+    raise ValueError(msg)
 
 
 def type_to_python_str(symtype: Type) -> str:

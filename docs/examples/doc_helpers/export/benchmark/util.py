@@ -17,7 +17,8 @@ def _sliced_tqdm_iterator(iterator: Sized, limit: int | None = None, **kwargs) -
 def _str_to_torch_dtype(dtype: str) -> torch.dtype:
     dtype_obj = getattr(torch, dtype, None)
     if not isinstance(dtype_obj, torch.dtype):
-        raise RuntimeError(f"Unknown dtype {dtype}")
+        msg = f"Unknown dtype {dtype}"
+        raise RuntimeError(msg)
     return dtype_obj
 
 

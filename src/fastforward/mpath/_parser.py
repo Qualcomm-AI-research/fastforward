@@ -210,15 +210,15 @@ def register_mpath_query_extension(
             name may be overridden.
     """
     if tag in Parser.fragment_extensions and not override:
-        raise ValueError(
-            f"fragment parser with tag '{tag}' already exists. Use override=True to override it"
-        )
+        msg = f"fragment parser with tag '{tag}' already exists. Use override=True to override it"
+        raise ValueError(msg)
 
     if not issubclass(extension, (MpathQueryExtension, MpathQueryContextualExtension)):
-        raise TypeError(
+        msg = (  # type: ignore[unreachable]
             f"Unable to register {extension.__name__} as mpath query extension because it "
             "does not satisfy the MpathQueryExtension protocol."
         )
+        raise TypeError(msg)
 
     Parser.fragment_extensions[tag] = extension
     return QueryExtensionContext(tag=tag)
@@ -271,10 +271,11 @@ class Parser:
 
     def consume_until(self, kind: TokenType, escape_tokens: Sequence[TokenType] = ()) -> Token:
         if kind in escape_tokens:
-            raise ValueError(
+            msg = (
                 f"'{kind}' cannot be an escape token because it is already used as "
                 f"sentinel, i.e, 'kind={kind}'"
             )
+            raise ValueError(msg)
 
         escaped = False
         while True:
@@ -282,7 +283,8 @@ class Parser:
             if token.kind == kind and not escaped:
                 return self.tokenizer.next()
             elif token.kind == TokenType.EOL:
-                raise MPathParseError(f"Expected '{kind.name}' but found end of line")
+                msg = f"Expected '{kind.name}' but found end of line"
+                raise MPathParseError(msg)
             elif token.kind in escape_tokens and not escaped:
                 escaped = True
                 self.tokenizer.next()
@@ -351,9 +353,8 @@ class Parser:
             case TokenType.AMPERSAND:
                 return self._parse_alias()
             case _:
-                raise MPathParseError(
-                    f"Expected fragment at position {tok.position} but found '{tok.kind}"
-                )
+                msg = f"Expected fragment at position {tok.position} but found '{tok.kind}"
+                raise MPathParseError(msg)
 
     def _parse_path_fragment(self) -> selector.BaseSelector:
         token = self.expect(TokenType.IDENTIFIER, TokenType.DIGIT)
@@ -370,7 +371,8 @@ class Parser:
 
         spec_str = self._src[colon.position + 1 : closing_bracket.position]
         if tag not in self.fragment_extensions:
-            raise MPathParseError(f"'{tag}' is not a known mpath extension")
+            msg = f"'{tag}' is not a known mpath extension"
+            raise MPathParseError(msg)
 
         extension = self.fragment_extensions[tag]
         try:
@@ -379,9 +381,8 @@ class Parser:
             else:
                 selector = extension.from_raw_string(spec_str)
         except Exception as e:
-            raise MPathParseError(
-                f"Unable to instantiate MPATH extension '{extension.__name__}'"
-            ) from e
+            msg = f"Unable to instantiate MPATH extension '{extension.__name__}'"
+            raise MPathParseError(msg) from e
         return selector
 
     def _parse_multi_selector(self) -> selector.MultiSelector:
@@ -400,7 +401,8 @@ class Parser:
         self.expect(TokenType.AMPERSAND)
         identifier = self.expect(TokenType.IDENTIFIER).raw
         if identifier not in self._aliases:
-            raise MPathParseError(f"'{identifier}' is  not a known alias")
+            msg = f"'{identifier}' is  not a known alias"
+            raise MPathParseError(msg)
         return self._aliases[identifier]
 
 

@@ -165,10 +165,11 @@ class QuantizedLlamaAttention(LlamaAttention, QuantizedModule):
         )
 
         if attn_output.size() != (bsz, self.num_heads, q_len, self.head_dim):
-            raise ValueError(
+            msg = (
                 f"`attn_output` should be of size {(bsz, self.num_heads, q_len, self.head_dim)}, but is"
                 f" {attn_output.size()}"
             )
+            raise ValueError(msg)
 
         attn_output = attn_output.transpose(1, 2).contiguous()
 

@@ -136,7 +136,8 @@ class SmoothedMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         """
         if not isinstance(module, RangeSettable):
             proto_name = f"{RangeSettable.__module__}.{RangeSettable.__qualname__}"
-            raise TypeError(f"{type(module).__name__} does not implement {proto_name}.")
+            msg = f"{type(module).__name__} does not implement {proto_name}."
+            raise TypeError(msg)
         return module.register_override(
             SmoothedMinMaxEstimator(
                 module, gamma=self.gamma, disable_quantization=self.disable_quantization
@@ -279,7 +280,8 @@ class RunningMinMaxRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
         """
         if not isinstance(module, RangeSettable):
             proto_name = f"{RangeSettable.__module__}.{RangeSettable.__qualname__}"
-            raise TypeError(f"{type(module).__name__} does not implement {proto_name}.")
+            msg = f"{type(module).__name__} does not implement {proto_name}."
+            raise TypeError(msg)
         return module.register_override(
             RunningMinMaxEstimator(module, disable_quantization=self.disable_quantization)
         )

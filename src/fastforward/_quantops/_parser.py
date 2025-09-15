@@ -116,7 +116,8 @@ class _Lexer:
             self._position += len(match_str)
             return Token(match_str, TokenKind.Digit, start, self._position)
         else:
-            raise TokenizationError(f"Expected number at position {start}")
+            msg = f"Expected number at position {start}"
+            raise TokenizationError(msg)
 
     def _emit_string(self) -> Token:
         start = self._position
@@ -126,7 +127,8 @@ class _Lexer:
             self._position += len(match_str)
             return Token(match_str, TokenKind.String, start, self._position)
         else:
-            raise TokenizationError(f"Expected string at position {start}")
+            msg = f"Expected string at position {start}"
+            raise TokenizationError(msg)
 
     def _peek_char(self) -> str | None:
         if self._position + 1 < len(self._src):
@@ -157,9 +159,8 @@ class _Lexer:
                 yield self._emit_string()
                 continue
 
-            raise TokenizationError(
-                f"Encountered unexpected character '{char}' at position {self._position}"
-            )
+            msg = f"Encountered unexpected character '{char}' at position {self._position}"
+            raise TokenizationError(msg)
         yield Token("<EOL>", TokenKind.EOL, len(self._src), 0)
 
 
@@ -253,7 +254,8 @@ class _ParseExp:
                     object.__setattr__(self, "token", kind)
                     break
             else:
-                raise ParseError(f"Unable to create parser, {target} is not a valid token kind")
+                msg = f"Unable to create parser, {target} is not a valid token kind"
+                raise ParseError(msg)
 
         object.__setattr__(self, "target", target)
 
@@ -365,10 +367,11 @@ class Parser:
         if expected is None or observed is None:
             raise ParseError("parsing failed with unknown error")
         else:
-            raise ParseError(
+            msg = (
                 f"Expected '{expected.name}' but found '{observed.kind.name}' "
                 f"({observed.source}) at position {error_pos}"
             )
+            raise ParseError(msg)
 
     def _parse_rule(self, rule: ParseRule, _maybe_left_recursive: bool = True) -> Any:
         if _maybe_left_recursive and rule.left_recursive:

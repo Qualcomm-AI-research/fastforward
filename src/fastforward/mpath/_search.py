@@ -26,11 +26,12 @@ class FilterResult:
 
     def update_module(self, replacement: torch.nn.Module, safe: bool = True) -> Self:
         if safe and getattr(self.parent, self.parent_attribute) is not self.module:
-            raise ValueError(
+            msg = (
                 f"Trying to update module, but the parent attribute ({self.parent_attribute}) "
                 "model no longer references the module of this filter result. Use `safe=False` "
                 f"if you want to overwrite `parent.{self.parent_attribute}` nonetheless."
             )
+            raise ValueError(msg)
 
         setattr(self.parent, self.parent_attribute, replacement)
         return dataclasses.replace(self, module=replacement)

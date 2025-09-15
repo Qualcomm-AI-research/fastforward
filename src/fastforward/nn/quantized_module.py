@@ -242,13 +242,15 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             quantizer: The quantizer to register.
         """
         if not isinstance(quantizer, Quantizer) and quantizer is not None:
-            raise TypeError(f"{quantizer} is not a Quantizer subclass")
+            msg = f"{quantizer} is not a Quantizer subclass"  # type: ignore[unreachable]
+            raise TypeError(msg)
 
         metadata = self.__dict__.get("_quantizer_metadata")
         if metadata is None:
-            raise AttributeError(
+            msg = (
                 f"Cannot assign quantizer before {type(self).__name__}.__init_quantization__() call"
             )
+            raise AttributeError(msg)
 
         if _register_module:
             self.register_module(name, quantizer)
@@ -482,9 +484,11 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
 
         # Check if files exist
         if not config_path.exists():
-            raise FileNotFoundError(f"Quantization state config not found at {config_path}")
+            msg = f"Quantization state config not found at {config_path}"
+            raise FileNotFoundError(msg)
         if not model_path.exists():
-            raise FileNotFoundError(f"Quantization state model not found at {model_path}")
+            msg = f"Quantization state model not found at {model_path}"
+            raise FileNotFoundError(msg)
 
         # Load configuration
         with open(config_path, "r") as f:
@@ -492,7 +496,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
 
         # Validate configuration
         if config.get("version") != "1.0":
-            raise ValueError(f"Unsupported quantization state version: {config.get('version')}")
+            msg = f"Unsupported quantization state version: {config.get('version')}"
+            raise ValueError(msg)
 
         # if user provides a fill path to the config, we assume he knows what he is doing
         if str(config.get("name_or_path")) != str(name):
@@ -551,9 +556,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                     )
                     raise QuantizationError(msg)
             if not is_quantizer:
-                raise ValueError(
-                    f"'{name}' is not a quantizer or was overwritten by a non-quantizer object"
-                )
+                msg = f"'{name}' is not a quantizer or was overwritten by a non-quantizer object"
+                raise ValueError(msg)
 
             setattr(parent, parent_attribute, quantizer)
 
@@ -715,10 +719,11 @@ def _quantize_module(module: torch.nn.Module, module_map: ModuleConversionDict) 
     try:
         quantized_class = module_map[type(module)]
     except KeyError as e:
-        raise QuantizationError(
+        msg = (
             f"Quantization is not supported for '{type(module)}'. \n"
             f"Supported types can be found in `fastforward.nn.quantized_module.quantized_module_map`"
-        ) from e
+        )
+        raise QuantizationError(msg) from e
 
     if isinstance(quantized_class, SkipQuantization):
         logger.info(

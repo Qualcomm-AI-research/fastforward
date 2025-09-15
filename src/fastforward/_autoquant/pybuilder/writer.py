@@ -67,8 +67,7 @@ class FileWriter(BasicCodeWriter):
         """Writes the code to a file."""
         self.output_dir.mkdir(exist_ok=True, parents=True)
         if (outfile := self.output_file).exists() and not self._force_overwrite:
-            raise FileExistsError(
-                f"File {outfile} already exists. Use `force_overwrite=True` to ignore."
-            )
+            msg = f"File {outfile} already exists. Use `force_overwrite=True` to ignore."
+            raise FileExistsError(msg)
 
         outfile.write_text(code, encoding="utf-8")

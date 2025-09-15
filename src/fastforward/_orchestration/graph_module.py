@@ -80,14 +80,16 @@ def resolve_node_arg(arg: NodeArg, context: dict[str, Any]) -> Any:
     match arg:
         case NodeRef(name=name) | InputRef(name=name):
             if name not in context:
-                raise KeyError(f"Missing input '{name}' in context {context}")
+                msg = f"Missing input '{name}' in context {context}"
+                raise KeyError(msg)
             return context[name]
 
         case Const(value=v):
             return v
 
         case _:
-            raise ValueError(f"Invalid node argument: {arg}")
+            msg = f"Invalid node argument: {arg}"  # type: ignore[unreachable]
+            raise ValueError(msg)
 
 
 @dataclasses.dataclass
@@ -137,10 +139,12 @@ class GraphModule(torch.nn.Module):
     def add_input(self, name: str) -> InputRef:
         """Add an input name to the graph."""
         if name in self.input_names:
-            raise ValueError(f"Duplicate input name: {name}")
+            msg = f"Duplicate input name: {name}"
+            raise ValueError(msg)
 
         if not isinstance(name, str):
-            raise TypeError(f"Input name must be a str, not {type(name)}")
+            msg = f"Input name must be a str, not {type(name)}"  # type: ignore[unreachable]
+            raise TypeError(msg)
 
         self.input_names.append(name)
         return InputRef(name)
@@ -153,7 +157,8 @@ class GraphModule(torch.nn.Module):
         for node in nodes:
             name = node.name if isinstance(node, NodeRef) else node
             if name not in self._nodes:
-                raise KeyError(f"Unknown node {name}")
+                msg = f"Unknown node {name}"
+                raise KeyError(msg)
             self._output_names.append(name)
 
     def add_node(
@@ -182,7 +187,8 @@ class GraphModule(torch.nn.Module):
             ValueError: If node already exists in graph
         """
         if name in self._nodes:
-            raise ValueError(f"Duplicate node name: {name}")
+            msg = f"Duplicate node name: {name}"
+            raise ValueError(msg)
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
@@ -246,9 +252,11 @@ class GraphModule(torch.nn.Module):
 
         for key, value in kwargs.items():
             if key not in subgraph.input_names:
-                raise ValueError(f"Unknown subgraph input '{key}'")
+                msg = f"Unknown subgraph input '{key}'"
+                raise ValueError(msg)
             if key in input_binding:
-                raise ValueError(f"Multiple values for subgraph input '{key}'")
+                msg = f"Multiple values for subgraph input '{key}'"
+                raise ValueError(msg)
             input_binding[key] = value
 
         def resolve_arg(arg: NodeArg) -> NodeArg:
@@ -330,7 +338,8 @@ def topological_execution_plan(graph: GraphModule) -> ExecutionPlan:
             match arg:
                 case NodeRef(name=dep):
                     if dep not in graph._nodes:
-                        raise ValueError(f"Node '{node_name}' depends on unknown node '{dep}'")
+                        msg = f"Node '{node_name}' depends on unknown node '{dep}'"
+                        raise ValueError(msg)
                     dependencies[node_name].add(dep)
 
                 case _:
@@ -382,16 +391,19 @@ class ExecutionEngine:
 
         for kwarg_name, kwarg_value in kwargs.items():
             if kwarg_name in ctx:
-                raise TypeError(f"Got multiple values for argument '{kwarg_name}'")
+                msg = f"Got multiple values for argument '{kwarg_name}'"
+                raise TypeError(msg)
 
             if kwarg_name not in self.graph.input_names:
-                raise TypeError(f"Got an unexpected keyword argument '{kwarg_name}'")
+                msg = f"Got an unexpected keyword argument '{kwarg_name}'"
+                raise TypeError(msg)
 
             ctx[kwarg_name] = kwarg_value
 
         missing_inputs = set(self.graph.input_names) - set(ctx.keys())
         if missing_inputs:
-            raise TypeError(f"Missing required input arguments: {missing_inputs}")
+            msg = f"Missing required input arguments: {missing_inputs}"
+            raise TypeError(msg)
 
         return ctx
 

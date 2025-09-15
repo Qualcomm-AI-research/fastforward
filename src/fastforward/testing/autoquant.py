@@ -127,7 +127,8 @@ def _retrieve_funcdef(
             if funcdef.name.value == needle:
                 return funcdef
         else:
-            raise RuntimeError(f"CST does not contain a function with name '{needle}'")
+            msg = f"CST does not contain a function with name '{needle}'"
+            raise RuntimeError(msg)
 
 
 def assert_autoquantize_result(

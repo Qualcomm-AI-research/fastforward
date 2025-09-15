@@ -22,10 +22,11 @@ def check_tile_compatibility(input_size: SizeT, tile_size: SizeT) -> None:
     The function will raise an error if not, otherwise return None.
     """
     if len(input_size) != len(tile_size):
-        raise ValueError(
+        msg = (
             f"Input dimensionality must match tile_size dimensionality got "
             f"{len(input_size)} and {len(tile_size)}"
         )
+        raise ValueError(msg)
 
     mismatched = []
     for i, (input_dim, tile_dim) in enumerate(zip(input_size, tile_size)):
@@ -129,9 +130,8 @@ def rows_to_tiles(
     expected_rows = data_size.numel() // tile_size_to_use.numel()
     expected_size = torch.Size((expected_rows, tile_size_to_use.numel()))
     if tiled_data.size() != expected_size:
-        raise ValueError(
-            f"tiled_data is expected to be of size {expected_size} but found {tiled_data.size()}"
-        )
+        msg = f"tiled_data is expected to be of size {expected_size} but found {tiled_data.size()}"
+        raise ValueError(msg)
 
     num_dim_blocks = [a // b for a, b in zip(data_size, tile_size_to_use)]
     tiled_intermediate_shape = torch.Size(_interleave(num_dim_blocks, tile_size_to_use))

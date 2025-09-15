@@ -110,7 +110,8 @@ class BaseSelector(abc.ABC):
         return MultiSelector(None, (self, rhs))
 
     def __invert__(self) -> "BaseSelector":
-        raise MPathQueryError(f"Cannot invert {type(self).__name__}")
+        msg = f"Cannot invert {type(self).__name__}"
+        raise MPathQueryError(msg)
 
     def __getitem__(self, key: int | slice) -> "BaseSelector":
         if isinstance(key, slice):
@@ -236,9 +237,8 @@ class Selector(BaseSelector):
             MPathQueryError: If the selector contains more than one fragment.
         """
         if self.next:
-            raise MPathQueryError(
-                f"Cannot invert {type(self).__name__} that contains more than one fragment"
-            )
+            msg = f"Cannot invert {type(self).__name__} that contains more than one fragment"
+            raise MPathQueryError(msg)
         return dataclasses.replace(self, fragment=~self.fragment)
 
     def __and__(self, rhs: object) -> Self:

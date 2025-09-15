@@ -21,5 +21,6 @@ def ensure_type(node: object, NodeType: type[_T], ExceptionType: type[Exception]
             `NodeType`.
     """
     if not isinstance(node, NodeType):
-        raise ExceptionType(f"Expected {NodeType.__name__} but found {type(node).__name__}")
+        msg = f"Expected {NodeType.__name__} but found {type(node).__name__}"
+        raise ExceptionType(msg)
     return node

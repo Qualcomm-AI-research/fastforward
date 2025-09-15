@@ -186,9 +186,11 @@ class _ImplicitQuantizationFunction(Generic[_QP], QuantizationFunction[_QP]):
 
     def __init_subclass__(cls) -> None:
         if not hasattr(cls, "_quantize_impl"):
-            raise TypeError(f"A subclass of {cls.__name__} must define '_quantize_impl'")
+            msg = f"A subclass of {cls.__name__} must define '_quantize_impl'"
+            raise TypeError(msg)
         if not hasattr(cls, "_dequantize_impl"):
-            raise TypeError(f"A subclass of {cls.__name__} must define '_dequantize_impl'")
+            msg = f"A subclass of {cls.__name__} must define '_dequantize_impl'"
+            raise TypeError(msg)
         return super().__init_subclass__()
 
     @classmethod

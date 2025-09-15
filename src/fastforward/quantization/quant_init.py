@@ -77,22 +77,25 @@ def _initialize_quantizer(
 ) -> FilterResult:
     module = result.module
     if not isinstance(module, Quantizer):
-        raise TypeError(f"'{result.full_name}' is not a quantizer.")
+        msg = f"'{result.full_name}' is not a quantizer."
+        raise TypeError(msg)
     if not isinstance(module, QuantizerStub):
         if overwrite_policy == "error":
-            raise QuantizationError(
+            msg = (
                 f"'{result.full_name}' is a quantizer, but is already initialized. If "
                 'you want to overwrite the existing quantizer, use overwrite_policy="overwrite" '
                 "or if you want to skip re-initializing existing quantizers use "
                 'overwrite_policy="skip"'
             )
+            raise QuantizationError(msg)
         if overwrite_policy == "skip":
             return result
         if overwrite_policy != "overwrite":
-            raise ValueError(
+            msg = (  # type: ignore[unreachable]
                 f"Overwrite would occur, but overwrite_policy={repr(overwrite_policy)} is illegal. "
                 'please use one of "overwrite", "skip", or "error"'
             )
+            raise ValueError(msg)
 
     quantizer = quantizer_factory(result.full_name, cast(Quantizer, result.module))
     return result.update_module(quantizer, safe=safe)
@@ -141,9 +144,8 @@ class QuantizerCollection(mpath.MPathCollection):
             item: Filter result to add to the collection
         """
         if not isinstance(item, Quantizer):
-            raise ValueError(
-                f"Can only insert a FilterResult of a Quantizer module to {type(self).__name__}"
-            )
+            msg = f"Can only insert a FilterResult of a Quantizer module to {type(self).__name__}"
+            raise ValueError(msg)
         super().append(item)
 
     def _initialize_with_factory(

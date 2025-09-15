@@ -35,10 +35,11 @@ def ensure_non_mainthread(func: Callable[_P, _T]) -> Callable[_P, _T]:
             name = func.__qualname__
             if module is not None and module != "__builtin__":  # type: ignore[redundant-expr]
                 name = module + "." + name
-            raise RuntimeError(
+            msg = (
                 f"{name} can only be called within an context. This may happen "
                 "when a orchestration hook is not properly removed."
             )
+            raise RuntimeError(msg)
         return func(*args, **kwargs)
 
     return wrapper
@@ -197,10 +198,11 @@ class ConcurrentExecOrchestrator:
 
         order_stages = sorted(itertools.chain(*execution_order))
         if list(range(num_stages)) != order_stages:
-            raise ValueError(
+            msg = (
                 f"Each stage 0-{num_stages - 1} must appear exactly once in execution_order. "
                 f"Got {execution_order}."
             )
+            raise ValueError(msg)
 
         self.pre_stage_hooks: list[OrderedDict[int, _StageHook]] = [
             OrderedDict() for _ in range(num_stages)
@@ -280,7 +282,8 @@ class ConcurrentExecOrchestrator:
             if stage in self.execution_order[exec_block_idx]:
                 break
         else:
-            raise RuntimeError(f"stage {stage} is not in execution_order {self.execution_order}")
+            msg = f"stage {stage} is not in execution_order {self.execution_order}"
+            raise RuntimeError(msg)
 
         exec_block = self.execution_order[exec_block_idx]
         block_stage_idx = exec_block.index(stage)
@@ -290,12 +293,13 @@ class ConcurrentExecOrchestrator:
         # we end up with hard to reason about stage orders.
         if repeat_event:
             if len(exec_block) != 1:
-                raise RuntimeError(
+                msg = (
                     "Repeated stages are only allowed for the single stage execution blocks. "
                     f"The current stage '{stage}' is stage {block_stage_idx + 1} of "
                     f"{len(exec_block)} in execution block '{exec_block}' of the provided "
                     f"execution order ({self.execution_order})."
                 )
+                raise RuntimeError(msg)
 
             # If current batch is the last batch, cycle back to first batch. Else choose next
             # batch

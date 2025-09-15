@@ -259,9 +259,8 @@ def unsqueeze(input: QuantizedTensor, dim: int) -> QuantizedTensor:
                 granularity=ff.PerTile(tuple(new_size))
             )
         case _:
-            raise ValueError(
-                f"unsqueeze: unsupported granularity: {type(quant_params.granularity).__name__}"
-            )
+            msg = f"unsqueeze: unsupported granularity: {type(quant_params.granularity).__name__}"
+            raise ValueError(msg)
 
     return new_context.attach(data)
 
@@ -307,9 +306,8 @@ def getitem_per_channel(
     # avoid negative channel dims
     channel_dims = tuple(input.raw_data.ndim + c if (c < 0) else c for c in channel_dims)
     if any(x < 0 for x in channel_dims):
-        raise ValueError(
-            f"Granularity channels ({q_params.granularity.channel_dims}) are larger than data shape ({input.raw_data.shape})"
-        )
+        msg = f"Granularity channels ({q_params.granularity.channel_dims}) are larger than data shape ({input.raw_data.shape})"
+        raise ValueError(msg)
 
     # expand dimensions without per channel scaling (size 1)
     param_tmp_shape = [

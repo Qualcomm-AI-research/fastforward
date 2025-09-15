@@ -70,7 +70,8 @@ class RegexPathFragment(Fragment):
         try:
             self._matcher = re.compile(fragment_pattern)
         except re.error as e:
-            raise MPathQueryError(f"{fragment_pattern} is not a valid regex pattern") from e
+            msg = f"{fragment_pattern} is not a valid regex pattern"
+            raise MPathQueryError(msg) from e
 
     @classmethod
     def from_raw_string(cls, raw_str: str) -> Selector:
@@ -118,7 +119,8 @@ class ClassFragment(Fragment):
         try:
             obj = context[root]
         except KeyError:
-            raise NameError(f"name '{root}' is not defined")
+            msg = f"name '{root}' is not defined"
+            raise NameError(msg)
 
         for key in tail:
             obj = getattr(obj, key)

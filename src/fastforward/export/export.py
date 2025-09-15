@@ -335,9 +335,8 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
                         parameter_name
                     )
                 else:
-                    raise RuntimeError(
-                        f"The node {parameter_name} contains neither a buffer or a parameter"
-                    )
+                    msg = f"The node {parameter_name} contains neither a buffer or a parameter"
+                    raise RuntimeError(msg)
             else:
                 parameter_values[function_parameter_name] = parameter_node
 

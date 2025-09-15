@@ -24,7 +24,8 @@ class QualifiedNameReference:
     @property
     def parent(self) -> "QualifiedNameReference":
         if len(self._parts) == 0:
-            raise ValueError(f"Empty {type(self).__name__} has no parent")
+            msg = f"Empty {type(self).__name__} has no parent"
+            raise ValueError(msg)
         new_reference = QualifiedNameReference.__new__(QualifiedNameReference)
         new_reference._parts = self._parts[:-1]
         return new_reference
@@ -32,7 +33,8 @@ class QualifiedNameReference:
     @property
     def stem(self) -> str:
         if len(self._parts) == 0:
-            raise ValueError(f"Empty {type(self).__name__} has no stem")
+            msg = f"Empty {type(self).__name__} has no stem"
+            raise ValueError(msg)
         return self._parts[-1]
 
     @property
@@ -52,7 +54,8 @@ class QualifiedNameReference:
             except AttributeError:
                 # On a attribute lookup failure, we can conclude that the
                 # provided reference to not refer to an existing module/object.
-                raise ImportError(f"Cannot import '{self.qualified_name}'")
+                msg = f"Cannot import '{self.qualified_name}'"
+                raise ImportError(msg)
         return finger
 
     def _import_module(
@@ -60,7 +63,8 @@ class QualifiedNameReference:
     ) -> tuple[ModuleType, str, tuple[str, ...]]:
         # If we reach a root reference, the import must have failed
         if len(self._parts) == 0:
-            raise ImportError(f"Cannot import '{'.'.join(_remainder)}'")
+            msg = f"Cannot import '{'.'.join(_remainder)}'"
+            raise ImportError(msg)
 
         # Try to import the full reference as a module. This may fail
         # if the reference does not refer to a python module. In thas case

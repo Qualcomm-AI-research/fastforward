@@ -140,6 +140,7 @@ select = [
   "CPY001",
   "ISC001",
   "PIE790",
+  "EM102",
 ]
 ignore = [
   "D100",
