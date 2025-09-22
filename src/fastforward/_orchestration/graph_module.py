@@ -20,36 +20,48 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
+import uuid
 
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Mapping
 from typing import Any
 
 import torch
 
 
-@dataclasses.dataclass(frozen=True)
-class NodeRef:
+@dataclasses.dataclass(frozen=True, eq=False)
+class _BaseRef:
+    id: uuid.UUID
+    name: str
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _BaseRef):
+            return NotImplemented
+
+        return self.id == other.id
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class NodeRef(_BaseRef):
     """Reference to a node inside a GraphModule.
 
     Args:
         name: Fully-qualified name inside the GraphModule
     """
 
-    name: str
-
     def __repr__(self) -> str:
         return f"NodeRef({self.name})"
 
 
-@dataclasses.dataclass(frozen=True)
-class InputRef:
+@dataclasses.dataclass(frozen=True, eq=False)
+class InputRef(_BaseRef):
     """Reference to a GraphModule input.
 
     Args:
         name: Input name of the current GraphModule
     """
-
-    name: str
 
     def __repr__(self) -> str:
         return f"InputRef({self.name})"
@@ -72,23 +84,22 @@ class Const:
 NodeArg = NodeRef | InputRef | Const
 
 
-def resolve_node_arg(arg: NodeArg, context: dict[str, Any]) -> Any:
+def resolve_node_arg(arg: NodeArg, context: dict[uuid.UUID, Any]) -> Any:
     """Resolve a node argument to its actual value from execution context.
 
     Returns the referenced value for NodeRef/InputRef, or the literal value for Const.
     """
     match arg:
-        case NodeRef(name=name) | InputRef(name=name):
-            if name not in context:
-                msg = f"Missing input '{name}' in context {context}"
+        case NodeRef(id=ref_id, name=name) | InputRef(id=ref_id, name=name):
+            if ref_id not in context:
+                msg = f"Missing input with id {ref_id!r}  in context {context} ({name=})"
                 raise KeyError(msg)
-            return context[name]
-
+            return context[ref_id]
         case Const(value=v):
             return v
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Node:
     """A node in a 'GraphModule', which wraps a PyTorch module.
 
@@ -103,6 +114,7 @@ class Node:
         kwargs: Keyword arguments (NodeRef/InputRef/Const)
     """
 
+    id: uuid.UUID
     name: str
     module: torch.nn.Module
     args: Collection[NodeArg]
@@ -120,32 +132,46 @@ class GraphModule(torch.nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self.input_names: list[str] = []
-        self.output_names: list[str] = []
         self._nodes: dict[str, Node] = {}
-
+        self._node_refs: dict[str, NodeRef] = {}
+        self._inputs: dict[str, InputRef] = dict()
+        self._outputs: list[NodeRef] = []
         self._engine: ExecutionEngine | None = None
+
+    @property
+    def input_names(self) -> list[str]:
+        """Return the list of graph input names in definition order."""
+        return list(self._inputs.keys())
+
+    @property
+    def output_names(self) -> list[str]:
+        """Return the list of graph output names in definition order."""
+        return [ref.name for ref in self._outputs]
+
+    def node_ref(self, name: str) -> NodeRef:
+        """Return the NodeRef for 'name', raising ValueError if it is unknown."""
+        try:
+            return self._node_refs[name]
+        except KeyError as exc:
+            msg = f"Unknown node name '{name}'"
+            raise ValueError(msg) from exc
 
     def add_input(self, name: str) -> InputRef:
         """Add an input name to the graph."""
-        if name in self.input_names:
+        if name in self._inputs:
             msg = f"Duplicate input name: {name}"
             raise ValueError(msg)
+        ref = InputRef(uuid.uuid4(), name)
+        self._inputs[name] = ref
+        return ref
 
-        self.input_names.append(name)
-        return InputRef(name)
-
-    def add_output(self, nodes: NodeRef | str | Iterable[NodeRef | str]) -> None:
+    def add_output(self, *nodes: NodeRef) -> None:
         """Add output nodes to the graph."""
-        if isinstance(nodes, (NodeRef, str)):
-            nodes = (nodes,)
-
         for node in nodes:
-            name = node.name if isinstance(node, NodeRef) else node
-            if name not in self._nodes:
-                msg = f"Unknown node name: {name}"
+            if node.name not in self._nodes or not self._node_refs[node.name].id == node.id:
+                msg = f"Unknown node name: {node.name}"
                 raise ValueError(msg)
-            self.output_names.append(name)
+            self._outputs.append(node)
 
     def add_node(
         self,
@@ -153,6 +179,8 @@ class GraphModule(torch.nn.Module):
         module: torch.nn.Module,
         args: Collection[NodeArg],
         kwargs: Mapping[str, NodeArg] | None = None,
+        *,
+        node_id: uuid.UUID | None = None,
     ) -> NodeRef:
         """Add a node to this 'GraphModule'.
 
@@ -165,6 +193,7 @@ class GraphModule(torch.nn.Module):
             module: PyTorch module to execute
             args: Positional arguments (NodeRef/InputRef/Const)
             kwargs: Keyword arguments (NodeRef/InputRef/Const)
+            node_id: Optional node ID. If not provided, a new one will be generated.
 
         Returns:
             NodeRef: Reference to the created node
@@ -176,10 +205,17 @@ class GraphModule(torch.nn.Module):
             msg = f"Duplicate node name: {name}"
             raise ValueError(msg)
 
+        node_id = node_id or uuid.uuid4()
+        if any(n.id == node_id for n in self._nodes.values()):
+            msg = f"Duplicate node id: {node_id}"
+            raise ValueError(msg)
+
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
-
-        node = Node(name, module, args, kwargs or {})
+        node = Node(node_id, name, module, args, kwargs or {})
+        self._nodes[name] = node
+        ref = NodeRef(node_id, name)
+        self._node_refs[name] = ref
 
         *module_path, leaf_name = name.split(".")
         parent = self
@@ -189,9 +225,7 @@ class GraphModule(torch.nn.Module):
             parent = getattr(parent, attr)
 
         parent.add_module(leaf_name, node.module)
-        self._nodes[name] = node
-
-        return NodeRef(name)
+        return ref
 
     def add_subgraph(
         self,
@@ -218,7 +252,7 @@ class GraphModule(torch.nn.Module):
             ValueError: If a keyword argument is not an input of the subgraph
             ValueError: If a keyword argument is already defined as an argument
         """
-        if not subgraph.output_names:
+        if not subgraph._outputs:
             msg = "Subgraph has no output nodes defined"
             raise ValueError(msg)
 
@@ -250,8 +284,11 @@ class GraphModule(torch.nn.Module):
             match arg:
                 case InputRef(name=input_name):
                     return input_binding[input_name]
-                case NodeRef(name=node_name):
-                    return NodeRef(f"{name}.{node_name}")
+                case NodeRef(id=ref_id, name=node_name):
+                    if subgraph._node_refs[node_name].id != ref_id:
+                        msg = f"Mismatching NodeRef id for sub-graph node '{node_name}'"
+                        raise ValueError(msg)
+                    return NodeRef(ref_id, f"{name}.{node_name}")
                 case Const():
                     return arg
 
@@ -259,10 +296,10 @@ class GraphModule(torch.nn.Module):
             node_args = [resolve_arg(arg) for arg in node.args]
             node_kwargs = {key: resolve_arg(arg) for key, arg in node.kwargs.items()}
             node_name = f"{name}.{node.name}"
-            self.add_node(node_name, node.module, node_args, node_kwargs)
+            self.add_node(node_name, node.module, node_args, node_kwargs, node_id=node.id)
 
         # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
-        new_output_refs = [NodeRef(f"{name}.{out_name}") for out_name in subgraph.output_names]
+        new_output_refs = [NodeRef(ref.id, f"{name}.{ref.name}") for ref in subgraph._outputs]
 
         return tuple(new_output_refs)
 
@@ -332,13 +369,19 @@ class TopologicalExecutionPlan(ExecutionPlan):
         dependents: dict[NodeRef, set[NodeRef]] = collections.defaultdict(set)
 
         for node_name, node in graph._nodes.items():
-            node_ref = NodeRef(node_name)
+            node_ref = graph._node_refs[node_name]
 
             for arg in (*node.args, *node.kwargs.values()):
                 match arg:
-                    case NodeRef(name=dep_name) as dep_ref:
+                    case NodeRef(id=dep_id, name=dep_name):
                         if dep_name not in graph._nodes:
                             msg = f"Node '{node_name}' depends on unknown node '{dep_name}'"
+                            raise ValueError(msg)
+
+                        dep_ref = graph._node_refs[dep_name]
+
+                        if dep_ref.id != dep_id:
+                            msg = f"Node '{node_name}' depends on node '{dep_name}' more than once"
                             raise ValueError(msg)
 
                         dependencies[node_ref].add(dep_ref)
@@ -351,7 +394,8 @@ class TopologicalExecutionPlan(ExecutionPlan):
         # Topological sort using Kahn's algorithm
         execution_order = []
         in_degree = {
-            NodeRef(name): len(dependencies.get(NodeRef(name), [])) for name in graph._nodes.keys()
+            graph._node_refs[name]: len(dependencies.get(graph._node_refs[name], ()))
+            for name in graph._nodes
         }
 
         queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
@@ -379,33 +423,33 @@ class ExecutionEngine:
         self.graph = graph
         self._plan: ExecutionPlan | None = None
 
-    def _bind_args(self, *args, **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+    def _bind_args(self, *args, **kwargs) -> dict[uuid.UUID, Any]:  # type: ignore[no-untyped-def]
         """Bind input arguments to graph input names.
 
         Maps positional args to input_names by position, or kwargs by name.
         Returns context dict for graph execution.
         """
-        ctx: dict[str, Any] = {}
+        ctx: dict[uuid.UUID, Any] = {}
         if len(args) > len(self.graph.input_names):
             msg = f"Expected {len(self.graph.input_names)} positional arguments, got {len(args)}"
             raise TypeError(msg)
 
-        for arg_value, input_name in zip(args, self.graph.input_names):
-            ctx[input_name] = arg_value
+        for arg_value, ref in zip(args, self.graph._inputs.values()):
+            ctx[ref.id] = arg_value
 
         for kwarg_name, kwarg_value in kwargs.items():
-            if kwarg_name in ctx:
-                msg = f"Got multiple values for argument '{kwarg_name}'"
-                raise TypeError(msg)
-
-            if kwarg_name not in self.graph.input_names:
+            if kwarg_name not in self.graph._inputs:
                 msg = f"Got an unexpected keyword argument '{kwarg_name}'"
                 raise TypeError(msg)
 
-            ctx[kwarg_name] = kwarg_value
+            ref = self.graph._inputs[kwarg_name]
+            if ref.id in ctx:
+                msg = f"Got multiple values for argument '{kwarg_name}'"
+                raise TypeError(msg)
 
-        missing_inputs = set(self.graph.input_names) - set(ctx.keys())
-        if missing_inputs:
+            ctx[ref.id] = kwarg_value
+
+        if missing_inputs := {ref.id for ref in self.graph._inputs.values()} - ctx.keys():
             msg = f"Missing required input arguments: {missing_inputs}"
             raise TypeError(msg)
 
@@ -438,12 +482,12 @@ class ExecutionEngine:
             resolved_kwargs = {key: resolve_node_arg(arg, ctx) for key, arg in node.kwargs.items()}
 
             out = node.module(*resolved_args, **resolved_kwargs)
-            ctx[node_ref.name] = out
+            ctx[node_ref.id] = out
 
-        if len(self.graph.output_names) == 1:
-            return ctx[self.graph.output_names[0]]
+        if len(self.graph._outputs) == 1:
+            return ctx[self.graph._outputs[0].id]
 
-        return tuple(ctx[name] for name in self.graph.output_names)
+        return tuple(ctx[ref.id] for ref in self.graph._outputs)
 
 
 class Direction(enum.Enum):
@@ -522,11 +566,11 @@ def find_nodes_on_path(
     Raises:
         ValueError: If either node is missing or if no path exists.
     """
-    if start.name not in graph._nodes:
+    if start not in graph._node_refs.values():
         msg = f"Start node '{start.name}' not found in graph"
         raise ValueError(msg)
 
-    if end.name not in graph._nodes:
+    if end not in graph._node_refs.values():
         msg = f"End node '{end.name}' not found in graph"
         raise ValueError(msg)
 
@@ -605,8 +649,8 @@ def create_subgraph(
     external_outputs = {
         node_name
         for node_name in node_names
-        if node_name in graph.output_names
-        or any(dep not in path_nodes for dep in plan.dependents[NodeRef(node_name)])
+        if graph._node_refs[node_name] in graph._outputs
+        or any(dep not in path_nodes for dep in plan.dependents[graph._node_refs[node_name]])
     }
 
     # Connect the inputs, nodes, and outputs to a new subgraph.
@@ -632,9 +676,10 @@ def create_subgraph(
             module=source_node.module,
             args=[resolve_arg(arg) for arg in source_node.args],
             kwargs={key: resolve_arg(arg) for key, arg in source_node.kwargs.items()},
+            node_id=source_node.id,
         )
 
-    subgraph.add_output([NodeRef(node_name) for node_name in external_outputs])
+    subgraph.add_output(*(subgraph.node_ref(node_name) for node_name in external_outputs))
     return subgraph
 
 
@@ -665,7 +710,7 @@ def partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> l
 
     explicit_node_sets = _extract_node_sets_from_specs(graph, plan, subgraph_specs)
 
-    remaining_nodes = set(map(NodeRef, graph._nodes)) - set().union(*explicit_node_sets)
+    remaining_nodes = set(graph._node_refs.values()) - set().union(*explicit_node_sets)
     remaining_node_sets = _find_connected_components(plan, remaining_nodes)
 
     partitions: list[GraphModule] = []

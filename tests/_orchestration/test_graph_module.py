@@ -10,7 +10,6 @@ from fastforward._orchestration.graph_module import (
     Const,
     Direction,
     GraphModule,
-    NodeRef,
     SubgraphSpec,
     TopologicalExecutionPlan,
     create_subgraph,
@@ -56,7 +55,7 @@ class Residual(torch.nn.Module):
         input = graph.add_input("input")
         linear = graph.add_node("linear", self.linear, [input])
         relu = graph.add_node("relu", torch.nn.ReLU(), [linear])
-        add = graph.add_subgraph("add", Add().to_graph_module(), [input, relu])
+        (add,) = graph.add_subgraph("add", Add().to_graph_module(), [input, relu])
         graph.add_output(add)
         return graph
 
@@ -124,7 +123,7 @@ class MultiOutputModel(torch.nn.Module):
         relu_out = graph.add_node("relu", torch.nn.ReLU(), args=[linear1_out])
         linear2_out = graph.add_node("linear2", self.linear2, args=[input])
         sigmoid_out = graph.add_node("sigmoid", torch.nn.Sigmoid(), args=[linear2_out])
-        graph.add_output([relu_out, sigmoid_out])
+        graph.add_output(relu_out, sigmoid_out)
         return graph
 
 
@@ -198,7 +197,7 @@ def test_keyword_binding_for_subgraph() -> None:
     # GIVEN a GraphModule with Add as a subgraph where we bind a keyword argument
     graph = GraphModule()
     input = graph.add_input("input")
-    add = graph.add_subgraph("add", add_subgraph, [input], {"y": Const(input_y)})
+    (add,) = graph.add_subgraph("add", add_subgraph, [input], {"y": Const(input_y)})
     graph.add_output(add)
 
     # WHEN we execute the graph module
@@ -215,7 +214,9 @@ def test_create_subgraph_functional_equivalence() -> None:
     plan = TopologicalExecutionPlan.from_graph(graph)
 
     # GIVEN the minimal node set lying in the GraphModule
-    path_nodes = find_nodes_on_path(graph, plan, NodeRef("residual_1.linear"), NodeRef("sigmoid"))
+    path_nodes = find_nodes_on_path(
+        graph, plan, graph.node_ref("residual_1.linear"), graph.node_ref("sigmoid")
+    )
 
     # WHEN we materialise that path as a standalone GraphModule
     subgraph = create_subgraph(graph, plan, path_nodes)
@@ -233,8 +234,10 @@ def test_partition_graph_splits_into_spec_and_remaining_components() -> None:
     model = Model()
     graph = model.to_graph_module()
     specs = [
-        SubgraphSpec(input=NodeRef("residual_1.linear"), output=NodeRef("residual_1.relu")),
-        SubgraphSpec(input=NodeRef("residual_2.relu"), output=NodeRef("sigmoid")),
+        SubgraphSpec(
+            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
+        ),
+        SubgraphSpec(input=graph.node_ref("residual_2.relu"), output=graph.node_ref("sigmoid")),
     ]
 
     # WHEN we partition the graph
@@ -256,8 +259,12 @@ def test_partition_graph_overlapping_specs_raises() -> None:
     model = Model()
     graph = model.to_graph_module()
     specs = [
-        SubgraphSpec(input=NodeRef("residual_1.linear"), output=NodeRef("residual_1.relu")),
-        SubgraphSpec(input=NodeRef("residual_1.linear"), output=NodeRef("residual_1.relu")),
+        SubgraphSpec(
+            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
+        ),
+        SubgraphSpec(
+            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
+        ),
     ]
 
     # WHEN we call partition_graph with these overlapping specs
@@ -272,24 +279,53 @@ def test_find_reachable_nodes_happy_path() -> None:
     plan = TopologicalExecutionPlan.from_graph(graph)
 
     # WHEN we collect nodes reachable forward from residual_1.linear
-    fwd = find_reachable_nodes(plan, NodeRef("residual_1.linear"), direction=Direction.FORWARD)
+    fwd = find_reachable_nodes(
+        plan, graph.node_ref("residual_1.linear"), direction=Direction.FORWARD
+    )
 
     # THEN some expected downstream nodes are present
-    assert {NodeRef("residual_1.relu"), NodeRef("residual_2.linear"), NodeRef("sigmoid")} <= fwd
+    assert {
+        graph.node_ref("residual_1.relu"),
+        graph.node_ref("residual_2.linear"),
+        graph.node_ref("sigmoid"),
+    } <= fwd
 
     # WHEN we collect nodes reachable backward from sigmoid
-    bwd = find_reachable_nodes(plan, NodeRef("sigmoid"), direction=Direction.BACKWARD)
+    bwd = find_reachable_nodes(plan, graph.node_ref("sigmoid"), direction=Direction.BACKWARD)
 
     # THEN an early upstream node is included
-    assert NodeRef("residual_1.linear") in bwd
+    assert graph.node_ref("residual_1.linear") in bwd
 
     # GIVEN a allowlist that omits intermediate nodes
-    allowlist = {NodeRef("residual_2.linear"), NodeRef("sigmoid")}
+    allowlist = {graph.node_ref("residual_2.linear"), graph.node_ref("sigmoid")}
 
     # WHEN we traverse with the allowlist
     restricted = find_reachable_nodes(
-        plan, NodeRef("residual_2.linear"), direction=Direction.FORWARD, allowlist=allowlist
+        plan, graph.node_ref("residual_2.linear"), direction=Direction.FORWARD, allowlist=allowlist
     )
 
     # THEN traversal stops at the start node
-    assert restricted == {NodeRef("residual_2.linear")}
+    assert restricted == {graph.node_ref("residual_2.linear")}
+
+
+def test_node_ref_identity_across_graphs() -> None:
+    # GIVEN a small reusable sub-graph with a single Linear op
+    linear_mod = torch.nn.Linear(3, 3)
+    sub = GraphModule()
+    x = sub.add_input("x")
+    lin = sub.add_node("linear", linear_mod, [x])
+    sub.add_output(lin)
+
+    # WHEN we inline the same sub-graph into two different parent graphs
+    g1 = GraphModule()
+    (lin_g1,) = g1.add_subgraph("g1", sub, [g1.add_input("x")])
+    g1.add_output(lin_g1)
+
+    g2 = GraphModule()
+    (lin_g2,) = g2.add_subgraph("g2", sub, [g2.add_input("x")])
+    g2.add_output(lin_g2)
+
+    # THEN the NodeRefs share UUID identity but carry different qualified names
+    assert lin_g1 == lin_g2
+    assert hash(lin_g1) == hash(lin_g2)
+    assert lin_g1.name != lin_g2.name
