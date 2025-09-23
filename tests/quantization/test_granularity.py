@@ -5,6 +5,7 @@ import math
 
 from collections.abc import Sequence
 
+import fastforward as ff
 import pytest
 import torch
 
@@ -173,3 +174,43 @@ def test_per_tile_granularity(
     else:
         with pytest.raises(ValueError):
             gran.tile_size(data_shape)
+
+
+@pytest.mark.parametrize(
+    "gran,expected",
+    [
+        # If no expected is given, reproduced granularity equals the original
+        (ff.PerTensor(), None),
+        (ff.PerChannel(0), None),
+        (ff.PerChannel(1), None),
+        (ff.PerChannel((0, 1)), None),
+        (ff.PerChannel((1, 0)), ff.PerChannel((0, 1))),
+        (ff.PerChannel(()), ff.PerTensor()),
+        (ff.PerBlock(block_dims=(), block_sizes=()), ff.PerTensor()),
+        (ff.PerBlock(block_dims=(0), block_sizes=(4)), None),
+        (ff.PerBlock(block_dims=(1), block_sizes=(2)), None),
+        (ff.PerBlock(block_dims=(0, 1), block_sizes=(4, 4)), None),
+        (ff.PerBlock(block_dims=(1), block_sizes=(4), per_channel_dims=(0,)), None),
+        (
+            ff.PerBlock(
+                block_dims=(0), block_sizes=(5), per_channel_dims=(1,), strict_blocks=False
+            ),
+            None,
+        ),
+    ],
+)
+def test_granularity_from_sizes(
+    gran: granularity.Granularity, expected: granularity.Granularity | None
+) -> None:
+    # GIVEN a granularity
+    expected = expected or gran
+    data_size = torch.Size([16, 16])
+    gran_tile_size = gran.tile_size(data_size)
+    if gran_tile_size == "data_shape":
+        gran_tile_size = data_size
+
+    # WHEN the granularity is reproduced using tile and data size
+    repro_granularity = granularity.granularity_from_sizes(data_size, gran_tile_size)
+
+    # THEN the granularity must match the expected granularity
+    assert repro_granularity == expected
