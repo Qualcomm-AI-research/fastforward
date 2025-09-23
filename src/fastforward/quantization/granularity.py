@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import abc
+import logging
 
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 import torch
 
@@ -12,10 +13,12 @@ from typing_extensions import override
 from fastforward.quantization.tiled_tensor import check_tile_compatibility
 from fastforward.serialization import yamlable
 
+logger = logging.getLogger(__name__)
+
 
 @yamlable
 class Granularity(abc.ABC):
-    """Granularity represents how paraameters are shared during quantization.
+    """Granularity represents how parameters are shared during quantization.
 
     Granularities provide an abstraction used for element-wise operations with
     shared parameters. These are most prominently used in quantizers. For
@@ -153,6 +156,75 @@ class PerChannel(Granularity):
         return {"channel": dim}
 
 
+class PerBlock(Granularity):
+    """Granularity class for per-block quantization.
+
+    Attributes:
+        block_dims: The dimensions to quantize per-block
+        block_sizes: The block sizes corresponding to `block_dims`. The length
+            of block_dims and block_sizes must match.
+        per_channel_dims: The dimensions to quantize per-channel
+        strict_blocks: If true, `block_sizes` must divide `data_size` at
+            corresponding dimensions.
+    """
+
+    def __init__(
+        self,
+        block_dims: int | Sequence[int],
+        block_sizes: int | Sequence[int],
+        per_channel_dims: int | Sequence[int] = (),
+        strict_blocks: bool = True,
+    ):
+        self.block_dims = _as_tuple(block_dims)
+        self.block_sizes = _as_tuple(block_sizes)
+        self.per_channel_dims = _as_tuple(per_channel_dims)
+        self.strict_blocks = strict_blocks
+
+        if len(self.block_dims) != len(self.block_sizes):
+            msg = "block_sizes and block_dims must be of equal length"
+            raise ValueError(msg)
+
+        duplicate_dims = [str(dim) for dim in self.per_channel_dims if dim in self.block_dims]
+        if duplicate_dims:
+            msg = (
+                f"Dimensions {', '.join(duplicate_dims)} are in both 'block_dims' and "
+                "'per_channel_dims'. They will be quantized as per-block following 'block_sizes'"
+            )
+            logger.warning(msg)
+
+    @override
+    def tile_size(self, data_shape: torch.Size) -> torch.Size:
+        tile_size = list(data_shape)
+        for dim in self.per_channel_dims:
+            tile_size[dim] = 1
+
+        for block_dim, block_size in zip(self.block_dims, self.block_sizes):
+            if block_size > data_shape[block_dim]:
+                msg = (
+                    f"Can't apply per block quantization using block-size={block_size}"
+                    f" over dimension {block_dim} for a tensor with shape {data_shape}. "
+                )
+                raise ValueError(msg)
+            if self.strict_blocks and data_shape[block_dim] % block_size != 0:
+                msg = (
+                    f"Block dim {block_dim} of size {block_size} does not divide the data dim "
+                    f"{data_shape[block_dim]} exactly. This is required because strict_blocks=True"
+                )
+                raise ValueError(msg)
+            tile_size[block_dim] = block_size
+
+        return torch.Size(tile_size)
+
+    @override
+    def repr_args(self) -> dict[str, Any]:
+        return {
+            "block_dims": self.block_dims,
+            "block_sizes": self.block_sizes,
+            "per_channel_dims": self.per_channel_dims,
+            "strict_blocks": self.strict_blocks,
+        }
+
+
 class PerTile(Granularity):
     """Granularity class for per-tile quantization.
 
@@ -213,3 +285,21 @@ def is_per_channel(granularity: Granularity) -> bool:
         bool: True if the granularity is per-channel, False otherwise.
     """
     return isinstance(granularity, PerChannel)
+
+
+def is_per_block(granularity: Granularity) -> bool:
+    """Check if the granularity is per-block.
+
+    Args:
+        granularity: The granularity instance.
+
+    Returns:
+        bool: True if the granularity is per-block, False otherwise.
+    """
+    return isinstance(granularity, PerBlock)
+
+
+def _as_tuple(value: int | Sequence[int]) -> tuple[int, ...]:
+    if isinstance(value, int):
+        return (value,)
+    return tuple(value)

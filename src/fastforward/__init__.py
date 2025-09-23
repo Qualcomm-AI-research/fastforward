@@ -42,4 +42,5 @@ __version__ = version
 
 PerTensor = granularity.PerTensor
 PerChannel = granularity.PerChannel
+PerBlock = granularity.PerBlock
 PerTile = granularity.PerTile
