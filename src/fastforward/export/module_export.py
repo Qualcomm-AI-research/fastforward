@@ -13,7 +13,7 @@ import pickle
 
 from contextlib import ExitStack
 from types import TracebackType
-from typing import Any
+from typing import Any, Literal
 
 import onnxruntime  # type: ignore[import-untyped]
 import torch
@@ -21,7 +21,11 @@ import torch
 from typing_extensions import override
 
 from fastforward.export import export
-from fastforward.export._export_helpers import QuantParametersDict, create_qnn_encoding_entry
+from fastforward.export._export_helpers import (
+    EncodingSchemaVersion,
+    QuantParametersDict,
+    get_schema_handler,
+)
 from fastforward.mpath import MPathCollection
 from fastforward.overrides import disable_quantization
 from fastforward.quantization.affine.function import StaticAffineQuantParams
@@ -109,6 +113,7 @@ def export_modules(
     kwargs: None | dict[str, Any] = None,
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
+    encoding_schema_version: Literal["0.6.1", "1.0.0", "2.0.0"] = "1.0.0",
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -140,6 +145,7 @@ def export_modules(
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations as possible for each exported graph.
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
+        encoding_schema_version: Which version of the quantization encodings json should be generated.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -203,6 +209,7 @@ def export_modules(
             model_kwargs=module_input_kwargs,
             enable_encodings_propagation=enable_encodings_propagation,
             verbose=verbose,
+            encoding_schema_version=encoding_schema_version,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
@@ -248,9 +255,14 @@ def maybe_extend_encodings_file(
     with open(encodings_file_location) as fp:
         encodings_dictionary = json.load(fp)
 
+    schema_version = encodings_dictionary.get("version", "legacy")
+    encoding_schema_version = EncodingSchemaVersion(schema_version)
+    schema_handler = get_schema_handler(encoding_schema_version)
+
     # The existing encodings dictionary (only its `activation_encodings` section)
     # might need to be overwritten.
-    activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
+    # activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
+    # all_encoding_names = set([encoding["name"] for encoding in encodings_dictionary["encodings"]])
 
     # In order to associate potential inputs with quantizer settings we need
     # to retrieve the graph input names. This can be done through the onnxruntime
@@ -270,10 +282,9 @@ def maybe_extend_encodings_file(
     # that the inputs will appear in the same sequence in both graph and module.
     for input_idx, quant_settings in enumerate(quantizer_input_settings):
         ort_input_name = ort_session_inputs[input_idx].name
-
-        if ort_input_name not in activation_encodings_dictionary:
-            qnn_encoding_entry = create_qnn_encoding_entry(quant_settings)
-            activation_encodings_dictionary[ort_input_name] = qnn_encoding_entry
+        schema_handler.add_encoding_to_dictionary(
+            encodings_dictionary, ort_input_name, quant_settings
+        )
 
     # The same process detailed for appending input encodings to the encodings
     # dictionary is mirrored for the output encodings.
@@ -282,14 +293,13 @@ def maybe_extend_encodings_file(
 
     for output_idx, quant_settings in enumerate(quantizer_output_settings):
         ort_output_name = ort_session_outputs[output_idx].name
-
-        if ort_output_name not in activation_encodings_dictionary:
-            qnn_encoding_entry = create_qnn_encoding_entry(quant_settings)
-            activation_encodings_dictionary[ort_output_name] = qnn_encoding_entry
+        schema_handler.add_encoding_to_dictionary(
+            encodings_dictionary, ort_output_name, quant_settings
+        )
 
     # We overwrite the `activation_encodings` of the original encodings dictionary
     # so it includes any non-explicitly quantized inputs and store the updated version.
-    encodings_dictionary["activation_encodings"] = activation_encodings_dictionary
+    # encodings_dictionary["activation_encodings"] = activation_encodings_dictionary
 
     with open(encodings_file_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)

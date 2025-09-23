@@ -3,7 +3,9 @@
 
 import logging
 
-from typing import Any, Sequence, TypedDict
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import Any, Generic, Literal, Sequence, TypedDict, TypeVar
 
 import torch
 
@@ -20,7 +22,7 @@ from fastforward.quantization.affine import integer_minimum, quantization_range
 logger = logging.getLogger(__name__)
 
 
-class QNNEncodingEntry(TypedDict):
+class LegacyQNNEncodingEntry(TypedDict):
     bitwidth: int
     dtype: str
     is_symmetric: str
@@ -30,9 +32,45 @@ class QNNEncodingEntry(TypedDict):
     scale: float
 
 
-class QNNEncoding(TypedDict):
-    activation_encodings: dict[str, tuple[QNNEncodingEntry, ...]]
-    param_encodings: dict[str, tuple[QNNEncodingEntry, ...]]
+class LegacyQNNEncoding(TypedDict):
+    version: Literal["0.6.1"]
+    activation_encodings: dict[str, tuple[LegacyQNNEncodingEntry, ...]]
+    param_encodings: dict[str, tuple[LegacyQNNEncodingEntry, ...]]
+
+
+class V1QNNEncodingEntry(TypedDict):
+    name: str
+    enc_type: Literal["PER_TENSOR", "PER_CHANNEL", "PER_BLOCK", "LPBQ"]
+    dtype: Literal["INT", "FLOAT"]
+    bw: int
+    is_sym: bool
+    scale: list[float]
+    offset: list[int]
+    block_size: NotRequired[int]
+    compressed_bw: NotRequired[int]
+    per_block_int_scale: NotRequired[list[int]]
+
+
+class V1QNNEncoding(TypedDict):
+    version: Literal["1.0.0"]
+    activation_encodings: list[V1QNNEncodingEntry]
+    param_encodings: list[V1QNNEncodingEntry]
+
+
+class V2QNNEncodingEntry(TypedDict):
+    name: str
+    output_dtype: str  # format should be "int4", "uint4" etc
+    y_scale: float | list[float]
+    y_zero_point: NotRequired[int | list[int]]
+    axis: NotRequired[int]
+    block_size: NotRequired[int]
+    per_block_int_scale: NotRequired[list[int]]
+    per_channel_float_scale: NotRequired[list[float]]
+
+
+class V2QNNEncoding(TypedDict):
+    version: Literal["2.0.0"]
+    encodings: list[V2QNNEncodingEntry]
 
 
 class QuantParametersDict(TypedDict):
@@ -41,6 +79,350 @@ class QuantParametersDict(TypedDict):
     num_bits: float | int
     tile_size: NotRequired[tuple[int]]
     output_dtype: NotRequired[torch.dtype]
+
+
+QNNEncodingEntry = LegacyQNNEncodingEntry | V1QNNEncodingEntry | V2QNNEncodingEntry
+QNNEncoding = LegacyQNNEncoding | V1QNNEncoding | V2QNNEncoding
+
+T = TypeVar("T", bound=QNNEncoding)
+E = TypeVar("E", bound=QNNEncodingEntry)
+
+
+class EncodingSchemaHandler(ABC, Generic[T, E]):
+    @abstractmethod
+    def create_encoding_entry(self, key: str, encoding_value: QuantParametersDict) -> E | list[E]:
+        pass
+
+    @abstractmethod
+    def generate_encodings_dictionary(
+        self,
+        inputs: set[str],
+        activations: set[str],
+        parameters: set[str],
+        quantization_logs: dict[str, Any],
+    ) -> T:
+        pass
+
+    @property
+    @abstractmethod
+    def version(self) -> str:
+        pass
+
+    @abstractmethod
+    def add_encoding_to_dictionary(
+        self, encodings_dictionary: T, encoding_name: str, encoding_value: QuantParametersDict
+    ) -> T:
+        pass
+
+
+class LegacySchemaHandler(EncodingSchemaHandler[LegacyQNNEncoding, LegacyQNNEncodingEntry]):
+    @property
+    def version(self) -> Literal["0.6.1"]:
+        return "0.6.1"
+
+    def create_encoding_entry(
+        self, key: str, encoding_value: QuantParametersDict
+    ) -> list[LegacyQNNEncodingEntry]:
+        """Converts an encoding value dictionary to a QNNEncodingEntry.
+
+        Args:
+            key: the name of the node associated with the encodings.
+            encoding_value: dictionary containing quantization parameters.
+
+        Returns:
+            QNNEncodingEntry dictionaries.
+        """
+        del key
+        scale = encoding_value["scale"]
+        offset = encoding_value["offset"]
+        bitwidth = encoding_value["num_bits"]
+        int_min = integer_minimum(bitwidth)
+
+        scale = ensure_tensor(scale)
+        if offset is None:
+            offset = _infer_offset(offset, scale)
+        offset = ensure_tensor(offset)
+        offset = torch.round(offset)
+
+        int_min = _strict_cast_to_int(int_min, "int_min")
+        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
+
+        qnn_offset = offset - 2 ** (bitwidth - 1)
+        if not isinstance(qnn_offset, torch.Tensor):
+            qnn_offset = torch.tensor(qnn_offset)
+
+        min_range, max_range = quantization_range(scale, offset, bitwidth)
+        min_range = ensure_tensor(min_range)
+        max_range = ensure_tensor(max_range)
+
+        encoding = []
+
+        for (
+            scale_entry,
+            offset_entry,
+            original_offset_entry,
+            min_range_entry,
+            max_range_entry,
+        ) in zip(scale, qnn_offset, offset, min_range, max_range):
+            output_entry: LegacyQNNEncodingEntry = {
+                "bitwidth": int(bitwidth),
+                "dtype": "int",
+                "is_symmetric": "True" if original_offset_entry == 0 else "False",
+                "min": min_range_entry.item(),
+                "max": max_range_entry.item(),
+                "offset": int(offset_entry),
+                "scale": scale_entry.item(),
+            }
+            encoding.append(output_entry)
+
+        return encoding
+
+    def generate_encodings_dictionary(
+        self,
+        inputs: set[str],
+        activations: set[str],
+        parameters: set[str],
+        quantization_logs: dict[str, Any],
+    ) -> LegacyQNNEncoding:
+        param_encodings: dict[str, tuple[LegacyQNNEncodingEntry, ...]] = {}
+        activation_encodings: dict[str, tuple[LegacyQNNEncodingEntry, ...]] = {}
+
+        # Inputs are also included in the activation encodings for QNN
+        activations_and_inputs = activations | inputs
+
+        for key, value in quantization_logs.items():
+            encoding = self.create_encoding_entry(key, value)
+
+            if key in activations_and_inputs:
+                activation_encodings[key] = tuple(encoding)
+            elif key in parameters:
+                param_encodings[key] = tuple(encoding)
+            else:
+                logger.warning(
+                    f"Key: {key} not found in activations/inputs/parameters sets, "
+                    "and it will not be included in the encondigs file."
+                )
+
+        return {
+            "version": self.version,
+            "param_encodings": param_encodings,
+            "activation_encodings": activation_encodings,
+        }
+
+    def add_encoding_to_dictionary(
+        self,
+        encodings_dictionary: LegacyQNNEncoding,
+        encoding_name: str,
+        encoding_value: QuantParametersDict,
+    ) -> LegacyQNNEncoding:
+        activation_encodings = encodings_dictionary["activation_encodings"]
+        if encoding_name in activation_encodings:
+            return encodings_dictionary
+
+        new_activation_encoding = self.create_encoding_entry(encoding_name, encoding_value)
+        activation_encodings[encoding_name] = tuple(new_activation_encoding)
+        encodings_dictionary["activation_encodings"] = activation_encodings
+
+        return encodings_dictionary
+
+
+class V1SchemaHandler(EncodingSchemaHandler[V1QNNEncoding, V1QNNEncodingEntry]):
+    @property
+    def version(self) -> Literal["1.0.0"]:
+        return "1.0.0"
+
+    def create_encoding_entry(
+        self, key: str, encoding_value: QuantParametersDict
+    ) -> V1QNNEncodingEntry:
+        """Converts an encoding value dictionary to a QNNEncodingEntry.
+
+        Args:
+            key: the name of the node associated with the encodings.
+            encoding_value: dictionary containing quantization parameters.
+
+        Returns:
+            tuple containing QNNEncodingEntry dictionaries.
+        """
+        scale = encoding_value["scale"]
+        offset = encoding_value["offset"]
+        bitwidth = encoding_value["num_bits"]
+        # tile_size = encoding_value.get("tile_size")
+
+        scale = ensure_tensor(scale)
+        if offset is None:
+            offset = _infer_offset(offset, scale)
+        offset = ensure_tensor(offset)
+        offset = torch.round(offset)
+
+        is_symmetric = (torch.all(offset)).item() == 0
+
+        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
+
+        qnn_offset = offset - 2 ** (bitwidth - 1)
+        if not isinstance(qnn_offset, torch.Tensor):
+            qnn_offset = torch.tensor(qnn_offset)
+
+        encoding: V1QNNEncodingEntry = {
+            "name": key,
+            "dtype": "INT",
+            "enc_type": "PER_TENSOR" if len(scale) == 1 else "PER_CHANNEL",
+            "is_sym": is_symmetric,
+            "bw": int(bitwidth),
+            "scale": [s.item() for s in scale],
+            "offset": [o.item() for o in qnn_offset],
+        }
+
+        return encoding
+
+    def generate_encodings_dictionary(
+        self,
+        inputs: set[str],
+        activations: set[str],
+        parameters: set[str],
+        quantization_logs: dict[str, Any],
+    ) -> V1QNNEncoding:
+        param_encodings: list[V1QNNEncodingEntry] = []
+        activation_encodings: list[V1QNNEncodingEntry] = []
+
+        # Inputs are also included in the activation encodings for QNN
+        activations_and_inputs = activations | inputs
+
+        for key, value in quantization_logs.items():
+            encoding = self.create_encoding_entry(key, value)
+
+            if key in activations_and_inputs:
+                activation_encodings.append(encoding)
+            elif key in parameters:
+                param_encodings.append(encoding)
+            else:
+                logger.warning(
+                    f"Key: {key} not found in activations/inputs/parameters sets, "
+                    "and it will not be included in the encondigs file."
+                )
+
+        return {
+            "version": self.version,
+            "param_encodings": param_encodings,
+            "activation_encodings": activation_encodings,
+        }
+
+    def add_encoding_to_dictionary(
+        self,
+        encodings_dictionary: V1QNNEncoding,
+        encoding_name: str,
+        encoding_value: QuantParametersDict,
+    ) -> V1QNNEncoding:
+        activation_encodings = encodings_dictionary["activation_encodings"]
+        existing_names = {encoding["name"] for encoding in activation_encodings}
+        if encoding_name in existing_names:
+            return encodings_dictionary
+
+        new_activation_encoding = self.create_encoding_entry(encoding_name, encoding_value)
+        activation_encodings.append(new_activation_encoding)
+        encodings_dictionary["activation_encodings"] = activation_encodings
+
+        return encodings_dictionary
+
+
+class V2SchemaHandler(EncodingSchemaHandler[V2QNNEncoding, V2QNNEncodingEntry]):
+    @property
+    def version(self) -> Literal["2.0.0"]:
+        return "2.0.0"
+
+    def create_encoding_entry(
+        self, key: str, encoding_value: QuantParametersDict
+    ) -> V2QNNEncodingEntry:
+        """Converts an encoding value dictionary to a QNNEncodingEntry.
+
+        Args:
+            key: the name of the node associated with the encodings.
+            encoding_value: dictionary containing quantization parameters.
+
+        Returns:
+            tuple containing QNNEncodingEntry dictionaries.
+        """
+        scale = encoding_value["scale"]
+        offset = encoding_value["offset"]
+        bitwidth = encoding_value["num_bits"]
+        tile_size = encoding_value.get("tile_size")
+
+        scale = ensure_tensor(scale)
+        if offset is None:
+            offset = _infer_offset(offset, scale)
+        offset = ensure_tensor(offset)
+        offset = torch.round(offset)
+
+        is_symmetric = (torch.all(offset)).item() == 0
+
+        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
+
+        qnn_offset = offset - 2 ** (bitwidth - 1)
+        if not isinstance(qnn_offset, torch.Tensor):
+            qnn_offset = torch.tensor(qnn_offset)
+
+        encoding: V2QNNEncodingEntry = {
+            "name": key,
+            "output_dtype": ("" if is_symmetric else "u") + f"int{bitwidth}",
+            "y_scale": [s.item() for s in scale] if len(scale) > 1 else scale.item(),
+        }
+
+        if not is_symmetric:
+            encoding["y_zero_point"] = (
+                [int(o.item()) for o in qnn_offset]
+                if len(qnn_offset) > 1
+                else int(qnn_offset.item())
+            )
+
+        if len(scale) > 1 and tile_size is not None:
+            channel_axis = next((i for i, value in enumerate(tile_size) if value == 1), None)
+            if channel_axis is not None:
+                encoding["axis"] = channel_axis
+
+        return encoding
+
+    def generate_encodings_dictionary(
+        self,
+        inputs: set[str],
+        activations: set[str],
+        parameters: set[str],
+        quantization_logs: dict[str, Any],
+    ) -> V2QNNEncoding:
+        encodings: list[V2QNNEncodingEntry] = []
+
+        # Inputs are also included in the activation encodings for QNN
+        activations_and_inputs = activations | inputs
+
+        for key, value in quantization_logs.items():
+            encoding = self.create_encoding_entry(key, value)
+
+            if key in activations_and_inputs:
+                encodings.append(encoding)
+            elif key in parameters:
+                encodings.append(encoding)
+            else:
+                logger.warning(
+                    f"Key: {key} not found in activations/inputs/parameters sets, "
+                    "and it will not be included in the encondigs file."
+                )
+
+        return {"version": self.version, "encodings": encodings}
+
+    def add_encoding_to_dictionary(
+        self,
+        encodings_dictionary: V2QNNEncoding,
+        encoding_name: str,
+        encoding_value: QuantParametersDict,
+    ) -> V2QNNEncoding:
+        encodings = encodings_dictionary["encodings"]
+        existing_names = {encoding["name"] for encoding in encodings}
+        if encoding_name in existing_names:
+            return encodings_dictionary
+
+        new_encoding = self.create_encoding_entry(encoding_name, encoding_value)
+        encodings.append(new_encoding)
+        encodings_dictionary["encodings"] = encodings
+
+        return encodings_dictionary
 
 
 def get_input_spec_new_old_mapping(
@@ -170,7 +552,7 @@ def get_activations(
 
 
 def get_parameters(
-    onnxscript_model: Model, quantization_logs: dict[str, Any]
+    onnx_proto: ModelProto, quantization_logs: dict[str, Any]
 ) -> tuple[set[str], set[str]]:
     """Retrieve a model's parameter nodes.
 
@@ -189,20 +571,21 @@ def get_parameters(
         parameters, ie unquantized parameters.
 
     Args:
-        onnxscript_model: An onnxscript model
+        onnx_proto: An onnx protobuf model
         quantization_logs: Dictionary containing quantization
             settings for the various inputs/activations/parameters
             to the onnxscript_model
     """
-    initializers = onnxscript_model.graph.initializers
+    initializers = onnx_proto.graph.initializer
     used_parameters = set()
     unused_parameters = set()
 
     for initializer in initializers:
-        if initializer in quantization_logs:
-            used_parameters.add(initializer)
+        initializer_name = initializer.name
+        if initializer_name in quantization_logs:
+            used_parameters.add(initializer_name)
         else:
-            unused_parameters.add(initializer)
+            unused_parameters.add(initializer_name)
 
     return used_parameters, unused_parameters
 
@@ -215,81 +598,17 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
     return int(value)
 
 
-def create_qnn_encoding_entry(
-    encoding_value: QuantParametersDict,
-) -> tuple[QNNEncodingEntry, ...]:
-    """Converts an encoding value dictionary to a QNNEncodingEntry.
-
-    Args:
-        encoding_value: dictionary containing quantization parameters.
-
-    Returns:
-        tuple containing QNNEncodingEntry dictionaries.
-    """
-    scale = encoding_value["scale"]
-    offset = encoding_value["offset"]
-    bitwidth = encoding_value["num_bits"]
-    int_min = integer_minimum(bitwidth)
-
-    scale = ensure_tensor(scale)
-    if offset is None:
-        offset = _infer_offset(offset, scale)
-    offset = ensure_tensor(offset)
-    offset = torch.round(offset)
-
-    int_min = _strict_cast_to_int(int_min, "int_min")
-    bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
-
-    qnn_offset = offset - 2 ** (bitwidth - 1)
-    if not isinstance(qnn_offset, torch.Tensor):
-        qnn_offset = torch.tensor(qnn_offset)
-
-    min_range, max_range = quantization_range(scale, offset, bitwidth)
-    min_range = ensure_tensor(min_range)
-    max_range = ensure_tensor(max_range)
-
-    encoding = []
-
-    for scale_entry, offset_entry, original_offset_entry, min_range_entry, max_range_entry in zip(
-        scale, qnn_offset, offset, min_range, max_range
-    ):
-        output_entry: QNNEncodingEntry = {
-            "bitwidth": int(bitwidth),
-            "dtype": "int",
-            "is_symmetric": "True" if original_offset_entry == 0 else "False",
-            "min": min_range_entry.item(),
-            "max": max_range_entry.item(),
-            "offset": int(offset_entry),
-            "scale": scale_entry.item(),
-        }
-        encoding.append(output_entry)
-
-    return tuple(encoding)
+class EncodingSchemaVersion(Enum):
+    LEGACY = "0.6.1"
+    V1_0_0 = "1.0.0"
+    V2_0_0 = "2.0.0"
 
 
-def generate_qnn_encodings_dictionary(
-    inputs: set[str],
-    activations: set[str],
-    parameters: set[str],
-    quantization_logs: dict[str, Any],
-) -> QNNEncoding:
-    param_encodings: dict[str, tuple[QNNEncodingEntry, ...]] = {}
-    activation_encodings: dict[str, tuple[QNNEncodingEntry, ...]] = {}
+def get_schema_handler(version: EncodingSchemaVersion) -> EncodingSchemaHandler[Any, Any]:
+    handlers: dict[EncodingSchemaVersion, EncodingSchemaHandler[Any, Any]] = {
+        EncodingSchemaVersion.LEGACY: LegacySchemaHandler(),
+        EncodingSchemaVersion.V1_0_0: V1SchemaHandler(),
+        EncodingSchemaVersion.V2_0_0: V2SchemaHandler(),
+    }
 
-    # Inputs are also included in the activation encodings for QNN
-    activations_and_inputs = activations | inputs
-
-    for key, value in quantization_logs.items():
-        encoding = create_qnn_encoding_entry(value)
-
-        if key in activations_and_inputs:
-            activation_encodings[key] = encoding
-        elif key in parameters:
-            param_encodings[key] = encoding
-        else:
-            logger.warning(
-                f"Key: {key} not found in activations/inputs/parameters sets, "
-                "and it will not be included in the encondigs file."
-            )
-
-    return {"param_encodings": param_encodings, "activation_encodings": activation_encodings}
+    return handlers[version]

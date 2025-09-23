@@ -353,6 +353,7 @@ def test_encodings_file_generation(
         model_name,
         input_names=new_input_names,
         output_names=new_output_names,
+        encoding_schema_version="0.6.1",
     )
 
     # THEN we expect a json file that can be loaded as a dictionary.
@@ -360,7 +361,7 @@ def test_encodings_file_generation(
         encodings_dictionary = json.load(f)
 
     # THEN the structure of the top level of the dictionary should have set keys
-    assert sorted(encodings_dictionary.keys()) == ["activation_encodings", "param_encodings"]
+    assert sorted(encodings_dictionary.keys()) == ["activation_encodings", "param_encodings", "version"]
 
     activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
     param_encodings_dictionary = encodings_dictionary["param_encodings"]
