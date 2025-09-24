@@ -36,6 +36,22 @@ def quant_context() -> QuantizationContext[StaticAffineQuantParams]:
     return context.with_changes(quantization_fn=MockQuantizationFunction)
 
 
+def test_quantization_parameter_apply(
+    quant_context: QuantizationContext[AffineQuantParams],
+) -> None:
+    # GIVEN a QuantizationParameters instance
+    quant_params = quant_context.quantization_params
+
+    # WHEN we apply an identity function to it (should not modify any attribute)
+    new_quant_params = quant_params._apply(lambda x: x)
+
+    # THEN the returned QuantizationParameters is a new instance
+    assert quant_params is not new_quant_params
+
+    # THEN the returned parameter attributes are references to the original
+    assert quant_params.scale is new_quant_params.scale  # type: ignore[attr-defined]
+
+
 def test_quantization_function_attach(
     quant_context: QuantizationContext[AffineQuantParams], _seed_prngs: int
 ) -> None:
@@ -80,6 +96,21 @@ def test_quantization_context_to(
     moved_func = quant_context.to("meta")
     assert isinstance(moved_func.quantization_params.scale, torch.Tensor)
     assert moved_func.quantization_params.scale.device == torch.device("meta")
+
+
+def test_quantization_context_contiguous_parameters(
+    quant_context: QuantizationContext[StaticAffineQuantParams],
+) -> None:
+    # Given a scale parameter
+    scale = torch.ones(6)
+
+    # WHEN we create the quant context with that parameter and then request to
+    # make the parameters contiguous
+    quant_context = quant_context.with_changes(scale=scale)
+    quant_context_contiguous = quant_context.contiguous_parameters()
+
+    # THEN the same parameter should be returned (no deepcopy)
+    assert quant_context_contiguous.quantization_params.scale is scale
 
 
 def test_create_quantization_function() -> None:

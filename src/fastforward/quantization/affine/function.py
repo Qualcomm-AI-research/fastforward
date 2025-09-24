@@ -187,7 +187,7 @@ def _static_from_dynamic(
     offset: torch.Tensor | None,
     **changes: Any,
 ) -> StaticAffineQuantParams:
-    args = dataclasses.asdict(params)
+    args = ff.dataclasses.nocopy_asdict(params)
 
     # Remove dynamic only fields
     static_fields = StaticAffineQuantParams.__dataclass_fields__.keys()

@@ -36,7 +36,7 @@ class QuantizationParameters:
 
         Create a new `QuantizationParameters` using the results of each application.
         """
-        new_values = {k: fn(v) for k, v in dataclasses.asdict(self).items()}
+        new_values = {k: fn(v) for k, v in ff.dataclasses.nocopy_asdict(self).items()}
         return type(self)(**new_values)
 
     @override
@@ -136,8 +136,8 @@ class QuantizationContext(Generic[QuantParams_co]):
         fn = functools.partial(maybe_tensor_apply, fn=torch.Tensor.contiguous)
         ctx = self._apply(fn)
 
-        current_params = dataclasses.asdict(self.quantization_params)
-        new_params = dataclasses.asdict(ctx.quantization_params)
+        current_params = ff.dataclasses.nocopy_asdict(self.quantization_params)
+        new_params = ff.dataclasses.nocopy_asdict(ctx.quantization_params)
 
         for k in current_params:
             if current_params[k] is not new_params[k]:

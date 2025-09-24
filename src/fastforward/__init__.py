@@ -1,6 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from . import dataclasses as dataclasses
 from . import dispatcher as dispatcher
 from . import exceptions as exceptions
 from . import logging_utils as logging_utils
