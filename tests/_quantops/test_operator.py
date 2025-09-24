@@ -87,7 +87,9 @@ def test_from_spec_with_metadata() -> None:
 def test_from_spec_string_default_value() -> None:
     """Test parsing function with string default values."""
     # GIVEN a function spec with string and numeric default values
-    spec = 'pad(input: QuantizedTensor, pad: tuple[int], mode: str = "constant", value: float = 0.0)'
+    spec = (
+        'pad(input: QuantizedTensor, pad: tuple[int], mode: str = "constant", value: float = 0.0)'
+    )
     fallback = "torch.nn.functional.pad"
 
     # WHEN parsing the spec into an Operator
