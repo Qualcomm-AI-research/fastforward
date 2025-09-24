@@ -656,7 +656,8 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func_ref: Any | None,
         orig_args: Sequence[libcst.Arg],
     ) -> libcst.BaseExpression:
-        if (call_node := self._create_resolved_quantized_call(fn_name, orig_args)) is not None:
+        call_node = self._create_resolved_quantized_call(fn_name, func_ref or fn_name, orig_args)
+        if call_node is not None:
             return call_node
         if func_ref is None:
             return node
@@ -664,7 +665,8 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
 
     def _create_resolved_quantized_call(
         self,
-        func_name: str,
+        fn_name: str,
+        func_key: Callable[..., Any] | str,
         original_args: Sequence[libcst.Arg],
     ) -> libcst.BaseExpression | None:
         """Create a resolved quantized call if a quantized counterpart exists.
@@ -674,20 +676,29 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         creates a new call with the original arguments plus additional output quantizer
         arguments.
         """
-        # We don't have a quantized replacement for this function, skip it.
-        if func_name not in self._optable:
+        try:
+            func, operator = get_quantized_function_counterpart(
+                optable=self._optable,
+                func_key=func_key,
+                args=original_args,
+            )
+        except KeyError:
+            # We don't have a quantized replacement for this function, skip it.
             return None
-
-        func, operator = get_quantized_function_counterpart(
-            optable=self._optable, func_name=func_name
-        )
 
         extra_args: list[libcst.Arg] = []
 
+        for intermediate_quantizer in operator.intermediate_quantizers:
+            quantizer_var = self._quantizer_refs.create_quantizer_expression(intermediate_quantizer)
+            extra_args.append(get_keyword_argument_node(intermediate_quantizer, quantizer_var))
+
+        if isinstance(func_key, str):
+            output_quantizer_name = func_key.split(".")[-1]
+        else:
+            output_quantizer_name = func_key.__name__
+
         for i in range(operator.num_output_quantizers):
-            quantizer_var = self._quantizer_refs.create_quantizer_expression(
-                func_name.split(".")[-1]
-            )
+            quantizer_var = self._quantizer_refs.create_quantizer_expression(output_quantizer_name)
 
             arg_name = "output_quantizer" + (f"_{i}" if operator.num_output_quantizers > 1 else "")
             extra_args.append(get_keyword_argument_node(arg_name, quantizer_var))
@@ -695,7 +706,7 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         return QuantizedCall(
             func=func,
             args=(*original_args, *extra_args),
-            original_name=func_name,
+            original_name=fn_name,
             operator=operator,
         )
 

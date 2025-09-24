@@ -3,6 +3,7 @@
 
 import dataclasses
 import itertools
+import logging
 import pathlib
 
 from collections.abc import Iterator
@@ -15,6 +16,8 @@ from typing_extensions import Self
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import symtypes
 from fastforward.nn import functional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -49,16 +52,24 @@ class Operator:
         identifier: The identifier of the operator.
         parameters: The parameters of the operator.
         return_type: The return type of the operator, if any.
+        intermediate_quantizers: Names of intermediate quantizers expected as input to this operator.
         metadata: The metadata of the operator, if any.
     """
 
     identifier: str
     parameters: tuple[Parameter, ...]
     return_type: symtypes.Type | None
+    intermediate_quantizers: tuple[str, ...] = ()
     metadata: OperatorMetadata | None = None
 
     @classmethod
-    def from_spec(cls, spec: str, fallback: str, **metadata: Any) -> Self:
+    def from_spec(
+        cls,
+        spec: str,
+        fallback: str,
+        intermediate_quantizers: tuple[str, ...] = (),
+        **metadata: Any,
+    ) -> Self:
         try:
             # use libcst to parse function signature
             funcdef = libcst.parse_statement(f"def {spec}: pass")
@@ -74,6 +85,13 @@ class Operator:
             else None
         )
         params: list[Parameter] = []
+
+        if funcdef.params.kwonly_params or funcdef.params.posonly_params:
+            msg = (
+                "Spec for '%s' uses keyword-only or positional-only arguments. "
+                + "This is not supported and all arguments are treated as 'normal' arguments"
+            )
+            logger.warning(msg, (funcdef.name.value))
 
         for param in itertools.chain(
             funcdef.params.params, funcdef.params.kwonly_params, funcdef.params.posonly_params
@@ -91,6 +109,7 @@ class Operator:
             identifier,
             tuple(params),
             return_type=return_type,
+            intermediate_quantizers=intermediate_quantizers,
             metadata=OperatorMetadata(fallback=fallback, **metadata),
         )
 
@@ -120,6 +139,11 @@ class Operator:
         return 1 if self.returns_quantized else 0
 
     def bind_partial(self, *args: Any, **kwargs: Any) -> Iterator[tuple[Parameter, Any]]:
+        return self._bind_partial(args, kwargs, include_quantization_params=True)
+
+    def _bind_partial(
+        self, args: Any, kwargs: Any, include_quantization_params: bool
+    ) -> Iterator[tuple[Parameter, Any]]:
         """Bind arguments and keyword arguments to operator signature.
 
         Given a tuple of `args` and dictionary of `kwargs`, assign each
@@ -135,18 +159,32 @@ class Operator:
         simply binds argument to parameters based on the position and use of a
         keyword argument.
 
+        Args:
+            args: positional arguments to bind to this operator's signature.
+            kwargs: keyword arguments to bind to this operator's signature.
+            include_quantization_params: If True, adds quantization-related
+                parameters (strict_quantization, output_quantizer, and intermediate
+                quantizers) to the signature before binding. Otherwise, bind arguments
+                to the original spec.
+
         Returns:
             Iterator of `Parameter` and argument pairs. The argument element is
             an argument provided to this method.
         """
-        strict_quant_param = Parameter(symtypes.Bool, "strict_quantization", "None")
-        params: dict[str, Parameter] = {strict_quant_param.name: strict_quant_param}
+        params: dict[str, Parameter] = {}
+        if include_quantization_params:
+            strict_quant_param = Parameter(symtypes.Bool, "strict_quantization", "None")
+            params[strict_quant_param.name] = strict_quant_param
 
-        if self.num_output_quantizers > 1:
-            raise NotImplementedError("Support for multiple quantized outputs is pending")
-        if self.num_output_quantizers == 1:
-            quantizer_param = Parameter(symtypes.Quantizer, "output_quantizer", "None")
-            params[quantizer_param.name] = quantizer_param
+            if self.num_output_quantizers > 1:
+                raise NotImplementedError("Support for multiple quantized outputs is pending")
+            if self.num_output_quantizers == 1:
+                quantizer_param = Parameter(symtypes.Quantizer, "output_quantizer", "None")
+                params[quantizer_param.name] = quantizer_param
+
+            for intermediate in self.intermediate_quantizers:
+                quantizer_param = Parameter(symtypes.Quantizer, intermediate, "None")
+                params[quantizer_param.name] = quantizer_param
 
         for param in reversed(self.parameters):
             params[param.name] = param
@@ -172,6 +210,35 @@ class Operator:
             bound_params[kw] = (param, arg)
 
         yield from bound_params.values()
+
+    def validate_arguments(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> bool:
+        """Validate if operator can be called with given arguments.
+
+        This method only validates that the number of provided arguments and
+        keyword arguments matches the operator's expectations. No value or type
+        checking is performed.
+
+        Args:
+            args: List of positional arguments to validate.
+            kwargs: Dictionary of keyword arguments to validate.
+
+        Returns:
+            bool: True if the operator can be called with the provided arguments,
+                False otherwise.
+        """
+        try:
+            binding = self._bind_partial(args, kwargs, include_quantization_params=False)
+            bound_params = {param.name for param, _ in binding}
+        except (ValueError, TypeError):
+            return False
+
+        if len(bound_params) != len(args) + len(kwargs):
+            return False
+        for param in self.parameters:
+            if param.name not in bound_params and param.default_value is None:
+                return False
+
+        return True
 
 
 def _get_default_value(expr: libcst.BaseExpression) -> str:

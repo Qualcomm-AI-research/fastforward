@@ -6,6 +6,8 @@ import importlib
 from types import ModuleType
 from typing import Any
 
+import torch
+
 
 def fully_qualified_name(obj: Any) -> str:
     if isinstance(obj, ModuleType):
@@ -14,7 +16,16 @@ def fully_qualified_name(obj: Any) -> str:
     name: str = obj.__qualname__
     if module is None or module == "__builtin__":
         return name
-    return f"{module}.{name}"
+
+    qualified_name = f"{module}.{name}"
+
+    # Handle torch._VariableFunctionsClass: its methods (like torch.sum) are
+    # exposed at the top-level torch namespace. Normalize to the public API
+    # names for consistency.
+    if qualified_name.startswith("torch._VariableFunctionsClass"):
+        if getattr(torch, obj.__name__, None) is obj:
+            qualified_name = f"torch.{obj.__name__}"
+    return qualified_name
 
 
 class QualifiedNameReference:

@@ -21,31 +21,50 @@ def op_table() -> OperatorTable:
 
 
 def test_optable_creation(op_table: OperatorTable) -> None:
-    linear_op = op_table["torch.nn.functional.linear"]
-    relu_op = op_table["torch.relu"]
+    linear_op = next(op_table["torch.nn.functional.linear"])
+    relu_op = next(op_table["torch.relu"])
 
     assert linear_op.identifier == "linear"
     assert relu_op.identifier == "relu"
 
 
 def test_optable_get(op_table: OperatorTable) -> None:
-    assert op_table[torch.relu] is not None
-    assert op_table["torch.relu"] is not None
-    assert op_table.get(torch.relu) is not None
-    assert op_table.get("torch.relu") is not None
+    assert next(op_table[torch.relu]) is not None
+    assert next(op_table["torch.relu"]) is not None
+    assert next(op_table.get(torch.relu)) is not None
+    assert next(op_table.get("torch.relu")) is not None
 
     with pytest.raises(KeyError):
-        op_table[torch.sigmoid]
+        list(op_table[torch.sigmoid])
     with pytest.raises(KeyError):
-        op_table.get(torch.sigmoid)
+        list(op_table.get(torch.sigmoid))
     with pytest.raises(KeyError):
-        op_table["torch.sigmoid"]
+        list(op_table["torch.sigmoid"])
     with pytest.raises(KeyError):
-        op_table.get("torch.sigmoid")
+        list(op_table.get("torch.sigmoid"))
 
 
 def test_optable_alias(op_table: OperatorTable) -> None:
     op_table.add_alias("sigmoid", torch.relu)
 
-    assert op_table["sigmoid"] is op_table[torch.relu]
-    assert op_table.get("sigmoid") is op_table.get("torch.relu")
+    assert list(op_table["sigmoid"]) == list(op_table[torch.relu])
+    assert list(op_table.get("sigmoid")) == list(op_table.get("torch.relu"))
+
+
+def test_multiple_operators_same_fallback() -> None:
+    """Test that multiple operators can be added for the same fallback operation."""
+    # GIVEN an `OperatorTable`
+    table = OperatorTable(alias_extensions=STR_ALIASES_EXTENSIONS)
+
+    # WHEN three Operator implementation for `torch.relu` are dded
+    table.add("relu(input: Quantized) -> Quantized", torch.relu)
+    table.add("relu(input: Quantized, inplace: bool) -> Quantized", torch.relu)
+    table.add("relu(input: Quantized, threshold: float) -> Quantized", torch.relu)
+
+    # Get all operators for torch.relu
+    # THEN a lookup for `torch.relu` must return three operators
+    operators = list(table.get("torch.relu"))
+    assert len(operators) == 3, f"Expected 3 operators, got {len(operators)}"
+
+    # THEN all operators must all have the same identifier
+    assert all(op.identifier == "relu" for op in operators)

@@ -66,8 +66,39 @@ STR_ALIASES_EXTENSIONS = (_fallback_alias, _functional_alias)
 class OperatorTable:
     """Lookup table for quantized operators.
 
-    In memory representation of quantized_operators.yaml that can be extended
-    at runtime.
+    In-memory representation of quantized_operators.yaml that can be extended
+    at runtime. The table maintains a registry of quantized operator specifications
+    indexed by their fallback (unquantized) operations.
+
+    Operator Overloading:
+        Multiple operator specifications can be registered for the same fallback
+        operation, creating an overload set. When looking up operators via `get()`
+        or `__getitem__`, the most recently added operator is returned first,
+        allowing runtime customization and extension of quantization behavior.
+
+    Example:
+        >>> table = OperatorTable.from_yaml()
+        >>> # Add custom quantized conv2d variant
+        >>> table.add(
+        ...     "conv2d(Tensor, Quantizer, Tensor, Quantized) -> Quantized",
+        ...     dispatch_op=my_conv2d_dispatch,
+        ...     fallback_op=torch.nn.functional.conv2d
+        ... )
+        >>> # This new spec will be returned first when looking up conv2d
+        >>> ops = list(table.get(torch.nn.functional.conv2d))
+        >>> # ops[0] is the custom spec, ops[1:] are the original specs
+
+    Aliases:
+        String aliases can be registered to reference operators by name instead
+        of by function reference. This is useful for configuration and dynamic
+        lookup scenarios.
+
+    Args:
+        alias_extensions: Sequence of callables that generate additional aliases
+            for operators as they are added. Each callable receives an `Operator`
+            and returns an optional alias string.
+        _resolve_dispatch: If True, automatically resolve dispatch operations from
+            `fastforward.nn.functional` based on operator identifiers.
     """
 
     def __init__(
@@ -76,7 +107,7 @@ class OperatorTable:
         alias_extensions: Sequence[Callable[[Operator], str | None]] = (),
         _resolve_dispatch: bool = True,
     ) -> None:
-        self._operator_specs: list[Operator] = []
+        self._operator_specs: list[list[Operator]] = []
         self._py_op_index: dict[_PyOp, int] = {}
         self._py_op_aliases: dict[str, _PyOp] = {}
         self._resolve_dispatch = _resolve_dispatch
@@ -85,6 +116,10 @@ class OperatorTable:
 
     def append_operator(self, operator: Operator) -> None:
         """Add a new operator to the table.
+
+        If an operator with the same fallback already exists, this creates an
+        overload. The new operator will be returned first during lookup, allowing
+        users to override or extend existing quantization specifications.
 
         The operator _must_ have a non-empty metadata field.
 
@@ -95,7 +130,11 @@ class OperatorTable:
         A default lookup alias is added based on the `operator.metadata.fallback`.
 
         Args:
-            operator: `Operator` to add to table
+            operator: `Operator` to add to table. Must have metadata populated.
+
+        Raises:
+            ValueError: If operator has no metadata or if dispatch_op cannot be
+                resolved.
         """
         if not (metadata := operator.metadata):
             raise ValueError("Cannot add operator without metadata")
@@ -107,30 +146,60 @@ class OperatorTable:
             new_metadata = dataclasses.replace(operator.metadata, dispatch_op=dispatch_op)
             operator = dataclasses.replace(operator, metadata=new_metadata)
 
-        if spec_idx := self._py_op_index.get(py_op, None):
-            self._clear_aliases(py_op)
-            self._operator_specs[spec_idx] = operator
+        if py_op in self._py_op_index:
+            spec_idx = self._py_op_index[py_op]
+            self._operator_specs[spec_idx].append(operator)
         else:
             self._py_op_index[py_op] = spec_idx = len(self._operator_specs)
-            self._operator_specs.append(operator)
+            self._operator_specs.append([operator])
 
-        assert operator.metadata  # helping mypy and friends
-        for alias_ext in self._alias_extensions:
-            if alias := alias_ext(operator):
-                self.add_alias(alias, py_op)
+            assert operator.metadata  # helping mypy and friends
+            for alias_ext in self._alias_extensions:
+                if alias := alias_ext(operator):
+                    self.add_alias(alias, py_op)
 
     def add(
         self,
         spec: str,
         fallback_op: str | _PyOp,
         dispatch_op: str | _PyOp | None = None,
+        intermediate_quantizers: tuple[str, ...] = (),
         **kwargs: Any,
     ) -> None:
+        """Add an operator specification to the table.
+
+        This is a convenience method that constructs an `Operator` from a
+        specification string and adds it to the table. Multiple calls with the
+        same `fallback_op` create overloads.
+
+        Args:
+            spec: Operator specification string describing the signature
+                (e.g., "conv2d(Tensor, Quantized, Tensor, Quantized) -> Quantized")
+            fallback_op: The unquantized operation this spec replaces. Can be
+                a string qualified name or a direct function reference.
+            dispatch_op: The quantized implementation to dispatch to. If None
+                and `_resolve_dispatch` is True, automatically resolved from
+                `fastforward.nn.functional`.
+            intermediate_quantizers: Tuple of quantizer names for intermediate
+                values.
+            **kwargs: Additional metadata fields to attach to the operator.
+
+        Raises:
+            ValueError: If the spec is invalid or dispatch_op cannot be resolved.
+        """
         resolved_dispatch_op: _PyOp | None = None
-        if self._resolve_dispatch and isinstance(dispatch_op, str):
-            resolved_dispatch_op = self._dispatch_op(dispatch_op)
+        if isinstance(dispatch_op, str):
+            resolved_dispatch_op = (
+                self._dispatch_op(dispatch_op) if self._resolve_dispatch else None
+            )
+        else:
+            resolved_dispatch_op = dispatch_op
         operator = Operator.from_spec(
-            spec, fallback=_resolve_name(fallback_op), dispatch_op=resolved_dispatch_op, **kwargs
+            spec,
+            fallback=_resolve_name(fallback_op),
+            dispatch_op=resolved_dispatch_op,
+            intermediate_quantizers=intermediate_quantizers,
+            **kwargs,
         )
         self.append_operator(operator)
 
@@ -158,7 +227,8 @@ class OperatorTable:
         """Create an `OperatorTable` from yaml file at `path`.
 
         Args:
-            source: Path to the yaml file
+            source: Path to the yaml file. If None, uses the default
+                quantized_operators.yaml file.
             alias_extensions: Sequence of alias extensions that can alter the
                 operator lookup of this table.
             _resolve_dispatch: If `True`, resolve the default dispatch function
@@ -197,22 +267,37 @@ class OperatorTable:
         return table
 
     def operators(self) -> Iterator[Operator]:
-        """All operaotrs in the table.
+        """All operators in the table.
 
         Returns:
             `Iterator` over all operators in the table.
         """
-        yield from self._operator_specs
+        for specs in self._operator_specs:
+            yield from specs
 
-    def get(self, key: _PyOp | str) -> Operator:
-        """Lookup operator based on the fallback operator.
+    def get(self, key: _PyOp | str) -> Iterator[Operator]:
+        """Lookup operators based on the fallback operation.
+
+        Returns an iterator over all operator specifications registered for the
+        given fallback operation, in reverse order of registration (most recent
+        first). This allows users to override default quantization behavior by
+        adding custom operators that will be matched first.
 
         Args:
             key: Either a reference to the operator or a string referencing
                 the fallback name or alias
 
         Returns:
-            `Operator` associated with key
+            `Iterator` over operators associated with key, most recent first
+
+        Raises:
+            KeyError: If no operator is registered for the given key
+
+        Example:
+            >>> table = OperatorTable.from_yaml()
+            >>> # Get all conv2d quantization specs
+            >>> for op in table.get("torch.nn.functional.conv2d"):
+            ...     print(op.identifier)
         """
         alias: str | None = None
         if isinstance(key, str):
@@ -226,12 +311,12 @@ class OperatorTable:
             msg = f"{type(self).__name__} contains no operator for {name}"
             raise KeyError(msg) from e
 
-        return self._operator_specs[spec_idx]
+        yield from reversed(self._operator_specs[spec_idx])
 
     def __iter__(self) -> Iterator[Operator]:
         yield from self.operators()
 
-    def __getitem__(self, key: str | _PyOp) -> Operator:
+    def __getitem__(self, key: str | _PyOp) -> Iterator[Operator]:
         return self.get(key)
 
     def __contains__(self, key: str | _PyOp) -> bool:
@@ -249,17 +334,20 @@ class OperatorTable:
             raise KeyError(msg) from e
 
     def add_alias(self, alias: str, py_op: str | _PyOp) -> None:
-        """Add an string alias for an operation.
+        """Add a string alias for an operation.
 
-        Both get and __getitem__ will resolve string aliases before lookup.
-
+        Both `get()` and `__getitem__` will resolve string aliases before lookup.
         This may be used to associate multiple string (qualified) names
-        to a single operator.
+        to a single operator, enabling flexible lookup patterns.
 
         Args:
-            alias: The string alias to use
-            py_op: The operator to associate the alias with, this may be an
-                alias
+            alias: The string alias to use (e.g., "my_custom_conv")
+            py_op: The operator to associate the alias with. This may itself
+                be an alias, which will be resolved first.
+
+        Example:
+            >>> table.add_alias("conv", torch.nn.functional.conv2d)
+            >>> ops = list(table.get("conv"))  # Same as table.get(torch.nn.functional.conv2d)
         """
         if isinstance(py_op, str):
             py_op = self._resolve_alias(py_op)

@@ -134,7 +134,11 @@ class QuantizerReferenceCollection:
                 quantizer_name_groups[ctx.func][metadata.name].append(metadata)
 
         def get_name(name: str, idx: int, count: int) -> str:
-            full_name = f"{self._quantizer_name_prefix}{name}"
+            # Avoid adding the prefix twice if the name already includes it
+            prefix = self._quantizer_name_prefix
+            prefix = prefix if not name.startswith(prefix) else ""
+            full_name = f"{prefix}{name}"
+            # Add count suffix to disambiguate multiple quantizers with the same name
             if count > 1:
                 full_name = f"{full_name}_{idx + 1}"
             return full_name

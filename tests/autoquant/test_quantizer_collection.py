@@ -256,3 +256,17 @@ def test_disambiguate_reference_invalid_id() -> None:
     # THEN KeyError is raised
     with pytest.raises(KeyError):
         collection.disambiguate_reference(999)
+
+
+def test_prefix_no_duplicate_when_already_present() -> None:
+    """Test that prefix is not duplicated if name already includes it."""
+    # GIVEN a collection
+    collection = QuantizerReferenceCollection(quantizer_name_prefix="a_quantizer_")
+    # WHEN creating a reference with a name that already includes the prefix
+    # and disambiguating all names
+    ref_ant = collection.create_reference("a_quantizer_ant")
+    ref_bat = collection.create_reference("bat_quantizer")
+    collection.disambiguate_all_names()
+    # THEN the disambiguated name should remain unchanged
+    assert collection.disambiguate_reference(ref_ant) == "a_quantizer_ant"
+    assert collection.disambiguate_reference(ref_bat) == "a_quantizer_bat_quantizer"

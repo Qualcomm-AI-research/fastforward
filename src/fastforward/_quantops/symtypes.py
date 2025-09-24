@@ -245,6 +245,8 @@ def str_to_type(name: str) -> Type:
             return EllipsisType
         case "dtype" | "DType" | "torch.dtype":
             return DType
+        case "Quantizer":
+            return Quantizer
     msg = f"No known type with name '{name}'"
     raise ValueError(msg)
 

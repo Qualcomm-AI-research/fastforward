@@ -56,6 +56,7 @@ from fastforward._autoquant.autoquant import (
     codeformat_with_defaults,
     emit_code_of_module,
 )
+from fastforward._autoquant.pybuilder import writer as writer
 from fastforward._autoquant.pybuilder.importing import import_code
 from fastforward._quantops import optable
 

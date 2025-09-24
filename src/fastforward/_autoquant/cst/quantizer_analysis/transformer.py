@@ -3,7 +3,7 @@
 
 
 from enum import Enum, auto
-from typing import Iterable, Iterator, NoReturn, TypeVar, cast
+from typing import Iterable, NoReturn, TypeVar, cast
 
 import libcst
 import libcst.helpers
@@ -139,11 +139,10 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
     def _get_annotations(
         self,
         original_node: libcst.CSTNode,
-    ) -> Iterator[QuantizationAnnotation] | set[QuantizationAnnotation] | None:
-        try:
-            return self.get_metadata(QuantizationAnnotationProvider, original_node)
-        except KeyError:
-            return None
+    ) -> list[QuantizationAnnotation] | None:
+        if metadata := self.get_metadata(QuantizationAnnotationProvider, original_node, None):
+            return list(sorted(metadata))
+        return None
 
     def leave_FunctionDef(
         self, original_node: libcst.FunctionDef, updated_node: libcst.FunctionDef

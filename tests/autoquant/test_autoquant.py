@@ -25,7 +25,7 @@ from fastforward._autoquant.autoquant import (
 )
 from fastforward._autoquant.cst import passes
 from fastforward._autoquant.pysource import SourceContext
-from fastforward._quantops import optable
+from fastforward._quantops import OperatorTable, optable
 from fastforward.autoquant import autoquantize
 from fastforward.testing.string import assert_strings_match_verbose, dedent_strip
 from torch import Tensor as TensorAlias  # required for tests, do not remove
@@ -1021,3 +1021,171 @@ def _my_func(x: Any, *args: Any, **kwargs: Any) -> Any:
 @contextlib.contextmanager
 def _my_context(x: Any) -> Iterator[Any]:
     yield x
+
+
+# Test autoquant with custom Operator table
+#
+class SimpleLinearModule(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(4, 4))
+        self.bias = torch.nn.Parameter(torch.randn(4))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.nn.functional.linear(x, self.weight, self.bias)
+
+
+class CustomOpLinearModule(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(4, 4))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.nn.functional.linear(x, self.weight)
+
+
+class MultiOpModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+        x = torch.relu(x)
+        x = torch.nn.functional.linear(x, weight)
+        return torch.sigmoid(x)
+
+
+def _custom_linear_dispatch(
+    input: torch.Tensor,
+    weight: torch.Tensor,
+    *,
+    quantizer_a: fastforward.nn.Quantizer,
+    quantizer_b: fastforward.nn.Quantizer,
+    output_quantizer: fastforward.nn.Quantizer,
+) -> torch.Tensor:
+    # The implementation is irrelevant for this test
+    del weight, quantizer_a, quantizer_b, output_quantizer
+    return input
+
+
+Autoquantized_SimpleLinearModule = """
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import SimpleLinearModule
+
+
+class QuantizedSimpleLinearModule(fastforward.nn.QuantizedModule, SimpleLinearModule):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_linear: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_self_bias: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_self_weight: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x(x)
+        self_bias = self.quantizer_self_bias(self.bias)
+        self_weight = self.quantizer_self_weight(self.weight)
+        return fastforward.nn.functional.linear(
+            x, self_weight, self_bias, output_quantizer=self.quantizer_linear
+        )
+"""
+
+Autoquantized_CustomOpLinearModule = """
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import CustomOpLinearModule
+
+
+class QuantizedCustomOpLinearModule(fastforward.nn.QuantizedModule, CustomOpLinearModule):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_a: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_b: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_linear: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_self_weight: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x(x)
+        self_weight = self.quantizer_self_weight(self.weight)
+        return tests.autoquant.test_autoquant._custom_linear_dispatch(
+            x,
+            self_weight,
+            quantizer_a=self.quantizer_a,
+            quantizer_b=self.quantizer_b,
+            output_quantizer=self.quantizer_linear,
+        )
+"""
+
+Autoquantized_MultiOpModule = """
+import fastforward
+import torch
+
+from tests.autoquant.test_autoquant import MultiOpModule
+
+
+class QuantizedMultiOpModule(fastforward.nn.QuantizedModule, MultiOpModule):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_a: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_b: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_linear: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_sigmoid: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_weight: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+
+    def forward(self, x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x(x)
+        weight = self.quantizer_weight(weight)
+        x = fastforward.nn.functional.relu(x, output_quantizer=self.quantizer_relu)
+        x = tests.autoquant.test_autoquant._custom_linear_dispatch(
+            x,
+            weight,
+            quantizer_a=self.quantizer_a,
+            quantizer_b=self.quantizer_b,
+            output_quantizer=self.quantizer_linear,
+        )
+        return fastforward.nn.functional.sigmoid(x, output_quantizer=self.quantizer_sigmoid)
+"""
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "module,expected_code",
+    [
+        (SimpleLinearModule(), Autoquantized_SimpleLinearModule),
+        (CustomOpLinearModule(), Autoquantized_CustomOpLinearModule),
+        (MultiOpModule(), Autoquantized_MultiOpModule),
+    ],
+    ids=["SimpleLinearModule", "CustomOpLinearModule", "MultiOpModule"],
+)
+def test_autoquant_with_overloaded_operator_table(
+    module: torch.nn.Module, expected_code: str
+) -> None:
+    # GIVEN a simple module that uses torch.nn.functional.linear
+
+    # GIVEN a custom operator table loaded from YAML and an overloaded linear operator
+    custom_optable = OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
+    custom_schema = "linear(input: Quantized, weight: Quantized) -> Quantized"
+    custom_optable.add(
+        custom_schema,
+        torch.nn.functional.linear,
+        dispatch_op=_custom_linear_dispatch,
+        intermediate_quantizers=("quantizer_a", "quantizer_b"),
+    )
+
+    # GIVEN a default source context
+    source_context = default_source_context(use_type_inference=False)
+
+    # WHEN we autoquantize the module with the custom operator table
+    autoquant_code = autoquant(
+        module=module,
+        source_context=source_context,
+        operator_table=custom_optable,
+    )
+
+    # THEN the generated code must match expectations
+    actual_code = codeformat_with_defaults(code=autoquant_code)
+    fastforward.testing.string.assert_strings_match_verbose(
+        actual_code.strip(), expected_code.strip()
+    )

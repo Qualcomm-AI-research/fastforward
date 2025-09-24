@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from typing import Any, Callable, Sequence
+
 import libcst
 import libcst.helpers
 
@@ -60,25 +62,51 @@ def get_parameter_node(
 
 
 def get_quantized_function_counterpart(
-    optable: OperatorTable, func_name: str
+    optable: OperatorTable, func_key: Callable[..., Any] | str, args: Sequence[libcst.Arg]
 ) -> tuple[libcst.Attribute, Operator]:
     """Replaces the given function name with its quantized counterpart.
 
     Args:
         optable: The operator table to use for replacement.
-        func_name: The name of the function to replace.
+        func_key: The name of the function or reference to a function to replace.
+        args: The arguments passed to the original function
 
     Returns:
         A tuple consisting of
         - the node of the quantized function,
         - the operator from the optable for further analysis.
     """
-    operator = optable.get(func_name)
-    replace_name = operator.dispatch_qualified_name()
-    assert replace_name is not None
-    func = libcst.parse_expression(replace_name)
-    assert isinstance(func, libcst.Attribute)
-    return func, operator
+    pos_args, kw_args = _args_to_pos_and_kw_args(args)
+    for operator in optable.get(func_key):
+        if not operator.validate_arguments(pos_args, kw_args):
+            continue
+
+        replace_name = operator.dispatch_qualified_name()
+        assert replace_name is not None
+        func = libcst.parse_expression(replace_name)
+        assert isinstance(func, libcst.Attribute)
+        return func, operator
+
+    msg = (
+        "Optable does not contain an operator that can replace an operator identified "
+        + f"by {func_key} and provided args."
+    )
+    raise KeyError(msg)
+
+
+def _args_to_pos_and_kw_args(
+    args: Sequence[libcst.Arg],
+) -> tuple[tuple[libcst.Arg, ...], dict[str, libcst.Arg]]:
+    """Convert a list of cst `Arg` to a tuple of positional and dict of keyword arguments."""
+    pos_args: list[libcst.Arg] = []
+    kw_args: dict[str, libcst.Arg] = {}
+    for arg in args:
+        if arg.keyword is not None:
+            kw_args[arg.keyword.value] = arg
+        else:
+            pos_args.append(arg)
+
+    return tuple(pos_args), kw_args
 
 
 def create_quantize_statement(

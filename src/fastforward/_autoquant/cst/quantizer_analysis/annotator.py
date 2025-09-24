@@ -65,7 +65,7 @@ class _ExpressionContextProvider(ExpressionContextProvider):
         node.visit(_ExpressionContextVisitor(self, ExpressionContext.LOAD))
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, order=True)
 class QuantizationAnnotation:
     """Annotation for CSTNodes that stores quantization metadata.
 
