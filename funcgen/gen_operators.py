@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+"""Code generation for operator fallback and dispatch functions."""
+
 import os
 import pathlib
 import textwrap
@@ -41,7 +43,14 @@ class Writer(Protocol):
 
 
 class _ModuleGenerator:
+    """Generates Python module code using LibCST."""
+
     def __init__(self, src_file: pathlib.Path):
+        """Initialize module generator.
+
+        Args:
+            src_file: Source file path for header generation.
+        """
         self._module = libcst.parse_module(
             module_header_raw.format(src_file=src_file.relative_to(os.getcwd()))
         )
@@ -53,6 +62,7 @@ class _ModuleGenerator:
 
     @property
     def code(self) -> str:
+        """Generate complete module code."""
         all_ops = ", ".join([f'"{op.name.value}"' for op in self._ops])
         all_statement = f"__all__ = [{all_ops}]"
         parts = [statement for part in self._header_parts for statement in part]
@@ -68,9 +78,16 @@ class _ModuleGenerator:
 
     @property
     def config(self) -> libcst.PartialParserConfig:
+        """Get parser configuration for this module."""
         return self._module.config_for_parsing
 
     def append_import(self, import_module: str, from_module: str | None = None) -> None:
+        """Add import statement to module.
+
+        Args:
+            import_module: Module or symbol to import.
+            from_module: Module to import from (optional).
+        """
         if from_module is not None:
             import_str = f"from {from_module} import {import_module}"
         else:
@@ -78,18 +95,36 @@ class _ModuleGenerator:
         self._imports.append(libcst.parse_statement(import_str, config=self.config))
 
     def append_op(self, op_funcdef: libcst.FunctionDef) -> None:
+        """Add operator function definition to module.
+
+        Args:
+            op_funcdef: Function definition to add.
+        """
         self._ops.append(op_funcdef)
 
     def append_raw(self, raw_source: str) -> None:
+        """Add raw Python source code to module header.
+
+        Args:
+            raw_source: Python source code to add.
+        """
         source_cst = libcst.parse_module(textwrap.dedent(raw_source))
         self._header_parts.append(source_cst.body)
 
 
 class _ParameterList:
+    """Builds parameter lists for function calls."""
+
     def __init__(self) -> None:
         self._params: list[tuple[str, str]] = []  # name, value
 
     def append(self, name: str, value: str) -> None:
+        """Add parameter to list.
+
+        Args:
+            name: Parameter name.
+            value: Parameter value.
+        """
         self._params.append((name, value))
 
     def __repr__(self) -> str:
@@ -102,6 +137,14 @@ OptBool = symtypes.Optional[symtypes.Bool]
 
 
 def _type_expression(symtype_or_typestr: symtypes.Type | str | None) -> libcst.BaseExpression:
+    """Convert type to LibCST expression.
+
+    Args:
+        symtype_or_typestr: Type to convert.
+
+    Returns:
+        LibCST expression representing the type.
+    """
     if symtype_or_typestr is None:
         return libcst.parse_expression("None")
     elif isinstance(symtype_or_typestr, symtypes.Type):
@@ -114,6 +157,14 @@ def _type_expression(symtype_or_typestr: symtypes.Type | str | None) -> libcst.B
 
 
 def _parameter(param: operator.Parameter) -> libcst.Param:
+    """Convert operator parameter to LibCST parameter.
+
+    Args:
+        param: Operator parameter to convert.
+
+    Returns:
+        LibCST parameter definition.
+    """
     default: libcst.BaseExpression | None = None
     if param.default_value is not None:
         default_value = param.default_value
@@ -128,12 +179,28 @@ def _parameter(param: operator.Parameter) -> libcst.Param:
 
 
 def _expression(exp: str | libcst.BaseExpression) -> libcst.BaseExpression:
+    """Convert string or expression to LibCST expression.
+
+    Args:
+        exp: Expression to convert.
+
+    Returns:
+        LibCST expression.
+    """
     if isinstance(exp, str):
         return libcst.parse_expression(exp)
     return exp
 
 
 def _statement(stmt: str | libcst.BaseStatement) -> libcst.BaseStatement:
+    """Convert string or statement to LibCST statement.
+
+    Args:
+        stmt: Statement to convert.
+
+    Returns:
+        LibCST statement.
+    """
     if isinstance(stmt, str):
         return libcst.parse_statement(stmt)
     return stmt
@@ -142,12 +209,14 @@ def _statement(stmt: str | libcst.BaseStatement) -> libcst.BaseStatement:
 def _operator_function_stub(
     op: operator.Operator, extra_params: Sequence[libcst.Param] = ()
 ) -> libcst.FunctionDef:
-    """Returns FunctionDef with correct signature for op and empty body.
+    """Create function definition stub for operator.
 
     Args:
-        op: Operator to create function for
-        extra_params: extra params that are not specified by op. Each is added
-            to function signature as kwonly parameter.
+        op: Operator to create function for.
+        extra_params: Additional parameters to add as keyword-only.
+
+    Returns:
+        Function definition with correct signature and empty body.
     """
     if not op.metadata or not op.metadata.specification_file:
         raw_warning = "This function was automatically generated"
@@ -178,6 +247,17 @@ def _simple_if(
     orelse_stmt: str | libcst.BaseStatement | None = None,
     leading_empty_line: bool = True,
 ) -> libcst.If:
+    """Create simple if statement.
+
+    Args:
+        test_exp: Condition expression.
+        body_stmt: Statement(s) for if body.
+        orelse_stmt: Optional else statement.
+        leading_empty_line: Whether to add empty line before if.
+
+    Returns:
+        LibCST if statement.
+    """
     orelse: libcst.If | libcst.Else | None
     if orelse_stmt is not None:
         if isinstance(orelse_stmt, (libcst.Else, libcst.If)):
@@ -200,6 +280,14 @@ def _simple_if(
 
 
 def _param_quantization_guard(param: operator.Parameter) -> list[libcst.BaseStatement]:
+    """Generate quantization guard statements for parameter.
+
+    Args:
+        param: Parameter to generate guards for.
+
+    Returns:
+        List of guard statements.
+    """
     TQuantList = symtypes.List[symtypes.MaybeQuantized] | symtypes.List[symtypes.QuantizedTensor]
     if param.param_type in TQuantList:
         return _quantizer_list_param_quantization_guard(param)
@@ -209,6 +297,14 @@ def _param_quantization_guard(param: operator.Parameter) -> list[libcst.BaseStat
 def _quantizer_list_param_quantization_guard(
     param: operator.Parameter,
 ) -> list[libcst.BaseStatement]:
+    """Generate quantization guards for list parameters.
+
+    Args:
+        param: List parameter to generate guards for.
+
+    Returns:
+        List of guard statements.
+    """
     list_type = param.param_type.parameters()[0]
 
     elem_name = "elem__"
@@ -227,6 +323,14 @@ def _quantizer_list_param_quantization_guard(
 
 
 def _single_param_quantization_guard(param: operator.Parameter) -> list[libcst.BaseStatement]:
+    """Generate quantization guards for single parameter.
+
+    Args:
+        param: Parameter to generate guards for.
+
+    Returns:
+        List of guard statements.
+    """
     is_optional_param = symtypes.NoneType in param.param_type and len(param.param_type) > 1
 
     param_type = symtypes.unwrap_optional(param.param_type)
@@ -273,6 +377,14 @@ def _single_param_quantization_guard(param: operator.Parameter) -> list[libcst.B
 
 
 def _fallback_op(op: operator.Operator) -> libcst.FunctionDef:
+    """Generate fallback operator function.
+
+    Args:
+        op: Operator to generate fallback for.
+
+    Returns:
+        Function definition for fallback operator.
+    """
     if op.metadata is None:
         raise ValueError("Cannot create fallback op without metadata")
 
@@ -332,6 +444,14 @@ def _fallback_op(op: operator.Operator) -> libcst.FunctionDef:
 
 
 def _dispatch_op(op: operator.Operator) -> libcst.FunctionDef:
+    """Generate dispatch operator function.
+
+    Args:
+        op: Operator to generate dispatch for.
+
+    Returns:
+        Function definition for dispatch operator.
+    """
     if op.metadata is None:
         raise ValueError("Cannot create dispatch op without metadata")
 
@@ -373,6 +493,14 @@ def _dispatch_op(op: operator.Operator) -> libcst.FunctionDef:
 
 
 def _add_imports(module: _ModuleGenerator) -> _ModuleGenerator:
+    """Add standard imports to module.
+
+    Args:
+        module: Module generator to add imports to.
+
+    Returns:
+        Module generator with imports added.
+    """
     module.append_import(
         from_module="fastforward.quantized_tensor", import_module="QuantizedTensor"
     )
@@ -392,6 +520,13 @@ def _add_imports(module: _ModuleGenerator) -> _ModuleGenerator:
 
 
 def _generate_fallback(operators: OperatorTable, source: pathlib.Path, writer: Writer) -> None:
+    """Generate fallback.py module.
+
+    Args:
+        operators: Operator table to generate from.
+        source: Source file path.
+        writer: Writer to output code to.
+    """
     module = _add_imports(_ModuleGenerator(source))
 
     module.append_raw("""
@@ -407,6 +542,13 @@ def _generate_fallback(operators: OperatorTable, source: pathlib.Path, writer: W
 
 
 def _generate_operators(operators: OperatorTable, source: pathlib.Path, writer: Writer) -> None:
+    """Generate operators.py module.
+
+    Args:
+        operators: Operator table to generate from.
+        source: Source file path.
+        writer: Writer to output code to.
+    """
     module = _add_imports(_ModuleGenerator(source))
     module.append_import(from_module="fastforward.nn.quantizer", import_module="Quantizer")
 
@@ -425,7 +567,7 @@ def generate(operators: OperatorTable, source: pathlib.Path, destination: pathli
 
     Args:
         operators: The `OperatorTable` to generate files from.
-        source: The source locationfrom which the files are created.
+        source: The source location from which the files are created.
         destination: The directory to write the newly created files to.
     """
     copyright_header = (
