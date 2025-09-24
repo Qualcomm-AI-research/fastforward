@@ -11,9 +11,12 @@ from typing_extensions import override as typing_override
 
 import fastforward as ff
 
-from fastforward import forward_override as override
+from fastforward import forward_override
 from fastforward.nn.quantized_module import named_quantizers
 from fastforward.quantization.quant_init import QuantizerCollection
+
+# make mypy treat override as exported
+override = forward_override
 
 
 @contextlib.contextmanager

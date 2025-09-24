@@ -3,6 +3,7 @@
 
 from .affine import dynamic as dynamic
 from .affine import static as static
+from .freeze import freeze_parameters as freeze_parameters
 from .function import create_quantization_function as create_quantization_function
 from .quant_init import QuantizationConfig as QuantizationConfig
 from .quant_init import QuantizerCollection as QuantizerCollection
