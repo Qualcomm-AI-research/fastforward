@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import itertools
 import pathlib
 
 from collections.abc import Iterator
 from typing import Any, Callable
+
+import libcst
+
+from typing_extensions import Self
 
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import symtypes
@@ -51,6 +56,43 @@ class Operator:
     parameters: tuple[Parameter, ...]
     return_type: symtypes.Type | None
     metadata: OperatorMetadata | None = None
+
+    @classmethod
+    def from_spec(cls, spec: str, fallback: str, **metadata: Any) -> Self:
+        try:
+            # use libcst to parse function signature
+            funcdef = libcst.parse_statement(f"def {spec}: pass")
+            assert isinstance(funcdef, libcst.FunctionDef)
+        except libcst.ParserSyntaxError as e:
+            msg = f"'{spec}' is not a valid operator spec"
+            raise ValueError(msg) from e
+
+        identifier = funcdef.name.value
+        return_type = (
+            symtypes.type_from_cst_expression(funcdef.returns.annotation)
+            if funcdef.returns is not None
+            else None
+        )
+        params: list[Parameter] = []
+
+        for param in itertools.chain(
+            funcdef.params.params, funcdef.params.kwonly_params, funcdef.params.posonly_params
+        ):
+            name = param.name.value
+            if param.annotation is None:
+                msg = "All parameters must have a valid annotation"
+                raise ValueError(msg)
+            param_type = symtypes.type_from_cst_expression(param.annotation.annotation)
+            default = _get_default_value(param.default) if param.default is not None else None
+
+            params.append(Parameter(name=name, param_type=param_type, default_value=default))
+
+        return cls(
+            identifier,
+            tuple(params),
+            return_type=return_type,
+            metadata=OperatorMetadata(fallback=fallback, **metadata),
+        )
 
     def dispatch_op(self) -> Callable[..., Any] | None:
         if metadata := self.metadata:
@@ -130,3 +172,11 @@ class Operator:
             bound_params[kw] = (param, arg)
 
         yield from bound_params.values()
+
+
+def _get_default_value(expr: libcst.BaseExpression) -> str:
+    match expr:
+        case libcst.SimpleString():
+            return str(expr.evaluated_value)
+        case _:
+            return libcst.Module([]).code_for_node(expr)

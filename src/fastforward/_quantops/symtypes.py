@@ -3,7 +3,10 @@
 
 import dataclasses
 
+from collections.abc import Iterator
 from typing import Generic, Protocol, TypeVar
+
+import libcst
 
 _root_type: "Type | None" = None
 
@@ -248,3 +251,46 @@ def str_to_type(name: str) -> Type:
 
 def type_to_python_str(symtype: Type) -> str:
     return symtype.pyrepr()
+
+
+def type_from_cst_expression(type_expr: libcst.BaseExpression) -> Type:
+    match type_expr:
+        case libcst.Name(name):
+            return str_to_type(name)
+        case libcst.BinaryOperation(left=lhs, operator=libcst.BitOr(), right=rhs):
+            return Union[type_from_cst_expression(lhs), type_from_cst_expression(rhs)]
+        case libcst.Subscript(
+            value=libcst.Name(generic_name),
+            slice=subscript_elems,
+        ):
+            subtypes = list(_extract_types_from_subscript(*subscript_elems))
+            match generic_name:
+                case "Optional" | "optional":
+                    return Optional.create(*subtypes)
+                case "Union" | "union":
+                    return Union.create(*subtypes)
+                case "Tuple" | "tuple":
+                    return Tuple.create(*subtypes)
+                case "List" | "list":
+                    return List.create(*subtypes)
+                case "Sequence":
+                    if len(subtypes) != 1:
+                        raise ValueError("Sequence can only have a single subtype")
+                    return GenericType("List", tuple(subtypes), py_repr="Sequence")
+                case _:
+                    msg = f"Generic type '{generic_name}' is not supported"
+                    raise ValueError(msg)
+        case libcst.Index(value=value):
+            return type_from_cst_expression(value)
+        case _:
+            return str_to_type(libcst.Module([]).code_for_node(type_expr))
+
+
+def _extract_types_from_subscript(*elems: libcst.SubscriptElement) -> Iterator[Type]:
+    for elem in elems:
+        match elem.slice:
+            case libcst.Index(subtype):
+                yield type_from_cst_expression(subtype)
+            case other:
+                msg = f"subscript of generic type of '{type(other)} is not supported"
+                raise ValueError(msg)

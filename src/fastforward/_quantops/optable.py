@@ -14,8 +14,7 @@ import yaml
 from typing_extensions import Self
 
 from fastforward._import import QualifiedNameReference, fully_qualified_name
-from fastforward._quantops import spec_parser
-from fastforward._quantops.operator import Operator, OperatorMetadata
+from fastforward._quantops.operator import Operator
 
 _PyOp: TypeAlias = Callable[..., Any]
 
@@ -122,22 +121,16 @@ class OperatorTable:
 
     def add(
         self,
-        schema: str,
+        spec: str,
         fallback_op: str | _PyOp,
         dispatch_op: str | _PyOp | None = None,
         **kwargs: Any,
     ) -> None:
-        operator = spec_parser.parse_schema(schema)
         resolved_dispatch_op: _PyOp | None = None
         if self._resolve_dispatch and isinstance(dispatch_op, str):
             resolved_dispatch_op = self._dispatch_op(dispatch_op)
-        operator = dataclasses.replace(
-            operator,
-            metadata=OperatorMetadata(
-                fallback=_resolve_name(fallback_op),
-                dispatch_op=resolved_dispatch_op,
-                **kwargs,
-            ),
+        operator = Operator.from_spec(
+            spec, fallback=_resolve_name(fallback_op), dispatch_op=resolved_dispatch_op, **kwargs
         )
         self.append_operator(operator)
 
@@ -190,7 +183,7 @@ class OperatorTable:
                     fallback_op=op_info["fallback"],
                     cast_output=op_info.get("cast_output", None),
                 )
-            except spec_parser.ParseError as e:
+            except ValueError as e:
                 errors.append((
                     op_info["__line__"],
                     f"Unable to parse {op_info['op']} because {e.args}",
