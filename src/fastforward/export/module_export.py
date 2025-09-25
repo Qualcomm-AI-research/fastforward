@@ -21,7 +21,7 @@ import torch
 from typing_extensions import override
 
 from fastforward.export import export
-from fastforward.export._export_helpers import (
+from fastforward.export._export_schemas import (
     EncodingSchemaHandler,
     QuantParametersDict,
     V1SchemaHandler,
@@ -113,7 +113,7 @@ def export_modules(
     kwargs: None | dict[str, Any] = None,
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
-    encoding_schema_handler: EncodingSchemaHandler[Any, Any] = V1SchemaHandler(),
+    encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -235,7 +235,7 @@ def maybe_extend_encodings_file(
     module_name: str,
     path: pathlib.Path,
     quantizer_settings: dict[str, tuple[QuantParametersDict, ...]],
-    encoding_schema_handler: EncodingSchemaHandler[Any, Any],
+    encoding_schema_handler: EncodingSchemaHandler,
 ) -> None:
     """Extends the QNN encodings file.
 
@@ -279,9 +279,7 @@ def maybe_extend_encodings_file(
     # that the inputs will appear in the same sequence in both graph and module.
     for input_idx, quant_settings in enumerate(quantizer_input_settings):
         ort_input_name = ort_session_inputs[input_idx].name
-        encoding_schema_handler.add_encoding_to_dictionary(
-            encodings_dictionary, ort_input_name, quant_settings
-        )
+        encoding_schema_handler.add_encoding(ort_input_name, quant_settings, False)
 
     # The same process detailed for appending input encodings to the encodings
     # dictionary is mirrored for the output encodings.
@@ -290,9 +288,9 @@ def maybe_extend_encodings_file(
 
     for output_idx, quant_settings in enumerate(quantizer_output_settings):
         ort_output_name = ort_session_outputs[output_idx].name
-        encoding_schema_handler.add_encoding_to_dictionary(
-            encodings_dictionary, ort_output_name, quant_settings
-        )
+        encoding_schema_handler.add_encoding(ort_output_name, quant_settings, False)
+
+    encodings_dictionary = encoding_schema_handler.build_encodings_dictionary()
 
     with open(encodings_file_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)

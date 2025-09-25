@@ -11,6 +11,7 @@ import fastforward as ff
 import pytest
 import torch
 
+from fastforward.export._export_schemas import LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler
 from fastforward.export.module_export import ModuleIORecorder, export_modules
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.quantization.strict_quantization import strict_quantization_for_module
@@ -33,9 +34,15 @@ def test_module_io_recorder(
         _check_module_input_output_has_been_stored(tmp_path, model_name)
 
 
+@pytest.mark.parametrize(
+    "schema_handler_type", [LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler]
+)
 @pytest.mark.slow
 def test_module_export(
-    simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int
+    simple_model: QuantizedModelFixture,
+    tmp_path: pathlib.Path,
+    _seed_prngs: int,
+    schema_handler_type: type,
 ) -> None:
     # GIVEN: a model with quantizers and a collection of modules of interest
     # (in this case linear and relu)
@@ -53,8 +60,13 @@ def test_module_export(
     relu_modules = ff.mpath.search("**/[cls:torch.nn.ReLU]", model)
 
     modules = linear_modules | relu_modules
-    paths = export_modules(model, (data,), modules, model_name, tmp_path)
-    model_path = export_modules(model, (data,), model, model_name, tmp_path)[model_name]
+    schema_handler = schema_handler_type()
+    paths = export_modules(
+        model, (data,), modules, model_name, tmp_path, encoding_schema_handler=schema_handler
+    )
+    model_path = export_modules(
+        model, (data,), model, model_name, tmp_path, encoding_schema_handler=schema_handler
+    )[model_name]
 
     # THEN: the number of exported modules paths should match the number
     # of modules of interest.
@@ -73,7 +85,9 @@ def test_module_export(
         _check_module_input_output_has_been_stored(paths[path], module.full_name)
 
         if module.full_name != "fc1":
-            _check_input_encodings_have_been_added(paths[path], module.full_name)
+            _check_input_encodings_have_been_added(
+                paths[path], module.full_name, schema_handler_type
+            )
 
     # THEN: the above checks should also work when exporting the full model.
     # NB: Input encodings are not altered, since the full model has an activated
@@ -90,13 +104,20 @@ def _check_module_files(path: pathlib.Path, module_name: str) -> None:
     assert onnx_file.is_file() and onnx_file.stat().st_size > 0
 
 
-def _check_input_encodings_have_been_added(path: pathlib.Path, module_name: str) -> None:
+def _check_input_encodings_have_been_added(
+    path: pathlib.Path, module_name: str, schema_handler_type: type
+) -> None:
     encodings_file = path / f"{module_name}.encodings"
 
     with open(encodings_file) as fp:
         encodings_dictionary = json.load(fp)
 
-    assert "input" in encodings_dictionary["activation_encodings"]
+    if schema_handler_type is LegacySchemaHandler:
+        assert "input" in encodings_dictionary["activation_encodings"]
+    elif schema_handler_type is V1SchemaHandler:
+        assert "input" in [enc["name"] for enc in encodings_dictionary["activation_encodings"]]
+    else:
+        assert "input" in [enc["name"] for enc in encodings_dictionary["encodings"]]
 
 
 def _check_module_input_output_has_been_stored(path: pathlib.Path, module_name: str) -> None:

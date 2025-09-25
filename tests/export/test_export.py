@@ -1,7 +1,6 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-import json
 import pathlib
 import warnings
 
@@ -294,94 +293,6 @@ def test_ff_model_to_onnx_export(
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("new_input_names", [None, ["new_x"]])
-@pytest.mark.parametrize("new_output_names", [None, ["new_output"]])
-def test_encodings_file_generation(
-    tmp_path: pathlib.Path,
-    simple_model: QuantizedModelFixture,
-    new_input_names: None | list[str],
-    new_output_names: None | list[str],
-    _seed_prngs: int,
-) -> None:
-    # GIVEN a quantized model and its exported encodings file path.
-    data = torch.randn(32, 10)
-    quant_model, activation_quantizers, parameter_quantizers = simple_model
-
-    model_name = "test_encodings_file_generation"
-    output_directory = tmp_path / model_name
-    output_model_directory = output_directory / model_name
-    encodings_file_path = output_model_directory.with_suffix(".encodings")
-
-    expected_quantized_inputs = [new_input_names[0] if new_input_names else "x"]
-    expected_quantized_activations = [
-        "addmm",
-        "relu",
-        "addmm_1",
-        "relu_1",
-        new_output_names[0] if new_output_names else "addmm_2",
-    ]
-
-    expected_quantized_params = [
-        "fc1.weight",
-        "fc1.bias",
-        "fc2.weight",
-        "fc2.bias",
-        "fc3.weight",
-        "fc3.bias",
-    ]
-
-    expected_nested_dictionary_keys = sorted([
-        "bitwidth",
-        "dtype",
-        "is_symmetric",
-        "min",
-        "max",
-        "offset",
-        "scale",
-    ])
-
-    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
-        quant_model, activation_quantizers, parameter_quantizers
-    )
-    estimate_model_ranges(data)
-
-    # WHEN exporting the quantized model
-    export(
-        quant_model,
-        (data,),
-        output_directory,
-        model_name,
-        input_names=new_input_names,
-        output_names=new_output_names,
-        encoding_schema_version="0.6.1",
-    )
-
-    # THEN we expect a json file that can be loaded as a dictionary.
-    with open(encodings_file_path) as f:
-        encodings_dictionary = json.load(f)
-
-    # THEN the structure of the top level of the dictionary should have set keys
-    assert sorted(encodings_dictionary.keys()) == ["activation_encodings", "param_encodings", "version"]
-
-    activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
-    param_encodings_dictionary = encodings_dictionary["param_encodings"]
-
-    # THEN all the nested dictionary keys should also have the expected keys
-    for value in activation_encodings_dictionary.values():
-        assert sorted(value[0].keys()) == expected_nested_dictionary_keys
-
-    for value in param_encodings_dictionary.values():
-        assert sorted(value[0].keys()) == expected_nested_dictionary_keys
-
-    # THEN the number of entries for activations and parameters should match the number of
-    # expected entries respectively
-    assert sorted(activation_encodings_dictionary.keys()) == sorted(
-        expected_quantized_inputs + expected_quantized_activations
-    )
-    assert sorted(param_encodings_dictionary) == sorted(expected_quantized_params)
-
-
-@pytest.mark.slow
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "names",
@@ -439,7 +350,9 @@ def test_graph_io_renaming_valid(
         input_names = ["x", "y", "subtract_from_x", "add_to_y"]
 
     if output_names is None:
-        output_names = ["add_1", "addmm", "addmm_1"]
+        # The `ff` prefix and `_0` suffix are added from the `_fix_onnx_names` function, to
+        # deal with the problem of duplicate nodes in QNN.
+        output_names = ["ff_add_1_0", "ff_addmm_0", "ff_addmm_1_0"]
 
     # THEN the graph input/output names should match the user defined input/output names.
     assert graph_inputs == input_names

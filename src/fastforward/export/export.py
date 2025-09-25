@@ -15,6 +15,7 @@ Supported backends:
 
 import abc
 import json
+import logging
 import pathlib
 import warnings
 
@@ -35,19 +36,24 @@ import fastforward as ff
 
 from fastforward.exceptions import ExportError
 from fastforward.export._export_helpers import (
-    EncodingSchemaHandler,
-    V1SchemaHandler,
     get_activations,
     get_input_spec_new_old_mapping,
     get_inputs,
     get_parameters,
 )
+from fastforward.export._export_schemas import (
+    EncodingSchemaHandler,
+    V1SchemaHandler,
+)
 from fastforward.export._onnx_helpers import (
     _fix_reshape_allowzero,
+    _onnx_input_output_renaming,
     _rename_nodes_and_update_encodings,
 )
 from fastforward.export.graph_operations import propagate_encodings
 from fastforward.flags import export_mode
+
+logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
@@ -433,7 +439,7 @@ def export(
     output_names: None | list[str] = None,
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
-    encoding_schema_handler: EncodingSchemaHandler[Any, Any] = V1SchemaHandler(),
+    encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
 ) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -533,58 +539,26 @@ def export(
         propagated_encodings_dict = propagate_encodings(dynamo_exported_program, quantization_logs)
         quantization_logs.update(propagated_encodings_dict)
 
-    torch_onnx_model = torch.onnx.export(
-        dynamo_exported_program, verbose=verbose, optimize=False, do_constant_folding=False
-    ).model  # type: ignore[call-arg, arg-type, union-attr, unused-ignore]
+    torch_onnx_model = torch.onnx.export(  # type: ignore[call-arg, unused-ignore]
+        dynamo_exported_program,  # type: ignore[arg-type, unused-ignore]
+        verbose=verbose,  # type: ignore[arg-type, unused-ignore]
+        optimize=False,
+        do_constant_folding=False,
+    ).model  # type: ignore[union-attr, unused-ignore]
+
+    # Due to a QNN issue where some nodes with the same name as existing
+    # ones are created we update the onnx node names as well as the encodings.
+    torch_onnx_model, quantization_logs = _rename_nodes_and_update_encodings(
+        torch_onnx_model, quantization_logs, name_prefix="ff"
+    )
     _fix_reshape_allowzero(torch_onnx_model)
-    torch_onnx_inputs = torch_onnx_model.graph.inputs
-    torch_onnx_outputs = torch_onnx_model.graph.outputs
-
-    if input_names is None:
-        input_names = []
-        for entry in torch_onnx_inputs:
-            # The input node should always have a name,
-            # otherwise something is wrong with the graph.
-            assert entry.name is not None
-            input_names.append(entry.name)
-
-    if output_names is None:
-        output_names = []
-        for entry in torch_onnx_outputs:
-            # The output node should always have a name,
-            # otherwise something is wrong with the graph.
-            assert entry.name is not None
-            output_names.append(entry.name)
-
-    if len(torch_onnx_inputs) != len(input_names) or len(torch_onnx_outputs) != len(output_names):
-        msg = (
-            f"The number of user-defined inputs/outputs ({len(input_names)}, {len(output_names)}) "
-            + "does not match the number of graph inputs/outputs "
-            + f"({len(torch_onnx_inputs)}, {len(torch_onnx_outputs)})"
-        )
-        raise ValueError(msg)
-
-    for old_input, new_input_name in zip(torch_onnx_inputs, input_names):
-        old_input_name = old_input.name
-        old_input.name = new_input_name
-        if old_input_name in new_old_input_spec_mapping:
-            new_old_input_spec_mapping[new_input_name] = new_old_input_spec_mapping.pop(
-                old_input_name
-            )
-
-    for old_output, new_output_name in zip(torch_onnx_outputs, output_names):
-        old_output_name = old_output.name
-        old_output.name = new_output_name
-        if old_output_name in quantization_logs:
-            quantization_logs[new_output_name] = quantization_logs.pop(old_output_name)
+    torch_onnx_model = _onnx_input_output_renaming(
+        torch_onnx_model, input_names, output_names, quantization_logs, new_old_input_spec_mapping
+    )
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=DeprecationWarning, module="onnx_ir.*")
         proto = onnxscript.ir.to_proto(torch_onnx_model)
-
-    proto, quantization_logs = _rename_nodes_and_update_encodings(
-        proto, quantization_logs, name_prefix="ff"
-    )
 
     used_inputs, _unused_inputs = get_inputs(
         torch_onnx_model, quantization_logs, new_old_input_spec_mapping
@@ -592,9 +566,19 @@ def export(
     used_activations, _unused_activations = get_activations(proto, quantization_logs)
     used_parameters, _unused_parameters = get_parameters(proto, quantization_logs)
 
-    encodings_dictionary = encoding_schema_handler.generate_encodings_dictionary(
-        used_inputs, used_activations, used_parameters, quantization_logs
-    )
+    all_used_keys = used_inputs | used_activations | used_parameters
+
+    for name, encoding in quantization_logs.items():
+        is_param = name in used_parameters
+
+        if name in all_used_keys:
+            encoding_schema_handler.add_encoding(name, encoding, is_param)
+        else:
+            logger.warning(
+                f"Key: {name} not found in logged inputs/activations/parameters, it will not be include in the encondings dictionary."
+            )
+
+    encodings_dictionary = encoding_schema_handler.build_encodings_dictionary()
 
     with open(encodings_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)
