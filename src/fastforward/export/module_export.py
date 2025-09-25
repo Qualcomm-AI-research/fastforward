@@ -255,14 +255,9 @@ def maybe_extend_encodings_file(
     with open(encodings_file_location) as fp:
         encodings_dictionary = json.load(fp)
 
-    schema_version = encodings_dictionary.get("version", "legacy")
+    schema_version = encodings_dictionary.get("version", "0.6.1")
     encoding_schema_version = EncodingSchemaVersion(schema_version)
     schema_handler = get_schema_handler(encoding_schema_version)
-
-    # The existing encodings dictionary (only its `activation_encodings` section)
-    # might need to be overwritten.
-    # activation_encodings_dictionary = encodings_dictionary["activation_encodings"]
-    # all_encoding_names = set([encoding["name"] for encoding in encodings_dictionary["encodings"]])
 
     # In order to associate potential inputs with quantizer settings we need
     # to retrieve the graph input names. This can be done through the onnxruntime
@@ -296,10 +291,6 @@ def maybe_extend_encodings_file(
         schema_handler.add_encoding_to_dictionary(
             encodings_dictionary, ort_output_name, quant_settings
         )
-
-    # We overwrite the `activation_encodings` of the original encodings dictionary
-    # so it includes any non-explicitly quantized inputs and store the updated version.
-    # encodings_dictionary["activation_encodings"] = activation_encodings_dictionary
 
     with open(encodings_file_location, "w") as fp:
         json.dump(encodings_dictionary, fp, indent=4)

@@ -35,9 +35,6 @@ import fastforward as ff
 
 from fastforward.exceptions import ExportError
 from fastforward.export._export_helpers import (
-    # generate_qnn_encodings_dictionary,
-    # generate_qnn_encodings_dictionary_v1,
-    # generate_qnn_encodings_dictionary_v2,
     EncodingSchemaVersion,
     get_activations,
     get_input_spec_new_old_mapping,
@@ -45,25 +42,14 @@ from fastforward.export._export_helpers import (
     get_parameters,
     get_schema_handler,
 )
+from fastforward.export._onnx_helpers import (
+    _fix_reshape_allowzero,
+    _rename_nodes_and_update_encodings,
+)
 from fastforward.export.graph_operations import propagate_encodings
 from fastforward.flags import export_mode
 
 _T = TypeVar("_T")
-
-
-def _fix_reshape_allowzero(model) -> None:
-    """Fix Reshape nodes with allowzero=1 for QNN compatibility."""
-    modified_count = 0
-
-    # Get the number of nodes first
-    num_nodes = len(model.graph)
-    for i in range(num_nodes):
-        node = model.graph.node(i)
-        if node.op_type == "Reshape" and "allowzero" in node.attributes:
-            del node.attributes["allowzero"]
-            modified_count += 1
-
-    print(f"Deleted {modified_count} allowzero nodes")
 
 
 # def get_new_name_prefix():
@@ -655,10 +641,9 @@ def export(
         warnings.filterwarnings("ignore", category=DeprecationWarning, module="onnx_ir.*")
         proto = onnxscript.ir.to_proto(torch_onnx_model)
 
-    # new_name_prefix = get_new_name_prefix()
-    # proto = _fix_onnx_names(proto, new_name_prefix)
-    # quantization_logs = _fix_encoding_names(quantization_logs, new_name_prefix)
-    onnx.save(proto, onnx_location)
+    proto, quantization_logs = _rename_nodes_and_update_encodings(
+        proto, quantization_logs, name_prefix="ff"
+    )
 
     used_inputs, _unused_inputs = get_inputs(
         torch_onnx_model, quantization_logs, new_old_input_spec_mapping
