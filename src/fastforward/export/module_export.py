@@ -13,7 +13,7 @@ import pickle
 
 from contextlib import ExitStack
 from types import TracebackType
-from typing import Any, Literal
+from typing import Any
 
 import onnxruntime  # type: ignore[import-untyped]
 import torch
@@ -22,9 +22,9 @@ from typing_extensions import override
 
 from fastforward.export import export
 from fastforward.export._export_helpers import (
-    EncodingSchemaVersion,
+    EncodingSchemaHandler,
     QuantParametersDict,
-    get_schema_handler,
+    V1SchemaHandler,
 )
 from fastforward.mpath import MPathCollection
 from fastforward.overrides import disable_quantization
@@ -113,7 +113,7 @@ def export_modules(
     kwargs: None | dict[str, Any] = None,
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
-    encoding_schema_version: Literal["0.6.1", "1.0.0", "2.0.0"] = "1.0.0",
+    encoding_schema_handler: EncodingSchemaHandler[Any, Any] = V1SchemaHandler(),
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -145,7 +145,8 @@ def export_modules(
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations as possible for each exported graph.
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
-        encoding_schema_version: Which version of the quantization encodings json should be generated.
+        encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
+            file schema
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -209,7 +210,7 @@ def export_modules(
             model_kwargs=module_input_kwargs,
             enable_encodings_propagation=enable_encodings_propagation,
             verbose=verbose,
-            encoding_schema_version=encoding_schema_version,
+            encoding_schema_handler=encoding_schema_handler,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
@@ -218,7 +219,9 @@ def export_modules(
             "input": module_input_quantizer_settings,
             "output": module_output_quantizer_settings,
         }
-        maybe_extend_encodings_file(module_name, module_output_path, quantizer_settings)
+        maybe_extend_encodings_file(
+            module_name, module_output_path, quantizer_settings, encoding_schema_handler
+        )
 
         input_output_location = module_output_path / f"{module_name}_input_output.pickle"
         module_io_recorder.store_io_as_dict(input_output_location)
@@ -232,6 +235,7 @@ def maybe_extend_encodings_file(
     module_name: str,
     path: pathlib.Path,
     quantizer_settings: dict[str, tuple[QuantParametersDict, ...]],
+    encoding_schema_handler: EncodingSchemaHandler[Any, Any],
 ) -> None:
     """Extends the QNN encodings file.
 
@@ -248,16 +252,14 @@ def maybe_extend_encodings_file(
         module_name: Name of the module.
         path: Path where the module output directory is stored.
         quantizer_settings: The quantizer settings gathered during inference.
+        encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
+            file schema
     """
     encodings_file_location = path / f"{module_name}.encodings"
     onnx_artifact_location = path / f"{module_name}.onnx"
 
     with open(encodings_file_location) as fp:
         encodings_dictionary = json.load(fp)
-
-    schema_version = encodings_dictionary.get("version", "0.6.1")
-    encoding_schema_version = EncodingSchemaVersion(schema_version)
-    schema_handler = get_schema_handler(encoding_schema_version)
 
     # In order to associate potential inputs with quantizer settings we need
     # to retrieve the graph input names. This can be done through the onnxruntime
@@ -277,7 +279,7 @@ def maybe_extend_encodings_file(
     # that the inputs will appear in the same sequence in both graph and module.
     for input_idx, quant_settings in enumerate(quantizer_input_settings):
         ort_input_name = ort_session_inputs[input_idx].name
-        schema_handler.add_encoding_to_dictionary(
+        encoding_schema_handler.add_encoding_to_dictionary(
             encodings_dictionary, ort_input_name, quant_settings
         )
 
@@ -288,7 +290,7 @@ def maybe_extend_encodings_file(
 
     for output_idx, quant_settings in enumerate(quantizer_output_settings):
         ort_output_name = ort_session_outputs[output_idx].name
-        schema_handler.add_encoding_to_dictionary(
+        encoding_schema_handler.add_encoding_to_dictionary(
             encodings_dictionary, ort_output_name, quant_settings
         )
 

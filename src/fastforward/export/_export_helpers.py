@@ -4,7 +4,6 @@
 import logging
 
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Any, Generic, Literal, Sequence, TypedDict, TypeVar
 
 import torch
@@ -116,6 +115,38 @@ class EncodingSchemaHandler(ABC, Generic[T, E]):
 
 
 class LegacySchemaHandler(EncodingSchemaHandler[LegacyQNNEncoding, LegacyQNNEncodingEntry]):
+    """Schema handler for legacy QNN encoding format (version 0.6.1).
+
+    This handler generates encodings compatible with legacy QNN versions that expect
+    a simple two-category structure separating parameters and activations.
+
+    Schema Structure:
+    ================
+
+    Top Level:
+    ----------------
+    {
+        "activation_encodings": {<activation_name>: (<encoding_entry>, ...)},
+        "param_encodings": {<parameter_name>: (<encoding_entry>, ...)}
+    }
+
+    Encoding Entry Format:
+    ---------------------
+    {
+        "bitwidth": int,           # Quantization bit width (e.g., 8, 16)
+        "dtype": str,              # Data type, always "int"
+        "is_symmetric": str,       # "True" or "False" as string
+        "max": float,              # Maximum quantization range value
+        "min": float,              # Minimum quantization range value
+        "offset": int,             # Zero-point offset (QNN format: offset - 2^(bitwidth-1))
+        "scale": float             # Quantization scale factor
+    }
+
+    Note:
+        Supports only per tensor and per channel quantization. Per channel is only supported
+        for the first axis.
+    """
+
     @property
     def version(self) -> Literal["0.6.1"]:
         return "0.6.1"
@@ -227,6 +258,39 @@ class LegacySchemaHandler(EncodingSchemaHandler[LegacyQNNEncoding, LegacyQNNEnco
 
 
 class V1SchemaHandler(EncodingSchemaHandler[V1QNNEncoding, V1QNNEncodingEntry]):
+    """Schema handler for QNN encoding format version 1.0.0.
+
+    This handler generates encodings using the first standardized QNN format.
+    It is the first format to introduce versioning, and changes the activation
+    and parameters structure to use lists instead of dictionaries.
+
+    Schema Structure:
+    ================
+
+    Top Level:
+    -----------
+    {
+        "version": "1.0.0", # Required! Otherwise QNN will revert to legacy version.
+        "activation_encodings": [<encoding_entry>, ...],
+        "param_encodings": [<encoding_entry>, ...]
+    }
+
+    Encoding Entry Format:
+    ---------------------
+    {
+        "name": str,                          # Tensor/parameter name
+        "enc_type": str,                      # "PER_TENSOR" | "PER_CHANNEL" | "PER_BLOCK" | "LPBQ"
+        "dtype": str,                         # "INT" | "FLOAT"
+        "bw": int,                            # Bit width (e.g., 8, 16)
+        "is_sym": bool,                       # True for symmetric, False for asymmetric
+        "scale": [float, ...],                # List of scale values (per-channel if multiple)
+        "offset": [int, ...],                 # List of offset values (QNN format)
+        "block_size"?: int,                   # Optional: for PER_BLOCK quantization
+        "compressed_bw"?: int,                # Optional: for compressed quantization
+        "per_block_int_scale"?: [int, ...]    # Optional: for block-wise quantization
+    }
+    """
+
     @property
     def version(self) -> Literal["1.0.0"]:
         return "1.0.0"
@@ -325,6 +389,36 @@ class V1SchemaHandler(EncodingSchemaHandler[V1QNNEncoding, V1QNNEncodingEntry]):
 
 
 class V2SchemaHandler(EncodingSchemaHandler[V2QNNEncoding, V2QNNEncodingEntry]):
+    """Schema handler for QNN encoding format version 2.0.0.
+
+    This handler generates encodings using the second QNN format version that consolidates
+    all encodings into a single list and uses more standardized field names aligned with
+    ONNX quantization conventions.
+
+    Schema Structure:
+    ================
+
+    Top Level:
+    -----------
+    {
+        "version": "2.0.0", # Required! Otherwise QNN will fall back to the legacy version.
+        "encodings": [<encoding_entry>, ...]
+    }
+
+    Encoding Entry Format:
+    ---------------------
+    {
+        "name": str,                                # Tensor/parameter name
+        "output_dtype": str,                        # "int8", "uint8", "int4", "uint4", etc.
+        "y_scale": float | [float, ...],            # Scale value(s) - single or per-channel
+        "y_zero_point"?: int | [int, ...],          # Optional: zero-point(s) for asymmetric
+        "axis"?: int,                               # Optional: quantization axis for per-channel
+        "block_size"?: int,                         # Optional: for block-wise quantization
+        "per_block_int_scale"?: [int, ...],         # Optional: integer scales for blocks
+        "per_channel_float_scale"?: [float, ...]    # Optional: float scales for channels
+    }
+    """
+
     @property
     def version(self) -> Literal["2.0.0"]:
         return "2.0.0"
@@ -596,19 +690,3 @@ def _strict_cast_to_int(value: float | int, value_name: str) -> int:
         raise ExportError(msg)
 
     return int(value)
-
-
-class EncodingSchemaVersion(Enum):
-    LEGACY = "0.6.1"
-    V1_0_0 = "1.0.0"
-    V2_0_0 = "2.0.0"
-
-
-def get_schema_handler(version: EncodingSchemaVersion) -> EncodingSchemaHandler[Any, Any]:
-    handlers: dict[EncodingSchemaVersion, EncodingSchemaHandler[Any, Any]] = {
-        EncodingSchemaVersion.LEGACY: LegacySchemaHandler(),
-        EncodingSchemaVersion.V1_0_0: V1SchemaHandler(),
-        EncodingSchemaVersion.V2_0_0: V2SchemaHandler(),
-    }
-
-    return handlers[version]

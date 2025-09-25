@@ -19,7 +19,7 @@ import pathlib
 import warnings
 
 from operator import attrgetter
-from typing import Any, Generic, Literal, Sequence, TypeVar
+from typing import Any, Generic, Sequence, TypeVar
 
 import onnx
 import onnxscript
@@ -35,12 +35,12 @@ import fastforward as ff
 
 from fastforward.exceptions import ExportError
 from fastforward.export._export_helpers import (
-    EncodingSchemaVersion,
+    EncodingSchemaHandler,
+    V1SchemaHandler,
     get_activations,
     get_input_spec_new_old_mapping,
     get_inputs,
     get_parameters,
-    get_schema_handler,
 )
 from fastforward.export._onnx_helpers import (
     _fix_reshape_allowzero,
@@ -50,66 +50,6 @@ from fastforward.export.graph_operations import propagate_encodings
 from fastforward.flags import export_mode
 
 _T = TypeVar("_T")
-
-
-# def get_new_name_prefix():
-#     session_id = str(uuid.uuid4())[:8]
-#     new_name_prefix = f"ff_{session_id}"
-
-#     return new_name_prefix
-
-
-# def _fix_onnx_names(model_proto, new_name_prefix) -> None:
-#     name_map = {}
-
-#     # Rename initializers (weights/parameters)
-#     for initializer in model_proto.graph.initializer:
-#         old_name = initializer.name
-#         # new_name = f"ff_{old_name}"
-#         new_name = f"{new_name_prefix}_{old_name}_0"
-#         name_map[old_name] = new_name
-#         initializer.name = new_name
-
-#     for node in model_proto.graph.node:
-#         if node.name:
-#             # node.name = f"ff_{node.name}"
-#             node.name = f"{new_name_prefix}_{node.name}_0"
-
-#         for i, output in enumerate(node.output):
-#             # new_name = f"ff_{output}"
-#             new_name = f"{new_name_prefix}_{output}_0"
-#             name_map[output] = new_name
-#             node.output[i] = new_name
-
-#     for node in model_proto.graph.node:
-#         for i, input_name in enumerate(node.input):
-#             if input_name in name_map:
-#                 node.input[i] = name_map[input_name]
-
-#     # Update graph inputs
-#     for input_tensor in model_proto.graph.input:
-#         if input_tensor.name in name_map:
-#             input_tensor.name = name_map[input_tensor.name]
-
-#     # Update graph outputs
-#     for output_tensor in model_proto.graph.output:
-#         if output_tensor.name in name_map:
-#             output_tensor.name = name_map[output_tensor.name]
-
-#     # Update value_info (intermediate tensors)
-#     for value_info in model_proto.graph.value_info:
-#         if value_info.name in name_map:
-#             value_info.name = name_map[value_info.name]
-
-#     return model_proto
-
-
-# def _fix_encoding_names(quantization_logs, new_name_prefix) -> None:
-#     new_quantization_logs = {}
-
-#     for key, value in quantization_logs.items():
-#         new_quantization_logs[f"{new_name_prefix}_{key}_0"] = value
-#     return new_quantization_logs
 
 
 def _node_name_as_string(node: Node) -> str | Any:
@@ -493,7 +433,7 @@ def export(
     output_names: None | list[str] = None,
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
-    encoding_schema_version: Literal["0.6.1", "1.0.0", "2.0.0"] = "1.0.0",
+    encoding_schema_handler: EncodingSchemaHandler[Any, Any] = V1SchemaHandler(),
 ) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -546,7 +486,8 @@ def export(
         enable_encodings_propagation: Option to propagate the quantization encodings through as many
             view-type operations in the graph as possible.
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
-        encoding_schema_version: Which version of the quantization encodings json should be generated.
+        encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
+            file schema
     """
     if torch.__version__ < "2.5":
         msg = (
@@ -651,8 +592,7 @@ def export(
     used_activations, _unused_activations = get_activations(proto, quantization_logs)
     used_parameters, _unused_parameters = get_parameters(proto, quantization_logs)
 
-    schema_handler = get_schema_handler(EncodingSchemaVersion(encoding_schema_version))
-    encodings_dictionary = schema_handler.generate_encodings_dictionary(
+    encodings_dictionary = encoding_schema_handler.generate_encodings_dictionary(
         used_inputs, used_activations, used_parameters, quantization_logs
     )
 
