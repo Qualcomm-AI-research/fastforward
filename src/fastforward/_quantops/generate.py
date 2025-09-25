@@ -3,7 +3,6 @@
 
 """Code generation for operator fallback and dispatch functions."""
 
-import os
 import pathlib
 import textwrap
 
@@ -51,9 +50,12 @@ class _ModuleGenerator:
         Args:
             src_file: Source file path for header generation.
         """
-        self._module = libcst.parse_module(
-            module_header_raw.format(src_file=src_file.relative_to(os.getcwd()))
-        )
+        try:
+            relative_src_path = src_file.relative_to(pathlib.Path.cwd())
+        except ValueError:
+            relative_src_path = src_file
+
+        self._module = libcst.parse_module(module_header_raw.format(src_file=relative_src_path))
         self._imports: list[libcst.SimpleStatementLine | libcst.BaseCompoundStatement] = []
         self._header_parts: list[
             Sequence[libcst.SimpleStatementLine | libcst.BaseCompoundStatement]
@@ -223,7 +225,7 @@ def _operator_function_stub(
     else:
         raw_warning = (
             "Automatically generated based on "
-            f"{op.metadata.specification_file.relative_to(os.getcwd())}:"
+            f"{op.metadata.specification_file.relative_to(pathlib.Path.cwd())}:"
             f"{op.metadata.line_number}"
         )
     comments = (libcst.EmptyLine(comment=libcst.Comment(f"# {raw_warning}")),)

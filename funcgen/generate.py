@@ -19,8 +19,7 @@ import subprocess
 import fastforward._quantops
 
 from fastforward._quantops import OperatorTable
-
-from funcgen import gen_operators
+from fastforward._quantops import generate as gen_operators
 
 
 def _get_default_src() -> pathlib.Path:
