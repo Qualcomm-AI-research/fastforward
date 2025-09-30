@@ -3,7 +3,7 @@
 
 import logging
 
-from typing import Any, Literal, Protocol, TypedDict
+from typing import Any, Iterable, Literal, Protocol, TypedDict
 
 import torch
 
@@ -13,6 +13,12 @@ from fastforward.common import ensure_tensor
 from fastforward.export._export_helpers import _strict_cast_to_int
 from fastforward.quantization._quantizer_impl import _infer_offset
 from fastforward.quantization.affine import integer_minimum, quantization_range
+from fastforward.quantization.granularity import (
+    PerBlock,
+    PerChannel,
+    PerTensor,
+    granularity_from_sizes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +27,22 @@ class QuantParametersDict(TypedDict):
     scale: torch.Tensor | float
     offset: torch.Tensor | float | int | None
     num_bits: float | int
-    tile_size: NotRequired[tuple[int]]
+    tile_size: NotRequired[Iterable[int]]
+    data_shape: NotRequired[Iterable[int]]
     output_dtype: NotRequired[torch.dtype]
 
 
 def _preprocess_quantization_params(
     encoding_value: QuantParametersDict,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, bool]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, bool, torch.Size, torch.Size]:
     scale = encoding_value["scale"]
     offset = encoding_value["offset"]
     bitwidth = encoding_value["num_bits"]
+    raw_data_shape: Iterable[int] | None = encoding_value.get("data_shape")
+    raw_tile_size: Iterable[int] | None = encoding_value.get("tile_size")
+
+    data_shape = torch.Size([]) if raw_data_shape is None else torch.Size(raw_data_shape)
+    tile_size = torch.Size([]) if raw_tile_size is None else torch.Size(raw_tile_size)
 
     scale = ensure_tensor(scale)
     if offset is None:
@@ -45,7 +57,7 @@ def _preprocess_quantization_params(
     if not isinstance(qnn_offset, torch.Tensor):
         qnn_offset = torch.tensor(qnn_offset)
 
-    return scale, offset, qnn_offset, bitwidth, is_symmetric
+    return scale, offset, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size
 
 
 class EncodingSchemaHandler(Protocol):
@@ -107,9 +119,15 @@ class LegacySchemaHandler:
         return "0.6.1"
 
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
-        scale, offset, qnn_offset, bitwidth, is_symmetric = _preprocess_quantization_params(
-            encoding
+        scale, offset, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
+            _preprocess_quantization_params(encoding)
         )
+
+        granularity = granularity_from_sizes(data_shape, tile_size)
+
+        if isinstance(granularity, PerBlock):
+            msg = f"Node {name} uses block quantization. Legacy schema does not support block quantization."
+            raise ValueError(msg)
 
         int_min = integer_minimum(bitwidth)
 
@@ -198,17 +216,39 @@ class V1SchemaHandler:
         return "1.0.0"
 
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
-        scale, _, qnn_offset, bitwidth, is_symmetric = _preprocess_quantization_params(encoding)
+        scale, _, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
+            _preprocess_quantization_params(encoding)
+        )
+
+        granularity = granularity_from_sizes(data_shape, tile_size)
 
         entry: dict[str, Any] = {
             "name": name,
             "dtype": "INT",
-            "enc_type": "PER_TENSOR" if len(scale) == 1 else "PER_CHANNEL",
             "is_sym": is_symmetric,
             "bw": int(bitwidth),
             "scale": [s.item() for s in scale],
             "offset": [o.item() for o in qnn_offset],
         }
+
+        if isinstance(granularity, PerTensor):
+            entry["enc_type"] = "PER_TENSOR"
+        elif isinstance(granularity, PerChannel):
+            entry["enc_type"] = "PER_CHANNEL"
+        elif isinstance(granularity, PerBlock):
+            block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
+
+            if len(block_dims) > 1:
+                msg = f"{self.__class__.__name__} supports only a single block dimension, but received {len(block_dims)}"
+                raise ValueError(msg)
+
+            if len(block_sizes) > 1:
+                msg = f"{self.__class__.__name__} supports only a single block size, but received {block_sizes}"
+                raise ValueError(msg)
+
+            entry["enc_type"] = "PER_BLOCK"
+            entry["block_size"] = block_sizes[0]
+
         if is_param:
             self._param_encodings.append(entry)
         else:
@@ -265,26 +305,43 @@ class V2SchemaHandler:
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
         del is_param
 
-        scale, _, qnn_offset, bitwidth, is_symmetric = _preprocess_quantization_params(encoding)
-        tile_size = encoding.get("tile_size")
+        scale, _, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
+            _preprocess_quantization_params(encoding)
+        )
+        granularity = granularity_from_sizes(data_shape, tile_size)
 
         entry: dict[str, Any] = {
             "name": name,
             "output_dtype": ("" if is_symmetric else "u") + f"int{bitwidth}",
-            "y_scale": [s.item() for s in scale] if len(scale) > 1 else scale.item(),
         }
 
-        if not is_symmetric:
-            entry["y_zero_point"] = (
-                [int(o.item()) for o in qnn_offset]
-                if len(qnn_offset) > 1
-                else int(qnn_offset.item())
-            )
+        if isinstance(granularity, PerTensor):
+            entry["y_scale"] = scale.item()
+            if not is_symmetric:
+                entry["y_zero_point"] = int(qnn_offset.item())
 
-        if len(scale) > 1 and tile_size is not None:
-            channel_axis = next((i for i, value in enumerate(tile_size) if value == 1), None)
-            if channel_axis is not None:
-                entry["axis"] = channel_axis
+        elif isinstance(granularity, PerChannel):
+            channel_dims = granularity.channel_dims
+            if len(channel_dims) > 1:
+                msg = f"{self.__class__.__name__} only supports a single axis, but got {len(channel_dims)}"
+                raise ValueError(msg)
+
+            entry["axis"] = channel_dims[0]
+            entry["y_scale"] = [s.item() for s in scale]
+
+            if not is_symmetric:
+                entry["y_zero_point"] = [int(o.item()) for o in qnn_offset]
+
+        elif isinstance(granularity, PerBlock):
+            block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
+            entry["axis"] = list(block_dims) if len(block_dims) > 1 else block_dims[0]
+            entry["block_size"] = list(block_sizes) if len(block_sizes) > 1 else block_sizes[0]
+            reconstructed_scale = reconstruct_block_shape(scale, data_shape, granularity)
+            entry["y_scale"] = reconstructed_scale
+
+            if not is_symmetric:
+                reconstructed_offset = reconstruct_block_shape(qnn_offset, data_shape, granularity)
+                entry["y_zero_point"] = reconstructed_offset
 
         self._encodings.append(entry)
 
@@ -292,3 +349,32 @@ class V2SchemaHandler:
         self,
     ) -> dict[str, Any]:
         return {"version": self.version, "encodings": self._encodings}
+
+
+def reconstruct_block_shape(
+    parameter: torch.Tensor, data_shape: torch.Size, granularity: PerBlock
+) -> float | list[float] | list[list[float]] | int | list[int] | list[list[int]]:
+    block_dims = tuple(granularity.block_dims)
+    block_sizes = tuple(int(size) for size in granularity.block_sizes)
+    per_channel_dims = tuple(granularity.per_channel_dims)
+
+    parameter_shape = []
+
+    for idx, size in enumerate(data_shape):
+        if idx in per_channel_dims:
+            parameter_shape.append(size)
+        elif idx in block_dims:
+            block_idx = block_dims.index(idx)
+            block_size = block_sizes[block_idx]
+            num_blocks = size // block_size
+            parameter_shape.append(num_blocks)
+
+    parameter_array = parameter.detach().cpu().numpy()
+
+    if len(parameter_shape) == 0:
+        return parameter_array[0] if len(parameter_array) == 1 else parameter_array.tolist()  # type: ignore[no-any-return]
+    elif len(parameter_shape) == 1:
+        return parameter_array.tolist()  # type: ignore[no-any-return]
+    else:
+        reshaped = parameter_array.reshape(parameter_shape)
+        return reshaped.tolist()  #type: ignore[no-any-return]
