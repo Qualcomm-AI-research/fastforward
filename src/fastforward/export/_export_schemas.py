@@ -1,9 +1,10 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import dataclasses
 import logging
 
-from typing import Any, Iterable, Literal, Protocol, TypedDict
+from typing import Any, Iterable, Iterator, Literal, Protocol, TypedDict
 
 import torch
 
@@ -32,9 +33,23 @@ class QuantParametersDict(TypedDict):
     output_dtype: NotRequired[torch.dtype]
 
 
+@dataclasses.dataclass
+class ProcessedQuantParams:
+    scale: torch.Tensor
+    offset: torch.Tensor
+    qnn_offset: torch.Tensor
+    bitwidth: int
+    is_symmetric: bool
+    data_shape: torch.Size
+    tile_size: torch.Size
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(dataclasses.astuple(self))
+
+
 def _preprocess_quantization_params(
     encoding_value: QuantParametersDict,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, bool, torch.Size, torch.Size]:
+) -> ProcessedQuantParams:
     scale = encoding_value["scale"]
     offset = encoding_value["offset"]
     bitwidth = encoding_value["num_bits"]
@@ -57,7 +72,9 @@ def _preprocess_quantization_params(
     if not isinstance(qnn_offset, torch.Tensor):
         qnn_offset = torch.tensor(qnn_offset)
 
-    return scale, offset, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size
+    return ProcessedQuantParams(
+        scale, offset, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size
+    )
 
 
 class EncodingSchemaHandler(Protocol):
@@ -125,8 +142,16 @@ class LegacySchemaHandler:
 
         granularity = granularity_from_sizes(data_shape, tile_size)
 
+        if isinstance(granularity, PerChannel) and (
+            len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0
+        ):
+            msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0."
+            msg += f"Instead received granularity: {granularity}"
+            raise ValueError(msg)
+
         if isinstance(granularity, PerBlock):
-            msg = f"Node {name} uses block quantization. Legacy schema does not support block quantization."
+            msg = f"Block quantization is not supported for {self.__class__.__name__}"
+            msg += f"Node: {name} was found to use block quantization"
             raise ValueError(msg)
 
         int_min = integer_minimum(bitwidth)
@@ -238,12 +263,9 @@ class V1SchemaHandler:
         elif isinstance(granularity, PerBlock):
             block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
 
-            if len(block_dims) > 1:
-                msg = f"{self.__class__.__name__} supports only a single block dimension, but received {len(block_dims)}"
-                raise ValueError(msg)
-
-            if len(block_sizes) > 1:
-                msg = f"{self.__class__.__name__} supports only a single block size, but received {block_sizes}"
+            if len(block_dims) > 1 or len(block_sizes) > 1:
+                msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}."
+                msg += f"Node: {name} has granularity: {granularity}."
                 raise ValueError(msg)
 
             entry["enc_type"] = "PER_BLOCK"
@@ -353,7 +375,7 @@ class V2SchemaHandler:
 
 def reconstruct_block_shape(
     parameter: torch.Tensor, data_shape: torch.Size, granularity: PerBlock
-) -> float | list[float] | list[list[float]] | int | list[int] | list[list[int]]:
+) -> Any:
     block_dims = tuple(granularity.block_dims)
     block_sizes = tuple(int(size) for size in granularity.block_sizes)
     per_channel_dims = tuple(granularity.per_channel_dims)
@@ -372,9 +394,9 @@ def reconstruct_block_shape(
     parameter_array = parameter.detach().cpu().numpy()
 
     if len(parameter_shape) == 0:
-        return parameter_array[0] if len(parameter_array) == 1 else parameter_array.tolist()  # type: ignore[no-any-return]
+        return parameter_array.item() if len(parameter_array) == 1 else parameter_array.tolist()
     elif len(parameter_shape) == 1:
-        return parameter_array.tolist()  # type: ignore[no-any-return]
+        return parameter_array.tolist()
     else:
         reshaped = parameter_array.reshape(parameter_shape)
-        return reshaped.tolist()  #type: ignore[no-any-return]
+        return reshaped.tolist()
