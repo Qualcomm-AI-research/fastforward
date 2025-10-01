@@ -30,7 +30,7 @@ def _fix_onnx_names(
     name_mapping: dict[str, str] = {}
 
     # Rename initializers (weights/parameters)
-    for initializer in torch_onnx_model.graph.initializers.values():
+    for initializer in list(torch_onnx_model.graph.initializers.values()):
         if hasattr(initializer, "name") and initializer.name:
             old_name = initializer.name
             new_name = f"{new_name_prefix}_{old_name}_0"
