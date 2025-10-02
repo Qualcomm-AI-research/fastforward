@@ -60,7 +60,7 @@ def mock_perblock_1d_logs() -> dict[str, dict[str, Any]]:
 
 @pytest.fixture
 def mock_perblock_2d_logs() -> dict[str, dict[str, Any]]:
-    """PerBlock 2D quantization logs (V2 only)."""
+    """PerBlock 2D quantization logs (rejected by all current schemas)."""
     return {
         "conv2d.weight": {
             "scale": torch.tensor([0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
@@ -132,94 +132,6 @@ LEGACY_EXPECTED_RESULTS = {
     },
 }
 
-V1_EXPECTED_RESULTS = {
-    "version": "1.0.0",
-    "param_encodings": [
-        {
-            "name": "conv1.weight",
-            "dtype": "INT",
-            "enc_type": "PER_CHANNEL",
-            "is_sym": True,
-            "bw": 8,
-            "scale": [0.012000000104308128, 0.014999999664723873, 0.010999999940395355],
-            "offset": [-128.0, -128.0, -128.0],
-        },
-        {
-            "name": "linear.bias",
-            "dtype": "INT",
-            "enc_type": "PER_BLOCK",
-            "is_sym": False,
-            "bw": 8,
-            "block_size": 2,
-            "scale": [0.021, 0.022, 0.023, 0.024],  # Flat list (1D PerBlock)
-            "offset": [128.0, 120.0, 135.0, 125.0],  # Flat list (1D PerBlock)
-        },
-        {
-            "name": "conv2d.weight",
-            "dtype": "INT",
-            "enc_type": "PER_BLOCK",
-            "is_sym": True,
-            "bw": 8,
-            "block_size": 2,  # V1.0.0 uses single integer
-            "scale": [0.01, 0.02, 0.03, 0.04, 0.05, 0.06],  # Flat list
-            "offset": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        },
-    ],
-    "activation_encodings": [
-        {
-            "name": "input",
-            "dtype": "INT",
-            "enc_type": "PER_TENSOR",
-            "is_sym": False,
-            "bw": 8,
-            "scale": [0.03099999949336052],
-            "offset": [0.0],
-        },
-        {
-            "name": "layer1_output",
-            "dtype": "INT",
-            "enc_type": "PER_TENSOR",
-            "is_sym": True,
-            "bw": 8,
-            "scale": [0.02500000037252903],
-            "offset": [-128.0],
-        },
-    ],
-}
-
-V2_EXPECTED_RESULTS = {
-    "version": "2.0.0",
-    "encodings": [
-        {
-            "name": "input",
-            "output_dtype": "uint8",
-            "y_scale": 0.03099999949336052,
-            "y_zero_point": 0,
-        },
-        {
-            "name": "conv1.weight",
-            "output_dtype": "int8",
-            "y_scale": [0.012000000104308128, 0.014999999664723873, 0.010999999940395355],
-            "axis": 0,
-        },
-        {"name": "layer1_output", "output_dtype": "int8", "y_scale": 0.02500000037252903},
-        {
-            "name": "linear.bias",
-            "output_dtype": "int8",
-            "y_scale": [0.021, 0.022, 0.023, 0.024],  # 1D - stays flat
-            "y_zero_point": [0.0, -8.0, 7.0, -3.0],
-            "axis": 0,
-            "block_size": 2,
-        },
-        {
-            "name": "conv2d.weight",
-            "output_dtype": "int8",
-            "y_scale": [[0.01, 0.02], [0.03, 0.04], [0.05, 0.06]],  # 2D - nested!
-            "axis": [0, 1],  # V2.0.0 supports multi-axis
-            "block_size": [2, 3],
-        },
-    ],
-}
 
 BASIC_V1_EXPECTED_RESULTS = {
     "version": "1.0.0",
@@ -306,18 +218,19 @@ V2_PERBLOCK_1D_EXPECTED = {
     ],
 }
 
-V2_PERBLOCK_2D_EXPECTED = {
-    "version": "2.0.0",
-    "encodings": [
-        {
-            "name": "conv2d.weight",
-            "output_dtype": "int8",
-            "y_scale": [[0.01, 0.02], [0.03, 0.04], [0.05, 0.06]],  # Nested structure
-            "axis": [0, 1],
-            "block_size": [2, 3],
-        }
-    ],
-}
+
+@pytest.fixture
+def mock_perblock_single_axis_logs() -> dict[str, dict[str, Any]]:
+    """PerBlock single-axis quantization logs (V2 compatible)."""
+    return {
+        "conv1d.weight": {
+            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04]),
+            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0]),
+            "num_bits": 8,
+            "data_shape": [8, 16],
+            "tile_size": [2, 16],
+        },
+    }
 
 
 @pytest.mark.parametrize(
@@ -351,6 +264,28 @@ def test_schema_handler_basic(
 
     # THEN the constructed dictionary should match the expected results.
     _assert_dictionary_structure(expected_result, encodings_dict)
+
+
+def test_v1_schema_rejects_perchannel_non_zero_axis() -> None:
+    """Test that V1 schema rejects per-channel quantization on non-zero axes."""
+    # GIVEN a V1 schema handler and per-channel data on axis 1
+    handler = V1SchemaHandler()
+
+    per_channel_axis1_logs: dict[str, QuantParametersDict] = {
+        "conv2d.weight": {
+            "scale": torch.tensor([0.01, 0.02, 0.03]),  # 3 channels on axis 1
+            "offset": torch.tensor([0.0, 0.0, 0.0]),
+            "num_bits": 8,
+            "data_shape": [4, 3, 5, 5],  # [out_channels, in_channels, H, W]
+            "tile_size": [4, 1, 5, 5],  # Per-channel on axis 1 (in_channels)
+        }
+    }
+
+    # WHEN attempting to add per-channel encoding on axis 1
+    # THEN it should raise ValueError about axis 0 requirement
+    with pytest.raises(ValueError):
+        for name, encoding in per_channel_axis1_logs.items():
+            handler.add_encoding(name, encoding, is_param=True)
 
 
 @pytest.mark.parametrize(
@@ -393,17 +328,16 @@ def test_schema_handler_perblock_1d(
 
 
 @pytest.mark.parametrize(
-    "handler_class,expected_result,should_raise",
+    "handler_class,should_raise",
     [
-        (LegacySchemaHandler, None, ValueError),
-        (V1SchemaHandler, None, ValueError),
-        (V2SchemaHandler, V2_PERBLOCK_2D_EXPECTED, None),
+        (LegacySchemaHandler, ValueError),
+        (V1SchemaHandler, ValueError),
+        (V2SchemaHandler, ValueError),
     ],
 )
 def test_schema_handler_perblock_2d(
     handler_class: type[EncodingSchemaHandler],
-    expected_result: dict[str, Any] | None,
-    should_raise: type[Exception] | None,
+    should_raise: type[Exception],
     mock_perblock_2d_logs: dict[str, QuantParametersDict],
 ) -> None:
     """Test PerBlock 2D quantization handling."""
@@ -412,23 +346,65 @@ def test_schema_handler_perblock_2d(
     tensor_sets = {"inputs": set(), "activations": set(), "parameters": {"conv2d.weight"}}
 
     # WHEN building the dictionary
-    # THEN the legacy schema should raise an error as it does not support Per Block quantization.
-    # THEN the V1 shcema should raise an error as it does not support 2D block quantization.
-    if should_raise:
-        with pytest.raises(should_raise):
-            for name, encoding in mock_perblock_2d_logs.items():
-                is_param_encoding = name in tensor_sets["parameters"]
-                handler.add_encoding(name, encoding, is_param_encoding)
-    else:
-        # WHEN building the dictionary
+    # THEN all schemas should raise an error:
+    # - Legacy: does not support Per Block quantization
+    # - V1: does not support 2D block quantization
+    # - V2: QAIRT V2.0.0 only supports single-axis block quantization
+    with pytest.raises(should_raise):
         for name, encoding in mock_perblock_2d_logs.items():
             is_param_encoding = name in tensor_sets["parameters"]
             handler.add_encoding(name, encoding, is_param_encoding)
 
-        encodings_dict = handler.build_encodings_dictionary()
-        assert expected_result is not None
-        # THEN the constructed dictionary should match the expected results
-        _assert_dictionary_structure(expected_result, encodings_dict)
+
+def test_schema_handler_perblock_single_axis_v2(
+    mock_perblock_single_axis_logs: dict[str, QuantParametersDict],
+) -> None:
+    """Test V2 schema with valid single-axis block quantization."""
+    # GIVEN a V2 schema handler and single-axis block quantization data
+    handler = V2SchemaHandler()
+    tensor_sets = {"parameters": {"conv1d.weight"}}
+
+    expected_results = {
+        "version": "2.0.0",
+        "encodings": [
+            {
+                "name": "conv1d.weight",
+                "output_dtype": "int8",
+                "y_scale": [0.01, 0.02, 0.03, 0.04],
+                "axis": 0,
+                "block_size": 2,
+            }
+        ],
+    }
+
+    # WHEN adding encodings with single-axis block quantization
+    for name, encoding in mock_perblock_single_axis_logs.items():
+        is_param_encoding = name in tensor_sets["parameters"]
+        handler.add_encoding(name, encoding, is_param_encoding)
+
+    encodings_dict = handler.build_encodings_dictionary()
+
+    # THEN the constructed dictionary should match the expected V2 single-axis results
+    _assert_dictionary_structure(expected_results, encodings_dict)
+
+
+def test_v2_schema_rejects_multi_block_sizes() -> None:
+    """Test that V2 schema properly rejects multi-dimensional block sizes."""
+    # GIVEN a V2 schema handler and encoding with multiple block sizes
+    handler = V2SchemaHandler()
+
+    encoding: QuantParametersDict = {
+        "scale": torch.tensor([0.01, 0.02]),
+        "offset": torch.tensor([0.0, 0.0]),
+        "num_bits": 8,
+        "data_shape": [4, 6],
+        "tile_size": [2, 3],
+    }
+
+    # WHEN attempting to add encoding with multi-dimensional block sizes
+    # THEN it should raise a ValueError about multi-dimensional block quantization not being supported
+    with pytest.raises(ValueError):
+        handler.add_encoding("test_tensor", encoding, is_param=True)
 
 
 def _assert_dictionary_structure(dict1: dict[str, Any], dict2: dict[str, Any]) -> None:

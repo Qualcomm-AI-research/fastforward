@@ -259,6 +259,10 @@ class V1SchemaHandler:
         if isinstance(granularity, PerTensor):
             entry["enc_type"] = "PER_TENSOR"
         elif isinstance(granularity, PerChannel):
+            if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
+                msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0."
+                msg += f"Instead received granularity: {granularity}"
+                raise ValueError(msg)
             entry["enc_type"] = "PER_CHANNEL"
         elif isinstance(granularity, PerBlock):
             block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
@@ -306,14 +310,14 @@ class V2SchemaHandler:
     Encoding Entry Format:
     ---------------------
     {
-        "name": str,                                # Tensor/parameter name
-        "output_dtype": str,                        # "int8", "uint8", "int4", "uint4", etc.
-        "y_scale": float | [float, ...],            # Scale value(s) - single or per-channel
-        "y_zero_point"?: int | [int, ...],          # Optional: zero-point(s) for asymmetric
-        "axis"?: int,                               # Optional: quantization axis for per-channel
-        "block_size"?: int,                         # Optional: for block-wise quantization
-        "per_block_int_scale"?: [int, ...],         # Optional: integer scales for blocks
-        "per_channel_float_scale"?: [float, ...]    # Optional: float scales for channels
+        "name": str,                                                    # Tensor/parameter name
+        "output_dtype": str,                                            # "int8", "uint8", "int4", "uint4", etc.
+        "y_scale": float | [float, ...] | [[float, ...], ...],          # Scale value(s) - single or per-channel
+        "y_zero_point"?: int | [int, ...] | [[int, ...], ...],          # Optional: zero-point(s) for asymmetric
+        "axis"?: int,                                                   # Optional: quantization axis for per-channel
+        "block_size"?: int,                                             # Optional: for block-wise quantization
+        "per_block_int_scale"?: [int, ...],,                            # Optional: integer scales for blocks
+        "per_channel_float_scale"?: [float, ...]                        # Optional: float scales for channels
     }
     """
 
@@ -356,8 +360,14 @@ class V2SchemaHandler:
 
         elif isinstance(granularity, PerBlock):
             block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
-            entry["axis"] = list(block_dims) if len(block_dims) > 1 else block_dims[0]
-            entry["block_size"] = list(block_sizes) if len(block_sizes) > 1 else block_sizes[0]
+
+            if len(block_dims) > 1 or len(block_sizes) > 1:
+                msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}."
+                msg += f"Node: {name} has granularity: {granularity}."
+                raise ValueError(msg)
+
+            entry["axis"] = block_dims[0]
+            entry["block_size"] = block_sizes[0]
             reconstructed_scale = reconstruct_block_shape(scale, data_shape, granularity)
             entry["y_scale"] = reconstructed_scale
 
