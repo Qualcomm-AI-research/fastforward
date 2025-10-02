@@ -351,8 +351,7 @@ class LogQuantizationParameter(NodeVisitor[dict[str, dict[str, Any]]]):
             else:
                 parameter_values[function_parameter_name] = parameter_node
 
-        if hasattr(input_node, "meta") and "val" in input_node.meta:
-            parameter_values["data_shape"] = list(input_node.meta["val"].shape)
+        parameter_values["data_shape"] = list(input_node.meta["val"].shape)
 
         self._logs.update({input_node_name: parameter_values})
 

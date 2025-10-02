@@ -4,22 +4,19 @@
 import dataclasses
 import logging
 
-from typing import Any, Iterable, Iterator, Literal, Protocol, TypedDict
+from typing import Any, Iterable, Literal, Protocol, TypedDict
 
 import torch
 
 from typing_extensions import NotRequired
 
+import fastforward as ff
+
 from fastforward.common import ensure_tensor
 from fastforward.export._export_helpers import _strict_cast_to_int
 from fastforward.quantization._quantizer_impl import _infer_offset
 from fastforward.quantization.affine import integer_minimum, quantization_range
-from fastforward.quantization.granularity import (
-    PerBlock,
-    PerChannel,
-    PerTensor,
-    granularity_from_sizes,
-)
+from fastforward.quantization.granularity import granularity_from_sizes
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +39,6 @@ class ProcessedQuantParams:
     is_symmetric: bool
     data_shape: torch.Size
     tile_size: torch.Size
-
-    def __iter__(self) -> Iterator[Any]:
-        return iter(dataclasses.astuple(self))
 
 
 def _preprocess_quantization_params(
@@ -133,30 +127,32 @@ class LegacySchemaHandler:
         return "0.6.1"
 
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
-        scale, offset, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
-            _preprocess_quantization_params(encoding)
-        )
+        qparams = _preprocess_quantization_params(encoding)
 
-        granularity = granularity_from_sizes(data_shape, tile_size)
+        granularity = granularity_from_sizes(qparams.data_shape, qparams.tile_size)
 
-        if isinstance(granularity, PerChannel) and (
-            len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0
-        ):
-            msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0."
-            msg += f"Instead received granularity: {granularity}"
-            raise ValueError(msg)
+        match granularity:
+            case ff.PerTensor():
+                ...
+            case ff.PerChannel():
+                if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
+                    msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
+                    msg += f"Instead received granularity: {granularity}"
+                    raise ValueError(msg)
+            case ff.PerBlock():
+                msg = f"Block quantization is not supported for {self.__class__.__name__}. "
+                msg += f"Node: {name} was found to use block quantization"
+                raise ValueError(msg)
+            case _:
+                msg = f"Unsupported granularity type, received: {granularity}."
+                raise ValueError(msg)
 
-        if isinstance(granularity, PerBlock):
-            msg = f"Block quantization is not supported for {self.__class__.__name__}"
-            msg += f"Node: {name} was found to use block quantization"
-            raise ValueError(msg)
-
-        int_min = integer_minimum(bitwidth)
+        int_min = integer_minimum(qparams.bitwidth)
 
         int_min = _strict_cast_to_int(int_min, "int_min")
-        bitwidth = _strict_cast_to_int(bitwidth, "bitwidth")
+        bitwidth = _strict_cast_to_int(qparams.bitwidth, "bitwidth")
 
-        min_range, max_range = quantization_range(scale, offset, bitwidth)
+        min_range, max_range = quantization_range(qparams.scale, qparams.offset, bitwidth)
         min_range = ensure_tensor(min_range)
         max_range = ensure_tensor(max_range)
 
@@ -165,14 +161,13 @@ class LegacySchemaHandler:
         for (
             scale_entry,
             offset_entry,
-            original_offset_entry,
             min_range_entry,
             max_range_entry,
-        ) in zip(scale, qnn_offset, offset, min_range, max_range):
+        ) in zip(qparams.scale, qparams.qnn_offset, min_range, max_range):
             output_entry: dict[str, Any] = {
                 "bitwidth": int(bitwidth),
                 "dtype": "int",
-                "is_symmetric": "True" if is_symmetric else "False",
+                "is_symmetric": "True" if qparams.is_symmetric else "False",
                 "min": min_range_entry.item(),
                 "max": max_range_entry.item(),
                 "offset": int(offset_entry),
@@ -238,39 +233,40 @@ class V1SchemaHandler:
         return "1.0.0"
 
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
-        scale, _, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
-            _preprocess_quantization_params(encoding)
-        )
+        qparams = _preprocess_quantization_params(encoding)
 
-        granularity = granularity_from_sizes(data_shape, tile_size)
+        granularity = granularity_from_sizes(qparams.data_shape, qparams.tile_size)
 
         entry: dict[str, Any] = {
             "name": name,
             "dtype": "INT",
-            "is_sym": is_symmetric,
-            "bw": int(bitwidth),
-            "scale": [s.item() for s in scale],
-            "offset": [o.item() for o in qnn_offset],
+            "is_sym": qparams.is_symmetric,
+            "bw": int(qparams.bitwidth),
+            "scale": [s.item() for s in qparams.scale],
+            "offset": [o.item() for o in qparams.qnn_offset],
         }
 
-        if isinstance(granularity, PerTensor):
-            entry["enc_type"] = "PER_TENSOR"
-        elif isinstance(granularity, PerChannel):
-            if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
-                msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0."
-                msg += f"Instead received granularity: {granularity}"
-                raise ValueError(msg)
-            entry["enc_type"] = "PER_CHANNEL"
-        elif isinstance(granularity, PerBlock):
-            block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
+        match granularity:
+            case ff.PerTensor():
+                entry["enc_type"] = "PER_TENSOR"
+            case ff.PerChannel():
+                if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
+                    msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
+                    msg += f"Instead received granularity: {granularity}"
+                    raise ValueError(msg)
+                entry["enc_type"] = "PER_CHANNEL"
+            case ff.PerBlock():
+                block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
 
-            if len(block_dims) > 1 or len(block_sizes) > 1:
-                msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}."
-                msg += f"Node: {name} has granularity: {granularity}."
+                if len(block_dims) > 1 or len(block_sizes) > 1:
+                    msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}. "
+                    msg += f"Node: {name} has granularity: {granularity}."
+                    raise ValueError(msg)
+                entry["enc_type"] = "PER_BLOCK"
+                entry["block_size"] = block_sizes[0]
+            case _:
+                msg = f"Unsupported granularity type, received: {granularity}."
                 raise ValueError(msg)
-
-            entry["enc_type"] = "PER_BLOCK"
-            entry["block_size"] = block_sizes[0]
 
         if is_param:
             self._param_encodings.append(entry)
@@ -327,50 +323,53 @@ class V2SchemaHandler:
 
     def add_encoding(self, name: str, encoding: QuantParametersDict, is_param: bool) -> None:
         del is_param
-
-        scale, _, qnn_offset, bitwidth, is_symmetric, data_shape, tile_size = (
-            _preprocess_quantization_params(encoding)
-        )
-        granularity = granularity_from_sizes(data_shape, tile_size)
+        qparams = _preprocess_quantization_params(encoding)
+        granularity = granularity_from_sizes(qparams.data_shape, qparams.tile_size)
 
         entry: dict[str, Any] = {
             "name": name,
-            "output_dtype": ("" if is_symmetric else "u") + f"int{bitwidth}",
+            "output_dtype": ("" if qparams.is_symmetric else "u") + f"int{qparams.bitwidth}",
         }
 
-        if isinstance(granularity, PerTensor):
-            entry["y_scale"] = scale.item()
-            if not is_symmetric:
-                entry["y_zero_point"] = int(qnn_offset.item())
+        match granularity:
+            case ff.PerTensor():
+                entry["y_scale"] = qparams.scale.item()
+                if not qparams.is_symmetric:
+                    entry["y_zero_point"] = int(qparams.qnn_offset.item())
+            case ff.PerChannel():
+                channel_dims = granularity.channel_dims
+                if len(channel_dims) > 1:
+                    msg = f"{self.__class__.__name__} only supports a single axis, but got {len(channel_dims)}."
+                    raise ValueError(msg)
 
-        elif isinstance(granularity, PerChannel):
-            channel_dims = granularity.channel_dims
-            if len(channel_dims) > 1:
-                msg = f"{self.__class__.__name__} only supports a single axis, but got {len(channel_dims)}"
+                entry["axis"] = channel_dims[0]
+                entry["y_scale"] = [s.item() for s in qparams.scale]
+
+                if not qparams.is_symmetric:
+                    entry["y_zero_point"] = [int(o.item()) for o in qparams.qnn_offset]
+            case ff.PerBlock():
+                block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
+
+                if len(block_dims) > 1 or len(block_sizes) > 1:
+                    msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}. "
+                    msg += f"Node: {name} has granularity: {granularity}."
+                    raise ValueError(msg)
+
+                entry["axis"] = block_dims[0]
+                entry["block_size"] = block_sizes[0]
+                reconstructed_scale = reconstruct_block_shape(
+                    qparams.scale, qparams.data_shape, granularity
+                )
+                entry["y_scale"] = reconstructed_scale
+
+                if not qparams.is_symmetric:
+                    reconstructed_offset = reconstruct_block_shape(
+                        qparams.qnn_offset, qparams.data_shape, granularity
+                    )
+                    entry["y_zero_point"] = reconstructed_offset
+            case _:
+                msg = f"Unsupported granularity type, received: {granularity}."
                 raise ValueError(msg)
-
-            entry["axis"] = channel_dims[0]
-            entry["y_scale"] = [s.item() for s in scale]
-
-            if not is_symmetric:
-                entry["y_zero_point"] = [int(o.item()) for o in qnn_offset]
-
-        elif isinstance(granularity, PerBlock):
-            block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
-
-            if len(block_dims) > 1 or len(block_sizes) > 1:
-                msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}."
-                msg += f"Node: {name} has granularity: {granularity}."
-                raise ValueError(msg)
-
-            entry["axis"] = block_dims[0]
-            entry["block_size"] = block_sizes[0]
-            reconstructed_scale = reconstruct_block_shape(scale, data_shape, granularity)
-            entry["y_scale"] = reconstructed_scale
-
-            if not is_symmetric:
-                reconstructed_offset = reconstruct_block_shape(qnn_offset, data_shape, granularity)
-                entry["y_zero_point"] = reconstructed_offset
 
         self._encodings.append(entry)
 
@@ -381,8 +380,38 @@ class V2SchemaHandler:
 
 
 def reconstruct_block_shape(
-    parameter: torch.Tensor, data_shape: torch.Size, granularity: PerBlock
+    parameter: torch.Tensor, data_shape: torch.Size, granularity: ff.PerBlock
 ) -> Any:
+    """Reconstruct the nested array structure for block quantization parameters.
+
+    This function transforms the FastForward default flat quantization parameters
+    (scale/offset) into the nested array structure expected by QAIRT V2.0.0 schema
+    for block quantization.
+
+    Args:
+        parameter: Flat tensor containing quantization parameters (scale or offset values).
+        data_shape: Original shape of the quantized tensor.
+        granularity: PerBlock granularity object containing block dimensions, sizes,
+            and per-channel dimensions.
+
+    Returns:
+        Reconstructed parameter structure:
+        - Scalar (float/int): For single-block tensors
+        - 1D list: For single-axis block quantization
+        - 2D+ nested list: For multi-axis block quantization (if supported)
+
+    Example:
+        >>> # Tensor shape: [8, 16], block size: [2, 4] on axes [0, 1]
+        >>> # Creates 4x4 = 16 blocks total
+        >>> parameter = torch.tensor([0.1, 0.2, 0.3, 0.4, ...])  # 16 values
+        >>> result = reconstruct_block_shape(parameter, torch.Size([8, 16]), granularity)
+        >>> # Returns: [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8], ...]
+
+    Note:
+        This function is specifically designed for QAIRT V2.0.0 schema compliance.
+        The nested structure allows QAIRT to understand the spatial organization
+        of quantization parameters within blocked tensors.
+    """
     block_dims = tuple(granularity.block_dims)
     block_sizes = tuple(int(size) for size in granularity.block_sizes)
     per_channel_dims = tuple(granularity.per_channel_dims)
@@ -391,8 +420,10 @@ def reconstruct_block_shape(
 
     for idx, size in enumerate(data_shape):
         if idx in per_channel_dims:
+            # Per-channel dimensions: keep original size (one param per channel)
             parameter_shape.append(size)
         elif idx in block_dims:
+            # Block dimensions: calculate number of blocks along this axis
             block_idx = block_dims.index(idx)
             block_size = block_sizes[block_idx]
             num_blocks = size // block_size
@@ -401,9 +432,13 @@ def reconstruct_block_shape(
     parameter_array = parameter.detach().cpu().numpy()
 
     if len(parameter_shape) == 0:
+        # Scalar case: single block, return single value
         return parameter_array.item() if len(parameter_array) == 1 else parameter_array.tolist()
     elif len(parameter_shape) == 1:
+        # 1D case: single axis blocking, return flat list
         return parameter_array.tolist()
     else:
+        # Multi-dimensional case: reshape and return nested structure
+        # This creates the nested array structure expected by QAIRT V2.0.0
         reshaped = parameter_array.reshape(parameter_shape)
         return reshaped.tolist()

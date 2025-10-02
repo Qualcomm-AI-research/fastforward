@@ -140,6 +140,7 @@ def _normalized_assignment(targets: Sequence[str] | str, value: str) -> Normaliz
         ),
     ],
 )
+@pytest.mark.slow
 def test_normalize_assignments(
     assignment: GeneralAssignment,
     normalized: Sequence[NormalizedAssignment],

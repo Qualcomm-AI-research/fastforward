@@ -14,66 +14,7 @@ from fastforward.export._export_schemas import (
     V2SchemaHandler,
 )
 
-
-@pytest.fixture
-def mock_basic_quantization_logs() -> dict[str, dict[str, Any]]:
-    """Basic quantization logs without PerBlock (compatible with all schemas)."""
-    return {
-        "input": {
-            "scale": torch.tensor([0.031]),
-            "offset": torch.tensor([128.0]),
-            "num_bits": 8,
-            "data_shape": [1, 3, 224, 224],
-            "tile_size": [1, 3, 224, 224],
-        },
-        "conv1.weight": {
-            "scale": torch.tensor([0.012, 0.015, 0.011]),  # Per-channel
-            "offset": torch.tensor([0.0, 0.0, 0.0]),
-            "num_bits": 8,
-            "data_shape": [3, 3, 3, 3],
-            "tile_size": [1, 3, 3, 3],
-        },
-        "layer1_output": {
-            "scale": torch.tensor([0.025]),
-            "offset": torch.tensor([0.0]),  # Symmetric
-            "num_bits": 8,
-            "data_shape": [1, 3, 222, 222],
-            "tile_size": [1, 3, 222, 222],
-        },
-    }
-
-
-@pytest.fixture
-def mock_perblock_1d_logs() -> dict[str, dict[str, Any]]:
-    """PerBlock 1D quantization logs (V1 and V2 compatible)."""
-    return {
-        "linear.bias": {
-            "scale": torch.tensor([0.021, 0.022, 0.023, 0.024]),  # 4 blocks
-            "offset": torch.tensor([128.0, 120.0, 135.0, 125.0]),
-            "num_bits": 8,
-            "block_size": [2],
-            "data_shape": [8],
-            "tile_size": [2],
-        },
-    }
-
-
-@pytest.fixture
-def mock_perblock_2d_logs() -> dict[str, dict[str, Any]]:
-    """PerBlock 2D quantization logs (rejected by all current schemas)."""
-    return {
-        "conv2d.weight": {
-            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
-            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            "num_bits": 8,
-            "block_size": [2, 3],
-            "data_shape": [6, 6],
-            "tile_size": [2, 3],
-        },
-    }
-
-
-LEGACY_EXPECTED_RESULTS = {
+LEGACY_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
     "version": "0.6.1",
     "param_encodings": {
         "conv1.weight": (
@@ -133,7 +74,7 @@ LEGACY_EXPECTED_RESULTS = {
 }
 
 
-BASIC_V1_EXPECTED_RESULTS = {
+V1_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
     "version": "1.0.0",
     "param_encodings": [
         {
@@ -168,7 +109,7 @@ BASIC_V1_EXPECTED_RESULTS = {
     ],
 }
 
-BASIC_V2_EXPECTED_RESULTS = {
+V2_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
     "version": "2.0.0",
     "encodings": [
         {
@@ -219,34 +160,19 @@ V2_PERBLOCK_1D_EXPECTED = {
 }
 
 
-@pytest.fixture
-def mock_perblock_single_axis_logs() -> dict[str, dict[str, Any]]:
-    """PerBlock single-axis quantization logs (V2 compatible)."""
-    return {
-        "conv1d.weight": {
-            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04]),
-            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0]),
-            "num_bits": 8,
-            "data_shape": [8, 16],
-            "tile_size": [2, 16],
-        },
-    }
-
-
 @pytest.mark.parametrize(
     "handler_class,expected_result",
     [
-        (LegacySchemaHandler, LEGACY_EXPECTED_RESULTS),
-        (V1SchemaHandler, BASIC_V1_EXPECTED_RESULTS),
-        (V2SchemaHandler, BASIC_V2_EXPECTED_RESULTS),
+        (LegacySchemaHandler, LEGACY_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS),
+        (V1SchemaHandler, V1_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS),
+        (V2SchemaHandler, V2_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS),
     ],
 )
-def test_schema_handler_basic(
+def test_schema_handler_pertensor_perchannel(
     handler_class: type[EncodingSchemaHandler],
     expected_result: dict[str, Any],
-    mock_basic_quantization_logs: dict[str, QuantParametersDict],
 ) -> None:
-    """Test basic schema handling without PerBlock quantization."""
+    """Test basic schema handling with only per tensor and per channel quantization."""
     # GIVEN a schema handler and some dummy inputs
     handler = handler_class()
     tensor_sets = {
@@ -255,8 +181,32 @@ def test_schema_handler_basic(
         "parameters": {"conv1.weight"},
     }
 
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "input": {
+            "scale": torch.tensor([0.031]),
+            "offset": torch.tensor([128.0]),
+            "num_bits": 8,
+            "data_shape": [1, 3, 224, 224],
+            "tile_size": [1, 3, 224, 224],
+        },
+        "conv1.weight": {
+            "scale": torch.tensor([0.012, 0.015, 0.011]),  # Per-channel
+            "offset": torch.tensor([0.0, 0.0, 0.0]),
+            "num_bits": 8,
+            "data_shape": [3, 3, 3, 3],
+            "tile_size": [1, 3, 3, 3],
+        },
+        "layer1_output": {
+            "scale": torch.tensor([0.025]),
+            "offset": torch.tensor([0.0]),  # Symmetric
+            "num_bits": 8,
+            "data_shape": [1, 3, 222, 222],
+            "tile_size": [1, 3, 222, 222],
+        },
+    }
+
     # WHEN building the encodings dictionary
-    for name, encoding in mock_basic_quantization_logs.items():
+    for name, encoding in quantization_logs.items():
         is_param_encoding = name in tensor_sets["parameters"]
         handler.add_encoding(name, encoding, is_param_encoding)
 
@@ -300,24 +250,32 @@ def test_schema_handler_perblock_1d(
     handler_class: type[EncodingSchemaHandler],
     expected_result: dict[str, Any] | None,
     should_raise: type[Exception] | None,
-    mock_perblock_1d_logs: dict[str, QuantParametersDict],
 ) -> None:
     """Test PerBlock 1D quantization handling."""
     # GIVEN a schema handler and some dummy inputs
     handler = handler_class()
     tensor_sets = {"inputs": set(), "activations": set(), "parameters": {"linear.bias"}}
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "linear.bias": {
+            "scale": torch.tensor([0.021, 0.022, 0.023, 0.024]),  # 4 blocks
+            "offset": torch.tensor([128.0, 120.0, 135.0, 125.0]),
+            "num_bits": 8,
+            "data_shape": [8],
+            "tile_size": [2],
+        },
+    }
 
     # WHEN building the dictionary
     # THEN the legacy schema should raise an error as it does not support Per Block quantization.
     if should_raise:
         with pytest.raises(should_raise):
-            for name, encoding in mock_perblock_1d_logs.items():
+            for name, encoding in quantization_logs.items():
                 is_param_encoding = name in tensor_sets["parameters"]
                 handler.add_encoding(name, encoding, is_param_encoding)
 
     # WHEN building the dictionary
     else:
-        for name, encoding in mock_perblock_1d_logs.items():
+        for name, encoding in quantization_logs.items():
             is_param_encoding = name in tensor_sets["parameters"]
             handler.add_encoding(name, encoding, is_param_encoding)
 
@@ -338,12 +296,20 @@ def test_schema_handler_perblock_1d(
 def test_schema_handler_perblock_2d(
     handler_class: type[EncodingSchemaHandler],
     should_raise: type[Exception],
-    mock_perblock_2d_logs: dict[str, QuantParametersDict],
 ) -> None:
     """Test PerBlock 2D quantization handling."""
     # GIVEN a schema handler and some dummy inputs
     handler = handler_class()
     tensor_sets = {"inputs": set(), "activations": set(), "parameters": {"conv2d.weight"}}
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "conv2d.weight": {
+            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04, 0.05, 0.06]),
+            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            "num_bits": 8,
+            "data_shape": [6, 6],
+            "tile_size": [2, 3],
+        },
+    }
 
     # WHEN building the dictionary
     # THEN all schemas should raise an error:
@@ -351,18 +317,26 @@ def test_schema_handler_perblock_2d(
     # - V1: does not support 2D block quantization
     # - V2: QAIRT V2.0.0 only supports single-axis block quantization
     with pytest.raises(should_raise):
-        for name, encoding in mock_perblock_2d_logs.items():
+        for name, encoding in quantization_logs.items():
             is_param_encoding = name in tensor_sets["parameters"]
             handler.add_encoding(name, encoding, is_param_encoding)
 
 
-def test_schema_handler_perblock_single_axis_v2(
-    mock_perblock_single_axis_logs: dict[str, QuantParametersDict],
-) -> None:
+def test_schema_handler_perblock_single_axis_v2() -> None:
     """Test V2 schema with valid single-axis block quantization."""
     # GIVEN a V2 schema handler and single-axis block quantization data
     handler = V2SchemaHandler()
     tensor_sets = {"parameters": {"conv1d.weight"}}
+
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "conv1d.weight": {
+            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04]),
+            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0]),
+            "num_bits": 8,
+            "data_shape": [8, 16],
+            "tile_size": [2, 16],
+        },
+    }
 
     expected_results = {
         "version": "2.0.0",
@@ -378,7 +352,48 @@ def test_schema_handler_perblock_single_axis_v2(
     }
 
     # WHEN adding encodings with single-axis block quantization
-    for name, encoding in mock_perblock_single_axis_logs.items():
+    for name, encoding in quantization_logs.items():
+        is_param_encoding = name in tensor_sets["parameters"]
+        handler.add_encoding(name, encoding, is_param_encoding)
+
+    encodings_dict = handler.build_encodings_dictionary()
+
+    # THEN the constructed dictionary should match the expected V2 single-axis results
+    _assert_dictionary_structure(expected_results, encodings_dict)
+
+
+def test_v2_schema_perblock_2d_nested_array() -> None:
+    handler = V2SchemaHandler()
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "conv_weight": {
+            # 8 scale values: 4 blocks × 2 channels = 8 total
+            "scale": torch.tensor([0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08]),
+            "offset": torch.tensor([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]),
+            "num_bits": 8,
+            "data_shape": [8, 2],
+            "tile_size": [2, 1],
+        }
+    }
+
+    tensor_sets = {"parameters": {"conv2d.weight"}}
+
+    expected_results = {
+        "version": "2.0.0",
+        "encodings": [
+            {
+                "name": "conv_weight",
+                "output_dtype": "uint8",
+                "axis": 0,
+                "block_size": 2,
+                # Nested structure: 4 blocks × 2 channels
+                "y_scale": [[0.01, 0.02], [0.03, 0.04], [0.05, 0.06], [0.07, 0.08]],
+                "y_zero_point": [[-118.0, -108.0], [-98.0, -88.0], [-78.0, -68.0], [-58.0, -48.0]],
+            }
+        ],
+    }
+
+    # WHEN adding encodings with single-axis block quantization
+    for name, encoding in quantization_logs.items():
         is_param_encoding = name in tensor_sets["parameters"]
         handler.add_encoding(name, encoding, is_param_encoding)
 
