@@ -325,10 +325,15 @@ def maybe_dequantize_tensors(
             quant_args = tensor.quant_args()
             assert isinstance(quant_args, StaticAffineQuantParams)
             scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
+            raw_tile_size = quant_args.granularity.tile_size(tensor.shape)
+            tile_size = tensor.shape if raw_tile_size == "data_shape" else raw_tile_size
+
             tensor_quant_args: QuantParametersDict = {
                 "scale": scale,
                 "offset": offset,
                 "num_bits": num_bits,
+                "data_shape": tensor.shape,
+                "tile_size": tile_size,
             }
 
             quantizer_settings.append(tensor_quant_args)

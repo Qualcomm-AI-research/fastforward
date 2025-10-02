@@ -28,8 +28,8 @@ class QuantParametersDict(TypedDict):
     scale: torch.Tensor | float
     offset: torch.Tensor | float | int | None
     num_bits: float | int
-    tile_size: NotRequired[Iterable[int]]
-    data_shape: NotRequired[Iterable[int]]
+    tile_size: Iterable[int]
+    data_shape: Iterable[int]
     output_dtype: NotRequired[torch.dtype]
 
 
@@ -53,11 +53,8 @@ def _preprocess_quantization_params(
     scale = encoding_value["scale"]
     offset = encoding_value["offset"]
     bitwidth = encoding_value["num_bits"]
-    raw_data_shape: Iterable[int] | None = encoding_value.get("data_shape")
-    raw_tile_size: Iterable[int] | None = encoding_value.get("tile_size")
-
-    data_shape = torch.Size([]) if raw_data_shape is None else torch.Size(raw_data_shape)
-    tile_size = torch.Size([]) if raw_tile_size is None else torch.Size(raw_tile_size)
+    data_shape = torch.Size(encoding_value["data_shape"])
+    tile_size = torch.Size(encoding_value["tile_size"])
 
     scale = ensure_tensor(scale)
     if offset is None:
