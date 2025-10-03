@@ -134,11 +134,14 @@ class LegacySchemaHandler:
         match granularity:
             case ff.PerTensor():
                 ...
+            case ff.PerChannel((0,)):
+                ...
             case ff.PerChannel():
-                if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
-                    msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
-                    msg += f"Instead received granularity: {granularity}"
-                    raise ValueError(msg)
+                msg = (
+                    f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
+                )
+                msg += f"Instead received granularity: {granularity}"
+                raise ValueError(msg)
             case ff.PerBlock():
                 msg = f"Block quantization is not supported for {self.__class__.__name__}. "
                 msg += f"Node: {name} was found to use block quantization"
@@ -249,15 +252,16 @@ class V1SchemaHandler:
         match granularity:
             case ff.PerTensor():
                 entry["enc_type"] = "PER_TENSOR"
-            case ff.PerChannel():
-                if len(granularity.channel_dims) > 1 or granularity.channel_dims[0] != 0:
-                    msg = f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
-                    msg += f"Instead received granularity: {granularity}"
-                    raise ValueError(msg)
+            case ff.PerChannel((0,)):
                 entry["enc_type"] = "PER_CHANNEL"
+            case ff.PerChannel():
+                msg = (
+                    f"Channel quantization dimension for {self.__class__.__name__} can only be 0. "
+                )
+                msg += f"Instead received granularity: {granularity}"
+                raise ValueError(msg)
             case ff.PerBlock():
                 block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
-
                 if len(block_dims) > 1 or len(block_sizes) > 1:
                     msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}. "
                     msg += f"Node: {name} has granularity: {granularity}."
@@ -336,17 +340,18 @@ class V2SchemaHandler:
                 entry["y_scale"] = qparams.scale.item()
                 if not qparams.is_symmetric:
                     entry["y_zero_point"] = int(qparams.qnn_offset.item())
-            case ff.PerChannel():
+            case ff.PerChannel((0,)):
                 channel_dims = granularity.channel_dims
-                if len(channel_dims) > 1:
-                    msg = f"{self.__class__.__name__} only supports a single axis, but got {len(channel_dims)}."
-                    raise ValueError(msg)
-
                 entry["axis"] = channel_dims[0]
                 entry["y_scale"] = [s.item() for s in qparams.scale]
 
                 if not qparams.is_symmetric:
                     entry["y_zero_point"] = [int(o.item()) for o in qparams.qnn_offset]
+            case ff.PerChannel():
+                msg = (
+                    f"{self.__class__.__name__} only supports a single axis, but got {granularity}."
+                )
+                raise ValueError(msg)
             case ff.PerBlock():
                 block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
 
@@ -357,15 +362,21 @@ class V2SchemaHandler:
 
                 entry["axis"] = block_dims[0]
                 entry["block_size"] = block_sizes[0]
-                reconstructed_scale = reconstruct_block_shape(
-                    qparams.scale, qparams.data_shape, granularity
+
+                # FastForward always represents the scale/offset as flattened arrays, in which case these need to
+                # be reshaped to the expected structure.
+                parameter_shape = _compute_v2_block_parameter_shape(qparams.data_shape, granularity)
+
+                reconstructed_scale = (
+                    qparams.scale.detach().cpu().numpy().reshape(parameter_shape).tolist()
                 )
+                reconstructed_offset = (
+                    qparams.offset.detach().cpu().numpy().reshape(parameter_shape).tolist()
+                )
+
                 entry["y_scale"] = reconstructed_scale
 
                 if not qparams.is_symmetric:
-                    reconstructed_offset = reconstruct_block_shape(
-                        qparams.qnn_offset, qparams.data_shape, granularity
-                    )
                     entry["y_zero_point"] = reconstructed_offset
             case _:
                 msg = f"Unsupported granularity type, received: {granularity}."
@@ -379,66 +390,25 @@ class V2SchemaHandler:
         return {"version": self.version, "encodings": self._encodings}
 
 
-def reconstruct_block_shape(
-    parameter: torch.Tensor, data_shape: torch.Size, granularity: ff.PerBlock
-) -> Any:
-    """Reconstruct the nested array structure for block quantization parameters.
+def _compute_v2_block_parameter_shape(
+    data_shape: torch.Size, granularity: ff.PerBlock
+) -> list[int]:
+    """Compute the shape that block quantization parameters should have in Schema V2.0.0.
 
-    This function transforms the FastForward default flat quantization parameters
-    (scale/offset) into the nested array structure expected by QAIRT V2.0.0 schema
-    for block quantization.
+    Schema V2.0.0 expects the the parameters (scale/offset) to have the same shape as the
+    input, except for one dimension where the blocking is performed.
 
-    Args:
-        parameter: Flat tensor containing quantization parameters (scale or offset values).
-        data_shape: Original shape of the quantized tensor.
-        granularity: PerBlock granularity object containing block dimensions, sizes,
-            and per-channel dimensions.
-
-    Returns:
-        Reconstructed parameter structure:
-        - Scalar (float/int): For single-block tensors
-        - 1D list: For single-axis block quantization
-        - 2D+ nested list: For multi-axis block quantization (if supported)
-
-    Example:
-        >>> # Tensor shape: [8, 16], block size: [2, 4] on axes [0, 1]
-        >>> # Creates 4x4 = 16 blocks total
-        >>> parameter = torch.tensor([0.1, 0.2, 0.3, 0.4, ...])  # 16 values
-        >>> result = reconstruct_block_shape(parameter, torch.Size([8, 16]), granularity)
-        >>> # Returns: [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8], ...]
-
-    Note:
-        This function is specifically designed for QAIRT V2.0.0 schema compliance.
-        The nested structure allows QAIRT to understand the spatial organization
-        of quantization parameters within blocked tensors.
+    For example, a [8, 2] data shape with axis-0 blocking (size=2) will result in a parameter
+    shape of [4, 2]. Here, the 8 elements become 4 blocks, and the 1 axis is left unchanged.
     """
-    block_dims = tuple(granularity.block_dims)
-    block_sizes = tuple(int(size) for size in granularity.block_sizes)
-    per_channel_dims = tuple(granularity.per_channel_dims)
-
     parameter_shape = []
 
     for idx, size in enumerate(data_shape):
-        if idx in per_channel_dims:
-            # Per-channel dimensions: keep original size (one param per channel)
+        if idx in granularity.per_channel_dims:
             parameter_shape.append(size)
-        elif idx in block_dims:
-            # Block dimensions: calculate number of blocks along this axis
-            block_idx = block_dims.index(idx)
-            block_size = block_sizes[block_idx]
+        elif idx in granularity.block_dims:
+            block_idx = granularity.block_dims.index(idx)
+            block_size = granularity.block_sizes[block_idx]
             num_blocks = size // block_size
             parameter_shape.append(num_blocks)
-
-    parameter_array = parameter.detach().cpu().numpy()
-
-    if len(parameter_shape) == 0:
-        # Scalar case: single block, return single value
-        return parameter_array.item() if len(parameter_array) == 1 else parameter_array.tolist()
-    elif len(parameter_shape) == 1:
-        # 1D case: single axis blocking, return flat list
-        return parameter_array.tolist()
-    else:
-        # Multi-dimensional case: reshape and return nested structure
-        # This creates the nested array structure expected by QAIRT V2.0.0
-        reshaped = parameter_array.reshape(parameter_shape)
-        return reshaped.tolist()
+    return parameter_shape
