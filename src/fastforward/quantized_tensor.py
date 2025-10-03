@@ -21,7 +21,6 @@ from typing import (
 
 import optree
 import torch
-import torch.overrides
 
 from torch import DisableTorchFunction, Tensor
 from torch._C import DisableTorchFunctionSubclass

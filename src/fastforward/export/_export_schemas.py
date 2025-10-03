@@ -392,14 +392,20 @@ class V2SchemaHandler:
 
 def _compute_v2_block_parameter_shape(
     data_shape: torch.Size, granularity: ff.PerBlock
-) -> list[int]:
+) -> torch.Size:
     """Compute the shape that block quantization parameters should have in Schema V2.0.0.
 
-    Schema V2.0.0 expects the the parameters (scale/offset) to have the same shape as the
-    input, except for one dimension where the blocking is performed.
+    Schema V2.0.0 expects the quantization parameters (scale/offset) to be reshaped in the
+    following way:
+        - Block dimensions are replaced with the number of blocks (size // block_size)
+        - Per channel dimensions are kept unchanged
+        - Other dimensions are set to 1
 
-    For example, a [8, 2] data shape with axis-0 blocking (size=2) will result in a parameter
-    shape of [4, 2]. Here, the 8 elements become 4 blocks, and the 1 axis is left unchanged.
+    Examples:
+        - data shape [8, 2] with PerBlock(block_dims=(0,), block_sizes=(2,), per_channel_dims=(1,)) -> [4, 2]
+        - data shape [8, 8, 8] with PerBlock(block_dims=(0,), block_sizes=(4,), per_channel_dims=(1,)) → [2, 8, 1]
+        - data shape [8, 16] with PerBlock(block_dims=(0,), block_sizes=(2,), per_channel_dims=()) → [4, 1]
+
     """
     parameter_shape = []
 
@@ -411,4 +417,6 @@ def _compute_v2_block_parameter_shape(
             block_size = granularity.block_sizes[block_idx]
             num_blocks = size // block_size
             parameter_shape.append(num_blocks)
-    return parameter_shape
+        else:
+            parameter_shape.append(1)
+    return torch.Size(parameter_shape)

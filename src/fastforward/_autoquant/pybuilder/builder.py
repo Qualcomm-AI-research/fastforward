@@ -15,7 +15,6 @@ from typing import Any, Generic, Iterable, Iterator, Protocol, TypeVar, cast, ru
 
 import libcst
 import libcst.helpers
-import libcst.metadata
 
 from typing_extensions import override
 

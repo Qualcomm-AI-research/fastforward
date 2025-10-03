@@ -173,7 +173,7 @@ def test_schema_handler_pertensor_perchannel(
     expected_result: dict[str, Any],
 ) -> None:
     """Test basic schema handling with only per tensor and per channel quantization."""
-    # GIVEN a schema handler and some dummy inputs
+    # GIVEN a schema handler with mixed symmetric/asymmetric quantization
     handler = handler_class()
     tensor_sets = {
         "inputs": {"input"},
@@ -322,9 +322,9 @@ def test_schema_handler_perblock_2d(
             handler.add_encoding(name, encoding, is_param_encoding)
 
 
-def test_schema_handler_perblock_single_axis_v2() -> None:
+def test_v2_schema_perblock_1d_nested_array() -> None:
     """Test V2 schema with valid single-axis block quantization."""
-    # GIVEN a V2 schema handler and single-axis block quantization data
+    # GIVEN a 2D tensor [8, 16] with block quantization with (2, 16) tile size
     handler = V2SchemaHandler()
     tensor_sets = {"parameters": {"conv1d.weight"}}
 
@@ -344,7 +344,7 @@ def test_schema_handler_perblock_single_axis_v2() -> None:
             {
                 "name": "conv1d.weight",
                 "output_dtype": "int8",
-                "y_scale": [0.01, 0.02, 0.03, 0.04],
+                "y_scale": [[0.01], [0.02], [0.03], [0.04]],
                 "axis": 0,
                 "block_size": 2,
             }
@@ -363,6 +363,7 @@ def test_schema_handler_perblock_single_axis_v2() -> None:
 
 
 def test_v2_schema_perblock_2d_nested_array() -> None:
+    # GIVEN a 2D tensor [8, 2] with block quantization with (2, 1) tile size
     handler = V2SchemaHandler()
     quantization_logs: dict[str, QuantParametersDict] = {
         "conv_weight": {
@@ -385,7 +386,6 @@ def test_v2_schema_perblock_2d_nested_array() -> None:
                 "output_dtype": "uint8",
                 "axis": 0,
                 "block_size": 2,
-                # Nested structure: 4 blocks × 2 channels
                 "y_scale": [[0.01, 0.02], [0.03, 0.04], [0.05, 0.06], [0.07, 0.08]],
                 "y_zero_point": [[-118.0, -108.0], [-98.0, -88.0], [-78.0, -68.0], [-58.0, -48.0]],
             }
@@ -400,6 +400,62 @@ def test_v2_schema_perblock_2d_nested_array() -> None:
     encodings_dict = handler.build_encodings_dictionary()
 
     # THEN the constructed dictionary should match the expected V2 single-axis results
+    _assert_dictionary_structure(expected_results, encodings_dict)
+
+
+def test_v2_schema_perblock_3d_nested_array() -> None:
+    """Test V2 schema with 3D tensor having block + per-channel + unit dimension."""
+    # GIVEN a 3D tensor [8, 8, 8] with block quantization on tile size (4, 1, 8)
+    handler = V2SchemaHandler()
+    quantization_logs: dict[str, QuantParametersDict] = {
+        "conv3d_weight": {
+            "scale": torch.tensor([
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.06,
+                0.07,
+                0.08,
+                0.09,
+                0.10,
+                0.11,
+                0.12,
+                0.13,
+                0.14,
+                0.15,
+                0.16,
+            ]),
+            "offset": torch.tensor([0.0] * 16),
+            "num_bits": 8,
+            "data_shape": [8, 8, 8],
+            "tile_size": [4, 1, 8],
+        }
+    }
+
+    expected_results = {
+        "version": "2.0.0",
+        "encodings": [
+            {
+                "name": "conv3d_weight",
+                "output_dtype": "int8",
+                "axis": 0,
+                "block_size": 4,
+                "y_scale": [
+                    [[0.01], [0.02], [0.03], [0.04], [0.05], [0.06], [0.07], [0.08]],
+                    [[0.09], [0.10], [0.11], [0.12], [0.13], [0.14], [0.15], [0.16]],
+                ],
+            }
+        ],
+    }
+
+    # WHEN adding encodings
+    for name, encoding in quantization_logs.items():
+        handler.add_encoding(name, encoding, is_param=True)
+
+    # THEN the result should have 3D nested structure
+    encodings_dict = handler.build_encodings_dictionary()
     _assert_dictionary_structure(expected_results, encodings_dict)
 
 

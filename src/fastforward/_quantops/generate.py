@@ -9,7 +9,6 @@ import textwrap
 from typing import Any, Protocol, Sequence, cast
 
 import libcst
-import libcst.helpers
 
 from fastforward._quantops import OperatorTable, operator, symtypes
 
