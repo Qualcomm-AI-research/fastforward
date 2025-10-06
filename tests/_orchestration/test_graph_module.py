@@ -1,6 +1,9 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+
+import uuid
+
 from typing import Any
 
 import pytest
@@ -10,12 +13,15 @@ from fastforward._orchestration.graph_module import (
     Const,
     Direction,
     GraphModule,
+    InputRef,
+    NodeRef,
     SubgraphSpec,
     TopologicalExecutionPlan,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
     partition_graph,
+    remap_subgraph_reference,
 )
 
 
@@ -177,7 +183,10 @@ def test_const_type_kwargs() -> None:
     graph = GraphModule()
     input = graph.add_input("input")
     const_node = graph.add_node(
-        "const_node", ConstReturnKwargs(), args=[input], kwargs={"const_kwarg": Const(c)}
+        "const_node",
+        ConstReturnKwargs(),
+        args=[input],
+        kwargs={"const_kwarg": Const(c)},
     )
     graph.add_output(const_node)
 
@@ -329,3 +338,97 @@ def test_node_ref_identity_across_graphs() -> None:
     assert lin_g1 == lin_g2
     assert hash(lin_g1) == hash(lin_g2)
     assert lin_g1.name != lin_g2.name
+
+
+def test_attribute_ref_indexing() -> None:
+    # GIVEN a model that returns a tuple and a GraphModule that uses AttributeRef to access elements
+    graph = GraphModule()
+    model = MultiOutputModel()
+    input_ref = graph.add_input("input")
+
+    # WHEN we add a node that returns a tuple and use indexing to access individual outputs
+    tuple_output = graph.add_node("tuple_model", model.to_graph_module(), [input_ref])
+    first_output = tuple_output[0]  # AttributeRef to first element
+    second_output = tuple_output[1]  # AttributeRef to second element
+
+    graph.add_output(first_output, second_output)
+
+    # WHEN we execute the graph
+    x = torch.randn(1, 5)
+    graph_out1, graph_out2 = graph(x)
+
+    # THEN the outputs should match the expected computation
+    model_out1, model_out2 = model(x)
+
+    torch.testing.assert_close(graph_out1, model_out1)
+    torch.testing.assert_close(graph_out2, model_out2)
+
+
+def test_remap_subgraph_reference_noderef() -> None:
+    # GIVEN a Noderef that could be external or internal to the subgraph
+    node_id = uuid.UUID(int=0)
+
+    # WHEN the NodeRef is external to the subgraph (has input binding)
+    external_ref = NodeRef(id=node_id, name="external_node")
+    input_binding = {"external_node": NodeRef(id=node_id, name="other_name")}
+    remapped_external = remap_subgraph_reference(external_ref, input_binding, {}, "")
+
+    # THEN it should be remapped through the binding
+    assert remapped_external == NodeRef(id=node_id, name="other_name")
+
+    # WHEN the NodeRef is internal to the subgraph
+    internal_ref = NodeRef(id=node_id, name="internal_node")
+    subgraph_nodes = {"internal_node": node_id}
+    remapped_no_scope = remap_subgraph_reference(internal_ref, {}, subgraph_nodes, "")
+
+    # THEN it should keep its original name
+    assert remapped_no_scope == NodeRef(id=node_id, name="internal_node")
+
+    # WHEN the NodeRef is internal with a scope
+    remapped_with_scope = remap_subgraph_reference(internal_ref, {}, subgraph_nodes, "scope")
+
+    # THEN it should be prefixed with the scope
+    assert remapped_with_scope == NodeRef(id=node_id, name="scope.internal_node")
+
+
+def test_remap_subgraph_reference_input_ref() -> None:
+    # GIVEN an InputRef
+    input_id = uuid.UUID(int=0)
+    input_ref = InputRef(id=input_id, name="input")
+
+    # WHEN the InputRef has a binding
+    input_binding = {"input": InputRef(id=input_id, name="other_input")}
+    remapped = remap_subgraph_reference(input_ref, input_binding, {}, "")
+
+    # THEN it should be remapped via the binding
+    assert remapped == InputRef(id=input_id, name="other_input")
+
+
+def test_remap_subgraph_reference_attribute_ref() -> None:
+    # GIVEN an AttributeRef that referencs a specific transformer layers QKV weightd
+    node_id = uuid.UUID(int=0)
+    model_ref = NodeRef(id=node_id, name="transformer_layers")
+    attribute_ref = model_ref[0].attention.qkv_proj
+
+    # WHEN the underlying NodeRef is external (has input binding)
+    input_binding = {"transformer_layers": NodeRef(id=node_id, name="bound_model")}
+    remapped_external = remap_subgraph_reference(attribute_ref, input_binding, {}, "")
+
+    # THEN the base reference should be remapped, but the attribute chain preserved
+    expected_external = NodeRef(id=node_id, name="bound_model")[0].attention.qkv_proj
+    assert remapped_external == expected_external
+
+    # WHEN the underlying NodeRef is internal with a scope
+    subgraph_nodes = {"transformer_layers": node_id}
+    remapped_internal = remap_subgraph_reference(attribute_ref, {}, subgraph_nodes, "prefix")
+
+    # THEN the base reference should be scoped, but the attribute chain preserved
+    expected_internal = NodeRef(id=node_id, name="prefix.transformer_layers")[0].attention.qkv_proj
+    assert remapped_internal == expected_internal
+
+    # WHEN we have an AttributeRef that has a different underlying NodeRef but the same ref structure
+    alternative_model_ref = NodeRef(id=uuid.UUID(int=2), name="transformer_layers")
+    alternative_attribute_ref = alternative_model_ref[0].attention.qkv_proj
+
+    # THEN the two AttributeRefs should be unequal
+    assert attribute_ref != alternative_attribute_ref

@@ -20,6 +20,7 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
+import functools
 import uuid
 
 from collections.abc import Collection, Mapping
@@ -28,23 +29,31 @@ from typing import Any
 import torch
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
+@dataclasses.dataclass(frozen=True)
 class _BaseRef:
-    id: uuid.UUID
-    name: str
+    """Base class for all references - provides attribute access."""
 
-    def __hash__(self) -> int:
-        return hash(self.id)
+    def __getattr__(self, key: str) -> AttributeRef:
+        return AttributeRef(reference=self, attribute=key)
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, _BaseRef):
-            return NotImplemented
+    def __getitem__(self, key: int | str) -> AttributeRef:
+        return AttributeRef(reference=self, attribute=key)
 
-        return self.id == other.id
+    def unwrap_ref(self) -> _BaseRef:
+        """Extract the base NodeRef or InputRef."""
+        return self
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
-class NodeRef(_BaseRef):
+@dataclasses.dataclass(frozen=True)
+class NamedRef(_BaseRef):
+    """Reference with both an `id` and a `name` for identification."""
+
+    id: uuid.UUID = dataclasses.field(repr=False)
+    name: str = dataclasses.field(hash=False, compare=False)
+
+
+@dataclasses.dataclass(frozen=True)
+class NodeRef(NamedRef):
     """Reference to a node inside a GraphModule.
 
     Args:
@@ -55,8 +64,8 @@ class NodeRef(_BaseRef):
         return f"NodeRef({self.name})"
 
 
-@dataclasses.dataclass(frozen=True, eq=False)
-class InputRef(_BaseRef):
+@dataclasses.dataclass(frozen=True)
+class InputRef(NamedRef):
     """Reference to a GraphModule input.
 
     Args:
@@ -68,7 +77,7 @@ class InputRef(_BaseRef):
 
 
 @dataclasses.dataclass(frozen=True)
-class Const:
+class Const(_BaseRef):
     """Literal argument for a node.
 
     Args:
@@ -81,15 +90,47 @@ class Const:
         return f"Const({self.value})"
 
 
-NodeArg = NodeRef | InputRef | Const
+@dataclasses.dataclass(frozen=True)
+class AttributeRef(_BaseRef):
+    """Reference to an item / attribute of another `Node`.
 
+    If an output of an nn.Module is a tuple, an `AttributeRef` can refer to these with indexing (e.g. output[0]).
+    If an output is instead some structured (data)class, then an `AttributeRef` can refer to
+    values inside of this class (e.g. output.attention_weights).
 
-def resolve_node_arg(arg: NodeArg, context: dict[uuid.UUID, Any]) -> Any:
-    """Resolve a node argument to its actual value from execution context.
-
-    Returns the referenced value for NodeRef/InputRef, or the literal value for Const.
+    Args:
+        reference: The base reference this attribute is attached to
+        attribute: The attribute or index being accessed.
     """
-    match arg:
+
+    reference: _BaseRef
+    attribute: str | int
+
+    def unwrap_ref(self) -> _BaseRef:
+        """Recursively unwrap the base NodeRef, InputRef, or Const."""
+        if isinstance(self.reference, AttributeRef):
+            return self.reference.unwrap_ref()
+        return self.reference
+
+
+def resolve_reference(reference: _BaseRef, context: dict[uuid.UUID, Any]) -> Any:
+    """Resolve a `_BaseRef` object to its actual value provided in `context`.
+
+    Args:
+        reference: Reference to resolve.
+        context: Execution context mapping reference IDs to actual/computed values.
+
+    Returns:
+        The actual value referenced by `reference`.
+    """
+    match reference:
+        case AttributeRef(reference=ref, attribute=attr):
+            base_value = resolve_reference(ref, context)
+            match attr:
+                case int():
+                    return base_value[attr]
+                case str():
+                    return getattr(base_value, attr)
         case NodeRef(id=ref_id, name=name) | InputRef(id=ref_id, name=name):
             if ref_id not in context:
                 msg = f"Missing input with id {ref_id!r}  in context {context} ({name=})"
@@ -99,12 +140,56 @@ def resolve_node_arg(arg: NodeArg, context: dict[uuid.UUID, Any]) -> Any:
             return v
 
 
+def remap_subgraph_reference(
+    old_reference: _BaseRef,
+    new_context: Mapping[str, _BaseRef],
+    subgraph_nodes: dict[str, uuid.UUID],
+    scope_name: str = "",
+) -> _BaseRef:
+    """Remap an old reference for the new context by scoping internal nodes and mapping external ones.
+
+    When adding a GraphModule as subgraph or creating a new subgraph from nodes in an existing
+    GraphModule, we need to distinguish between internal nodes (belonging to the subgraph, `subgraph_nodes`)
+    and external nodes (existing outside of the subgraph). Internal nodes should be validated
+    and prefixed with the new scope name (`name_prefix`). External nodes should be
+    re-mapped to inputs via the `input_binding` dict.
+
+    Args:
+        old_reference: Reference to remap given the subgraph context.
+        new_context: Mapping from external node/input names to new references.
+        subgraph_nodes : Subgraph nodes with their IDs. Nodes in this dict stay
+                         as NodeRefs; others become inputs.
+        scope_name: Optional scope prefix to add to internal node names
+
+    Returns:
+        A new reference with updated names and IDs.
+    """
+    match old_reference:
+        # NodeRef is an external input to the subgraph.
+        case NodeRef(name=node_name) if node_name not in subgraph_nodes:
+            return new_context[node_name]
+        # NodeRef is an internal input in the subgraph.
+        case NodeRef(id=ref_id, name=node_name):
+            new_name = f"{scope_name}.{node_name}" if scope_name else node_name
+            return NodeRef(ref_id, new_name)
+        # AttributeRef wraps another reference, so remap the wrapped reference.
+        case AttributeRef(reference=ref):
+            remapped_ref = remap_subgraph_reference(ref, new_context, subgraph_nodes, scope_name)
+            return dataclasses.replace(old_reference, reference=remapped_ref)
+        case InputRef(name=input_name):
+            return new_context[input_name]
+        case Const():
+            return old_reference
+        case _BaseRef:
+            assert False, f"Unexpected reference type {type(old_reference)}"
+
+
 @dataclasses.dataclass(frozen=True)
 class Node:
     """A node in a 'GraphModule', which wraps a PyTorch module.
 
     Represents a single operation in the 'GraphModule' as defined by a nn.Module.
-    The node maintains references to its inputs through NodeArg types (NodeRef for other nodes,
+    The node maintains references to its inputs through _BaseRef types (NodeRef for other nodes,
     InputRef for external inputs, or Const for literal values).
 
     Args:
@@ -117,8 +202,8 @@ class Node:
     id: uuid.UUID
     name: str
     module: torch.nn.Module
-    args: Collection[NodeArg]
-    kwargs: Mapping[str, NodeArg] = dataclasses.field(default_factory=dict)
+    args: Collection[_BaseRef]
+    kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
 
 
 class GraphModule(torch.nn.Module):
@@ -135,7 +220,7 @@ class GraphModule(torch.nn.Module):
         self._nodes: dict[str, Node] = {}
         self._node_refs: dict[str, NodeRef] = {}
         self._inputs: dict[str, InputRef] = dict()
-        self._outputs: list[NodeRef] = []
+        self._outputs: list[NodeRef | AttributeRef] = []
         self._engine: ExecutionEngine | None = None
 
     @property
@@ -143,18 +228,14 @@ class GraphModule(torch.nn.Module):
         """Return the list of graph input names in definition order."""
         return list(self._inputs.keys())
 
-    @property
-    def output_names(self) -> list[str]:
-        """Return the list of graph output names in definition order."""
-        return [ref.name for ref in self._outputs]
-
     def node_ref(self, name: str) -> NodeRef:
         """Return the NodeRef for 'name', raising ValueError if it is unknown."""
-        try:
-            return self._node_refs[name]
-        except KeyError as exc:
-            msg = f"Unknown node name '{name}'"
-            raise ValueError(msg) from exc
+        for node_ref in self._node_refs.values():
+            if node_ref.name == name:
+                return node_ref
+
+        msg = f"Unknown node name '{name}'"
+        raise ValueError(msg)
 
     def add_input(self, name: str) -> InputRef:
         """Add an input name to the graph."""
@@ -165,20 +246,35 @@ class GraphModule(torch.nn.Module):
         self._inputs[name] = ref
         return ref
 
-    def add_output(self, *nodes: NodeRef) -> None:
-        """Add output nodes to the graph."""
+    def add_output(self, *nodes: NodeRef | AttributeRef) -> None:
+        """Add a sequence of NodeRef / AttributeRef to the graph's output.
+
+        A NodeRef is eligible if it is contained inside the GraphModule, an
+        AttributeRef is eligible if it resolves to a NodeRef inside the GraphModule.
+
+        Args:
+            nodes: Sequence of NodeRef or AttributeRef to be added as outputs.
+        """
         for node in nodes:
-            if node.name not in self._nodes or not self._node_refs[node.name].id == node.id:
-                msg = f"Unknown node name: {node.name}"
-                raise ValueError(msg)
-            self._outputs.append(node)
+            match base_ref := node.unwrap_ref():
+                case NodeRef(name=node_name):
+                    if node_name not in self._nodes:
+                        msg = f"Unknown node name: {node_name}"
+                        raise ValueError(msg)
+
+                    # Add the original node (not the resolved value) to the outputs.
+                    self._outputs.append(node)
+
+                case _:
+                    msg = f"An AttributeRef has to resolve to a NodeRef for outputs, found {type(base_ref)}"
+                    raise ValueError(msg)
 
     def add_node(
         self,
         name: str,
         module: torch.nn.Module,
-        args: Collection[NodeArg],
-        kwargs: Mapping[str, NodeArg] | None = None,
+        args: Collection[_BaseRef],
+        kwargs: Mapping[str, _BaseRef] | None = None,
         *,
         node_id: uuid.UUID | None = None,
     ) -> NodeRef:
@@ -231,9 +327,9 @@ class GraphModule(torch.nn.Module):
         self,
         name: str,
         subgraph: GraphModule,
-        args: Collection[NodeArg],
-        kwargs: Mapping[str, NodeArg] | None = None,
-    ) -> tuple[NodeRef, ...]:
+        args: Collection[_BaseRef],
+        kwargs: Mapping[str, _BaseRef] | None = None,
+    ) -> tuple[NodeRef | AttributeRef, ...]:
         """Inline a subgraph into this 'GraphModule' as a scoped collection of nodes.
 
         Args:
@@ -280,26 +376,27 @@ class GraphModule(torch.nn.Module):
                 raise ValueError(msg)
             input_binding[key] = value
 
-        def resolve_arg(arg: NodeArg) -> NodeArg:
-            match arg:
-                case InputRef(name=input_name):
-                    return input_binding[input_name]
-                case NodeRef(id=ref_id, name=node_name):
-                    if subgraph._node_refs[node_name].id != ref_id:
-                        msg = f"Mismatching NodeRef id for sub-graph node '{node_name}'"
-                        raise ValueError(msg)
-                    return NodeRef(ref_id, f"{name}.{node_name}")
-                case Const():
-                    return arg
+        remap_reference = functools.partial(
+            remap_subgraph_reference,
+            new_context=input_binding,
+            subgraph_nodes={node_name: ref.id for node_name, ref in subgraph._node_refs.items()},
+            scope_name=name,
+        )
 
         for node in subgraph._nodes.values():
-            node_args = [resolve_arg(arg) for arg in node.args]
-            node_kwargs = {key: resolve_arg(arg) for key, arg in node.kwargs.items()}
+            node_args = [remap_reference(old_reference=arg) for arg in node.args]
+            node_kwargs = {
+                key: remap_reference(old_reference=arg) for key, arg in node.kwargs.items()
+            }
             node_name = f"{name}.{node.name}"
             self.add_node(node_name, node.module, node_args, node_kwargs, node_id=node.id)
 
         # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
-        new_output_refs = [NodeRef(ref.id, f"{name}.{ref.name}") for ref in subgraph._outputs]
+        new_output_refs = []
+        for ref in subgraph._outputs:
+            remapped = remap_reference(old_reference=ref)
+            assert isinstance(remapped, (NodeRef, AttributeRef))
+            new_output_refs.append(remapped)
 
         return tuple(new_output_refs)
 
@@ -372,7 +469,7 @@ class TopologicalExecutionPlan(ExecutionPlan):
             node_ref = graph._node_refs[node_name]
 
             for arg in (*node.args, *node.kwargs.values()):
-                match arg:
+                match arg.unwrap_ref():
                     case NodeRef(id=dep_id, name=dep_name):
                         if dep_name not in graph._nodes:
                             msg = f"Node '{node_name}' depends on unknown node '{dep_name}'"
@@ -386,6 +483,7 @@ class TopologicalExecutionPlan(ExecutionPlan):
 
                         dependencies[node_ref].add(dep_ref)
                     case _:
+                        # Skip non-node references (e.g., constants or inputs)
                         pass
 
             for dep in dependencies[node_ref]:
@@ -478,16 +576,20 @@ class ExecutionEngine:
         for node_ref in self._plan.order:
             node = self.graph._nodes[node_ref.name]
 
-            resolved_args = [resolve_node_arg(arg, ctx) for arg in node.args]
-            resolved_kwargs = {key: resolve_node_arg(arg, ctx) for key, arg in node.kwargs.items()}
+            resolved_args = [resolve_reference(arg, ctx) for arg in node.args]
+            resolved_kwargs = {key: resolve_reference(arg, ctx) for key, arg in node.kwargs.items()}
 
-            out = node.module(*resolved_args, **resolved_kwargs)
-            ctx[node_ref.id] = out
+            ctx[node_ref.id] = node.module(*resolved_args, **resolved_kwargs)
 
-        if len(self.graph._outputs) == 1:
-            return ctx[self.graph._outputs[0].id]
+        results = []
+        for ref in self.graph._outputs:
+            match ref:
+                case AttributeRef():
+                    results.append(resolve_reference(ref, ctx))
+                case NodeRef(id=node_id):
+                    results.append(ctx[node_id])
 
-        return tuple(ctx[ref.id] for ref in self.graph._outputs)
+        return tuple(results) if len(results) > 1 else results[0]
 
 
 class Direction(enum.Enum):
@@ -629,7 +731,7 @@ def create_subgraph(
     def _external_dependencies(node: Node) -> set[str]:
         external_dependencies = set()
         for arg in (*node.args, *node.kwargs.values()):
-            match arg:
+            match arg.unwrap_ref():
                 case NodeRef(name=name) if name not in node_names:
                     external_dependencies.add(name)
                 case InputRef(name=name):
@@ -655,27 +757,22 @@ def create_subgraph(
 
     # Connect the inputs, nodes, and outputs to a new subgraph.
     subgraph = GraphModule()
-    input_binding = {name: subgraph.add_input(name) for name in external_inputs}
 
-    def resolve_arg(arg: NodeArg) -> NodeArg:
-        match arg:
-            case InputRef(name=input_name):
-                return input_binding[input_name]
-            case NodeRef(name=node_name):
-                if node_name in node_names:
-                    return arg
-                else:
-                    return input_binding[node_name]
-            case Const():
-                return arg
+    remap_reference = functools.partial(
+        remap_subgraph_reference,
+        new_context={name: subgraph.add_input(name) for name in external_inputs},
+        subgraph_nodes={ref.name: ref.id for ref in path_nodes},
+    )
 
     for node_name in node_names:
         source_node = graph._nodes[node_name]
         subgraph.add_node(
             name=node_name,
             module=source_node.module,
-            args=[resolve_arg(arg) for arg in source_node.args],
-            kwargs={key: resolve_arg(arg) for key, arg in source_node.kwargs.items()},
+            args=[remap_reference(old_reference=arg) for arg in source_node.args],
+            kwargs={
+                key: remap_reference(old_reference=arg) for key, arg in source_node.kwargs.items()
+            },
             node_id=source_node.id,
         )
 
