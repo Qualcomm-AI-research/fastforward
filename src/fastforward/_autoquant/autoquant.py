@@ -80,7 +80,7 @@ def autoquant(
         if isinstance(task.function, type):
             logger.warning(
                 "Skipping '%s' because it is a class and class constructors are not supported. "
-                + "This may require further manual conversion of correct quantization",
+                + "This may require further manual conversion for correct quantization.",
                 fully_qualified_name(task.function),
             )
         elif inspect.ismodule(task.module):

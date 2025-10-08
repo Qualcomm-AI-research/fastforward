@@ -3,7 +3,6 @@ import torch
 
 from tests.autoquant.test_data.multiple_methods import (
     ModuleWithMultipleMethods,
-    helper,
     helper_no_quant,
 )
 

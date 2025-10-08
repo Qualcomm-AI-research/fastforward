@@ -61,8 +61,10 @@ class RuffFormatter(SubprocessCodeFormatter):
                     "check",
                     "--fix",
                     "--select",
-                    "I001",
+                    "I001",  # sort imports
+                    "--select",
+                    "F401",  # remove unused imports
                     "-",
-                ),  # isort
+                ),
             )
         )
