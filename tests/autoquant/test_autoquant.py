@@ -3,6 +3,7 @@
 
 
 import contextlib
+import functools
 import pathlib
 import sys
 import types
@@ -398,6 +399,32 @@ class ExampleModule17(torch.nn.Module):
 
 # --------------------------------------------------------------------------------
 
+# Testcase with a decorator on a function that calls other functions that are transformed
+# to by autoquant to quantized versions. The autoquantized code must call the transformed
+# functions and not the original.
+
+
+def helper_inside_forward_with_decorator(x: torch.Tensor) -> torch.Tensor:
+    return x * 2
+
+
+def decorator_on_forward(func: Callable[..., Any]) -> Callable[..., Any]:
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+# Example with branches
+class ExampleModule18(torch.nn.Module):
+    @decorator_on_forward
+    def forward(self, x: torch.Tensor) -> Tensor:
+        return helper_inside_forward_with_decorator(x)
+
+
+# --------------------------------------------------------------------------------
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -413,8 +440,9 @@ class ExampleModule17(torch.nn.Module):
         ExampleModule15(),
         ExampleModule16(),
         ExampleModule17(),
+        ExampleModule18(),
     ],
-    ids=[f"case-{i}" for i in range(8, 18)],
+    ids=[f"case-{i}" for i in range(8, 19)],
 )
 def test_autoquant_end_to_end(
     input_module: torch.nn.Module,

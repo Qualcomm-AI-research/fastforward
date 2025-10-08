@@ -475,6 +475,53 @@
           return fastforward.nn.functional.add(_tmp_24, _tmp_25, output_quantizer=self.quantizer_add)
   '''
 # ---
+# name: test_autoquant_end_to_end[case-18]
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import (
+      ExampleModule18,
+      Tensor,
+      decorator_on_forward,
+  )
+  
+  # --------------------------------------------------------------------------------
+  
+  # Testcase with a decorator on a function that calls other functions that are transformed
+  # to by autoquant to quantized versions. The autoquantized code must call the transformed
+  # functions and not the original.
+  
+  
+  def quantized_helper_inside_forward_with_decorator(
+      x: torch.Tensor,
+      *,
+      quantizer_mul: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ) -> torch.Tensor:
+      x = quantizer_x(x)
+      return fastforward.nn.functional.mul(x, 2, output_quantizer=quantizer_mul)
+  
+  
+  class QuantizedExampleModule18(fastforward.nn.QuantizedModule, ExampleModule18):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_helper_inside_forward_with_decorator_mul: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+          self.quantizer_helper_inside_forward_with_decorator_x: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+  
+      @decorator_on_forward
+      def forward(self, x: torch.Tensor) -> Tensor:
+          return quantized_helper_inside_forward_with_decorator(
+              x,
+              quantizer_mul=self.quantizer_helper_inside_forward_with_decorator_mul,
+              quantizer_x=self.quantizer_helper_inside_forward_with_decorator_x,
+          )
+  '''
+# ---
 # name: test_autoquant_end_to_end[case-8]
   '''
   import fastforward

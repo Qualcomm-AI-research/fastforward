@@ -956,7 +956,7 @@ def _resolve_reference(reference: str | None, func_ctx: FunctionContext) -> Any 
     if (wrapping_func := func_ctx.func) is None:
         return None
 
-    closure_vars = inspect.getclosurevars(wrapping_func)
+    closure_vars = inspect.getclosurevars(inspect.unwrap(wrapping_func))
     scope_vars = {**closure_vars.builtins, **closure_vars.globals, **closure_vars.nonlocals}
 
     if func_ctx.torch_module:
