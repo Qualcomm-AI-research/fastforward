@@ -16,7 +16,6 @@ from fastforward._orchestration.graph_module import (
     InputRef,
     NodeRef,
     SubgraphSpec,
-    TopologicalExecutionPlan,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
@@ -220,15 +219,14 @@ def test_create_subgraph_functional_equivalence() -> None:
     # GIVEN a Model and GraphModule equivalent
     model = Model()
     graph = model.to_graph_module()
-    plan = TopologicalExecutionPlan.from_graph(graph)
 
     # GIVEN the minimal node set lying in the GraphModule
     path_nodes = find_nodes_on_path(
-        graph, plan, graph.node_ref("residual_1.linear"), graph.node_ref("sigmoid")
+        graph, graph.node_ref("residual_1.linear"), graph.node_ref("sigmoid")
     )
 
     # WHEN we materialise that path as a standalone GraphModule
-    subgraph = create_subgraph(graph, plan, path_nodes)
+    subgraph = create_subgraph(graph, path_nodes)
 
     # THEN the subgraph must only contain the nodes on the path
     assert set(subgraph._nodes) == set(node.name for node in path_nodes)
@@ -285,11 +283,10 @@ def test_partition_graph_overlapping_specs_raises() -> None:
 def test_find_reachable_nodes_happy_path() -> None:
     # GIVEN a GraphModule and its plan
     graph = Model().to_graph_module()
-    plan = TopologicalExecutionPlan.from_graph(graph)
 
     # WHEN we collect nodes reachable forward from residual_1.linear
     fwd = find_reachable_nodes(
-        plan, graph.node_ref("residual_1.linear"), direction=Direction.FORWARD
+        graph, graph.node_ref("residual_1.linear"), direction=Direction.FORWARD
     )
 
     # THEN some expected downstream nodes are present
@@ -300,7 +297,7 @@ def test_find_reachable_nodes_happy_path() -> None:
     } <= fwd
 
     # WHEN we collect nodes reachable backward from sigmoid
-    bwd = find_reachable_nodes(plan, graph.node_ref("sigmoid"), direction=Direction.BACKWARD)
+    bwd = find_reachable_nodes(graph, graph.node_ref("sigmoid"), direction=Direction.BACKWARD)
 
     # THEN an early upstream node is included
     assert graph.node_ref("residual_1.linear") in bwd
@@ -310,7 +307,7 @@ def test_find_reachable_nodes_happy_path() -> None:
 
     # WHEN we traverse with the allowlist
     restricted = find_reachable_nodes(
-        plan, graph.node_ref("residual_2.linear"), direction=Direction.FORWARD, allowlist=allowlist
+        graph, graph.node_ref("residual_2.linear"), direction=Direction.FORWARD, allowlist=allowlist
     )
 
     # THEN traversal stops at the start node
