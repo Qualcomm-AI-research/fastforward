@@ -310,6 +310,7 @@ FOLD_TMPS_EXAMPLE_7, FOLD_TMPS_EXPECTED_7 = (
 )
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "code,expected",
     [

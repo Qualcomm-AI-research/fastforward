@@ -372,9 +372,9 @@
       quantizer_add: fastforward.nn.Quantizer,
       quantizer_div: fastforward.nn.Quantizer,
       quantizer_mul: fastforward.nn.Quantizer,
-      quantizer__tmp_73: fastforward.nn.Quantizer,
+      quantizer__tmp_4: fastforward.nn.Quantizer,
       quantizer_exp_signal: fastforward.nn.Quantizer,
-      quantizer__tmp_77: fastforward.nn.Quantizer,
+      quantizer__tmp_8: fastforward.nn.Quantizer,
       quantizer_non_quantized_tensor: fastforward.nn.Quantizer,
       quantizer_quantized_tensor: fastforward.nn.Quantizer,
       quantizer_eps: fastforward.nn.Quantizer,
@@ -401,24 +401,24 @@
           quant_error = fastforward.nn.functional.sub(
               non_quantized_tensor, quantized_tensor, output_quantizer=quantizer_sub
           )
-          _tmp_71 = quant_error.pow(2)
-          _tmp_72 = _tmp_71.view(quant_error.shape[0], -1)
-          _tmp_73 = _tmp_72.mean(1)
-          _tmp_73 = quantizer__tmp_73(_tmp_73)
-          exp_noise = fastforward.nn.functional.add(_tmp_73, eps, output_quantizer=quantizer_add)
-          _tmp_74 = non_quantized_tensor.pow(2)
-          _tmp_75 = _tmp_74.view(non_quantized_tensor.shape[0], -1)
-          exp_signal = _tmp_75.mean(1)
+          _tmp_2 = quant_error.pow(2)
+          _tmp_3 = _tmp_2.view(quant_error.shape[0], -1)
+          _tmp_4 = _tmp_3.mean(1)
+          _tmp_4 = quantizer__tmp_4(_tmp_4)
+          exp_noise = fastforward.nn.functional.add(_tmp_4, eps, output_quantizer=quantizer_add)
+          _tmp_5 = non_quantized_tensor.pow(2)
+          _tmp_6 = _tmp_5.view(non_quantized_tensor.shape[0], -1)
+          exp_signal = _tmp_6.mean(1)
           exp_signal = quantizer_exp_signal(exp_signal)
-          _tmp_76 = fastforward.nn.functional.div(
+          _tmp_7 = fastforward.nn.functional.div(
               exp_signal, exp_noise, output_quantizer=quantizer_div
           )
-          sqnr = _tmp_76.mean()
+          sqnr = _tmp_7.mean()
   
       if in_db:
-          _tmp_77 = torch.log10(sqnr)
-          _tmp_77 = quantizer__tmp_77(_tmp_77)
-          return fastforward.nn.functional.mul(10, _tmp_77, output_quantizer=quantizer_mul)
+          _tmp_8 = torch.log10(sqnr)
+          _tmp_8 = quantizer__tmp_8(_tmp_8)
+          return fastforward.nn.functional.mul(10, _tmp_8, output_quantizer=quantizer_mul)
       return sqnr
   
   
@@ -435,9 +435,9 @@
           self.quantizer_sqnr_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_div: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_mul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
-          self.quantizer_sqnr__tmp_73: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_sqnr__tmp_4: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_exp_signal: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
-          self.quantizer_sqnr__tmp_77: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_sqnr__tmp_8: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_non_quantized_tensor: fastforward.nn.Quantizer = (
               fastforward.nn.QuantizerStub()
           )
@@ -462,9 +462,9 @@
               quantizer_add=self.quantizer_sqnr_add,
               quantizer_div=self.quantizer_sqnr_div,
               quantizer_mul=self.quantizer_sqnr_mul,
-              quantizer__tmp_73=self.quantizer_sqnr__tmp_73,
+              quantizer__tmp_4=self.quantizer_sqnr__tmp_4,
               quantizer_exp_signal=self.quantizer_sqnr_exp_signal,
-              quantizer__tmp_77=self.quantizer_sqnr__tmp_77,
+              quantizer__tmp_8=self.quantizer_sqnr__tmp_8,
               quantizer_non_quantized_tensor=self.quantizer_sqnr_non_quantized_tensor,
               quantizer_quantized_tensor=self.quantizer_sqnr_quantized_tensor,
               quantizer_eps=self.quantizer_sqnr_eps,
@@ -478,11 +478,7 @@
   import fastforward
   import torch
   
-  from tests.autoquant.test_autoquant import (
-      ExampleModule18,
-      Tensor,
-      decorator_on_forward,
-  )
+  from tests.autoquant.test_autoquant import ExampleModule18, Tensor, decorator_on_forward
   
   # --------------------------------------------------------------------------------
   
@@ -572,7 +568,6 @@
   '''
   import fastforward
   import torch
-  
   from torch import Tensor as TensorAlias
   
   from tests.autoquant.test_autoquant import ExampleModule1
@@ -724,7 +719,6 @@
   '''
   import fastforward
   import torch
-  
   from torch import Tensor
   from torch.nn.modules.linear import Identity
   

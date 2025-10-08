@@ -391,7 +391,6 @@ def sqnr(a: torch.Tensor, b: torch.Tensor, flag: bool = True, eps: float = 1e-15
     return a - b
 
 
-# Example with branches
 class ExampleModule17(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> Tensor:
         return sqnr(x, x) + metric_sqnr(x, x)
@@ -416,7 +415,6 @@ def decorator_on_forward(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-# Example with branches
 class ExampleModule18(torch.nn.Module):
     @decorator_on_forward
     def forward(self, x: torch.Tensor) -> Tensor:
@@ -482,6 +480,7 @@ def test_expressions_not_quantized(snapshot: syrupy.assertion.SnapshotAssertion)
     assert snapshot == actual
 
 
+@pytest.mark.slow
 def test_codeformat() -> None:
     """Tests that code is formatted correctly."""
     input = "1 + 2 ==3"

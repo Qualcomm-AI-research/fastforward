@@ -51,20 +51,22 @@ class RuffFormatter(SubprocessCodeFormatter):
     """Formats code with `ruff`."""
 
     def __init__(self) -> None:
+        def ruff_check(*args: str) -> tuple[str, ...]:
+            head = (
+                "ruff",
+                "--config",
+                'lint.isort.known-third-party = ["fastforward"]',
+                "check",
+                "--isolated",
+                "--fix",
+            )
+            tail = ("-",)
+            return head + tuple(args) + tail
+
         super().__init__(
             commands=(
-                ("ruff", "format", "-"),
-                (
-                    "ruff",
-                    "--config",
-                    'lint.isort.known-third-party = ["fastforward"]',
-                    "check",
-                    "--fix",
-                    "--select",
-                    "I001",  # sort imports
-                    "--select",
-                    "F401",  # remove unused imports
-                    "-",
-                ),
+                ruff_check("--select", "F401"),  # remove unused imports
+                ruff_check("--select", "I001"),  # sort imports
+                ("ruff", "format", "--isolated", "--config", "line-length = 100", "-"),
             )
         )
