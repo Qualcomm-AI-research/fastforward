@@ -72,15 +72,23 @@ def autoquant(
     # Process each method and its dependencies
     while func_queue:
         task = func_queue.popleft()
-        func_name = task.function.__name__
+
+        func_name = task.alias or task.function.__name__
         if any(b.origin.func is task.function for b in module_builder.functions()):
             continue
 
-        if inspect.ismodule(task.module):
+        if isinstance(task.function, type):
+            logger.warning(
+                "Skipping '%s' because it is a class and class constructors are not supported. "
+                + "This may require further manual conversion of correct quantization",
+                fully_qualified_name(task.function),
+            )
+        elif inspect.ismodule(task.module):
             # If task.module is a Python module (in contrast to a PyTorch
             # module), treat the function as a 'helper' function. Create a new
             # quantized version of the function in the quantized (Python)
             # module.
+
             qualified_module_name = fully_qualified_name(task.module)
             func_ctx = FunctionContext.from_function_reference(task.function, task.module)
             module_src = source_context.get(qualified_module_name)
@@ -92,6 +100,8 @@ def autoquant(
                     func_ctx=func_ctx,
                     quantizer_refs=quantizer_refs,
                 )
+            if task.alias is not None:
+                func_builder.name = task.alias
             module_builder.add_function(func_builder)
 
             # Queue dependent functions for processing
@@ -127,6 +137,10 @@ def autoquant(
                 _find_dependent_methods(method_src, method_ctx),
                 _find_dependent_functions(method_src, method_ctx),
             ):
+                if new_task.function in operator_table:
+                    # If function is in operator_table, it will be converted
+                    # directly and no further analysis is required.
+                    continue
                 func_queue.append(new_task)
 
         else:
@@ -150,6 +164,7 @@ class _AqTask:
 
     function: Callable[..., Any]
     module: type[torch.nn.Module] | types.ModuleType
+    alias: str | None = None
 
 
 def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
@@ -163,6 +178,7 @@ def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.Qua
     )
 
 
+#
 def default_source_context(use_type_inference: bool = True) -> pysource.SourceContext:
     """Default source context for Autoquant.
 
@@ -276,7 +292,7 @@ def _all_subclasses(cls: type[torch.nn.Module]) -> set[type[torch.nn.Module]]:
     ])
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class _QuantizerRefTrace:
     """Tracks the propagation path of a quantizer reference through function calls.
 
@@ -379,16 +395,15 @@ def _resolve_all_quantized_calls(
     # 3. Signature Generation Phase: For each function, create a signature that includes all
     #    quantizers it needs (both local and propagated from callers), generating unique
     #    parameter names for propagated quantizers using prefixed naming.
-    signatures, signature_ref_map, calls = _generate_signatures(
-        quantizer_refs, func_contexts, func_specs
-    )
+    signatures, signature_ref_map = _generate_signatures(quantizer_refs, func_contexts, func_specs)
 
     # 4. Call Resolution Phase: For each unresolved call, determine the concrete arguments
     #    to pass by mapping the caller's quantizer references to the callee's expected
     #    parameters (regular functions use signature references, instance methods use
     #    quantizer expressions)
     #
-    _resolve_calls(quantizer_refs, func_contexts, func_specs, signature_ref_map, calls)
+    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]] = {}
+    _resolve_calls(quantizer_refs, func_contexts, func_specs, signatures, signature_ref_map, calls)
 
     # 5. Cleanup phase: remove functions that were initially identified as
     #    quantization candidates but have empty quantization signatures,
@@ -408,11 +423,13 @@ def _resolve_all_quantized_calls(
     #    mapping for later reference updates.
     #    For example, `mod.submod.helper`` becomes `quantized_mod_submod_helper`.
     helper_function_names: dict[_FuncRef, libcst.BaseExpression] = {}
+    used_helper_names: dict[str, int] = {}
     for func_ref, func_builder in func_builder_map.items():
         if func_builder.origin.method_type is MethodType.NO_METHOD:
-            full_name = fully_qualified_name(func_ref)
-            expr_name = node_processing.expr_to_ident(libcst.parse_expression(full_name))
-            new_name = f"quantized_{expr_name}"
+            new_name = f"quantized_{func_builder.name}"
+            used_helper_names[new_name] = used_helper_names.get(new_name, 0) + 1
+            if used_helper_names[new_name] > 1:
+                new_name = f"{new_name}_{used_helper_names[new_name]}"
             func_builder.cst = func_builder.cst.with_changes(name=libcst.Name(new_name))
             helper_function_names[func_ref] = libcst.Name(new_name)
 
@@ -544,14 +561,19 @@ def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) ->
                     changed = True
 
 
+_SignatureRefMap: TypeAlias = dict[
+    _FuncRef,
+    dict[tuple[nodes.UnresolvedQuantizedCall, nodes.QuantizerReference], nodes.QuantizerReference],
+]
+
+
 def _generate_signatures(
     quantizer_refs: QuantizerReferenceCollection,
     func_contexts: Mapping[_FuncRef, FunctionContext],
     func_specs: Mapping[_FuncRef, _QuantizedFunctionSpec],
 ) -> tuple[
     dict[_FuncRef, tuple[nodes.QuantizerReference, ...]],
-    dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]],
-    dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]],
+    _SignatureRefMap,
 ]:
     """Generate signatures for quantized functions based on their quantizer dependencies.
 
@@ -574,11 +596,9 @@ def _generate_signatures(
         - Mapping from function references to their quantizer parameter signatures
         - Mapping from function references to dictionaries that map original quantizer
           references to their corresponding signature references
-        - Empty dictionary for unresolved calls (populated in subsequent steps)
     """
     signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]] = {}
-    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]] = {}
-    calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]] = {}
+    signature_ref_map: _SignatureRefMap = {}
 
     for func_ref, spec in func_specs.items():
         if func_contexts[func_ref].method_type == MethodType.METHOD:
@@ -587,30 +607,33 @@ def _generate_signatures(
 
         # Create function signature from quantizer arguments
         signature = []
-        ref_map = {}
-        for arg in spec.quantizers(skip_forwarded=True):
-            if arg.src == (func_ref,):
-                # Local quantizer: use original reference
-                sigref = arg.ref
-            else:
-                # Propagated quantizer: create new reference with prefixed name
+        refs = {}
+
+        for arg in spec.local_quantizers:
+            signature.append(arg.ref)
+
+        for unresolved_call, quant_args in spec.calls.items():
+            for arg in quant_args:
+                assert len(arg.src) > 1  # Assert that arg is not a local quantizer
                 with quantizer_refs.push_context(func_contexts[func_ref]):
                     prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
                     name = f"{prefix}_{arg.ref.value}"
                     sigref = quantizer_refs.create_reference(name)
-            signature.append(sigref)
-            ref_map[arg.ref] = sigref
-        signature_ref_map[func_ref] = ref_map
-        signatures[func_ref] = tuple(signature)
+                signature.append(sigref)
+                refs[(unresolved_call, arg.ref)] = sigref
 
-    return signatures, signature_ref_map, calls
+        signatures[func_ref] = tuple(signature)
+        signature_ref_map[func_ref] = refs
+
+    return signatures, signature_ref_map
 
 
 def _resolve_calls(
     quantizer_refs: QuantizerReferenceCollection,
     func_contexts: Mapping[_FuncRef, FunctionContext],
     func_specs: Mapping[_FuncRef, _QuantizedFunctionSpec],
-    signature_ref_map: dict[_FuncRef, dict[nodes.QuantizerReference, nodes.QuantizerReference]],
+    signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]],
+    signature_ref_map: _SignatureRefMap,
     calls: dict[nodes.UnresolvedQuantizedCall, tuple[_CallArg, ...]],
 ) -> None:
     """Resolve quantized function calls by mapping quantizer references between functions.
@@ -631,27 +654,26 @@ def _resolve_calls(
         quantizer_refs: Collection of quantizer references used across functions
         func_contexts: Mapping from function references to their function contexts
         func_specs: Mapping from function references to their quantized function specs
+        signatures: Mapping from function references to their quantizer parameter signatures
         signature_ref_map: Mapping from function references to dictionaries that map
                           original quantizer references to their signature references
         calls: Output dictionary that will be populated with resolved call arguments
               for each unresolved quantized call
     """
     for func_ref, spec in func_specs.items():
+        is_instance_method = func_contexts[func_ref].method_type == MethodType.METHOD
+
         for unresolved_call, args in spec.calls.items():
             call_args = []
-            calling_func_ref = unresolved_call.func_ref
-            for arg in args:
-                keyword = signature_ref_map[calling_func_ref][arg.ref]
-                if func_ref not in signature_ref_map:
-                    # Target is instance method. Create quantizer expression.
+            for param, arg in zip(signatures[unresolved_call.func_ref], args):
+                if is_instance_method:
                     with quantizer_refs.push_context(func_contexts[func_ref]):
                         prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
                         name = f"{prefix}_{arg.ref.value}"
                         value = quantizer_refs.create_quantizer_expression(name)
                 else:
-                    # Target is regular function - use signature reference
-                    value = signature_ref_map[func_ref][arg.ref]
-                call_args.append(_CallArg(keyword=keyword, value=value))
+                    value = signature_ref_map[func_ref][(unresolved_call, arg.ref)]
+                call_args.append(_CallArg(keyword=param, value=value))
             calls[unresolved_call] = tuple(call_args)
 
 
@@ -807,29 +829,40 @@ def _find_dependent_functions(
         if _is_method_call(call_expr):
             continue
 
+        alias: str | None
         match call_expr.func:
             # Direct function calls: `func_name(args)`
             case libcst.Name(func_name):
                 ref = scope_vars.get(func_name)
                 module = sys.modules.get(ref.__module__) if ref is not None else None
                 if ref is not None and module is not None:
-                    yield _AqTask(module=module, function=ref)
+                    alias = None
+                    if getattr(module, func_name, None) is ref:
+                        alias = func_name
+                    yield _AqTask(module=module, function=ref, alias=alias)
 
             # Attribute access: `module.submodule.func(args)`
             case libcst.Attribute():
                 try:
-                    ref = _resolve_attribute(scope_vars, call_expr.func)
+                    module, ref = _resolve_attribute(scope_vars, call_expr.func)
                 except AttributeError:
                     continue
 
-                if (module := sys.modules.get(ref.__module__)) is None:
-                    continue
+                alias = None
+                for name, obj in vars(module).items():
+                    if obj is ref:
+                        alias = name
+                        break
 
                 # Only queue functions that are inspectable (Python-defined).
                 # Builtin function calls are replaced to quantized versions based on
                 # the operator table during function conversion.
                 if not inspect.isbuiltin(ref) and inspect.isfunction(ref):
-                    yield _AqTask(module=module, function=ref)
+                    yield _AqTask(
+                        module=module,
+                        function=ref,
+                        alias=alias,
+                    )
 
 
 def _scope_vars_and_module_refs(
@@ -841,7 +874,7 @@ def _scope_vars_and_module_refs(
     if ref := getattr(ModuleType, func_name, None):
         with contextlib.suppress(TypeError):  # getclosurevars raises TypeError on builtins
             # Extract variable names that reference ModuleType from function closure
-            closure_vars = inspect.getclosurevars(ref)
+            closure_vars = inspect.getclosurevars(inspect.unwrap(ref))
             scope_vars = {**closure_vars.nonlocals, **closure_vars.globals}
             for name, value in scope_vars.items():
                 if value is ModuleType:
@@ -853,7 +886,7 @@ def _scope_vars_and_module_refs(
     return scope_vars, module_refs
 
 
-def _resolve_attribute(scope: dict[str, Any], attr: libcst.Attribute) -> Any:
+def _resolve_attribute(scope: dict[str, Any], attr: libcst.Attribute) -> tuple[Any, Any]:
     """Resolves an attribute expression to its actual object using the given scope."""
     attr_parts = list(node_processing.iter_attribute(attr))
     full_attr_name = libcst.Module([]).code_for_node(attr)
@@ -862,12 +895,14 @@ def _resolve_attribute(scope: dict[str, Any], attr: libcst.Attribute) -> Any:
         raise AttributeError(msg)
 
     obj = scope.get(attr_parts[0].value)
+    parent = obj
     current_path = attr_parts[0].value
 
     for attr_part in attr_parts[1:]:
-        if obj is None or not isinstance(attr_part, libcst.Name):
+        parent = obj
+        if parent is None or not isinstance(attr_part, libcst.Name):
             msg = f"Cannot resolve attribute {full_attr_name} (failed at '{current_path}')"
             raise AttributeError(msg)
-        obj = getattr(obj, attr_part.value, None)
+        obj = getattr(parent, attr_part.value, None)
         current_path += f".{attr_part.value}"
-    return obj
+    return parent, obj

@@ -8,7 +8,7 @@ from tests.autoquant.test_data.multiple_methods import (
 )
 
 
-def quantized_tests_autoquant_test_data_multiple_methods_helper(
+def quantized_helper(
     x: torch.Tensor,
     *,
     quantizer_mul: fastforward.nn.Quantizer,
@@ -101,6 +101,6 @@ class QuantizedModuleWithMultipleMethods(fastforward.nn.QuantizedModule, ModuleW
         quantizer_helper_mul: fastforward.nn.Quantizer,
         quantizer_helper_x: fastforward.nn.Quantizer,
     ) -> torch.Tensor:
-        return quantized_tests_autoquant_test_data_multiple_methods_helper(
+        return quantized_helper(
             x, quantizer_mul=quantizer_helper_mul, quantizer_x=quantizer_helper_x
         )

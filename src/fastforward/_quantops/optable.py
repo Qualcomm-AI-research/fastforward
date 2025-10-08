@@ -321,7 +321,7 @@ class OperatorTable:
 
     def __contains__(self, key: str | _PyOp) -> bool:
         try:
-            self.get(key)
+            next(self.get(key))  # If no match, KeyError is raised on first eval of iterator
         except KeyError:
             return False
         return True

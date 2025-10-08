@@ -5,6 +5,7 @@ import dataclasses
 import inspect
 import operator as py_operator
 import textwrap
+import types
 
 from collections.abc import Sequence
 from types import ModuleType
@@ -297,7 +298,16 @@ def _resolve_name(qualified_name: str) -> _ResolvedQualifiedName:
 
     if module_name != qualified_name:
         py_object = py_operator.attrgetter(obj_name)(module)
+
         resolved_qualified_name = fully_qualified_name(py_object)
+
+        # If py_object's closure captures a function with matching qualified_name,
+        # assume py_object is a wrapper and reference the captured function instead.
+        if resolved_qualified_name != qualified_name and isinstance(py_object, types.FunctionType):
+            for non_local in inspect.getclosurevars(py_object).nonlocals.values():
+                if fully_qualified_name(non_local) == qualified_name:
+                    resolved_qualified_name = qualified_name
+
     else:
         resolved_qualified_name = module_name
 

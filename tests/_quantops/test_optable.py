@@ -68,3 +68,11 @@ def test_multiple_operators_same_fallback() -> None:
 
     # THEN all operators must all have the same identifier
     assert all(op.identifier == "relu" for op in operators)
+
+
+def test_eval(op_table: OperatorTable) -> None:
+    # GIVEN An operator Table
+    # WHEN A membership test is performed
+    # THEN the membership test succeeds/fails based on the actual membership
+    assert torch.relu in op_table
+    assert torch.sigmoid not in op_table

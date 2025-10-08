@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import inspect
+import math
+import os
 
-from typing import Any
+from typing import Any, Callable
 
 import fastforward as ff
 import libcst
@@ -11,6 +13,7 @@ import pytest
 import torch
 
 from fastforward._autoquant import pysource
+from fastforward._autoquant.pysource import source_context
 
 
 @pytest.mark.slow
@@ -131,3 +134,63 @@ def test_pysource_module() -> None:
 
     # THEN the result is the same object
     assert module_of_module is module_source
+
+
+def test_resolve_name_simple_module() -> None:
+    """Test resolving a simple module name."""
+    # GIVEN a qualified name that is just a module
+    qualified_name = "os"
+
+    # WHEN resolving the name
+    result = source_context._resolve_name(qualified_name)
+
+    # THEN the result should contain the module information
+    assert isinstance(result, source_context._ResolvedQualifiedName)
+    assert result.qualified_name == "os"
+    assert result.module == os
+    assert result.module_name == "os"
+    assert result.obj_name == ""
+
+
+def test_resolve_name_module_function() -> None:
+    """Test resolving a function from a module."""
+    # GIVEN a qualified name for a function in a module
+    qualified_name = "math.sqrt"
+
+    # WHEN resolving the name
+    result = source_context._resolve_name(qualified_name)
+
+    # THEN the result should contain the function information
+    assert isinstance(result, source_context._ResolvedQualifiedName)
+    assert result.qualified_name == "math.sqrt"
+    assert result.module == math
+    assert result.module_name == "math"
+    assert result.obj_name == "sqrt"
+
+
+def test_resolve_decorated_function() -> None:
+    """Test resolving a function from a module."""
+    # GIVEN a qualified name for a function in a module
+    qualified_name = "tests.autoquant.pysource.test_source_context._test_func_with_decorator"
+
+    # WHEN resolving the name
+    result = source_context._resolve_name(qualified_name)
+
+    # THEN the result should contain the function information
+    module_name, obj_name = qualified_name.rsplit(".", 1)
+    assert isinstance(result, source_context._ResolvedQualifiedName)
+    assert result.qualified_name == qualified_name
+    assert result.module_name == module_name
+    assert result.obj_name == obj_name
+
+
+def _test_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@_test_decorator
+def _test_func_with_decorator() -> None:
+    pass

@@ -7,7 +7,7 @@ import pathlib
 import sys
 import types
 
-from typing import Any, Iterable, Iterator, TypeAlias
+from typing import Any, Callable, Iterable, Iterator, TypeAlias
 from unittest.mock import patch
 
 import fastforward
@@ -28,6 +28,7 @@ from fastforward._autoquant.cst import passes
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._quantops import OperatorTable, optable
 from fastforward.autoquant import autoquantize
+from fastforward.testing.metrics import sqnr as metric_sqnr
 from fastforward.testing.string import assert_strings_match_verbose
 from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
@@ -72,6 +73,9 @@ def test_default_source_context_wraps_assignment_nodes() -> None:
         _ = cst.visit(_AssertNoAssignments())
 
 
+# ------------------------------------------------------------------------------
+
+
 # Example module with an __init__ function and attributes
 class ExampleModule1(torch.nn.Module):
     def __init__(self, z: torch.Tensor):
@@ -83,11 +87,17 @@ class ExampleModule1(torch.nn.Module):
         return self.z, torch.relu(y)
 
 
+# ------------------------------------------------------------------------------
+
+
 # Example module without __init__ function
 class ExampleModule2(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         y = torch.nn.functional.conv2d(x, x)
         return torch.nn.functional.linear(y, y)
+
+
+# ------------------------------------------------------------------------------
 
 
 # Example module with binary operators
@@ -108,6 +118,9 @@ class ExampleModule3(torch.nn.Module):
         return s
 
 
+# ------------------------------------------------------------------------------
+
+
 # Example module with unary operators
 class ExampleModule4(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -115,6 +128,9 @@ class ExampleModule4(torch.nn.Module):
         s = -x
         s = ~x
         return s
+
+
+# ------------------------------------------------------------------------------
 
 
 # Example with local variable re-assignment with non-quantized functions
@@ -128,6 +144,9 @@ class ExampleModule5(torch.nn.Module):
 
     def do_something(self, x: torch.Tensor) -> torch.Tensor:
         return x * x
+
+
+# ------------------------------------------------------------------------------
 
 
 # Example with sub- and sub-sub-modules that do not have manually quantized counterparts
@@ -153,6 +172,9 @@ class ExampleModule6(torch.nn.Module):
         return x
 
 
+# ------------------------------------------------------------------------------
+
+
 # Example with manually quantized counterparts
 class ExampleModule7(torch.nn.Module):
     def __init__(self) -> None:
@@ -162,6 +184,9 @@ class ExampleModule7(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.module(x)
         return x
+
+
+# ------------------------------------------------------------------------------
 
 
 @pytest.mark.slow
@@ -208,6 +233,9 @@ def test_autoquant_introduces_quantization_method(
     assert snapshot == actual_code.strip()
 
 
+# --------------------------------------------------------------------------------
+
+
 # Example with literal integer
 class ExampleModule8(torch.nn.Module):
     def forward(self, x: Tensor) -> Tensor:
@@ -215,6 +243,9 @@ class ExampleModule8(torch.nn.Module):
         h = h.reshape((999 - 12, self.num_features))
         h = h.reshape((-1, self.num_features))
         return h
+
+
+# --------------------------------------------------------------------------------
 
 
 # Example with loops
@@ -229,6 +260,9 @@ class ExampleModule9(torch.nn.Module):
                 x = _my_func(x)
             test = False
         return torch.relu(x)
+
+
+# --------------------------------------------------------------------------------
 
 
 # Example with quantized loop variables
@@ -247,6 +281,9 @@ class ExampleModule10(torch.nn.Module):
         return x
 
 
+# --------------------------------------------------------------------------------
+
+
 # Example with `with` statement
 class ExampleModule11(torch.nn.Module):
     def forward(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
@@ -257,6 +294,9 @@ class ExampleModule11(torch.nn.Module):
             out2 = torch.sigmoid(yy)
 
         return out1, out2
+
+
+# --------------------------------------------------------------------------------
 
 
 # Example with docstring and empty assignment
@@ -271,13 +311,19 @@ class FloatModule12(torch.nn.Module):
         return x + y
 
 
+# --------------------------------------------------------------------------------
+
+
 # Example with comprehensions
 class ExampleModule13(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[Any]]:
         return [torch.relu(z) for y in x for z in y], [x + x for x in x if x > 0]
 
 
-# Example with with statement
+# --------------------------------------------------------------------------------
+
+
+# Example with branches
 class ExampleModule14(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> Iterable[Tensor]:
         if 0 > 0:
@@ -286,6 +332,71 @@ class ExampleModule14(torch.nn.Module):
             return (torch.relu(y) for y in x)
         else:
             return {torch.relu(y): torch.sigmoid(z) for y, z in x}
+
+
+# --------------------------------------------------------------------------------
+
+
+# When a decorator returns a wrapping function without using `functools.wraps` the name
+# of the wrapping function is not updated. This case tests that the correct function
+# (`custom_helper` and not `cusotm_decorator`) is quantized and the quantized function
+# also has the decorator.
+
+
+def custom_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@custom_decorator
+def custom_helper(x: torch.Tensor) -> torch.Tensor:
+    return x * 2
+
+
+class ExampleModule15(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> Any:
+        return custom_helper(x)
+
+
+# --------------------------------------------------------------------------------
+
+# When a helper function calls another helper function more than once, a unique set of
+# quantizers is required for each call of the inner function.
+
+
+def inner_helper(x: torch.Tensor) -> torch.Tensor:
+    return x * 2
+
+
+def outer_helper(x: torch.Tensor) -> torch.Tensor:
+    return inner_helper(x) + inner_helper(x)
+
+
+class ExampleModule16(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> Tensor:
+        return outer_helper(x)
+
+
+# --------------------------------------------------------------------------------
+
+# When two functions are used that have the same `__name__` (here `sqnr`), multiple
+# quantized functions must be created where each (except the first) has a count suffix.
+
+
+def sqnr(a: torch.Tensor, b: torch.Tensor, flag: bool = True, eps: float = 1e-15) -> torch.Tensor:
+    del flag, eps
+    return a - b
+
+
+# Example with branches
+class ExampleModule17(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> Tensor:
+        return sqnr(x, x) + metric_sqnr(x, x)
+
+
+# --------------------------------------------------------------------------------
 
 
 @pytest.mark.slow
@@ -299,8 +410,11 @@ class ExampleModule14(torch.nn.Module):
         FloatModule12(),
         ExampleModule13(),
         ExampleModule14(),
+        ExampleModule15(),
+        ExampleModule16(),
+        ExampleModule17(),
     ],
-    ids=[f"case-{i}" for i in range(8, 15)],
+    ids=[f"case-{i}" for i in range(8, 18)],
 )
 def test_autoquant_end_to_end(
     input_module: torch.nn.Module,
