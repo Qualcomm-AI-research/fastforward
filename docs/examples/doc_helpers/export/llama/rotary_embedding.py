@@ -20,7 +20,8 @@ class QuantizedLlamaRotaryEmbedding(LlamaRotaryEmbedding, QuantizedModule):
     def forward(self, x, position_ids):
         inv_freq_dimensions = self.inv_freq.shape
         inv_freq_expanded = (
-            self.inv_freq[None, 0 : inv_freq_dimensions[0], None]
+            self
+            .inv_freq[None, 0 : inv_freq_dimensions[0], None]
             .float()
             .expand(position_ids.shape[0], -1, 1)
             .to(x.device)

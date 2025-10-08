@@ -215,6 +215,7 @@ class _RequiredSymbolsVisitor(libcst.CSTVisitor):
     def visit_AnnAssign(self, node: libcst.AnnAssign) -> bool:
         if node.value:
             node.value.visit(self)
+        node.annotation.visit(self)
         return False
 
     def visit_AugAssign(self, node: libcst.AugAssign) -> bool:
@@ -222,8 +223,7 @@ class _RequiredSymbolsVisitor(libcst.CSTVisitor):
         return False
 
     def visit_GeneralAssignment(self, node: nodes.GeneralAssignment) -> bool:
-        if node.value is not None:
-            node.value.visit(self)
+        node.original.visit(self)
         return False
 
 

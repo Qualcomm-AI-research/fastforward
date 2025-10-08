@@ -73,7 +73,8 @@ def test_quantization_quantizer_collection_initialize(model: torch.nn.Module) ->
 
 def test_quantization_config_precedence(model: torch.nn.Module) -> None:
     config = (
-        ff.QuantizationConfig()
+        ff
+        .QuantizationConfig()
         .add_rule("layer1/**", _MockQuantizer2)
         .add_rule("layer1/*/[quantizer:activation/output]", _MockQuantizer1)
     )

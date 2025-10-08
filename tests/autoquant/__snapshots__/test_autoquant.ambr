@@ -110,8 +110,9 @@
   '''
   import fastforward
   import torch
+  from fastforward._quantops import OperatorTable
   
-  from tests.autoquant.test_autoquant import FloatModule12
+  from tests.autoquant.test_autoquant import FloatModule12, Tensor
   
   
   class QuantizedFloatModule12(fastforward.nn.QuantizedModule, FloatModule12):
@@ -121,12 +122,13 @@
           self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
   
-      def forward(self, x: torch.Tensor) -> torch.Tensor:
+      def forward(self, x: torch.Tensor, meta: OperatorTable) -> torch.Tensor:
           """I am an important docstring.
   
           How multiline of me!
           """
           x = self.quantizer_x(x)
+          del meta  # meta is included to test for Symbol imports in params
           y: Tensor
           y = torch.zeros([0])
           y = self.quantizer_y(y)

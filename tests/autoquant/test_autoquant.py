@@ -303,11 +303,12 @@ class ExampleModule11(torch.nn.Module):
 
 # Example with docstring and empty assignment
 class FloatModule12(torch.nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, meta: OperatorTable) -> torch.Tensor:
         """I am an important docstring.
 
         How multiline of me!
         """
+        del meta  # meta is included to test for Symbol imports in params
         y: Tensor
         y = torch.zeros([0])
         return x + y
