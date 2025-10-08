@@ -32,9 +32,10 @@ dev = [
   "notebook",
 ]
 test = [
-  "pytest>=6",
-  "pytest-cov>=3",
-  "types-PyYAML",
+  "pytest>=6", 
+  "pytest-cov>=3", 
+  "types-PyYAML", 
+  "syrupy",
 ]
 docs = [
   "datasets",

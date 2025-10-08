@@ -1,0 +1,34 @@
+# serializer version: 1
+# name: test_autoquant_ignore_annotations
+  '''
+  def my_func_with_annotations(self, x: int | float, y: float | int) -> str | bool:
+      z: str | bool = y | x
+      return z
+  
+  '''
+# ---
+# name: test_autoquant_skip_isolation_for_if_expr
+  '''
+  def my_func_with_annotations(self, x: Tensor, y: Tensor, flag: bool) -> Tensor:
+      x = self.quantizer_x(x)
+      y = self.quantizer_y(y)
+      out = (
+          fastforward.nn.functional.add(x, y, output_quantizer=self.quantizer_add)
+          if flag
+          else fastforward.nn.functional.sub(y, x, output_quantizer=self.quantizer_sub)
+      )
+      return out
+  
+  '''
+# ---
+# name: test_raise
+  '''
+  def my_function(self, x: torch.Tensor) -> torch.Tensor:
+      x = self.quantizer_x(x)
+      if True:
+          x = some_function(x)  # reset quantization status
+          raise ValueError("msg")
+      return fastforward.nn.functional.mul(x, x, output_quantizer=self.quantizer_mul)
+  
+  '''
+# ---
