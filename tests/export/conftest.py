@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import fastforward as ff
 import pytest
@@ -37,6 +37,56 @@ def simple_model() -> QuantizedModelFixture:
 
     activation_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:activation/output]")
     activation_quantizers |= ff.find_quantizers(quant_model, "fc1/[quantizer:activation/input]")
+    parameter_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:parameter]")
+
+    return quant_model, activation_quantizers, parameter_quantizers
+
+
+@pytest.fixture
+def model_with_kwargs() -> QuantizedModelFixture:
+    class CustomQuantMul(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.output_quantizer = ff.nn.QuantizerStub(output_quantizer=True)
+
+        def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
+            mul_output = ff.nn.functional.mul(
+                input=input, other=other, output_quantizer=self.output_quantizer
+            )
+
+            return mul_output
+
+    class SimpleModelWithKwargs(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.first_input_quantizer = ff.nn.QuantizerStub(input_quantizer=True)
+            self.first_kwarg_quantizer = ff.nn.QuantizerStub(input_quantizer=True)
+            self.second_kwarg_quantizer = ff.nn.QuantizerStub(input_quantizer=True)
+            self.add_quantizer = ff.nn.QuantizerStub(output_quantizer=True)
+
+            self.fc1 = ff.nn.QuantizedLinear(10, 10)
+            self.mul_module = CustomQuantMul()
+
+        def forward(self, input: torch.Tensor, **kwargs: Any) -> torch.Tensor:
+            quantized_input = self.first_input_quantizer(input)
+            first_kwarg: torch.Tensor = self.first_kwarg_quantizer(kwargs["first_kwarg"])
+            second_kwarg: torch.Tensor = self.second_kwarg_quantizer(kwargs["second_kwarg"])
+
+            added_kwargs = ff.nn.functional.add(
+                input=first_kwarg, other=second_kwarg, output_quantizer=self.add_quantizer
+            )
+            quantized_linear_input = self.fc1(quantized_input)
+            mul_output: torch.Tensor = self.mul_module(quantized_linear_input, other=added_kwargs)
+
+            return mul_output
+
+    # Create a simple model - no quantization to avoid conflicts
+    quant_model = SimpleModelWithKwargs()
+
+    # Return empty quantizer collections since this is a simple test model
+    activation_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:activation/input]")
+    activation_quantizers |= ff.find_quantizers(quant_model, "**/[quantizer:activation/output]")
+    activation_quantizers -= ff.find_quantizers(quant_model, "fc1/[quantizer:activation/input]")
     parameter_quantizers = ff.find_quantizers(quant_model, "**/[quantizer:parameter]")
 
     return quant_model, activation_quantizers, parameter_quantizers

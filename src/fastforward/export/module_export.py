@@ -44,8 +44,9 @@ class ModuleIORecorder:
         self.output: tuple[torch.Tensor, ...]
         self.kwargs: dict[str, Any]
 
-        self.input_quantizer_settings: tuple[QuantParametersDict, ...]
-        self.output_quantizer_settings: tuple[QuantParametersDict, ...]
+        self.input_quantizer_settings: tuple[QuantParametersDict | None, ...]
+        self.output_quantizer_settings: tuple[QuantParametersDict | None, ...]
+        self.kwargs_quantizer_settings: dict[str, Any]
 
     def __call__(
         self,
@@ -61,6 +62,7 @@ class ModuleIORecorder:
 
         self.input, self.input_quantizer_settings = maybe_dequantize_tensors(self.input)
         self.output, self.output_quantizer_settings = maybe_dequantize_tensors(self.output)
+        self.kwargs, self.kwargs_quantizer_settings = maybe_dequantize_kwargs(self.kwargs)
 
     @override
     def __repr__(self) -> str:
@@ -219,9 +221,11 @@ def export_modules(
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
         module_output_quantizer_settings = module_io_recorder.output_quantizer_settings
+        module_kwargs_quantizer_settings = module_io_recorder.kwargs_quantizer_settings
         quantizer_settings = {
             "input": module_input_quantizer_settings,
             "output": module_output_quantizer_settings,
+            "kwargs": module_kwargs_quantizer_settings,
         }
         maybe_extend_encodings_file(
             module_name, module_output_path, quantizer_settings, encoding_schema_handler
@@ -242,7 +246,7 @@ def export_modules(
 def maybe_extend_encodings_file(
     module_name: str,
     path: pathlib.Path,
-    quantizer_settings: dict[str, tuple[QuantParametersDict, ...]],
+    quantizer_settings: dict[str, Any],
     encoding_schema_handler: EncodingSchemaHandler,
 ) -> None:
     """Extends the QNN encodings file.
@@ -277,26 +281,45 @@ def maybe_extend_encodings_file(
     )
 
     quantizer_input_settings = quantizer_settings["input"]
+    quantizer_kwargs_settings = quantizer_settings["kwargs"]
     ort_session_inputs = ort_session.get_inputs()
 
-    # Here we iterate through the quantizer input settings and in the case that
-    # an input does not appear on the original encodings file then we create
-    # a new entry for it.
-    # NB: We cannot retrieve the input's name from the QuantizedTensor, because
-    # we are operating at the module and not graph level. However, we can consider
-    # that the inputs will appear in the same sequence in both graph and module.
-    for input_idx, quant_settings in enumerate(quantizer_input_settings):
-        ort_input_name = ort_session_inputs[input_idx].name
-        encoding_schema_handler.add_encoding(ort_input_name, quant_settings, False)
+    # Iterate first through the inputs and in the case that one of the
+    # input names is present in the kwargs section of the stored settings
+    # then add its encoding to the schema handler.
+
+    # We iterate through all the graph inputs. In the case we find that the
+    # input name exists in the kwargs quantizer settings, then we know that
+    # the argument was passed as kwarg, and we assign its stored encoding. 
+    # If it is not found in the kwargs we consider it to be a positional input
+    # instead. We perform the same check (whether the quantizer settings are
+    # not None) and we add the settings to the schema handler.
+
+    # NB: We consider that the order of the positional arguments is the same
+    # for the torch module and the ONNX graph.
+    positional_input_idx = 0
+    for ort_input in ort_session_inputs:
+        # First check if the input is defined as kwarg and if that is quantized.
+        quant_settings = quantizer_kwargs_settings.get(ort_input.name)
+        if quant_settings is not None:
+            encoding_schema_handler.add_encoding(ort_input.name, quant_settings, False)
+        else:
+        # Then the input was passed as a positional argument. We check if the input
+        # was quantized and iterate over the input quantizer settings.
+            quant_settings = quantizer_input_settings[positional_input_idx]
+            if quant_settings is not None:
+                encoding_schema_handler.add_encoding(ort_input.name, quant_settings, False)
+                positional_input_idx += 1
 
     # The same process detailed for appending input encodings to the encodings
-    # dictionary is mirrored for the output encodings.
+    # dictionary is mirrored for the output encodings. Here there is no check for
+    # kwargs, the output is passed out as positional.
     quantizer_output_settings = quantizer_settings["output"]
     ort_session_outputs = ort_session.get_outputs()
 
-    for output_idx, quant_settings in enumerate(quantizer_output_settings):
-        ort_output_name = ort_session_outputs[output_idx].name
-        encoding_schema_handler.add_encoding(ort_output_name, quant_settings, False)
+    for ort_output, output_quantizer_settings in zip(ort_session_outputs, quantizer_output_settings):
+        if output_quantizer_settings is not None:
+            encoding_schema_handler.add_encoding(ort_output.name, output_quantizer_settings, False)
 
     encodings_dictionary = encoding_schema_handler.build_encodings_dictionary()
 
@@ -305,8 +328,8 @@ def maybe_extend_encodings_file(
 
 
 def maybe_dequantize_tensors(
-    tensors: tuple[torch.Tensor],
-) -> tuple[tuple[torch.Tensor, ...], tuple[QuantParametersDict, ...]]:
+    tensors: tuple[torch.Tensor, ...],
+) -> tuple[tuple[torch.Tensor, ...], tuple[QuantParametersDict | None, ...]]:
     """Dequantizes tensors.
 
     The output tensors of quantized modules will usually be returned
@@ -326,7 +349,7 @@ def maybe_dequantize_tensors(
         each of those.
     """
     output_tensors: list[torch.Tensor] = []
-    quantizer_settings: list[QuantParametersDict] = []
+    quantizer_settings: list[QuantParametersDict | None] = []
 
     for tensor in tensors:
         if isinstance(tensor, QuantizedTensor):
@@ -348,5 +371,66 @@ def maybe_dequantize_tensors(
             output_tensors.append(tensor.dequantize())
         else:
             output_tensors.append(tensor)
+            quantizer_settings.append(None)
 
     return tuple(output_tensors), tuple(quantizer_settings)
+
+
+def maybe_dequantize_kwargs(
+    kwargs: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Dequantizes tensors in kwargs.
+
+    Similarly to the `maybe_dequantize_tensors`, the kwargs passed
+    to a module might be in `QuantizedTensor` form. This will cause
+    a failure during exporting, and they need to be dequantized. This
+    function iterates over the input kwargs for a module and in the
+    case where a quantized tensor is found, it is dequantized, and
+    the quantization settings are stored. So they can then be appended
+    to the encodings file.
+
+    Args:
+        kwargs: Input kwargs to a module, some might contain
+        `QuantizedTensor`s.
+
+    Returns:
+        The (maybe) dequantized kwargs, and the quantizer settings for
+        each of those.
+    """
+
+    def _process_value_recursively(value: Any) -> tuple[Any, Any]:
+        if isinstance(value, QuantizedTensor):
+            dequant_tensors, quantizer_settings = maybe_dequantize_tensors((value,))
+            return dequant_tensors[0], quantizer_settings[0]
+
+        elif isinstance(value, (list, tuple)):
+            processed_items = []
+            quantizer_items = []
+
+            for item in value:
+                processed_item, quantizer_item = _process_value_recursively(item)
+                processed_items.append(processed_item)
+                quantizer_items.append(quantizer_item)
+
+            result = type(value)(processed_items)
+            return result, quantizer_items
+
+        elif isinstance(value, dict):
+            processed_dict = {}
+            quantizer_dict = {}
+
+            for k, v in value.items():
+                processed_dict[k], quantizer_dict[k] = _process_value_recursively(v)
+
+            return processed_dict, quantizer_dict
+
+        else:
+            return value, None
+
+    new_kwargs = {}
+    new_kwargs_quantizers = {}
+
+    for key, value in kwargs.items():
+        new_kwargs[key], new_kwargs_quantizers[key] = _process_value_recursively(value)
+
+    return (new_kwargs, new_kwargs_quantizers)
