@@ -13,9 +13,10 @@ import pickle
 
 from contextlib import ExitStack
 from types import TracebackType
-from typing import Any
+from typing import Any, overload
 
 import onnxruntime  # type: ignore[import-untyped]
+import optree
 import torch
 
 from typing_extensions import override
@@ -60,9 +61,9 @@ class ModuleIORecorder:
         self.kwargs = kwargs
         self.output = output_ if isinstance(output_, tuple) else (output_,)
 
-        self.input, self.input_quantizer_settings = maybe_dequantize_tensors(self.input)
-        self.output, self.output_quantizer_settings = maybe_dequantize_tensors(self.output)
-        self.kwargs, self.kwargs_quantizer_settings = maybe_dequantize_kwargs(self.kwargs)
+        self.input, self.input_quantizer_settings = _deep_dequantize(self.input)
+        self.output, self.output_quantizer_settings = _deep_dequantize(self.output)
+        self.kwargs, self.kwargs_quantizer_settings = _deep_dequantize(self.kwargs)
 
     @override
     def __repr__(self) -> str:
@@ -286,7 +287,7 @@ def maybe_extend_encodings_file(
 
     # Iterate first through all the graph inputs. In the case we find that the
     # input name exists in the kwargs quantizer settings, then we know that
-    # the argument was passed as kwarg, and we assign its stored encoding. 
+    # the argument was passed as kwarg, and we assign its stored encoding.
     # If it is not found in the kwargs we consider it to be a positional input
     # instead. We perform the same check (whether the quantizer settings are
     # not None) and we add the settings to the schema handler.
@@ -313,7 +314,9 @@ def maybe_extend_encodings_file(
     quantizer_output_settings = quantizer_settings["output"]
     ort_session_outputs = ort_session.get_outputs()
 
-    for ort_output, output_quantizer_settings in zip(ort_session_outputs, quantizer_output_settings):
+    for ort_output, output_quantizer_settings in zip(
+        ort_session_outputs, quantizer_output_settings
+    ):
         if output_quantizer_settings is not None:
             encoding_schema_handler.add_encoding(ort_output.name, output_quantizer_settings, False)
 
@@ -323,110 +326,87 @@ def maybe_extend_encodings_file(
         json.dump(encodings_dictionary, fp, indent=4)
 
 
-def maybe_dequantize_tensors(
-    tensors: tuple[torch.Tensor, ...],
-) -> tuple[tuple[torch.Tensor, ...], tuple[QuantParametersDict | None, ...]]:
-    """Dequantizes tensors.
+def _dequant_and_get_quantparams(
+    tensor: QuantizedTensor,
+) -> tuple[torch.Tensor, QuantParametersDict]:
+    """Dequantize a tensor and extract its quantization parameters."""
+    quant_args = tensor.quant_args()
+    assert isinstance(quant_args, StaticAffineQuantParams)
+    scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
+    raw_tile_size = quant_args.granularity.tile_size(tensor.shape)
+    tile_size = tensor.shape if raw_tile_size == "data_shape" else raw_tile_size
+
+    tensor_quant_args: QuantParametersDict = {
+        "scale": scale,
+        "offset": offset,
+        "num_bits": num_bits,
+        "data_shape": tensor.shape,
+        "tile_size": tile_size,
+    }
+
+    return tensor.dequantize(), tensor_quant_args
+
+
+_StructedQuantParams = (
+    optree.PyTree[QuantParametersDict | None]
+    | tuple[QuantParametersDict | None, ...]
+    | dict[str, QuantParametersDict | None]
+)
+
+
+@overload
+def _deep_dequantize(
+    pytree: tuple[Any, ...],
+) -> tuple[tuple[Any, ...], tuple[QuantParametersDict | None, ...]]: ...
+
+
+@overload
+def _deep_dequantize(
+    pytree: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, QuantParametersDict | None]]: ...
+
+
+@overload
+def _deep_dequantize(
+    pytree: optree.PyTree[Any],
+) -> tuple[optree.PyTree[Any], optree.PyTree[QuantParametersDict | None]]: ...
+
+
+def _deep_dequantize(
+    pytree: optree.PyTree[Any] | tuple[Any, ...] | dict[str, Any],
+) -> tuple[optree.PyTree[Any] | tuple[Any, ...] | dict[str, Any], _StructedQuantParams]:
+    """Dequantizes tensors in a PyTree structure.
 
     The output tensors of quantized modules will usually be returned
     as `QuantizedTensor`s. As these are custom tensors they cannot be
     used in that form for exporting, and need to be dequantized. This
-    function performs this dequantization in the case a `QuantizedTensor`
-    is found on the input/output module capture, and it also stores
+    function performs this dequantization recursively on any PyTree structure
+    in the case a `QuantizedTensor` is found, and it also stores
     its quantization settings, so these can be appended to the encodings
     file.
 
     Args:
-        tensors: A tuple of tensors, where some of these may be
-            `QuantizedTensor`s.
+        pytree: A PyTree structure that may contain `QuantizedTensor`s
+            at any level of nesting.
 
     Returns:
-        The (maybe) dequantized tensors, and the quantizer settings for
-        each of those.
+        The (maybe) dequantized PyTree with the same structure, and the
+        quantizer settings PyTree for each element (None for non-quantized tensors).
     """
-    output_tensors: list[torch.Tensor] = []
-    quantizer_settings: list[QuantParametersDict | None] = []
+    quantizer_settings: list[Any] = []
+    dequantized_flat_args: list[Any] = []
+    flat_args, treespec = optree.tree_flatten(pytree)  # type: ignore[arg-type]
 
-    for tensor in tensors:
-        if isinstance(tensor, QuantizedTensor):
-            quant_args = tensor.quant_args()
-            assert isinstance(quant_args, StaticAffineQuantParams)
-            scale, offset, num_bits = quant_args.scale, quant_args.offset, quant_args.num_bits
-            raw_tile_size = quant_args.granularity.tile_size(tensor.shape)
-            tile_size = tensor.shape if raw_tile_size == "data_shape" else raw_tile_size
-
-            tensor_quant_args: QuantParametersDict = {
-                "scale": scale,
-                "offset": offset,
-                "num_bits": num_bits,
-                "data_shape": tensor.shape,
-                "tile_size": tile_size,
-            }
-
-            quantizer_settings.append(tensor_quant_args)
-            output_tensors.append(tensor.dequantize())
+    for arg in flat_args:
+        if isinstance(arg, QuantizedTensor):
+            dequant_tensor, quantizer_setting = _dequant_and_get_quantparams(arg)
+            dequantized_flat_args.append(dequant_tensor)
+            quantizer_settings.append(quantizer_setting)
         else:
-            output_tensors.append(tensor)
+            dequantized_flat_args.append(arg)
             quantizer_settings.append(None)
 
-    return tuple(output_tensors), tuple(quantizer_settings)
+    new_pytree = optree.tree_unflatten(treespec, dequantized_flat_args)
+    quantizer_pytree = optree.tree_unflatten(treespec, quantizer_settings)
 
-
-def maybe_dequantize_kwargs(
-    kwargs: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Dequantizes tensors in kwargs.
-
-    Similarly to the `maybe_dequantize_tensors`, the kwargs passed
-    to a module might be in `QuantizedTensor` form. This will cause
-    a failure during exporting, and they need to be dequantized. This
-    function iterates over the input kwargs for a module and in the
-    case where a quantized tensor is found, it is dequantized, and
-    the quantization settings are stored. So they can then be appended
-    to the encodings file.
-
-    Args:
-        kwargs: Input kwargs to a module, some might contain
-        `QuantizedTensor`s.
-
-    Returns:
-        The (maybe) dequantized kwargs, and the quantizer settings for
-        each of those.
-    """
-
-    def _process_value_recursively(value: Any) -> tuple[Any, Any]:
-        if isinstance(value, QuantizedTensor):
-            dequant_tensors, quantizer_settings = maybe_dequantize_tensors((value,))
-            return dequant_tensors[0], quantizer_settings[0]
-
-        elif isinstance(value, (list, tuple)):
-            processed_items = []
-            quantizer_items = []
-
-            for item in value:
-                processed_item, quantizer_item = _process_value_recursively(item)
-                processed_items.append(processed_item)
-                quantizer_items.append(quantizer_item)
-
-            result = type(value)(processed_items)
-            return result, quantizer_items
-
-        elif isinstance(value, dict):
-            processed_dict = {}
-            quantizer_dict = {}
-
-            for k, v in value.items():
-                processed_dict[k], quantizer_dict[k] = _process_value_recursively(v)
-
-            return processed_dict, quantizer_dict
-
-        else:
-            return value, None
-
-    new_kwargs = {}
-    new_kwargs_quantizers = {}
-
-    for key, value in kwargs.items():
-        new_kwargs[key], new_kwargs_quantizers[key] = _process_value_recursively(value)
-
-    return (new_kwargs, new_kwargs_quantizers)
+    return new_pytree, quantizer_pytree

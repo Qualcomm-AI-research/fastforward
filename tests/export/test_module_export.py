@@ -8,16 +8,12 @@ import pickle
 from typing import Any, TypeAlias
 
 import fastforward as ff
+import optree
 import pytest
 import torch
 
 from fastforward.export._export_schemas import LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler
-from fastforward.export.module_export import (
-    ModuleIORecorder,
-    export_modules,
-    maybe_dequantize_kwargs,
-    maybe_dequantize_tensors,
-)
+from fastforward.export.module_export import ModuleIORecorder, _deep_dequantize, export_modules
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.quantization.strict_quantization import strict_quantization_for_module
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
@@ -322,23 +318,21 @@ def _check_module_kwargs_handled(
             assert not isinstance(value, ff.QuantizedTensor), f"kwarg {key} should be dequantized"
 
 
-def test_maybe_dequantize_kwargs() -> None:
-    def _recursive_compare(original: Any, processed: Any) -> None:
-        if isinstance(original, torch.Tensor):
-            torch.testing.assert_close(original.dequantize(), processed)
-        elif isinstance(original, (list, tuple)):
-            assert len(original) == len(processed)
-            assert type(original) is type(processed)
-            for orig_item, proc_item in zip(original, processed):
-                _recursive_compare(orig_item, proc_item)
-        elif isinstance(original, dict):
-            assert set(original.keys()) == set(processed.keys())
-            for key in original:
-                _recursive_compare(original[key], processed[key])
-        else:
-            # Non-tensor, non-container values should be identical
-            assert original == processed
+def _pytree_compare(original: Any, processed: Any) -> None:
+    """Recursively compare two tree structures, dequantizing tensors for comparison."""
+    original_values, original_spec = optree.tree_flatten(original)
+    processed_values, processed_spec = optree.tree_flatten(processed)
 
+    assert original_spec == processed_spec, "structue of original and processed must match"
+
+    for original_value, processed_value in zip(original_values, processed_values):
+        if isinstance(original_value, torch.Tensor):
+            torch.testing.assert_close(original_value.dequantize(), processed_value)
+        else:
+            assert original_value == processed_value
+
+
+def test_deep_dequantize_kwargs() -> None:
     # GIVEN a dictionary of kwargs, containing different types.
     quantized_tensors_list = [ff.random.random_quantized((5, 5)) for _ in range(5)]
     quantized_tensors_tuple = tuple([ff.random.random_quantized((5, 5)) for _ in range(5)])
@@ -395,29 +389,29 @@ def test_maybe_dequantize_kwargs() -> None:
         "complex_nested_structure",
     ])
 
-    # WHEN calling the `maybe_dequantize_kwargs` function
-    result_kwargs, result_quantizers = maybe_dequantize_kwargs(kwargs)
+    # WHEN calling the `_deep_dequantize` function
+    result_kwargs, result_quantizers = _deep_dequantize(kwargs)
 
     # THEN the dictionary keys should be the same
     assert result_kwargs.keys() == kwargs.keys()
     # THEN quantizer values should be collected only for the keys that contain quantized tensors
-    for key, value in result_quantizers.items():
+    for key, quant_params in result_quantizers.items():
         if key not in to_dequantize_keys:
-            assert value is None or not any(value)
+            assert quant_params is None or not any(quant_params)
 
     # THEN the two dictionary should match exactly when the quantized tensors are dequantized
     for key, value in kwargs.items():
         new_value = result_kwargs[key]
-        _recursive_compare(value, new_value)
+        _pytree_compare(value, new_value)
 
 
-def test_maybe_dequantize_tensors() -> None:
+def test_deep_dequantize_on_tensors() -> None:
     # GIVEN: quantized and unquantized tensors
     quantized_tensor = ff.random.random_quantized((3, 3))
     unquantized_tensor = torch.randn(2, 2)
 
-    # WHEN calling the maybe dequantize operation.
-    result_tensors, result_settings = maybe_dequantize_tensors((quantized_tensor,))
+    # WHEN calling the `_deep_dequantize`` operation.
+    result_tensors, result_settings = _deep_dequantize((quantized_tensor,))
 
     # THEN for the quantized tensor there should be one tensor and one quantizer
     # settings in the returned variables. The tensor should NOT be a quantized tensor and
@@ -427,8 +421,8 @@ def test_maybe_dequantize_tensors() -> None:
     torch.testing.assert_close(result_tensors[0], quantized_tensor.dequantize())
     assert result_settings[0] is not None
 
-    # WHEN calling the maybe dequantize operation.
-    result_tensors, result_settings = maybe_dequantize_tensors((unquantized_tensor,))
+    # WHEN calling the `_deeP_dequantize` operation.
+    result_tensors, result_settings = _deep_dequantize((unquantized_tensor,))
 
     # THEN for the quantized tensor there should be one tensor and one quantizer
     # settings in the output. The tensor should be left untouched, and the sole
@@ -439,7 +433,7 @@ def test_maybe_dequantize_tensors() -> None:
     torch.testing.assert_close(result_tensors[0], unquantized_tensor)
 
 
-def test_maybe_dequantize_tensors_mixed_tuple() -> None:
+def test_deep_dequantize_on_tensors_mixed_tuple() -> None:
     # GIVEN: A tuple of 5 tensors with mixed quantized and unquantized tensors
     tensor1 = ff.random.random_quantized((2, 2))
     tensor2 = torch.randn(3, 3)
@@ -450,8 +444,8 @@ def test_maybe_dequantize_tensors_mixed_tuple() -> None:
     input_tensors = (tensor1, tensor2, tensor3, tensor4, tensor5)
     is_input_quantized = (True, False, True, False, True)
 
-    # WHEN calling the maybe dequantize operation
-    result_tensors, result_settings = maybe_dequantize_tensors(input_tensors)
+    # WHEN calling the `_deep_dequantize` operation
+    result_tensors, result_settings = _deep_dequantize(input_tensors)
 
     # THEN the result should have 5 tensors and 5 quantizer settings (with None for unquantized)
     assert len(result_tensors) == len(result_settings) == 5
