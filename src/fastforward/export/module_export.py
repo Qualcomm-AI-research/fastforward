@@ -284,11 +284,7 @@ def maybe_extend_encodings_file(
     quantizer_kwargs_settings = quantizer_settings["kwargs"]
     ort_session_inputs = ort_session.get_inputs()
 
-    # Iterate first through the inputs and in the case that one of the
-    # input names is present in the kwargs section of the stored settings
-    # then add its encoding to the schema handler.
-
-    # We iterate through all the graph inputs. In the case we find that the
+    # Iterate first through all the graph inputs. In the case we find that the
     # input name exists in the kwargs quantizer settings, then we know that
     # the argument was passed as kwarg, and we assign its stored encoding. 
     # If it is not found in the kwargs we consider it to be a positional input
@@ -303,17 +299,17 @@ def maybe_extend_encodings_file(
         quant_settings = quantizer_kwargs_settings.get(ort_input.name)
         if quant_settings is not None:
             encoding_schema_handler.add_encoding(ort_input.name, quant_settings, False)
-        else:
-        # Then the input was passed as a positional argument. We check if the input
-        # was quantized and iterate over the input quantizer settings.
+        # Then the input was passed as a positional argument, or there are no positional
+        # inputs. We check if the input was quantized and iterate over the input quantizer
+        # settings.
+        elif positional_input_idx < len(quantizer_input_settings):
             quant_settings = quantizer_input_settings[positional_input_idx]
             if quant_settings is not None:
                 encoding_schema_handler.add_encoding(ort_input.name, quant_settings, False)
-                positional_input_idx += 1
+            positional_input_idx += 1
 
-    # The same process detailed for appending input encodings to the encodings
-    # dictionary is mirrored for the output encodings. Here there is no check for
-    # kwargs, the output is passed out as positional.
+    # Then iterate through the graph outputs and in the case an output is assigned
+    # has quantizer settings, then add them to the schema handler.
     quantizer_output_settings = quantizer_settings["output"]
     ort_session_outputs = ort_session.get_outputs()
 

@@ -457,7 +457,9 @@ def test_maybe_dequantize_tensors_mixed_tuple() -> None:
     assert len(result_tensors) == len(result_settings) == 5
 
     # THEN verify each tensor is properly processed
-    for tensor, org_tensor, setting, is_quant in zip(result_tensors, input_tensors, result_settings, is_input_quantized):
+    for tensor, org_tensor, setting, is_quant in zip(
+        result_tensors, input_tensors, result_settings, is_input_quantized
+    ):
         # No quantized tensors should be present
         assert not isinstance(tensor, ff.QuantizedTensor)
         # The tensors should always much (regardless if they were quant or non-quant)
