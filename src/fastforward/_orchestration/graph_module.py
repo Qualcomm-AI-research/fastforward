@@ -25,7 +25,7 @@ import itertools
 import uuid
 
 from collections.abc import Collection, Mapping
-from typing import Any, Iterable
+from typing import Any, Iterator
 
 import torch
 
@@ -218,8 +218,8 @@ class GraphModule(torch.nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self._nodes: dict[str, Node] = {}
-        self._node_refs: dict[str, NodeRef] = {}
+        self._nodes: dict[uuid.UUID, Node] = {}
+        self._node_refs: dict[uuid.UUID, NodeRef] = {}
         self._inputs: dict[str, InputRef] = dict()
         self._outputs: list[NodeRef | AttributeRef] = []
         self._engine: ExecutionEngine | None = None
@@ -229,64 +229,35 @@ class GraphModule(torch.nn.Module):
         """Return the list of graph input names in definition order."""
         return list(self._inputs.keys())
 
-    @property
-    def output_names(self) -> list[str]:
-        """Return the list of graph output names in definition order."""
-        return [ref.name for ref in self._outputs]
-
-    def node_inputs(self, node_ref: NodeRef) -> Iterable[NodeRef]:
+    def node_inputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that are inputs to `node_ref`.
 
         Args:
             node_ref: Node reference to get inputs for. This must be a valid node in the graph.
 
         Returns:
-            Generator yielding NodeRef objects for each input node.
+            Iterator yielding NodeRef objects for each input node.
         """
-        expected_node = self.node_ref(node_ref.name)
-        if expected_node.id != node_ref.id:
-            msg = f"Node mismatch: expected {expected_node.id}, found {node_ref.id} on {node_ref.name}"
-            raise ValueError(msg)
-
-        node = self._nodes[node_ref.name]
+        node = self._nodes[node_ref.id]
         for arg in (*node.args, *node.kwargs.values()):
-            match arg:
-                case NodeRef(id=dep_id, name=dep_name):
-                    if dep_name not in self._nodes:
-                        msg = f"Node '{node.name}' depends on unknown node '{dep_name}'"
-                        raise ValueError(msg)
+            if isinstance(arg_base := arg.unwrap_ref(), NodeRef):
+                yield arg_base
 
-                    dep_ref = self._node_refs[dep_name]
-
-                    if dep_ref.id != dep_id:
-                        msg = f"Node '{node.name}' depends on node '{dep_name}' more than once"
-                        raise ValueError(msg)
-
-                    yield dep_ref
-                case _:
-                    pass
-
-    def node_outputs(self, node_ref: NodeRef) -> Iterable[NodeRef]:
+    def node_outputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that use `node_ref` as input.
 
         Args:
             node_ref: Node reference to get outputs for. This must be a valid node in the graph.
 
         Returns:
-            Generator yielding NodeRef objects for each output node.
+            Iterator yielding NodeRef objects for each output node.
         """
-        expected_node = self.node_ref(node_ref.name)
-        if expected_node.id != node_ref.id:
-            msg = f"Node mismatch: expected {expected_node.id}, found {node_ref.id} on {node_ref.name}"
-            raise ValueError(msg)
-
-        for name, node in self._nodes.items():
-            for arg in (*node.args, *node.kwargs.values()):
-                match arg:
-                    case NodeRef(id=dep_id) if dep_id == node_ref.id:
-                        yield self._node_refs[name]
-                    case _:
-                        pass
+        node = self._nodes[node_ref.id]
+        for other_node in self._nodes.values():
+            for arg in (*other_node.args, *other_node.kwargs.values()):
+                if isinstance(arg_base := arg.unwrap_ref(), NodeRef) and arg_base.id == node.id:
+                    yield self._node_refs[other_node.id]
+                    break
 
     def node_ref(self, name: str) -> NodeRef:
         """Return the NodeRef for 'name', raising ValueError if it is unknown."""
@@ -317,8 +288,8 @@ class GraphModule(torch.nn.Module):
         """
         for node in nodes:
             match base_ref := node.unwrap_ref():
-                case NodeRef(name=node_name):
-                    if node_name not in self._nodes:
+                case NodeRef(id=node_id, name=node_name):
+                    if node_id not in self._nodes:
                         msg = f"Unknown node name: {node_name}"
                         raise ValueError(msg)
 
@@ -357,21 +328,17 @@ class GraphModule(torch.nn.Module):
         Raises:
             ValueError: If node already exists in graph
         """
-        if name in self._nodes:
-            msg = f"Duplicate node name: {name}"
-            raise ValueError(msg)
-
         node_id = node_id or uuid.uuid4()
-        if any(n.id == node_id for n in self._nodes.values()):
+        if node_id in self._nodes:
             msg = f"Duplicate node id: {node_id}"
             raise ValueError(msg)
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
         node = Node(node_id, name, module, args, kwargs or {})
-        self._nodes[name] = node
+        self._nodes[node_id] = node
         ref = NodeRef(node_id, name)
-        self._node_refs[name] = ref
+        self._node_refs[node_id] = ref
 
         *module_path, leaf_name = name.split(".")
         parent = self
@@ -439,7 +406,9 @@ class GraphModule(torch.nn.Module):
         remap_reference = functools.partial(
             remap_subgraph_reference,
             new_context=input_binding,
-            subgraph_nodes={node_name: ref.id for node_name, ref in subgraph._node_refs.items()},
+            subgraph_nodes={
+                node_ref.name: node_ref.id for node_ref in subgraph._node_refs.values()
+            },
             scope_name=name,
         )
 
@@ -500,11 +469,8 @@ class ExecutionPlan:
 
     def __post_init__(self) -> None:
         for node_ref in self.order:
-            if node_ref.name not in self.graph._nodes:
+            if node_ref.id not in self.graph._nodes:
                 msg = f"Node '{node_ref.name}' not found in graph"
-                raise ValueError(msg)
-            if self.graph._node_refs[node_ref.name].id != node_ref.id:
-                msg = f"Mismatching NodeRef id for node '{node_ref.name}'"
                 raise ValueError(msg)
 
 
@@ -516,8 +482,8 @@ class TopologicalExecutionPlan(ExecutionPlan):
         """Generate an ExecutionPlan by topologically sorting the nodes of the given GraphModule."""
         execution_order = []
         in_degree = {
-            graph._node_refs[name]: len(list(graph.node_inputs(graph._node_refs[name])))
-            for name in graph._nodes
+            node_ref: len(list(graph.node_inputs(node_ref)))
+            for node_ref in graph._node_refs.values()
         }
 
         queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
@@ -598,7 +564,7 @@ class ExecutionEngine:
         ctx = self._bind_args(*args, **kwargs)
 
         for node_ref in self._plan.order:
-            node = self.graph._nodes[node_ref.name]
+            node = self.graph._nodes[node_ref.id]
 
             resolved_args = [resolve_reference(arg, ctx) for arg in node.args]
             resolved_kwargs = {key: resolve_reference(arg, ctx) for key, arg in node.kwargs.items()}
@@ -737,13 +703,13 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
     Raises:
         ValueError: If proposed subgraph has no external inputs.
     """
-    node_names: set[str] = {ref.name for ref in path_nodes}
+    node_ids: set[uuid.UUID] = {ref.id for ref in path_nodes}
 
     def _external_dependencies(node: Node) -> set[str]:
         external_dependencies = set()
         for arg in (*node.args, *node.kwargs.values()):
             match arg.unwrap_ref():
-                case NodeRef(name=name) if name not in node_names:
+                case NodeRef(name=name, id=node_id) if node_id not in node_ids:
                     external_dependencies.add(name)
                 case InputRef(name=name):
                     external_dependencies.add(name)
@@ -751,8 +717,8 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
 
     external_inputs = {
         external_dependency
-        for node_name in node_names
-        for external_dependency in _external_dependencies(graph._nodes[node_name])
+        for node_id in node_ids
+        for external_dependency in _external_dependencies(graph._nodes[node_id])
     }
 
     if not external_inputs:
@@ -760,7 +726,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
         raise ValueError(msg)
 
     external_outputs = {
-        node_ref.name
+        node_ref
         for node_ref in path_nodes
         if node_ref in graph._outputs
         or any(dep not in path_nodes for dep in graph.node_outputs(node_ref))
@@ -774,10 +740,10 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
         subgraph_nodes={ref.name: ref.id for ref in path_nodes},
     )
 
-    for node_name in node_names:
-        source_node = graph._nodes[node_name]
+    for node_id in node_ids:
+        source_node = graph._nodes[node_id]
         subgraph.add_node(
-            name=node_name,
+            name=source_node.name,
             module=source_node.module,
             args=[remap_reference(old_reference=arg) for arg in source_node.args],
             kwargs={
@@ -786,7 +752,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
             node_id=source_node.id,
         )
 
-    subgraph.add_output(*(subgraph.node_ref(node_name) for node_name in external_outputs))
+    subgraph.add_output(*external_outputs)
     return subgraph
 
 

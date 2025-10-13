@@ -229,7 +229,7 @@ def test_create_subgraph_functional_equivalence() -> None:
     subgraph = create_subgraph(graph, path_nodes)
 
     # THEN the subgraph must only contain the nodes on the path
-    assert set(subgraph._nodes) == set(node.name for node in path_nodes)
+    assert set(subgraph._nodes) == set(node.id for node in path_nodes)
 
     # THEN executing the subgraph produces the same result as the parent graph
     x = torch.randn(1, 5)
@@ -258,7 +258,7 @@ def test_partition_graph_splits_into_spec_and_remaining_components() -> None:
     ]
 
     for partition in partitions:
-        assert set(partition._nodes.keys()) in expected_partitions
+        assert set(node.name for node in partition._nodes.values()) in expected_partitions
 
 
 def test_partition_graph_overlapping_specs_raises() -> None:
