@@ -7,7 +7,9 @@
 
 """  # noqa: D205, D212
 
+import inspect
 import json
+import logging
 import pathlib
 import pickle
 
@@ -31,6 +33,8 @@ from fastforward.mpath import MPathCollection
 from fastforward.overrides import disable_quantization
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
+
+logger = logging.getLogger(__name__)
 
 
 class ModuleIORecorder:
@@ -294,6 +298,7 @@ def maybe_extend_encodings_file(
 
     # NB: We consider that the order of the positional arguments is the same
     # for the torch module and the ONNX graph.
+    quantizer_kwargs_keys = list(quantizer_kwargs_settings.keys())
     positional_input_idx = 0
     for ort_input in ort_session_inputs:
         # First check if the input is defined as kwarg and if that is quantized.
@@ -308,6 +313,20 @@ def maybe_extend_encodings_file(
             if quant_settings is not None:
                 encoding_schema_handler.add_encoding(ort_input.name, quant_settings, False)
             positional_input_idx += 1
+        else:
+            if frame := inspect.currentframe():
+                function_name = f"{__name__}.{frame.f_code.co_name}"
+            else:
+                function_name = f"{__name__}.maybe_extend_encodings_file"
+            msg = (
+                f"[{function_name}] Input mapping not found (this is NOT necessarily an error):\n"
+                f"  • Input: '{ort_input.name}' (module: '{module_name}')\n"
+                f"  • Available kwargs: {quantizer_kwargs_keys}\n"
+                f"  • Args exhausted: range({len(quantizer_input_settings)})\n"
+                f"  • Causes: missing quantizer | pruned export | graph change\n"
+                f"  • Action: skipping encodings entry\n"
+            )
+            logger.warning(msg)
 
     # Then iterate through the graph outputs and in the case an output is assigned
     # has quantizer settings, then add them to the schema handler.
