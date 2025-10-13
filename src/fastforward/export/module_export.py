@@ -231,6 +231,10 @@ def export_modules(
         module_io_recorder.store_io_as_dict(input_output_location)
 
         paths[module_name] = module_output_path
+        # Since we are using the same handler, we need to clear the entries once the
+        # process is complete for each modules. Otherwise, there can be duplicate entries
+        # and overriding of encodings from one module to the next.
+        encoding_schema_handler.clear()
 
     return paths
 

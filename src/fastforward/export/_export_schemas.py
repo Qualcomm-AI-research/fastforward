@@ -84,6 +84,10 @@ class EncodingSchemaHandler(Protocol):
         """Store encoding in hander."""
         ...
 
+    def clear(self) -> None:
+        """Clear all encodings from handler."""
+        ...
+
 
 class LegacySchemaHandler:
     """Schema handler for legacy QNN encoding format (version 0.6.1).
@@ -179,9 +183,19 @@ class LegacySchemaHandler:
             entry.append(output_entry)
 
         if is_param:
-            self._param_encodings[name] = tuple(entry)
+            if name in self._param_encodings:
+                logger.warning(
+                    f"Parameter: {name} already present in encodings dictionary. Skipping."
+                )
+            else:
+                self._param_encodings[name] = tuple(entry)
         else:
-            self._activation_encodings[name] = tuple(entry)
+            if name in self._activation_encodings:
+                logger.warning(
+                    f"Activation: {name} already present in encodings dictionary. Skipping."
+                )
+            else:
+                self._activation_encodings[name] = tuple(entry)
 
     def build_encodings_dictionary(
         self,
@@ -191,6 +205,10 @@ class LegacySchemaHandler:
             "param_encodings": self._param_encodings,
             "activation_encodings": self._activation_encodings,
         }
+
+    def clear(self) -> None:
+        self._param_encodings.clear()
+        self._activation_encodings.clear()
 
 
 class V1SchemaHandler:
@@ -230,6 +248,8 @@ class V1SchemaHandler:
     def __init__(self) -> None:
         self._param_encodings: list[dict[str, Any]] = []
         self._activation_encodings: list[dict[str, Any]] = []
+        self._param_encodings_names: set[str] = set()
+        self._activation_encodings_names: set[str] = set()
 
     @property
     def version(self) -> Literal["1.0.0"]:
@@ -273,9 +293,21 @@ class V1SchemaHandler:
                 raise ValueError(msg)
 
         if is_param:
-            self._param_encodings.append(entry)
+            if name in self._param_encodings_names:
+                logger.warning(
+                    f"Parameter: {name} already present in encodings dictionary. Skipping."
+                )
+            else:
+                self._param_encodings.append(entry)
+                self._param_encodings_names.add(name)
         else:
-            self._activation_encodings.append(entry)
+            if name in self._activation_encodings_names:
+                logger.warning(
+                    f"Activation: {name} already present in encodings dictionary. Skipping."
+                )
+            else:
+                self._activation_encodings.append(entry)
+                self._activation_encodings_names.add(name)
 
     def build_encodings_dictionary(
         self,
@@ -285,6 +317,12 @@ class V1SchemaHandler:
             "param_encodings": self._param_encodings,
             "activation_encodings": self._activation_encodings,
         }
+
+    def clear(self) -> None:
+        self._param_encodings.clear()
+        self._activation_encodings.clear()
+        self._param_encodings_names.clear()
+        self._activation_encodings_names.clear()
 
 
 class V2SchemaHandler:
@@ -320,6 +358,7 @@ class V2SchemaHandler:
 
     def __init__(self) -> None:
         self._encodings: list[dict[str, Any]] = []
+        self._encodings_names: set[str] = set()
 
     @property
     def version(self) -> Literal["2.0.0"]:
@@ -382,12 +421,22 @@ class V2SchemaHandler:
                 msg = f"Unsupported granularity type, received: {granularity}."
                 raise ValueError(msg)
 
-        self._encodings.append(entry)
+        if name in self._encodings_names:
+            logger.warning(
+                f"Activation/Parameter: {name} already present in encodings dictionary. Skipping."
+            )
+        else:
+            self._encodings_names.add(name)
+            self._encodings.append(entry)
 
     def build_encodings_dictionary(
         self,
     ) -> dict[str, Any]:
         return {"version": self.version, "encodings": self._encodings}
+
+    def clear(self) -> None:
+        self._encodings.clear()
+        self._encodings_names.clear()
 
 
 def _compute_v2_block_parameter_shape(

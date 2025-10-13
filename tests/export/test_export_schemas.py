@@ -506,3 +506,37 @@ def _assert_dictionary_structure(dict1: dict[str, Any], dict2: dict[str, Any]) -
                 _assert_structure_matches(e1, e2)
 
     _assert_structure_matches(dict1, dict2)
+
+
+@pytest.mark.parametrize(
+    "handler_class",
+    [LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler],
+)
+def test_schema_handler_clear(handler_class: type[EncodingSchemaHandler]) -> None:
+    sample_encoding: QuantParametersDict = {
+        "scale": torch.tensor([1.0]),
+        "offset": torch.tensor([0]),
+        "num_bits": 8,
+        "data_shape": (1, 10),
+        "tile_size": (1, 10),
+    }
+
+    handler = handler_class()
+
+    handler.add_encoding("test_param", sample_encoding, is_param=True)
+    handler.add_encoding("test_activation", sample_encoding, is_param=False)
+
+    encodings_dict = handler.build_encodings_dictionary()
+    assert len(encodings_dict) > 0
+
+    handler.clear()
+    cleared_dict = handler.build_encodings_dictionary()
+
+    if isinstance(handler, V2SchemaHandler):
+        assert cleared_dict["encodings"] == []
+    elif isinstance(handler, V1SchemaHandler):
+        assert cleared_dict["param_encodings"] == []
+        assert cleared_dict["activation_encodings"] == []
+    else:
+        assert cleared_dict["param_encodings"] == {}
+        assert cleared_dict["activation_encodings"] == {}

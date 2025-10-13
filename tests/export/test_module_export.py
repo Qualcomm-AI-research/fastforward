@@ -136,3 +136,54 @@ def _check_module_input_output_has_been_stored(path: pathlib.Path, module_name: 
     assert isinstance(input_output_dictionary["input"][0], torch.Tensor)
     assert isinstance(input_output_dictionary["output"][0], torch.Tensor)
     assert input_output_dictionary["kwargs"] == {}
+
+
+@pytest.mark.parametrize(
+    "schema_handler_type", [LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler]
+)
+@pytest.mark.slow
+def test_schema_handler_cleared_between_modules(
+    simple_model: QuantizedModelFixture,
+    tmp_path: pathlib.Path,
+    schema_handler_type: type,
+) -> None:
+    # GIVEN a model dummy data and a schema handler
+    data = torch.randn(2, 32, 10)
+    model, activation_quantizers, parameter_quantizers = simple_model
+
+    estimate_ranges = initialize_quantizers_to_linear_quantizer(
+        model, activation_quantizers, parameter_quantizers
+    )
+    estimate_ranges(data)
+
+    linear_modules = ff.mpath.search("**/[cls:torch.nn.Linear]", model)
+
+    schema_handler = schema_handler_type()
+
+    # WHEN exporting the module through the export_modules function with a schema handler
+    export_modules(
+        model, (data,), linear_modules, "model", tmp_path, encoding_schema_handler=schema_handler
+    )
+
+    # THEN the stored file should be filled with relevant encodings and the handler should be cleared.
+    for layer_name in ("fc1", "fc2", "fc3"):
+        stored_encodings_file = tmp_path / "model" / layer_name / f"{layer_name}.encodings"
+
+        with open(stored_encodings_file, "r") as f:
+            stored_dictionary = json.load(f)
+
+        if not isinstance(schema_handler, V2SchemaHandler):
+            # Two parameter encodings (weight/bias)
+            assert len(stored_dictionary["param_encodings"]) == 2
+            # Two activation encodings (input/output)
+            assert len(stored_dictionary["activation_encodings"]) == 2
+        else:
+            # All the encodings are in a signel dictionary
+            assert len(stored_dictionary["encodings"]) == 4
+
+    cleared_dictionary = schema_handler.build_encodings_dictionary()
+    if not isinstance(schema_handler, V2SchemaHandler):
+        assert len(cleared_dictionary["param_encodings"]) == 0
+        assert len(cleared_dictionary["activation_encodings"]) == 0
+    else:
+        assert len(cleared_dictionary["encodings"]) == 0
