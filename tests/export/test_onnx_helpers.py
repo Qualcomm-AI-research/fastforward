@@ -34,18 +34,22 @@ def test_fix_encoding_names_adds_prefix() -> None:
     # GIVEN an encodings dictionary with tensor names
     encodings = {
         "input": {"scale": 0.1, "offset": 128},
+        "act1": {"scale": 0.1, "offset": 128},
         "conv1.weight": {"scale": 0.05, "offset": 0},
     }
     prefix = "ff_test123"
 
-    # WHEN _fix_encoding_names is called with a prefix
-    result = _fix_encoding_names(encodings, prefix)
+    name_mapping = {"conv1.weight": f"{prefix}_conv1.weight_0", "act1": f"{prefix}_act1_0"}
 
-    # THEN all keys should have the prefix and _0 suffix"""
-    expected_keys = {"ff_test123_input_0", "ff_test123_conv1.weight_0"}
+    # WHEN _fix_encoding_names is called with a prefix
+    result = _fix_encoding_names(encodings, name_mapping)
+
+    # THEN all keys should have the prefix and _0 suffix apart from the input
+    expected_keys = {f"{prefix}_conv1.weight_0", f"{prefix}_act1_0", "input"}
     assert set(result.keys()) == expected_keys
-    assert result["ff_test123_input_0"] == encodings["input"]
-    assert result["ff_test123_conv1.weight_0"] == encodings["conv1.weight"]
+    assert result[f"{prefix}_conv1.weight_0"] == encodings["conv1.weight"]
+    assert result[f"{prefix}_act1_0"] == encodings["act1"]
+    assert result["input"] == encodings["input"]
 
 
 def _create_named_mock(name: str) -> Mock:

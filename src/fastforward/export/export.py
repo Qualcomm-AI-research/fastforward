@@ -442,6 +442,7 @@ def export(
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
+    alter_node_names: bool = False,
 ) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -496,6 +497,8 @@ def export(
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
         encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
             file schema
+        alter_node_names: Whether to alter the node names in a graph. This is due to some versions
+            of QNN creating new nodes that might cause a duplicate name issue.
     """
     if torch.__version__ < "2.5":
         msg = (
@@ -550,9 +553,10 @@ def export(
 
     # Due to a QNN issue where some nodes with the same name as existing
     # ones are created we update the onnx node names as well as the encodings.
-    torch_onnx_model, quantization_logs = _rename_nodes_and_update_encodings(
-        torch_onnx_model, quantization_logs, name_prefix="ff"
-    )
+    if alter_node_names is True:
+        torch_onnx_model, quantization_logs = _rename_nodes_and_update_encodings(
+            torch_onnx_model, quantization_logs, name_prefix="ff"
+        )
     _fix_reshape_allowzero(torch_onnx_model)
     torch_onnx_model = _onnx_input_output_renaming(
         torch_onnx_model, input_names, output_names, quantization_logs, new_old_input_spec_mapping

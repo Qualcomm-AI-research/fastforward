@@ -19,14 +19,14 @@ def _rename_nodes_and_update_encodings(
     torch_onnx_model: onnxscript.ir.Model, quantization_logs: dict[str, Any], name_prefix: str
 ) -> tuple[onnxscript.ir.Model, dict[str, Any]]:
     """Rename ONNX nodes and update the encodings dictionary."""
-    torch_onnx_model = _fix_onnx_names(torch_onnx_model, name_prefix)
-    quantization_logs = _fix_encoding_names(quantization_logs, name_prefix)
+    torch_onnx_model, name_mapping = _fix_onnx_names(torch_onnx_model, name_prefix)
+    quantization_logs = _fix_encoding_names(quantization_logs, name_mapping)
     return torch_onnx_model, quantization_logs
 
 
 def _fix_onnx_names(
     torch_onnx_model: onnxscript.ir.Model, new_name_prefix: str
-) -> onnxscript.ir.Model:
+) -> tuple[onnxscript.ir.Model, dict[str, str]]:
     name_mapping: dict[str, str] = {}
 
     # Rename initializers (weights/parameters)
@@ -78,16 +78,21 @@ def _fix_onnx_names(
         ):
             graph_output.name = name_mapping[graph_output.name]
 
-    return torch_onnx_model
+    return torch_onnx_model, name_mapping
 
 
 def _fix_encoding_names(
-    encodings_dictionary: dict[str, Any], new_name_prefix: str
+    encodings_dictionary: dict[str, Any], name_mapping: dict[str, str]
 ) -> dict[str, Any]:
     new_encodings_dictionary: dict[str, Any] = {}
 
-    for key, value in encodings_dictionary.items():
-        new_encodings_dictionary[f"{new_name_prefix}_{key}_0"] = value
+    for old_name, value in encodings_dictionary.items():
+        new_name = name_mapping.get(old_name)
+        if new_name is not None:
+            new_encodings_dictionary[new_name] = value
+        else:
+            new_encodings_dictionary[old_name] = value
+
     return new_encodings_dictionary
 
 

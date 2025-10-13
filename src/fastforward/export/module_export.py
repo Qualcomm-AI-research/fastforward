@@ -114,6 +114,7 @@ def export_modules(
     enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
+    alter_node_names: bool = False,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -147,6 +148,8 @@ def export_modules(
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
         encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
             file schema
+        alter_node_names: Whether to alter the node names in a graph. This is due to some versions
+            of QNN creating new nodes that might cause a duplicate name issue.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -211,6 +214,7 @@ def export_modules(
             enable_encodings_propagation=enable_encodings_propagation,
             verbose=verbose,
             encoding_schema_handler=encoding_schema_handler,
+            alter_node_names=alter_node_names,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings
