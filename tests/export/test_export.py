@@ -352,7 +352,7 @@ def test_graph_io_renaming_valid(
     if output_names is None:
         # The `ff` prefix and `_0` suffix are added from the `_fix_onnx_names` function, to
         # deal with the problem of duplicate nodes in QNN.
-        output_names = ["ff_add_1_0", "ff_addmm_0", "ff_addmm_1_0"]
+        output_names = ["add_1", "addmm", "addmm_1"]
 
     # THEN the graph input/output names should match the user defined input/output names.
     assert graph_inputs == input_names

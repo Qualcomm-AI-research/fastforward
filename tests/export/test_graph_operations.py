@@ -86,7 +86,7 @@ def test_encodings_propagation(
 
     # THEN the encodings for new activations should be associated as displayed in the below dictionary.
     # Case 1: these are derived from other activations
-    activation_to_activation_association = {"ff_view_0": "ff_mm_0", "ff_view_1_0": "ff_mm_0"}
+    activation_to_activation_association = {"view": "mm", "view_1": "mm"}
 
     for prop_encoding, org_encoding in activation_to_activation_association.items():
         org_encoding_value = get_encoding_values_from_name(
@@ -100,9 +100,9 @@ def test_encodings_propagation(
     # THEN the encodings for new activations should be associated as displayed in the below dictionary.
     # Case 2: these are derived from parameters
     activation_to_parameter_association = {
-        "ff_permute_0": "ff_fc1.weight_0",
-        "ff_permute_1_0": "ff_fc2.weight_0",
-        "ff_permute_2_0": "ff_fc3.weight_0",
+        "permute": "fc1.weight",
+        "permute_1": "fc2.weight",
+        "permute_2": "fc3.weight",
     }
 
     for prop_encoding, org_encoding in activation_to_parameter_association.items():
