@@ -545,7 +545,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                         + "or if you want to skip loading existing quantizers use "
                         + 'overwrite_policy="skip"'
                     )
-                    raise QuantizationError()
+                    raise QuantizationError(msg)
                 elif overwrite_policy == "skip":
                     continue
                 elif overwrite_policy != "overwrite":
