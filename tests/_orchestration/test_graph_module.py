@@ -6,7 +6,6 @@ import uuid
 
 from typing import Any
 
-import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
@@ -15,12 +14,14 @@ from fastforward._orchestration.graph_module import (
     GraphModule,
     InputRef,
     NodeRef,
-    SubgraphSpec,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
-    partition_graph,
     remap_subgraph_reference,
+)
+from fastforward._orchestration.instruction_engine import (
+    ActivationDataset,
+    CallModule,
 )
 
 
@@ -222,7 +223,9 @@ def test_create_subgraph_functional_equivalence() -> None:
 
     # GIVEN the minimal node set lying in the GraphModule
     path_nodes = find_nodes_on_path(
-        graph, graph.node_ref("residual_1.linear"), graph.node_ref("sigmoid")
+        graph,
+        graph.node_ref(graph.residual_1.linear),
+        graph.node_ref(graph.sigmoid),
     )
 
     # WHEN we materialise that path as a standalone GraphModule
@@ -236,82 +239,47 @@ def test_create_subgraph_functional_equivalence() -> None:
     torch.testing.assert_close(graph(x), subgraph(x))
 
 
-def test_partition_graph_splits_into_spec_and_remaining_components() -> None:
-    # GIVEN a graph and a SubgraphSpec's that skip residual_1.add.add and residual_2.linear
-    model = Model()
-    graph = model.to_graph_module()
-    specs = [
-        SubgraphSpec(
-            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
-        ),
-        SubgraphSpec(input=graph.node_ref("residual_2.relu"), output=graph.node_ref("sigmoid")),
-    ]
-
-    # WHEN we partition the graph
-    partitions = partition_graph(graph, specs)
-
-    # THEN the returned partitions should be as we expect
-    expected_partitions = [
-        {"residual_1.relu", "residual_1.linear"},
-        {"residual_1.add.add", "residual_2.linear"},
-        {"residual_2.add.add", "sigmoid", "residual_2.relu"},
-    ]
-
-    for partition in partitions:
-        assert set(node.name for node in partition._nodes.values()) in expected_partitions
-
-
-def test_partition_graph_overlapping_specs_raises() -> None:
-    # GIVEN two SubgraphSpecs that cover exactly the same nodes (they overlap)
-    model = Model()
-    graph = model.to_graph_module()
-    specs = [
-        SubgraphSpec(
-            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
-        ),
-        SubgraphSpec(
-            input=graph.node_ref("residual_1.linear"), output=graph.node_ref("residual_1.relu")
-        ),
-    ]
-
-    # WHEN we call partition_graph with these overlapping specs
-    # THEN it should raise a ValueError indicating the conflict.
-    with pytest.raises(ValueError, match="Overlapping nodes"):
-        partition_graph(graph, specs)
-
-
 def test_find_reachable_nodes_happy_path() -> None:
     # GIVEN a GraphModule and its plan
     graph = Model().to_graph_module()
 
     # WHEN we collect nodes reachable forward from residual_1.linear
     fwd = find_reachable_nodes(
-        graph, graph.node_ref("residual_1.linear"), direction=Direction.FORWARD
+        graph,
+        graph.node_ref(graph.residual_1.linear),
+        direction=Direction.FORWARD,
     )
 
     # THEN some expected downstream nodes are present
     assert {
-        graph.node_ref("residual_1.relu"),
-        graph.node_ref("residual_2.linear"),
-        graph.node_ref("sigmoid"),
+        graph.node_ref(graph.residual_1.relu),
+        graph.node_ref(graph.residual_2.linear),
+        graph.node_ref(graph.sigmoid),
     } <= fwd
 
     # WHEN we collect nodes reachable backward from sigmoid
-    bwd = find_reachable_nodes(graph, graph.node_ref("sigmoid"), direction=Direction.BACKWARD)
+    bwd = find_reachable_nodes(
+        graph,
+        graph.node_ref(graph.sigmoid),
+        direction=Direction.BACKWARD,
+    )
 
     # THEN an early upstream node is included
-    assert graph.node_ref("residual_1.linear") in bwd
+    assert graph.node_ref(graph.residual_1.linear) in bwd
 
     # GIVEN a allowlist that omits intermediate nodes
-    allowlist = {graph.node_ref("residual_2.linear"), graph.node_ref("sigmoid")}
+    allowlist = {graph.node_ref(graph.residual_2.linear), graph.node_ref(graph.sigmoid)}
 
     # WHEN we traverse with the allowlist
     restricted = find_reachable_nodes(
-        graph, graph.node_ref("residual_2.linear"), direction=Direction.FORWARD, allowlist=allowlist
+        graph,
+        graph.node_ref(graph.residual_2.linear),
+        direction=Direction.FORWARD,
+        allowlist=allowlist,
     )
 
     # THEN traversal stops at the start node
-    assert restricted == {graph.node_ref("residual_2.linear")}
+    assert restricted == {graph.node_ref(graph.residual_2.linear)}
 
 
 def test_node_ref_identity_across_graphs() -> None:
@@ -429,3 +397,26 @@ def test_remap_subgraph_reference_attribute_ref() -> None:
 
     # THEN the two AttributeRefs should be unequal
     assert attribute_ref != alternative_attribute_ref
+
+
+def test_call_module_single_tensor_arg() -> None:
+    """Test that CallModule correctly handles a single tensor argument without unpacking tensor elements."""
+    # GIVEN a simple linear module
+    module = torch.nn.Linear(5, 3)
+
+    # GIVEN a register with a single tensor batch
+    input_id = uuid.uuid4()
+    target_id = uuid.uuid4()
+    register = {input_id: ActivationDataset([torch.randn(2, 5)])}
+
+    # GIVEN a CallModule instruction with single arg
+    instruction = CallModule(module=module, args=[input_id], kwargs={}, target=target_id)
+
+    # WHEN we execute the instruction
+    instruction.execute(register)
+
+    # THEN the output should be computed correctly
+    assert target_id in register
+    output_dataset = register[target_id]
+    assert len(output_dataset) == 1
+    assert output_dataset.batches[0].shape == (2, 3)

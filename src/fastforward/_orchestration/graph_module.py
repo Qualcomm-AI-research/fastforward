@@ -25,9 +25,19 @@ import itertools
 import uuid
 
 from collections.abc import Collection, Mapping
-from typing import Any, Iterator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+)
 
 import torch
+
+if TYPE_CHECKING:
+    from fastforward._orchestration.instruction_engine import (
+        InstructionEngine,
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -198,6 +208,7 @@ class Node:
         module: PyTorch module to execute
         args: Positional arguments (NodeRef/InputRef/Const)
         kwargs: Keyword arguments (NodeRef/InputRef/Const)
+        delegate: Optional function invoked on module depending on execution context
     """
 
     id: uuid.UUID
@@ -205,6 +216,7 @@ class Node:
     module: torch.nn.Module
     args: Collection[_BaseRef]
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
+    delegate: Callable[..., None] | None = None
 
 
 class GraphModule(torch.nn.Module):
@@ -222,7 +234,9 @@ class GraphModule(torch.nn.Module):
         self._node_refs: dict[uuid.UUID, NodeRef] = {}
         self._inputs: dict[str, InputRef] = dict()
         self._outputs: list[NodeRef | AttributeRef] = []
-        self._engine: ExecutionEngine | None = None
+
+        self._program: Any = None
+        self._engine: InstructionEngine | None = None
 
     @property
     def input_names(self) -> list[str]:
@@ -239,9 +253,12 @@ class GraphModule(torch.nn.Module):
             Iterator yielding NodeRef objects for each input node.
         """
         node = self._nodes[node_ref.id]
+        seen: set[uuid.UUID] = set()
         for arg in (*node.args, *node.kwargs.values()):
             if isinstance(arg_base := arg.unwrap_ref(), NodeRef):
-                yield arg_base
+                if arg_base.id not in seen:
+                    seen.add(arg_base.id)
+                    yield arg_base
 
     def node_outputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that use `node_ref` as input.
@@ -253,19 +270,36 @@ class GraphModule(torch.nn.Module):
             Iterator yielding NodeRef objects for each output node.
         """
         node = self._nodes[node_ref.id]
+        seen: set[uuid.UUID] = set()
         for other_node in self._nodes.values():
             for arg in (*other_node.args, *other_node.kwargs.values()):
                 if isinstance(arg_base := arg.unwrap_ref(), NodeRef) and arg_base.id == node.id:
-                    yield self._node_refs[other_node.id]
+                    if other_node.id not in seen:
+                        seen.add(other_node.id)
+                        yield self._node_refs[other_node.id]
                     break
 
-    def node_ref(self, name: str) -> NodeRef:
-        """Return the NodeRef for 'name', raising ValueError if it is unknown."""
-        for node_ref in self._node_refs.values():
-            if node_ref.name == name:
-                return node_ref
+    def node_ref(self, module: torch.nn.Module) -> NodeRef:
+        """Return the NodeRef for the given module instance.
 
-        msg = f"Unknown node name '{name}'"
+        Args:
+            module: The torch.nn.Module instance to find in the graph.
+
+        Returns:
+            NodeRef for the first node containing this module instance.
+
+        Raises:
+            ValueError: If the module is not found in the graph.
+
+        Note:
+            If the same module instance is added multiple times to the graph,
+            this method will only return the first matching NodeRef.
+        """
+        for id, node in self._nodes.items():
+            if node.module is module:
+                return NodeRef(id=id, name=node.name)
+
+        msg = f"Module {module} not found in Graphmodule."
         raise ValueError(msg)
 
     def add_input(self, name: str) -> InputRef:
@@ -429,7 +463,7 @@ class GraphModule(torch.nn.Module):
 
         return tuple(new_output_refs)
 
-    def forward(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
         """Forward inputs through the GraphModule.
 
         An internal execution engine is created on the first run, which executes nodes
@@ -441,145 +475,20 @@ class GraphModule(torch.nn.Module):
             **kwargs: Key-word inputs for the GraphModule, corresponding to the names defined with
                 `add_input`.
 
-
         Returns:
             Output tensor(s) from the graph's output nodes
         """
         if self._engine is None:
-            self._engine = ExecutionEngine(self)
-        return self._engine.run(*args, **kwargs)
+            from fastforward._orchestration.instruction_engine import (
+                InstructionEngine,
+                InstructionScheduler,
+            )
 
+            scheduler = InstructionScheduler()
+            self._program = scheduler.schedule(self)
+            self._engine = InstructionEngine()
 
-@dataclasses.dataclass
-class ExecutionPlan:
-    """Execution plan for a `GraphModule`.
-
-    The Execution Plan is a combination of the GraphModule `graph` and an (arbitrarily) ordered
-    list of Node references `order`. The plan is used by the `ExecutionEngine` to run the graph.
-
-    All nodes inside of `order` should be contained within `graph`.
-
-    Args:
-        order: List of node names in execution order
-        graph: A GraphModule that contains all `Node`s in `order`.
-    """
-
-    order: list[NodeRef]
-    graph: GraphModule
-
-    def __post_init__(self) -> None:
-        for node_ref in self.order:
-            if node_ref.id not in self.graph._nodes:
-                msg = f"Node '{node_ref.name}' not found in graph"
-                raise ValueError(msg)
-
-
-class TopologicalExecutionPlan(ExecutionPlan):
-    """Create an execution plan with nodes ordered topologically."""
-
-    @classmethod
-    def from_graph(cls, graph: GraphModule) -> TopologicalExecutionPlan:
-        """Generate an ExecutionPlan by topologically sorting the nodes of the given GraphModule."""
-        execution_order = []
-        in_degree = {
-            node_ref: len(list(graph.node_inputs(node_ref)))
-            for node_ref in graph._node_refs.values()
-        }
-
-        queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
-
-        while queue:
-            current = queue.popleft()
-            execution_order.append(current)
-
-            for dependent in graph.node_outputs(current):
-                in_degree[dependent] -= 1
-                if in_degree[dependent] == 0:
-                    queue.append(dependent)
-
-        if len(execution_order) != len(graph._nodes):
-            msg = "Circular dependency detected in graph!"
-            raise ValueError(msg)
-
-        return cls(order=execution_order, graph=graph)
-
-
-class ExecutionEngine:
-    """Executes a 'GraphModule' according to a topological execution plan."""
-
-    def __init__(self, graph: GraphModule) -> None:
-        self.graph = graph
-        self._plan: ExecutionPlan | None = None
-
-    def _bind_args(self, *args, **kwargs) -> dict[uuid.UUID, Any]:  # type: ignore[no-untyped-def]
-        """Bind input arguments to graph input names.
-
-        Maps positional args to input_names by position, or kwargs by name.
-        Returns context dict for graph execution.
-        """
-        ctx: dict[uuid.UUID, Any] = {}
-        if len(args) > len(self.graph.input_names):
-            msg = f"Expected {len(self.graph.input_names)} positional arguments, got {len(args)}"
-            raise TypeError(msg)
-
-        for arg_value, ref in zip(args, self.graph._inputs.values()):
-            ctx[ref.id] = arg_value
-
-        for kwarg_name, kwarg_value in kwargs.items():
-            if kwarg_name not in self.graph._inputs:
-                msg = f"Got an unexpected keyword argument '{kwarg_name}'"
-                raise TypeError(msg)
-
-            ref = self.graph._inputs[kwarg_name]
-            if ref.id in ctx:
-                msg = f"Got multiple values for argument '{kwarg_name}'"
-                raise TypeError(msg)
-
-            ctx[ref.id] = kwarg_value
-
-        if missing_inputs := {ref.id for ref in self.graph._inputs.values()} - ctx.keys():
-            msg = f"Missing required input arguments: {missing_inputs}"
-            raise TypeError(msg)
-
-        return ctx
-
-    def run(self, *args, **kwargs) -> Any:  # type: ignore[no-untyped-def]
-        """Execute the 'GraphModule' with given inputs.
-
-        Binds inputs to graph input names, executes nodes in topological order,
-        and returns output node results.
-
-        Args:
-            *args: Positional inputs for the GraphModule, corresponding to the names defined with
-                `add_input`.
-            **kwargs: Key-word inputs for the GraphModule, corresponding to the names defined with
-                `add_input`.
-
-        Returns:
-            Single output value or tuple of outputs depending on graph configuration
-        """
-        if self._plan is None:
-            self._plan = TopologicalExecutionPlan.from_graph(self.graph)
-
-        ctx = self._bind_args(*args, **kwargs)
-
-        for node_ref in self._plan.order:
-            node = self.graph._nodes[node_ref.id]
-
-            resolved_args = [resolve_reference(arg, ctx) for arg in node.args]
-            resolved_kwargs = {key: resolve_reference(arg, ctx) for key, arg in node.kwargs.items()}
-
-            ctx[node_ref.id] = node.module(*resolved_args, **resolved_kwargs)
-
-        results = []
-        for ref in self.graph._outputs:
-            match ref:
-                case AttributeRef():
-                    results.append(resolve_reference(ref, ctx))
-                case NodeRef(id=node_id):
-                    results.append(ctx[node_id])
-
-        return tuple(results) if len(results) > 1 else results[0]
+        return self._engine.run(self._program, *args, **kwargs)
 
 
 class Direction(enum.Enum):
@@ -756,15 +665,126 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
     return subgraph
 
 
+def topological_sort(graph: GraphModule) -> list[NodeRef]:
+    """Return nodes from a GraphModule in topological order.
+
+    Raises:
+        ValueError: If graph contains circular dependencies.
+    """
+    order = []
+    in_degree = {
+        node_ref: len(list(graph.node_inputs(node_ref))) for node_ref in graph._node_refs.values()
+    }
+
+    queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
+
+    while queue:
+        current = queue.popleft()
+        order.append(current)
+
+        for dependent in graph.node_outputs(current):
+            in_degree[dependent] -= 1
+            if in_degree[dependent] == 0:
+                queue.append(dependent)
+
+    if len(order) != len(graph._nodes):
+        msg = "Circular dependency detected in graph!"
+        raise ValueError(msg)
+
+    return order
+
+
 @dataclasses.dataclass
 class SubgraphSpec:
-    """A Specification of a subgraph."""
+    """A specification for extracting and optionally optimizing a subgraph.
+
+    When the `input` and `output` layers of a GraphModule are selected, we can create a
+    subgraph that includes all layers on the path (inclusive). We assume that if a function
+    `fn` is defined, that this function will optimize the resulting subgraph later on.
+    """
 
     input: NodeRef
     output: NodeRef
+    fn: Callable[[torch.nn.Module, Collection[Any]], None] | None = None
 
 
-def partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> list[GraphModule]:
+def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
+    """Build a composite GraphModule where partitions become nodes with delegates attached.
+
+    Partitions the input graph according to specs, then builds a new GraphModule where each
+    partition is represented as a single node with delegates from specs attached accordingly.
+
+    Args:
+        graph: Original GraphModule to partition.
+        specs: List of SubgraphSpec defining partitions with optional delegate functions.
+
+    Returns:
+        Composite GraphModule with partitions as nodes.
+    """
+    partitions = _partition_graph(graph, specs)
+
+    name_to_node_ref = {
+        node.name: ref for ref in graph._node_refs.values() for node in [graph._nodes[ref.id]]
+    }
+
+    partition_to_delegate = {
+        partition: spec.fn for partition, spec in zip(partitions[: len(specs)], specs)
+    }
+
+    node_to_partition = {
+        node_ref: partition
+        for partition in partitions
+        for node_ref in partition._node_refs.values()
+    }
+    original_outputs = {
+        ref.unwrap_ref() for ref in graph._outputs if isinstance(ref.unwrap_ref(), NodeRef)
+    }
+
+    composite = GraphModule()
+    composite_inputs: dict[str, InputRef] = {}
+    produced_refs: dict[NodeRef, NodeRef | AttributeRef] = {}
+
+    def get_composite_arg(input_name: str) -> _BaseRef:
+        """Get or create composite graph reference for partition input."""
+        if input_name in graph._inputs:
+            if input_name not in composite_inputs:
+                composite_inputs[input_name] = composite.add_input(input_name)
+            return composite_inputs[input_name]
+
+        return produced_refs[name_to_node_ref[input_name]]
+
+    def register_outputs(partition: GraphModule, partition_ref: NodeRef) -> None:
+        """Register partition outputs and add to composite graph outputs if needed."""
+        for idx, ref in enumerate(partition._outputs):
+            if not isinstance(output_ref := ref.unwrap_ref(), NodeRef):
+                continue
+
+            produced_ref = partition_ref if len(partition._outputs) == 1 else partition_ref[idx]
+            produced_refs[output_ref] = produced_ref
+            if output_ref in original_outputs:
+                composite.add_output(produced_ref)
+
+    # We have to add the partitions in topological order for correct dependency handling.
+    processed: set[GraphModule] = set()
+    for partition_idx, node_ref in enumerate(topological_sort(graph)):
+        partition = node_to_partition[node_ref]
+        if partition in processed:
+            continue
+        processed.add(partition)
+
+        partition_args = [get_composite_arg(name) for name in partition.input_names]
+        partition_ref = composite.add_node(f"partition_{partition_idx}", partition, partition_args)
+
+        if delegate_fn := partition_to_delegate.get(partition):
+            node = composite._nodes[partition_ref.id]
+            composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate_fn)
+
+        register_outputs(partition, partition_ref)
+
+    return composite
+
+
+def _partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> list[GraphModule]:
     """Partition a GraphModule into multiple subgraphs based on specifications.
 
     Creates subgraphs for each SubgraphSpec, then groups remaining unpartitioned
@@ -781,14 +801,64 @@ def partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> l
     """
     explicit_node_sets = _extract_node_sets_from_specs(graph, subgraph_specs)
 
-    remaining_nodes = set(graph._node_refs.values()) - set().union(*explicit_node_sets)
-    remaining_node_sets = _find_connected_components(graph, remaining_nodes)
-
+    explicit_nodes = set().union(*explicit_node_sets)
+    remaining_nodes = set(graph._node_refs.values()) - explicit_nodes
+    remaining_node_sets = _group_remaining_nodes_by_layer(graph, remaining_nodes, explicit_nodes)
     partitions: list[GraphModule] = []
     for node_set in (*explicit_node_sets, *remaining_node_sets):
         partitions.append(create_subgraph(graph, node_set))
 
     return partitions
+
+
+def _group_remaining_nodes_by_layer(
+    graph: GraphModule,
+    remaining_nodes: set[NodeRef],
+    explicit_nodes: set[NodeRef],
+) -> list[set[NodeRef]]:
+    """Group remaining nodes into layers based on explicit partition boundaries.
+
+    Nodes are grouped such that all nodes in a group:
+    1. Are reachable from each other without crossing explicit partition boundaries
+    2. Have the same set of explicit partitions as dependencies
+
+    Args:
+        graph: GraphModule containing all nodes.
+        remaining_nodes: Nodes not in explicit partitions.
+        explicit_nodes: Nodes that are in explicit partitions.
+
+    Returns:
+        List of node groups, each forming a partition.
+    """
+    if not remaining_nodes:
+        return []
+
+    # For each remaining node, find which explicit nodes it depends on
+    node_dependencies: dict[NodeRef, set[NodeRef]] = {}
+
+    for node in remaining_nodes:
+        # Find all explicit nodes reachable backward from this node
+        deps = find_reachable_nodes(
+            graph, node, direction=Direction.BACKWARD, allowlist=explicit_nodes
+        )
+        node_dependencies[node] = deps
+
+    # Group nodes with the same dependency signature
+    # Use tuple of sorted node ids as key since sets aren't hashable
+    groups: dict[tuple[uuid.UUID, ...], set[NodeRef]] = {}
+    for node, deps in node_dependencies.items():
+        deps_key = tuple(sorted(ref.id for ref in deps))
+        if deps_key not in groups:
+            groups[deps_key] = set()
+        groups[deps_key].add(node)
+
+    # Within each group, find connected components (forward only to respect order)
+    result: list[set[NodeRef]] = []
+    for group_nodes in groups.values():
+        components = _find_connected_components(graph, group_nodes)
+        result.extend(components)
+
+    return result
 
 
 def _extract_node_sets_from_specs(
@@ -839,7 +909,7 @@ def _find_connected_components(graph: GraphModule, nodes: set[NodeRef]) -> list[
         root = next(iter(nodes_to_visit))
 
         component = find_reachable_nodes(
-            graph, root, direction=Direction.BIDIRECTIONAL, allowlist=nodes_to_visit
+            graph, root, direction=Direction.FORWARD, allowlist=nodes_to_visit
         )
         components.append(component)
         nodes_to_visit -= component
