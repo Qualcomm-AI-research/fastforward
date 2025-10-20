@@ -14,6 +14,16 @@ from fastforward.export._export_schemas import (
     V2SchemaHandler,
 )
 
+TOP_LEVEL_QUANTIZER_ARGS = {
+    "activation_bitwidth": 16,
+    "dtype": "int",
+    "is_symmetric": True,
+    "param_bitwidth": 8,
+    "per_channel_quantization": True,
+    "quant_scheme": "min_max",
+}
+
+
 LEGACY_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
     "version": "0.6.1",
     "param_encodings": {
@@ -71,6 +81,7 @@ LEGACY_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
             },
         ),
     },
+    "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
 }
 
 
@@ -107,6 +118,7 @@ V1_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
             "offset": [-128.0],
         },
     ],
+    "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
 }
 
 V2_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
@@ -126,6 +138,7 @@ V2_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
         },
         {"name": "layer1_output", "output_dtype": "int8", "y_scale": 0.02500000037252903},
     ],
+    "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
 }
 
 V1_PERBLOCK_1D_EXPECTED = {
@@ -143,6 +156,7 @@ V1_PERBLOCK_1D_EXPECTED = {
         }
     ],
     "activation_encodings": [],
+    "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
 }
 
 V2_PERBLOCK_1D_EXPECTED = {
@@ -157,6 +171,7 @@ V2_PERBLOCK_1D_EXPECTED = {
             "block_size": 2,
         }
     ],
+    "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
 }
 
 
@@ -349,6 +364,7 @@ def test_v2_schema_perblock_1d_nested_array() -> None:
                 "block_size": 2,
             }
         ],
+        "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
     }
 
     # WHEN adding encodings with single-axis block quantization
@@ -390,6 +406,7 @@ def test_v2_schema_perblock_2d_nested_array() -> None:
                 "y_zero_point": [[-118.0, -108.0], [-98.0, -88.0], [-78.0, -68.0], [-58.0, -48.0]],
             }
         ],
+        "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
     }
 
     # WHEN adding encodings with single-axis block quantization
@@ -448,6 +465,7 @@ def test_v2_schema_perblock_3d_nested_array() -> None:
                 ],
             }
         ],
+        "quantizer_args": TOP_LEVEL_QUANTIZER_ARGS,
     }
 
     # WHEN adding encodings

@@ -41,6 +41,25 @@ class ProcessedQuantParams:
     tile_size: torch.Size
 
 
+@dataclasses.dataclass
+class QNN_TOP_LEVEL_CONFIG:
+    """Configuration for QNN quantization parameters.
+
+    These parameters are included in the exported encodings dictionary
+    as 'quantizer_args' so they do not need to be passed by CLI.
+
+    Note: These settings will only be applied to operations that
+    do not have defined quantization encodings in the exported dictionary.
+    """
+
+    activation_bitwidth: int = 16
+    dtype: str = "int"
+    is_symmetric: bool = True
+    param_bitwidth: int = 8
+    per_channel_quantization: bool = True
+    quant_scheme: str = "min_max"
+
+
 def _preprocess_quantization_params(
     encoding_value: QuantParametersDict,
 ) -> ProcessedQuantParams:
@@ -122,7 +141,8 @@ class LegacySchemaHandler:
         for the first axis.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, qnn_top_level_config: QNN_TOP_LEVEL_CONFIG | None = None) -> None:
+        self._qnn_top_level_config = qnn_top_level_config or QNN_TOP_LEVEL_CONFIG()
         self._param_encodings: dict[str, tuple[dict[str, Any], ...]] = {}
         self._activation_encodings: dict[str, tuple[dict[str, Any], ...]] = {}
 
@@ -204,6 +224,7 @@ class LegacySchemaHandler:
             "version": self.version,
             "param_encodings": self._param_encodings,
             "activation_encodings": self._activation_encodings,
+            "quantizer_args": dataclasses.asdict(self._qnn_top_level_config),
         }
 
     def clear(self) -> None:
@@ -245,7 +266,8 @@ class V1SchemaHandler:
     }
     """
 
-    def __init__(self) -> None:
+    def __init__(self, qnn_top_level_config: QNN_TOP_LEVEL_CONFIG | None = None) -> None:
+        self._qnn_top_level_config = qnn_top_level_config or QNN_TOP_LEVEL_CONFIG()
         self._param_encodings: list[dict[str, Any]] = []
         self._activation_encodings: list[dict[str, Any]] = []
         self._param_encodings_names: set[str] = set()
@@ -316,6 +338,7 @@ class V1SchemaHandler:
             "version": self.version,
             "param_encodings": self._param_encodings,
             "activation_encodings": self._activation_encodings,
+            "quantizer_args": dataclasses.asdict(self._qnn_top_level_config),
         }
 
     def clear(self) -> None:
@@ -356,9 +379,10 @@ class V2SchemaHandler:
     }
     """
 
-    def __init__(self) -> None:
+    def __init__(self, qnn_top_level_config: QNN_TOP_LEVEL_CONFIG | None = None) -> None:
         self._encodings: list[dict[str, Any]] = []
         self._encodings_names: set[str] = set()
+        self._qnn_top_level_config = qnn_top_level_config or QNN_TOP_LEVEL_CONFIG()
 
     @property
     def version(self) -> Literal["2.0.0"]:
@@ -432,7 +456,11 @@ class V2SchemaHandler:
     def build_encodings_dictionary(
         self,
     ) -> dict[str, Any]:
-        return {"version": self.version, "encodings": self._encodings}
+        return {
+            "version": self.version,
+            "encodings": self._encodings,
+            "quantizer_args": dataclasses.asdict(self._qnn_top_level_config),
+        }
 
     def clear(self) -> None:
         self._encodings.clear()
