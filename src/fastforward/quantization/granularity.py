@@ -322,11 +322,11 @@ def granularity_from_sizes(data_size: torch.Size, tile_size: torch.Size) -> Gran
     divs = torch.tensor(data_size) / torch.tensor(tile_size)
     dims = list(range(len(data_size)))
     if all(div == 1 or div == data_dim for div, data_dim in zip(divs, data_size)):
-        indices = tuple([i for i in dims if tile_size[i] == 1])
+        indices = tuple([i for i in dims if tile_size[i] == 1 and data_size[i] > 1])
         return PerChannel(indices)
 
     block_dims = tuple([i for i in dims if tile_size[i] not in (1, data_size[i])])
     block_sizes = tuple([tile_size[i] for i in block_dims])
-    per_channel_dims = tuple([i for i in dims if tile_size[i] == 1])
+    per_channel_dims = tuple([i for i in dims if tile_size[i] == 1 and data_size[i] > 1])
     strict_blocks = all(data_dim % div == 0 for div, data_dim in zip(divs, data_size))
     return PerBlock(block_dims, block_sizes, per_channel_dims, strict_blocks=strict_blocks)

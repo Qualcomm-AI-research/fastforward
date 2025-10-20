@@ -177,34 +177,37 @@ def test_per_tile_granularity(
 
 
 @pytest.mark.parametrize(
-    "gran,expected",
+    "gran,expected,data_size",
     [
         # If no expected is given, reproduced granularity equals the original
-        (ff.PerTensor(), None),
-        (ff.PerChannel(0), None),
-        (ff.PerChannel(1), None),
-        (ff.PerChannel((0, 1)), None),
-        (ff.PerChannel((1, 0)), ff.PerChannel((0, 1))),
-        (ff.PerChannel(()), ff.PerTensor()),
-        (ff.PerBlock(block_dims=(), block_sizes=()), ff.PerTensor()),
-        (ff.PerBlock(block_dims=(0), block_sizes=(4)), None),
-        (ff.PerBlock(block_dims=(1), block_sizes=(2)), None),
-        (ff.PerBlock(block_dims=(0, 1), block_sizes=(4, 4)), None),
-        (ff.PerBlock(block_dims=(1), block_sizes=(4), per_channel_dims=(0,)), None),
+        (ff.PerTensor(), None, torch.Size([16, 16])),
+        (ff.PerChannel(0), None, torch.Size([16, 16])),
+        (ff.PerChannel(1), None, torch.Size([16, 16])),
+        (ff.PerChannel((0, 1)), None, torch.Size([16, 16])),
+        (ff.PerChannel((1, 0)), ff.PerChannel((0, 1)), torch.Size([16, 16])),
+        (ff.PerChannel(()), ff.PerTensor(), torch.Size([16, 16])),
+        (ff.PerBlock(block_dims=(), block_sizes=()), ff.PerTensor(), torch.Size([16, 16])),
+        (ff.PerBlock(block_dims=(0), block_sizes=(4)), None, torch.Size([16, 16])),
+        (ff.PerBlock(block_dims=(1), block_sizes=(2)), None, torch.Size([16, 16])),
+        (ff.PerBlock(block_dims=(0, 1), block_sizes=(4, 4)), None, torch.Size([16, 16])),
+        (ff.PerBlock(block_dims=(1), block_sizes=(4), per_channel_dims=(0,)), None, torch.Size([16, 16])),
         (
             ff.PerBlock(
                 block_dims=(0), block_sizes=(5), per_channel_dims=(1,), strict_blocks=False
             ),
             None,
+            torch.Size([16, 16]),
         ),
+        (ff.PerChannel((0, 2, 3)), ff.PerChannel((0,)), torch.Size([16, 16, 1, 1])),
+        (ff.PerChannel((1, 2)), ff.PerTensor(), torch.Size([16, 1, 1])),
+        (ff.PerChannel((0, 1, 2)), ff.PerChannel((0, 1)), torch.Size([32, 64, 1])),
     ],
 )
 def test_granularity_from_sizes(
-    gran: granularity.Granularity, expected: granularity.Granularity | None
+    gran: granularity.Granularity, expected: granularity.Granularity | None, data_size: torch.Size
 ) -> None:
     # GIVEN a granularity
     expected = expected or gran
-    data_size = torch.Size([16, 16])
     gran_tile_size = gran.tile_size(data_size)
     if gran_tile_size == "data_shape":
         gran_tile_size = data_size
