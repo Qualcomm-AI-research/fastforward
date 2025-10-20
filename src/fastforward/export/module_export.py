@@ -122,6 +122,8 @@ def export_modules(
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
     alter_node_names: bool = False,
+    optimize: bool = False,
+    do_constant_folding: bool = False,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -157,6 +159,8 @@ def export_modules(
             file schema
         alter_node_names: Whether to alter the node names in a graph. This is due to some versions
             of QNN creating new nodes that might cause a duplicate name issue.
+        optimize: Choice for activating the `optimize` option to `torch.onnx.export`
+        do_constant_folding: Choice for activating the `do_constant_folding` option to `torch.onnx.export`
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -222,6 +226,8 @@ def export_modules(
             verbose=verbose,
             encoding_schema_handler=encoding_schema_handler,
             alter_node_names=alter_node_names,
+            optimize=optimize,
+            do_constant_folding=do_constant_folding,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings

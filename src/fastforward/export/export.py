@@ -443,6 +443,8 @@ def export(
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
     alter_node_names: bool = False,
+    optimize: bool = False,
+    do_constant_folding: bool = False,
 ) -> None:
     """The main export function for retrieving artifacts that can be passed to QNN.
 
@@ -499,6 +501,8 @@ def export(
             file schema
         alter_node_names: Whether to alter the node names in a graph. This is due to some versions
             of QNN creating new nodes that might cause a duplicate name issue.
+        optimize: Choice for activating the `optimize` option to `torch.onnx.export`
+        do_constant_folding: Choice for activating the `do_constant_folding` option to `torch.onnx.export`
     """
     if torch.__version__ < "2.5":
         msg = (
@@ -506,6 +510,15 @@ def export(
             "Please upgrade your PyTorch installation to use this feature."
         )
         raise ExportError(msg)
+
+    if optimize is True or do_constant_folding is True:
+        msg = (
+            "Setting either the `optimize` or `do_constant_folding` options to `True` can cause misalignments between "
+            "the ONNX graph and the quantization encodings file. Please verify that the relationship between these two "
+            "files are still valid."
+        )
+        logger.warning(msg)
+
     output_directory = pathlib.Path(output_directory)
     output_directory.mkdir(exist_ok=True, parents=True)
     onnx_location = output_directory / f"{model_name}.onnx"
@@ -547,8 +560,8 @@ def export(
     torch_onnx_model = torch.onnx.export(  # type: ignore[call-arg, unused-ignore]
         dynamo_exported_program,  # type: ignore[arg-type, unused-ignore]
         verbose=verbose,  # type: ignore[arg-type, unused-ignore]
-        optimize=False,
-        do_constant_folding=False,
+        optimize=optimize,
+        do_constant_folding=do_constant_folding,
     ).model  # type: ignore[union-attr, unused-ignore]
 
     # Due to a QNN issue where some nodes with the same name as existing
@@ -580,9 +593,10 @@ def export(
         if name in all_used_keys:
             encoding_schema_handler.add_encoding(name, encoding, is_param)
         else:
-            logger.warning(
-                f"Key: {name} not found in logged inputs/activations/parameters, it will not be include in the encondings dictionary."
-            )
+            msg = f"Key: {name} not found in logged inputs/activations/parameters, it will not be included in the encodings dictionary. "
+            if optimize is True or do_constant_folding is True:
+                msg += "This could be because either the optimize or do_constant_folding arguments were set to True."
+            logger.warning(msg)
 
     encodings_dictionary = encoding_schema_handler.build_encodings_dictionary()
 
