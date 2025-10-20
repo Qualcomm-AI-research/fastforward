@@ -190,7 +190,11 @@ def test_per_tile_granularity(
         (ff.PerBlock(block_dims=(0), block_sizes=(4)), None, torch.Size([16, 16])),
         (ff.PerBlock(block_dims=(1), block_sizes=(2)), None, torch.Size([16, 16])),
         (ff.PerBlock(block_dims=(0, 1), block_sizes=(4, 4)), None, torch.Size([16, 16])),
-        (ff.PerBlock(block_dims=(1), block_sizes=(4), per_channel_dims=(0,)), None, torch.Size([16, 16])),
+        (
+            ff.PerBlock(block_dims=(1), block_sizes=(4), per_channel_dims=(0,)),
+            None,
+            torch.Size([16, 16]),
+        ),
         (
             ff.PerBlock(
                 block_dims=(0), block_sizes=(5), per_channel_dims=(1,), strict_blocks=False

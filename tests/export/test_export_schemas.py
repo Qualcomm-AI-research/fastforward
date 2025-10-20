@@ -558,3 +558,35 @@ def test_schema_handler_clear(handler_class: type[EncodingSchemaHandler]) -> Non
     else:
         assert cleared_dict["param_encodings"] == {}
         assert cleared_dict["activation_encodings"] == {}
+
+
+@pytest.mark.parametrize(
+    "handler_class",
+    [LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler],
+)
+def test_schema_handler_missing_offset(handler_class: type[EncodingSchemaHandler]) -> None:
+    """Test that schema handlers can process encodings with missing offset field."""
+    # GIVEN a schema handler and encoding without offset
+    handler = handler_class()
+
+    encoding_without_offset: QuantParametersDict = {
+        "scale": torch.tensor([0.01]),
+        # "offset": intentionally missing
+        "num_bits": 8,
+        "data_shape": [16, 32],
+        "tile_size": [16, 32],
+    }
+
+    # WHEN adding encoding without offset field
+    handler.add_encoding("test_param", encoding_without_offset, is_param=True)
+
+    encodings_dict = handler.build_encodings_dictionary()
+    # THEN for Legacy Schema the offset is inferred
+    if isinstance(handler, LegacySchemaHandler):
+        assert encodings_dict["param_encodings"]["test_param"][0]["offset"]
+    # THEN for V1 Schema the offset is inferred
+    elif isinstance(handler, V1SchemaHandler):
+        assert encodings_dict["param_encodings"][0]["offset"]
+    # THEN for V2 Schema there is no offset field, as it is not required
+    else:
+        assert "offset" not in encodings_dict["encodings"][0]

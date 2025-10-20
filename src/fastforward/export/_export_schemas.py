@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class QuantParametersDict(TypedDict):
     scale: torch.Tensor | float
-    offset: torch.Tensor | float | int | None
+    offset: NotRequired[torch.Tensor | float | int | None]
     num_bits: float | int
     tile_size: Iterable[int]
     data_shape: Iterable[int]
@@ -64,7 +64,7 @@ def _preprocess_quantization_params(
     encoding_value: QuantParametersDict,
 ) -> ProcessedQuantParams:
     scale = encoding_value["scale"]
-    offset = encoding_value["offset"]
+    offset = encoding_value.get("offset")
     bitwidth = encoding_value["num_bits"]
     data_shape = torch.Size(encoding_value["data_shape"])
     tile_size = torch.Size(encoding_value["tile_size"])
