@@ -13,7 +13,7 @@ import re
 
 import torch
 
-from fastforward.export._export_schemas import QuantParametersDict
+from fastforward.export._export_types import QuantParametersDict
 
 QUANTIZATION_ENCODINGS_NODE_META_KEY: str = "quantization_encodings"
 

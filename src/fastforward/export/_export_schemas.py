@@ -4,58 +4,26 @@
 import dataclasses
 import logging
 
-from typing import Any, Iterable, Literal, Protocol, TypedDict
+from typing import Any, Literal, Protocol
 
 import torch
-
-from typing_extensions import NotRequired
 
 import fastforward as ff
 
 from fastforward.common import ensure_tensor
 from fastforward.export._export_helpers import _strict_cast_to_int
+from fastforward.export._export_types import (
+    LPBQConfig,
+    ProcessedQuantParams,
+    QNNDefaultConfig,
+    QuantParametersDict,
+)
+from fastforward.export._lpbq import LPBQProcessor
 from fastforward.quantization._quantizer_impl import _infer_offset
 from fastforward.quantization.affine import integer_minimum, quantization_range
 from fastforward.quantization.granularity import granularity_from_sizes
 
 logger = logging.getLogger(__name__)
-
-
-class QuantParametersDict(TypedDict):
-    scale: torch.Tensor | float
-    offset: NotRequired[torch.Tensor | float | int | None]
-    num_bits: float | int
-    tile_size: Iterable[int]
-    data_shape: Iterable[int]
-    output_dtype: NotRequired[torch.dtype]
-
-
-@dataclasses.dataclass
-class ProcessedQuantParams:
-    scale: torch.Tensor
-    offset: torch.Tensor
-    qnn_offset: torch.Tensor
-    bitwidth: int
-    is_symmetric: bool
-    data_shape: torch.Size
-    tile_size: torch.Size
-
-
-@dataclasses.dataclass(frozen=True)
-class QNNDefaultConfig:
-    """Default quantization config parameters for QNN operations/parameters missing explicit encodings.
-
-    These settings are embedded in the encodings dictionary under the `quantizer_args` key.
-    They are then used by the QNN quantizer(s) as fallback values for operations without
-    defined quantization encodings.
-    """
-
-    activation_bitwidth: int = 16
-    dtype: str = "int"
-    is_symmetric: bool = True
-    param_bitwidth: int = 8
-    per_channel_quantization: bool = True
-    quant_scheme: str = "min_max"
 
 
 def _preprocess_quantization_params(
@@ -264,12 +232,17 @@ class V1SchemaHandler:
     }
     """
 
-    def __init__(self, qnn_default_config: QNNDefaultConfig | None = None) -> None:
+    def __init__(
+        self,
+        qnn_default_config: QNNDefaultConfig | None = None,
+        lpbq_config: LPBQConfig | None = None,
+    ) -> None:
         self._qnn_default_config = qnn_default_config or QNNDefaultConfig()
         self._param_encodings: list[dict[str, Any]] = []
         self._activation_encodings: list[dict[str, Any]] = []
         self._param_encodings_names: set[str] = set()
         self._activation_encodings_names: set[str] = set()
+        self._lpbq_processor = LPBQProcessor(lpbq_config or LPBQConfig())
 
     @property
     def version(self) -> Literal["1.0.0"]:
@@ -300,14 +273,10 @@ class V1SchemaHandler:
                 )
                 msg += f"Instead received granularity: {granularity}"
                 raise ValueError(msg)
-            case ff.PerBlock():
-                block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
-                if len(block_dims) > 1 or len(block_sizes) > 1:
-                    msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}. "
-                    msg += f"Node: {name} has granularity: {granularity}."
-                    raise ValueError(msg)
-                entry["enc_type"] = "PER_BLOCK"
-                entry["block_size"] = block_sizes[0]
+            case ff.PerBlock(block_dims=(1,), per_channel_dims=(0,)):
+                entry = self._handle_per_block_encoding(name, entry, qparams, granularity)
+            case ff.PerBlock(block_dims=(0,), per_channel_dims=(1,)):
+                entry = self._handle_per_block_encoding(name, entry, qparams, granularity)
             case _:
                 msg = f"Unsupported granularity type, received: {granularity}."
                 raise ValueError(msg)
@@ -328,6 +297,31 @@ class V1SchemaHandler:
             else:
                 self._activation_encodings.append(entry)
                 self._activation_encodings_names.add(name)
+
+    def _handle_per_block_encoding(
+        self,
+        name: str,
+        entry: dict[str, Any],
+        qparams: ProcessedQuantParams,
+        granularity: ff.PerBlock,
+    ) -> dict[str, Any]:
+        block_dims, block_sizes = granularity.block_dims, granularity.block_sizes
+        if len(block_dims) > 1 or len(block_sizes) > 1:
+            msg = f"Multi-dimensional block quantization is not supported with {self.__class__.__name__}. "
+            msg += f"Node: {name} has granularity: {granularity}."
+            raise ValueError(msg)
+
+        if self._lpbq_processor.config.enabled:
+            if self._lpbq_processor.can_export_as_lpbq(qparams):
+                return self._lpbq_processor.generate_lpbq_encoding(name, qparams)
+            else:
+                msg = f"LPBQ enabled, but operation/parameter {name} cannot use LPBQ format. "
+                msg += "Requirements are not met - falling back to standard PER_BLOCK encoding"
+                logger.info(msg)
+
+        entry["enc_type"] = "PER_BLOCK"
+        entry["block_size"] = block_sizes[0]
+        return entry
 
     def build_encodings_dictionary(
         self,

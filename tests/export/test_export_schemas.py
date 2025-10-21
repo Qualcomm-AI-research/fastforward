@@ -11,11 +11,10 @@ import torch
 from fastforward.export._export_schemas import (
     EncodingSchemaHandler,
     LegacySchemaHandler,
-    QNNDefaultConfig,
-    QuantParametersDict,
     V1SchemaHandler,
     V2SchemaHandler,
 )
+from fastforward.export._export_types import QNNDefaultConfig, QuantParametersDict
 
 LEGACY_PERTENSOR_PERCHANNEL_EXPECTED_RESULTS = {
     "version": "0.6.1",
@@ -138,14 +137,14 @@ V1_PERBLOCK_1D_EXPECTED = {
     "version": "1.0.0",
     "param_encodings": [
         {
-            "name": "linear.bias",
+            "name": "linear.weight",
             "dtype": "INT",
             "enc_type": "PER_BLOCK",
-            "is_sym": False,
+            "is_sym": True,
             "bw": 8,
             "block_size": 2,
-            "scale": [0.021, 0.022, 0.023, 0.024],
-            "offset": [128.0, 120.0, 135.0, 125.0],
+            "scale": [0.021, 0.022, 0.023, 0.024, 0.025, 0.026, 0.027, 0.028],
+            "offset": [-128.0, -128.0, -128.0, -128.0, -128.0, -128.0, -128.0, -128.0],
         }
     ],
     "activation_encodings": [],
@@ -156,10 +155,14 @@ V2_PERBLOCK_1D_EXPECTED = {
     "version": "2.0.0",
     "encodings": [
         {
-            "name": "linear.bias",
-            "output_dtype": "uint8",
-            "y_scale": [0.021, 0.022, 0.023, 0.024],  # Flat list
-            "y_zero_point": [0.0, -8.0, 7.0, -3.0],
+            "name": "linear.weight",
+            "output_dtype": "int8",
+            "y_scale": [
+                [0.021, 0.022],
+                [0.023, 0.024],
+                [0.025, 0.026],
+                [0.027, 0.028],
+            ],  # Nested: 4 blocks × 2 channels
             "axis": 0,
             "block_size": 2,
         }
@@ -262,14 +265,23 @@ def test_schema_handler_perblock_1d(
     """Test PerBlock 1D quantization handling."""
     # GIVEN a schema handler and some dummy inputs
     handler = handler_class()
-    tensor_sets = {"inputs": set(), "activations": set(), "parameters": {"linear.bias"}}
+    tensor_sets = {"inputs": set(), "activations": set(), "parameters": {"linear.weight"}}
     quantization_logs: dict[str, QuantParametersDict] = {
-        "linear.bias": {
-            "scale": torch.tensor([0.021, 0.022, 0.023, 0.024]),  # 4 blocks
-            "offset": torch.tensor([128.0, 120.0, 135.0, 125.0]),
+        "linear.weight": {
+            "scale": torch.tensor([
+                0.021,
+                0.022,
+                0.023,
+                0.024,
+                0.025,
+                0.026,
+                0.027,
+                0.028,
+            ]),
+            "offset": torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),  # Symmetric
             "num_bits": 8,
-            "data_shape": [8],
-            "tile_size": [2],
+            "data_shape": [8, 2],
+            "tile_size": [2, 1],
         },
     }
 

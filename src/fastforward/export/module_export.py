@@ -26,9 +26,9 @@ from typing_extensions import override
 from fastforward.export import export
 from fastforward.export._export_schemas import (
     EncodingSchemaHandler,
-    QuantParametersDict,
     V1SchemaHandler,
 )
+from fastforward.export._export_types import QuantParametersDict
 from fastforward.mpath import MPathCollection
 from fastforward.overrides import disable_quantization
 from fastforward.quantization.affine.function import StaticAffineQuantParams
