@@ -8,6 +8,7 @@
 """  # noqa: D205, D212
 
 import collections
+import logging
 import re
 
 import torch
@@ -15,6 +16,9 @@ import torch
 from fastforward.export._export_schemas import QuantParametersDict
 
 QUANTIZATION_ENCODINGS_NODE_META_KEY: str = "quantization_encodings"
+
+
+logger = logging.getLogger()
 
 
 def propagate_encodings(
@@ -97,9 +101,17 @@ def _get_node_and_encodings_from_name(
     encodings = quantization_parameter_dict.get(name)
     if node is None:
         potential_pattern = name.replace(".", "_")
-        node_name = next(node for node in graph_nodes if re.search(potential_pattern, node))
-        node = graph_nodes.get(node_name)
-        encodings = quantization_parameter_dict.get(name)
+        node_name = next(
+            (node for node in graph_nodes if re.search(potential_pattern, node, re.IGNORECASE)),
+            None,
+        )
+        if node_name is None:
+            msg = f"Regex search did not find a name matching the node name: {name}. "
+            msg += "Encodings will not be propagated from this node."
+            logger.warning(msg)
+        else:
+            node = graph_nodes.get(node_name)
+            encodings = quantization_parameter_dict.get(name)
     return (node, encodings)
 
 
