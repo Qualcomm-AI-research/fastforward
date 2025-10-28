@@ -41,7 +41,7 @@ class ProcessedQuantParams:
     tile_size: torch.Size
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class QNN_TOP_LEVEL_CONFIG:
     """Configuration for QNN quantization parameters.
 
