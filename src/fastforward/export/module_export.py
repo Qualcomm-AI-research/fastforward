@@ -122,8 +122,7 @@ def export_modules(
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
     alter_node_names: bool = False,
-    optimize: bool = False,
-    do_constant_folding: bool = False,
+    onnx_export_options: dict[str, Any] | None = None,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -159,8 +158,12 @@ def export_modules(
             file schema
         alter_node_names: Whether to alter the node names in a graph. This is due to some versions
             of QNN creating new nodes that might cause a duplicate name issue.
-        optimize: Choice for activating the `optimize` option to `torch.onnx.export`
-        do_constant_folding: Choice for activating the `do_constant_folding` option to `torch.onnx.export`
+        onnx_export_options: Dictionary for passing setting to the `torch.onnx.export` function.
+            WARNING: Certain options (such as setting the `optimize` to True) can cause misalignments between
+            the ONNX graph and the quantization encodings file. For example, if your mode contains linear layers,
+            the associated weight transposition will be removed from the graph and the weights permanently transposed.
+            If this is combined with per channel quantization on the weights then your encodings will be pointing
+            to the wrong dimension of the weights.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -216,6 +219,8 @@ def export_modules(
         module_input_data = module_io_recorder.input
         module_input_kwargs = module_io_recorder.kwargs
 
+        onnx_options = onnx_export_options or {}
+
         export(
             module,
             module_input_data,
@@ -226,8 +231,7 @@ def export_modules(
             verbose=verbose,
             encoding_schema_handler=encoding_schema_handler,
             alter_node_names=alter_node_names,
-            optimize=optimize,
-            do_constant_folding=do_constant_folding,
+            onnx_export_options=onnx_options,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings

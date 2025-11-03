@@ -8,6 +8,7 @@ from typing import Any, Generator, TypeAlias
 
 import fastforward as ff
 import numpy as np
+import onnx
 import onnxruntime  # type: ignore[import-untyped]
 import pytest
 import torch
@@ -22,6 +23,7 @@ from fastforward.export.export import (
 from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+from packaging import version
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
 
@@ -460,3 +462,51 @@ def test_export_model_with_ctx_manager(
     output_directory = tmp_path / model_name
     # WHEN export should not fail
     export(quant_model, (data,), output_directory, model_name)
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    version.parse(torch.__version__) < version.parse("2.6.0"), reason="requires PyTorch > 2.5.0"
+)
+def test_export_with_optimization_options(
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
+) -> None:
+    # GIVEN a quantized model and some ONNX export options
+    data = torch.randn(32, 10)
+    quant_model, activation_quantizers, parameter_quantizers = simple_model
+    model_name = "test_export_with_optimization_options"
+
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+
+    estimate_model_ranges(data)
+
+    # WHEN exporting without optimization AND with optimization
+    unoptimized_dir = tmp_path / model_name / "unoptimized"
+    export(
+        quant_model,
+        (data,),
+        unoptimized_dir,
+        model_name,
+        onnx_export_options={"optimize": False, "do_constant_folding": False},
+    )
+
+    optimized_dir = tmp_path / model_name / "optimized"
+    export(
+        quant_model,
+        (data,),
+        optimized_dir,
+        model_name,
+        onnx_export_options={"optimize": True, "do_constant_folding": True},
+    )
+
+    # THEN both models should be created successfully and the optimized
+    # model should have less nodes than the unoptimized model.
+    unoptimized_model = onnx.load(unoptimized_dir / f"{model_name}.onnx")
+    optimized_model = onnx.load(optimized_dir / f"{model_name}.onnx")
+
+    unopt_nodes = len(unoptimized_model.graph.node)
+    opt_nodes = len(optimized_model.graph.node)
+
+    assert 0 < opt_nodes < unopt_nodes
