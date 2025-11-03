@@ -105,13 +105,8 @@ def _get_node_and_encodings_from_name(
             (node for node in graph_nodes if re.search(potential_pattern, node, re.IGNORECASE)),
             None,
         )
-        if node_name is None:
-            msg = f"Regex search did not find a name matching the node name: {name}. "
-            msg += "Encodings will not be propagated from this node."
-            logger.warning(msg)
-        else:
+        if node_name is not None:
             node = graph_nodes.get(node_name)
-            encodings = quantization_parameter_dict.get(name)
     return (node, encodings)
 
 
