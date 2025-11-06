@@ -22,10 +22,12 @@ RUN apt update && \
         shellcheck \
         sudo \
         vim \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -L 'https://pki.qualcomm.com/{qc_root_g2_cert.crt,ssl_v3_cert.crt,ssl_v4_cert.crt}' -o '/usr/local/share/ca-certificates/#1' \
-    && update-ca-certificates \
-    && curl -o /tmp/conda.sh -L 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -L 'https://pki.qualcomm.com/{qc_root_g2_cert.crt,ssl_v4_cert.crt}' -o '/usr/local/share/ca-certificates/#1' \
+    && update-ca-certificates
+
+RUN curl -o /tmp/conda.sh -L 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
     && mkdir -m 777 -p ${CONDA_PREFIX} \
     && setfacl -d -m o::rwx ${CONDA_PREFIX} \
     && bash /tmp/conda.sh -u -b -p ${CONDA_PREFIX} \

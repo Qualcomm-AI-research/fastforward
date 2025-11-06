@@ -1,21 +1,26 @@
 name: Clean up
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline"]
-    types:
-      - completed
+  schedule:
+    - cron: "45 2 * * SUN"
 
 jobs:
   cleanup:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
+    container:
+      image: python:3.14 # needs > 3.10 as the Docker ISO timestamp fails to parse using Python 3.10
     steps:
-      - name: Download matrix.json
+      - run: cp /tmp/certs/* /usr/local/share/ca-certificates/
+      - run: update-ca-certificates
+      - run: python3 -m pip install requests
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/docker_cleanup.py
+          sparse-checkout-cone-mode: false
+      - name: Delete outdated Docker tags of the provided image name
+        env:
+          REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
         run: |
-          sudo apt update -qq && sudo apt install -y curl jq libarchive-tools
-          set -x
-          curl -k -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L $(curl -k -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"  -L "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts" | jq -r '.artifacts[] | select( .workflow_run.id == ${{ github.event.workflow_run.id }} and .name == "matrix" ) | .archive_download_url') | bsdtar -xvf-
-
-      - name: Delete temp docker image
-        run: set -x ; curl -k -H "Authorization:Bearer ${{ secrets.DOCKER_CREDENTIALS }}" -X DELETE -L $(jq -r -c '.[] | select(.IMAGE_TAG != "latest") | ("https://" + (.IMAGE_NAME | split("/") | .[0] + "/v2/" + (.[1:] | join("/"))) + "/manifests/" + .IMAGE_TAG)' matrix.json) || true
+          DOCKER_CREDENTIALS="${{ secrets.DOCKER_CREDENTIALS }}" python3 scripts/docker_cleanup.py --workflow-run-id  ${{ github.event.workflow_run.id }}

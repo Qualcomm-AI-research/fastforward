@@ -1,7 +1,11 @@
 # Ignore everything
 *
 
-# Except few files and directories
+# Except a few files and directories
+# IMPORTANT:
+# Any file added to the Docker build context must also be included in the
+# Docker build stage in the GitHub CI workflow. This ensures consistency
+# between local builds and CI/CD builds.
 !/docker
 !pyproject.toml
 

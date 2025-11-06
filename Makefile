@@ -34,9 +34,8 @@ BOOT_DEPENDENCIES = stop
 ## List of phony targets: their recipe is always executed when invoked:
 .PHONY: build run sshd test stop
 
-
 build:
-	DOCKER_BUILDKIT=1 docker build --build-arg VER_PYTHON="$(VER_PYTHON)" --pull --cache-from "$(IMAGE_NAME)"  --file docker/Dockerfile --tag $(IMAGE_NAME):$(IMAGE_TAG) $(CURDIR)
+	docker build --build-arg VER_PYTHON="$(VER_PYTHON)" --progress=plain --pull --file docker/Dockerfile --tag $(IMAGE_NAME):$(IMAGE_TAG) $(CURDIR)
 	@echo "Successfully built the docker image $(IMAGE_NAME):$(IMAGE_TAG)"
 	docker images --format "table {{.Size}}\t{{.Repository}}\t{{.Tag}}" "$(IMAGE_NAME):$(IMAGE_TAG)"
 

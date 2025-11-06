@@ -6,6 +6,10 @@ on:
       - "pages"
 
 jobs:
+  # Approach:
+  # - Build a Docker image based on contents (=hash) of `./docker` and `./pyproject.toml`
+  # - Cleanup script periodically deletes aged tags, forcing semi-frequent rebuilds.
+  # - If the image already exists (= no modifications of the relevant files), build can be skipped.
   prepare:
     if: github.server_url != 'https://github.com'
     name: Define what docker images should be built
@@ -13,8 +17,11 @@ jobs:
     outputs:
       matrix: ${{ steps.final.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v4
       - name: Set an image tag (use only 8 first symbols)
-        run: export IMAGE_TAG="${{ github.sha }}"; echo "IMAGE_TAG=${IMAGE_TAG:0:8}" >> $GITHUB_ENV
+        run: |
+          test $(git hash-object .dockerignore) = 33dafa6305deba799c6f414184eb723f07ef8c1d # Reminder: If .dockerignore is changed, the files included in the image tag computation in the next line must be updated, too.
+          echo "IMAGE_TAG=$(git ls-tree HEAD docker pyproject.toml | git hash-object --stdin | head -c 8)" >> $GITHUB_ENV
       - env:
           VER_PYTHON: "3.10"
           VER_TORCH: "2.3"
@@ -28,7 +35,7 @@ jobs:
               IMAGE_TAG:"${{ env.IMAGE_TAG }}"
             }]')
           echo "MATRIX=$MATRIX" >> $GITHUB_ENV
-      - name: (Last step) Generage docker image names
+      - name: (Last step) Generate docker image names
         id: final
         run: |
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
@@ -50,13 +57,29 @@ jobs:
         include:
           - ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
-      - run: sudo apt update -qq && sudo apt install -y make
-      - uses: actions/checkout@v4
+      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/
+      - run: sudo update-ca-certificates
       - run: |
-          export IMAGE_TAG="${{ matrix.IMAGE_TAG }}"
-          export IMAGE_NAME="${{ matrix.IMAGE_NAME }}"
+          echo IMAGE_TAG="${{ matrix.IMAGE_TAG }}" >> $GITHUB_ENV
+          echo IMAGE_NAME="${{ matrix.IMAGE_NAME }}" >> $GITHUB_ENV
+      - name: Check if image was already built before
+        run: |
+          IMAGE_REF=$(python3 -c "netloc, path = '${IMAGE_NAME}'.split('/',1); print(f'https://{netloc}/v2/{path}/manifests/${IMAGE_TAG}')")
+          echo "Checking if ${IMAGE_REF} was already built."
+          if curl --fail --silent --location --head --header "Authorization: Bearer ${{ secrets.DOCKER_CREDENTIALS }}" --header "Accept: application/vnd.docker.distribution.manifest.v2+json" "${IMAGE_REF}" ; then
+            echo "Image ref was already built, skipping build."
+            echo SKIP_BUILD=1 >> $GITHUB_ENV
+          else
+            echo "Image ref not yet available, proceeding to build."
+          fi
+      - if: ${{ !env.SKIP_BUILD }}
+        run: sudo apt update -qq && sudo apt install -y make
+      - if: ${{ !env.SKIP_BUILD }}
+        uses: actions/checkout@v4
+      - if: ${{ !env.SKIP_BUILD }}
+        run: |
           make build
-          echo "${{ secrets.DOCKER_CREDENTIALS }}" | docker login --username "${{ secrets.DOCKER_LOGIN }}" --password-stdin ${{ vars.DOCKER_REGISTRY }}
+          echo '${{ secrets.DOCKER_CREDENTIALS }}' | docker login --username '${{ secrets.DOCKER_LOGIN }}' --password-stdin '${{ vars.DOCKER_REGISTRY }}'
           make push
 
   wheels:
