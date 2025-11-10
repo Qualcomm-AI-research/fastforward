@@ -77,43 +77,60 @@ class LPBQProcessor:
             msg = f"Parameters for {tensor_name} not suitable for LPBQ"
             raise ValueError(msg)
 
+        static_encoding = {
+            "name": tensor_name,
+            "dtype": "INT",
+            "enc_type": "LPBQ",
+            "is_sym": True,
+        }
+
+        # Extract basic parameters
         scale = processed_params.scale
         granularity = granularity_from_sizes(
             processed_params.data_shape, processed_params.tile_size
         )
 
-        scale_2d_shape = self._infer_scale_2d_shape(
-            scale.nelement(), processed_params.data_shape, granularity
-        )
+        # Retrieve bitwidth configuration
+        decompressed_bw = self.decompressed_bw
+        compressed_bw = self.compressed_bw
+
+        # Extract block size from granularity
+        block_size = cast(ff.PerBlock, granularity).block_sizes[0]
+
+        # Reshape scale tensor to 2D for processing
+        scale_2d_shape = self._infer_scale_2d_shape(processed_params.data_shape, granularity)
 
         scale_2d = scale.reshape(scale_2d_shape)
 
+        # Determine how to group blocks based on quantization
         block_grouping = self._create_block_grouping(granularity)
 
-        decompressed_bw = self.decompressed_bw
-        compressed_bw = self.compressed_bw
-        block_size = cast(ff.PerBlock, granularity).block_sizes[0]
-
+        # Apply grouped dynamic quantization to compress scales
         per_block_int_scale, per_channel_float_scale = self.grouped_dynamic_quantize(
             scale_2d, block_grouping, compressed_bw
         )
 
-        return {
-            "name": tensor_name,
-            "dtype": "INT",
-            "enc_type": "LPBQ",
-            "is_sym": True,
+        # Convert quantized/float scales to appopriate encoding format (flatten and list)
+        quantized_scales_list = per_block_int_scale.to(torch.uint32).flatten().tolist()
+        float_scales_list = per_channel_float_scale.flatten().tolist()
+
+        # Compute offset values and construct expected format (flatten list, matching the scales)
+        offset_value = float(-(2 ** (decompressed_bw - 1)))
+        offset_list = [offset_value] * len(float_scales_list)
+
+        dynamic_encoding = {
             "compressed_bw": compressed_bw,
             "bw": decompressed_bw,
             "block_size": block_size,
-            "per_block_int_scale": per_block_int_scale.to(torch.uint32).flatten().tolist(),
-            "scale": per_channel_float_scale.flatten().tolist(),
-            "offset": [float(-(2 ** (decompressed_bw - 1)))]
-            * len(per_channel_float_scale.flatten()),
+            "per_block_int_scale": quantized_scales_list,
+            "scale": float_scales_list,
+            "offset": offset_list,
         }
 
+        return {**static_encoding, **dynamic_encoding}
+
     def grouped_dynamic_quantize(
-        self, input_array: torch.Tensor, grouping: list[int], bitwidth: int
+        self, scale_2d: torch.Tensor, block_grouping: list[int], bitwidth: int
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply grouped dynamic quantization to compress scale values.
 
@@ -121,53 +138,40 @@ class LPBQProcessor:
         quantizes each group to the specified bitwidth.
 
         Args:
-            input_array: 2D array of scale values to compress
-            grouping: List defining how to group dimensions (has only two values,
+            scale_2d: 2D array of scale values to compress
+            block_grouping: List defining how to group dimensions (has only two values,
                 -1 for grouping, 1 for not grouping)
             bitwidth: Target bitwidth for compressed values
         Returns:
             Tuple of the quantized grouped scale (int) and the original grouped scale (float)
         """
-        dynamic_scale = self.get_per_group_scale_factor(input_array, grouping, bitwidth)
-        grouped_scale = self.split_blocks(input_array, grouping)
+        expanded_shape = []
 
+        # Create expanded shape for block grouping
+        for idx, block_group in enumerate(block_grouping):
+            if block_group == -1:
+                expanded_shape.extend([1, scale_2d.shape[idx]])
+            else:
+                expanded_shape.extend([scale_2d.shape[idx] // block_group, block_group])
+
+        grouped_scale = scale_2d.reshape(expanded_shape)
+
+        # Compute per-group scale factor
+        group_axes = tuple(range(1, len(grouped_scale.shape), 2))
+        max_scale = torch.amax(grouped_scale, dim=group_axes, keepdim=True)
+        dynamic_scale = max_scale / torch.tensor(
+            2**bitwidth, dtype=max_scale.dtype, device=max_scale.device
+        )
+
+        # Quantize the grouped scale
         quantized_input = torch.clamp(
             torch.round(grouped_scale / dynamic_scale), 1, 2**bitwidth
         ).to(torch.uint32)
 
-        return quantized_input.reshape(input_array.shape), dynamic_scale
-
-    def split_blocks(self, encoding: torch.Tensor, block_grouping: list[int]) -> torch.Tensor:
-        """Split encoding array to expose block structure."""
-        expanded_shape = []
-
-        for idx, block_group in enumerate(block_grouping):
-            if block_group == -1:
-                expanded_shape.extend([1, encoding.shape[idx]])
-            else:
-                expanded_shape.extend([encoding.shape[idx] // block_group, block_group])
-        return encoding.reshape(expanded_shape)
-
-    def get_per_group_scale_factor(
-        self, scale: torch.Tensor, block_grouping: list[int], scale_bitwidth: int
-    ) -> torch.Tensor:
-        """Compute per-group scale factor.
-
-        Finds the maximum value in each group and computes the scale factor
-        needed to fit the group's range into the target bitwidth.
-        """
-        grouped_scale = self.split_blocks(scale, block_grouping)
-        group_axes = tuple(range(1, len(grouped_scale.shape), 2))
-        max_scale = torch.amax(grouped_scale, dim=group_axes, keepdim=True)
-        result = max_scale / torch.tensor(
-            2**scale_bitwidth, dtype=max_scale.dtype, device=max_scale.device
-        )
-
-        return result
+        return quantized_input.reshape(scale_2d.shape), dynamic_scale
 
     def _infer_scale_2d_shape(
         self,
-        scale_1d_size: int,
         data_shape: tuple[int, ...],
         granularity: ff.granularity.Granularity,
     ) -> tuple[int, int]:
@@ -176,37 +180,26 @@ class LPBQProcessor:
         Determines how to reshape the flattened scales into 2D arrays based on data tensor
         dimensions, block size/dimension and per-channel dimension.
         """
+        block_size = cast(ff.PerBlock, granularity).block_sizes[0]
+
         match granularity:
             case ff.PerBlock(block_dims=(1,), per_channel_dims=(0,)):
-                out_channels = data_shape[0]
-                block_size = granularity.block_sizes[0]
-                blocks_per_channel = data_shape[1] // block_size
-                expected_size = out_channels * blocks_per_channel
-
-                if expected_size == scale_1d_size:
-                    return (out_channels, blocks_per_channel)
-                else:
-                    msg = f"LPBQ scale size mismatch for supported pattern: expected {expected_size}, got {scale_1d_size}."
-                    raise ValueError(msg)
+                out_channels, block_dims = data_shape[0], data_shape[1]
+                shape = (out_channels, block_dims // block_size)
 
             case ff.PerBlock(block_dims=(0,), per_channel_dims=(1,)):
-                in_channels = data_shape[1]
-                block_size = granularity.block_sizes[0]
-                blocks_per_channel = data_shape[0] // block_size
-                expected_size = in_channels * blocks_per_channel
+                in_channels, block_dims = data_shape[1], data_shape[0]
+                shape = (block_dims // block_size, in_channels)
 
-                if expected_size == scale_1d_size:
-                    return (blocks_per_channel, in_channels)
-                else:
-                    msg = f"LPBQ scale size mismatch for supported pattern: expected {expected_size}, got {scale_1d_size}."
-                    raise ValueError(msg)
-            case _:
-                msg = "Supported LPBQ configurations include PerBlock(block_dims=(1,), per_channel_dims=(0,)) "
-                msg += f"or PerBlock(block_dims=(0,), per_channel_dims=(1,)). Instead got granularity={granularity}"
-                raise ValueError(msg)
+        return shape
 
     def _create_block_grouping(self, granularity: ff.granularity.Granularity) -> list[int]:
-        """Create grouping pattern for 2D scale based on granularity."""
+        """Determine how to group blocks based on granularity.
+
+        Given a granularity, which is assumed to be PerBlock, grouping will take
+        place in the group dimension (signified by a value of -1), and not the
+        channel dimension (signified by value of 1).
+        """
         match granularity:
             case ff.PerBlock(block_dims=(1,), per_channel_dims=(0,)):
                 return [1, -1]
