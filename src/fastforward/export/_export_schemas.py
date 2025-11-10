@@ -13,7 +13,6 @@ import fastforward as ff
 from fastforward.common import ensure_tensor
 from fastforward.export._export_helpers import _strict_cast_to_int
 from fastforward.export._export_types import (
-    LPBQConfig,
     ProcessedQuantParams,
     QNNDefaultConfig,
     QuantParametersDict,
@@ -235,14 +234,14 @@ class V1SchemaHandler:
     def __init__(
         self,
         qnn_default_config: QNNDefaultConfig | None = None,
-        lpbq_config: LPBQConfig | None = None,
+        lpbq_processor: LPBQProcessor | None = None,
     ) -> None:
         self._qnn_default_config = qnn_default_config or QNNDefaultConfig()
         self._param_encodings: list[dict[str, Any]] = []
         self._activation_encodings: list[dict[str, Any]] = []
         self._param_encodings_names: set[str] = set()
         self._activation_encodings_names: set[str] = set()
-        self._lpbq_processor = LPBQProcessor(lpbq_config or LPBQConfig())
+        self._lpbq_processor = lpbq_processor
 
     @property
     def version(self) -> Literal["1.0.0"]:
@@ -311,7 +310,7 @@ class V1SchemaHandler:
             msg += f"Node: {name} has granularity: {granularity}."
             raise ValueError(msg)
 
-        if self._lpbq_processor.config.enabled:
+        if self._lpbq_processor is not None:
             if self._lpbq_processor.can_export_as_lpbq(qparams):
                 return self._lpbq_processor.generate_lpbq_encoding(name, qparams)
             else:

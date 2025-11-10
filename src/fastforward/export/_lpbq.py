@@ -2,25 +2,48 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-from typing import Any
+from typing import Any, cast
 
 import torch
 
 import fastforward as ff
 
-from fastforward.export._export_types import LPBQConfig, ProcessedQuantParams
+from fastforward.export._export_types import ProcessedQuantParams
 from fastforward.quantization.granularity import granularity_from_sizes
 
 
 class LPBQProcessor:
     """Handles conversion from PerBlock quantization to LPBQ format."""
 
-    def __init__(self, config: LPBQConfig):
-        self.config = config
+    def __init__(self, compressed_bw: int = 4, decompressed_bw: int = 8) -> None:
+        self.compressed_bw = compressed_bw
+        self.decompressed_bw = decompressed_bw
 
-    @property
-    def enabled(self) -> bool:
-        return self.config.enabled
+    def __new__(cls, compressed_bw: int = 4, decompressed_bw: int = 8) -> "LPBQProcessor":
+        """Validate LPBQ configuration parameters."""
+        if compressed_bw <= 0 or decompressed_bw <= 0:
+            msg = f"Bitwidths cannot be 0 or negative (compressed_bitwidth={compressed_bw}, "
+            msg += f"decompressed_bitwdith={decompressed_bw})"
+            raise ValueError(msg)
+
+        if compressed_bw >= decompressed_bw:
+            msg = "Compressed bitwidth cannot be larger than decompressed bitwidth "
+            msg += f"(compressed_bitwidth={compressed_bw}, "
+            msg += f"decompressed_bitwdith={decompressed_bw})"
+            raise ValueError(msg)
+
+        if compressed_bw > 8:
+            msg = f"Compressed bitwidth can be max 8, got compressed_bitwidth={compressed_bw}"
+            raise ValueError(msg)
+
+        if decompressed_bw > 32:
+            msg = (
+                f"Decompressed bitwidth can be max 32, got decompressed_bitwidth={decompressed_bw}"
+            )
+            raise ValueError(msg)
+
+        instance = super().__new__(cls)
+        return instance
 
     def can_export_as_lpbq(self, processed_params: ProcessedQuantParams) -> bool:
         """Determine if the quantization parameters can be exported as LPBQ.
@@ -32,22 +55,17 @@ class LPBQProcessor:
             - The quantization must be symmetric
             - Original bitwidth must match the compressed_bw setting
         """
-        if not self.enabled:
-            return False
-
         granularity = granularity_from_sizes(
             processed_params.data_shape, processed_params.tile_size
         )
 
-        if (
+        return (
             isinstance(granularity, ff.PerBlock)
             and len(granularity.block_dims) == 1
             and len(granularity.per_channel_dims) == 1
             and processed_params.is_symmetric is True
-            and processed_params.bitwidth == self.config.compressed_bw
-        ):
-            return True
-        return False
+            and processed_params.bitwidth == self.compressed_bw
+        )
 
     def generate_lpbq_encoding(
         self,
@@ -63,7 +81,6 @@ class LPBQProcessor:
         granularity = granularity_from_sizes(
             processed_params.data_shape, processed_params.tile_size
         )
-        assert isinstance(granularity, ff.PerBlock)
 
         scale_2d_shape = self._infer_scale_2d_shape(
             scale.nelement(), processed_params.data_shape, granularity
@@ -73,9 +90,9 @@ class LPBQProcessor:
 
         block_grouping = self._create_block_grouping(granularity)
 
-        decompressed_bw = self.config.decompressed_bw
-        compressed_bw = self.config.compressed_bw
-        block_size = granularity.block_sizes[0]
+        decompressed_bw = self.decompressed_bw
+        compressed_bw = self.compressed_bw
+        block_size = cast(ff.PerBlock, granularity).block_sizes[0]
 
         per_block_int_scale, per_channel_float_scale = self.grouped_dynamic_quantize(
             scale_2d, block_grouping, compressed_bw
@@ -149,7 +166,10 @@ class LPBQProcessor:
         return result
 
     def _infer_scale_2d_shape(
-        self, scale_1d_size: int, data_shape: tuple[int, ...], granularity: ff.PerBlock
+        self,
+        scale_1d_size: int,
+        data_shape: tuple[int, ...],
+        granularity: ff.granularity.Granularity,
     ) -> tuple[int, int]:
         """Infer 2D shape for reshaping 1D scale array based on granularity pattern.
 
@@ -185,7 +205,7 @@ class LPBQProcessor:
                 msg += f"or PerBlock(block_dims=(0,), per_channel_dims=(1,)). Instead got granularity={granularity}"
                 raise ValueError(msg)
 
-    def _create_block_grouping(self, granularity: ff.PerBlock) -> list[int]:
+    def _create_block_grouping(self, granularity: ff.granularity.Granularity) -> list[int]:
         """Create grouping pattern for 2D scale based on granularity."""
         match granularity:
             case ff.PerBlock(block_dims=(1,), per_channel_dims=(0,)):

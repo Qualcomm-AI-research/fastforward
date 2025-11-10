@@ -45,33 +45,3 @@ class QNNDefaultConfig:
     param_bitwidth: int = 8
     per_channel_quantization: bool = True
     quant_scheme: str = "min_max"
-
-
-@dataclasses.dataclass
-class LPBQConfig:
-    """Configuration for LPBQ."""
-
-    enabled: bool = False
-    compressed_bw: int = 4
-    decompressed_bw: int = 8
-
-    def __post_init__(self) -> None:
-        """Validate LPBQ configuration parameters."""
-        if self.compressed_bw <= 0 or self.decompressed_bw <= 0:
-            msg = f"Bitwidths cannot be 0 or negative (compressed_bitwidth={self.compressed_bw}, "
-            msg += f"decompressed_bitwdith={self.decompressed_bw})"
-            raise ValueError(msg)
-
-        if self.compressed_bw >= self.decompressed_bw:
-            msg = "Compressed bitwidth cannot be larger than decompressed bitwidth "
-            msg += f"(compressed_bitwidth={self.compressed_bw}, "
-            msg += f"decompressed_bitwdith={self.decompressed_bw})"
-            raise ValueError(msg)
-
-        if self.compressed_bw > 8:
-            msg = f"Compressed bitwidth can be max 8, got compressed_bitwidth={self.compressed_bw}"
-            raise ValueError(msg)
-
-        if self.decompressed_bw > 32:
-            msg = f"Decompressed bitwidth can be max 32, got decompressed_bitwidth={self.decompressed_bw}"
-            raise ValueError(msg)

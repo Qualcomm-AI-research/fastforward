@@ -6,12 +6,12 @@ import pytest
 import torch
 
 from fastforward.export._export_schemas import V1SchemaHandler
-from fastforward.export._export_types import LPBQConfig, ProcessedQuantParams, QuantParametersDict
+from fastforward.export._export_types import ProcessedQuantParams, QuantParametersDict
 from fastforward.export._lpbq import LPBQProcessor
 
 
 @pytest.mark.parametrize(
-    "config_overrides",
+    "lpbq_overrides",
     [
         {"compressed_bw": 8},  # 8 >= 8
         {"compressed_bw": 16, "decompressed_bw": 8},  # 16 > 8
@@ -19,28 +19,26 @@ from fastforward.export._lpbq import LPBQProcessor
         {"decompressed_bw": 0},  # Invalid bitwidth
     ],
 )
-def test_lpbq_invalid_config_creation(config_overrides: dict[str, Any]) -> None:
-    """Test that invalid configs raise ValueError at creation."""
-    # GIVEN some invalid LPBQ config parameters
-    config_settings: dict[str, Any] = {
-        "enabled": True,
+def test_lpbq_invalid_lpbq_processor_creation(lpbq_overrides: dict[str, Any]) -> None:
+    """Test that invalid settings raise ValueError at creation."""
+    # GIVEN some invalid LPBQ settings
+    lpbq_settings: dict[str, Any] = {
         "compressed_bw": 4,
         "decompressed_bw": 8,
     }
-    config_settings.update(config_overrides)
+    lpbq_settings.update(lpbq_overrides)
 
-    # WHEN creating a LPBQ config instance
+    # WHEN creating a LPBQ Processor instance
     # THEN an error should be raised.
     with pytest.raises(ValueError):
-        LPBQConfig(**config_settings)
+        LPBQProcessor(**lpbq_settings)
 
 
 @pytest.mark.parametrize(
-    "data_shape,tile_size,config_overrides,bitwidth,should_fail",
+    "data_shape,tile_size,lpbq_overrides,bitwidth,should_fail",
     [
-        # Cases that should fail at eligibility check (valid configs)
+        # Cases that should fail at eligibility check (valid settings)
         ((64, 128), (1, 1), {}, 4, True),  # Wrong granularity pattern
-        ((64, 128), (4, 1), {"enabled": False}, 4, True),  # LPBQ disabled
         ((64, 128), (4, 1), {"compressed_bw": 8, "decompressed_bw": 16}, 4, True),  # Wrong bitwidth
         ((64, 128), (4, 128), {}, 4, True),  # Creates PerBlock without per_channel_dims
         # Cases that should pass
@@ -51,23 +49,21 @@ def test_lpbq_invalid_config_creation(config_overrides: dict[str, Any]) -> None:
 def test_lpbq_eligibility_check(
     data_shape: tuple[int, ...],
     tile_size: tuple[int, ...],
-    config_overrides: dict[str, Any],
+    lpbq_overrides: dict[str, Any],
     bitwidth: int,
     should_fail: bool,
 ) -> None:
-    """Test LPBQ eligibility logic with valid configs."""
+    """Test LPBQ eligibility logic with valid settings."""
     # GIVEN a combination of LPBQ settings
-    config_settings: dict[str, Any] = {
-        "enabled": True,
+    lpbq_settings: dict[str, Any] = {
         "compressed_bw": 4,
         "decompressed_bw": 8,
     }
 
-    config_settings.update(config_overrides)
-    config = LPBQConfig(**config_settings)  # Should not raise ValueError
+    lpbq_settings.update(lpbq_overrides)
 
-    # WHEN creating the LPBQ encodings.
-    processor = LPBQProcessor(config)
+    # WHEN creating the LPBQ processor.
+    processor = LPBQProcessor(**lpbq_settings)  # Should not raise ValueError
 
     block_count = data_shape[0] // tile_size[0]
     channel_count = data_shape[1] // tile_size[1]
@@ -91,9 +87,8 @@ def test_lpbq_eligibility_check(
 
 def test_lpbq_scale_decomposition_correctness() -> None:
     """Test that per_block_int_scale * per_channel_float_scale == original_scale."""
-    # GIVEN a LPBQ config and a processor and the original scale values
-    config = LPBQConfig(enabled=True, compressed_bw=4, decompressed_bw=8)
-    processor = LPBQProcessor(config)
+    # GIVEN a LPBQ processor and the original scale values
+    processor = LPBQProcessor(compressed_bw=4, decompressed_bw=8)
 
     base_pattern = torch.tensor([0.01, 0.02, 0.015, 0.025] * 32, dtype=torch.float32)
     block_multipliers = 1.0 + torch.arange(16, dtype=torch.float32) * 0.1
@@ -141,7 +136,7 @@ def test_lpbq_scale_decomposition_correctness() -> None:
         (2, 16, True),
         (4, 32, True),
         (1, 8, True),
-        # Invalid combinations - should fail at config creation
+        # Invalid combinations - should fail at instance creation
         (8, 8, False),
         (16, 8, False),
         (8, 4, False),
@@ -157,28 +152,24 @@ def test_lpbq_bitwidth_combinations(
     compressed_bw: int, decompressed_bw: int, should_be_valid: bool
 ) -> None:
     """Test various compressed/decompressed bitwidth combinations."""
-    # GIVEN an incorrect LPBQ config
-    # WHEN attempting to create LPBQ config instance
+    # GIVEN an incorrectly setup LPBQProcessor
+    # WHEN attempting to create LPBQProcessor instance
     # THEN a ValueError is returned.
     if not should_be_valid:
-        # Invalid configs should fail at creation
+        # Invalid settings should fail at creation
         with pytest.raises(ValueError):
-            config = LPBQConfig(
-                enabled=True,
+            processor = LPBQProcessor(
                 compressed_bw=compressed_bw,
                 decompressed_bw=decompressed_bw,
             )
     else:
-        # GIVEN a valid LPBQ config
-        config = LPBQConfig(
-            enabled=True,
+        # GIVEN valid LPBQ settings
+        processor = LPBQProcessor(
             compressed_bw=compressed_bw,
             decompressed_bw=decompressed_bw,
         )
 
-        # WHEN creating an LPBQ process and generating LPBQ encodings
-        processor = LPBQProcessor(config)
-
+        # WHEN generating LPBQ encodings
         scales = torch.rand(16, 128) * 0.1 + 0.001
         processed_params = _create_test_params(
             scales, torch.Size((64, 128)), torch.Size((4, 1)), compressed_bw
@@ -204,16 +195,13 @@ def test_lpbq_bitwidth_combinations(
     ],
 )
 def test_lpbq_compression_decompression(compressed_bw: int, decompressed_bw: int) -> None:
-    # GIVEN a valid LPBQ config
-    config = LPBQConfig(
-        enabled=True,
+    # GIVEN a LPBQ Processor
+    processor = LPBQProcessor(
         compressed_bw=compressed_bw,
         decompressed_bw=decompressed_bw,
     )
 
-    # WHEN creating an LPBQ process and generating LPBQ encodings
-    processor = LPBQProcessor(config)
-
+    # WHEN generating LPBQ encodings
     scales = torch.rand(16, 128) * 0.1 + 0.001
     processed_params = _create_test_params(
         scales, torch.Size((64, 128)), torch.Size((4, 1)), compressed_bw
@@ -235,9 +223,9 @@ def test_lpbq_compression_decompression(compressed_bw: int, decompressed_bw: int
 def test_v1_schema_handler_perblock_to_lpbq_conversion() -> None:
     """Test that V1SchemaHandler automatically converts eligible PerBlock to LPBQ."""
     # GIVEN a V1SchemaHandler with LPBQ enabled
-    lpbq_config = LPBQConfig(enabled=True, compressed_bw=4, decompressed_bw=8)
+    lpbq_processor = LPBQProcessor(compressed_bw=4, decompressed_bw=8)
 
-    handler = V1SchemaHandler(lpbq_config=lpbq_config)
+    handler = V1SchemaHandler(lpbq_processor=lpbq_processor)
 
     # GIVEN PerBlock quantization parameters that meet LPBQ criteria
     data_shape = (64, 128)
@@ -277,9 +265,9 @@ def test_v1_schema_handler_perblock_to_lpbq_conversion() -> None:
 
 def test_v1_schema_handler_perblock_fallback_when_lpbq_disabled() -> None:
     """Test that PerBlock stays as PER_BLOCK when LPBQ is disabled."""
-    # GIVEN a V1SchemaHandler with LPBQ disabled
-    lpbq_config = LPBQConfig(enabled=False)  # Disabled!
-    handler = V1SchemaHandler(lpbq_config=lpbq_config)
+    # GIVEN a V1SchemaHandler with LPBQ disabled (default value for
+    # lpbq_processor is None)
+    handler = V1SchemaHandler()
 
     # GIVEN the same PerBlock parameters as above
     encoding_dict: QuantParametersDict = {
@@ -306,12 +294,11 @@ def test_v1_schema_handler_perblock_fallback_when_lpbq_disabled() -> None:
 def test_v1_schema_handler_perblock_fallback_when_lpbq_ineligible() -> None:
     """Test that PerBlock falls back to PER_BLOCK when LPBQ criteria aren't met."""
     # GIVEN a V1SchemaHandler with LPBQ enabled
-    lpbq_config = LPBQConfig(
-        enabled=True,
+    lpbq_processor = LPBQProcessor(
         compressed_bw=4,
         decompressed_bw=8,
     )
-    handler = V1SchemaHandler(lpbq_config=lpbq_config)
+    handler = V1SchemaHandler(lpbq_processor=lpbq_processor)
 
     # GIVEN PerBlock parameters that DON'T meet LPBQ criteria (wrong bitwidth)
     encoding_dict: QuantParametersDict = {
