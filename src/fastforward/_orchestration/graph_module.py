@@ -915,3 +915,42 @@ def _find_connected_components(graph: GraphModule, nodes: set[NodeRef]) -> list[
         nodes_to_visit -= component
 
     return components
+
+
+class LocalOptimizer:
+    """Partitions a GraphModule and applies optimization functions to selected subgraphs.
+
+    Args:
+        graph: GraphModule to partition and optimize.
+        specs: Partition boundaries with optional optimization functions. Each spec
+            defines input/output nodes and an optional function to optimize that subgraph.
+        scheduler: Optional scheduler for transforming the composite graph into a program.
+            Must be provided together with engine. Defaults to InstructionScheduler.
+        engine: Optional engine for executing the program. Must be provided together
+            with scheduler. Defaults to InstructionEngine.
+
+    Raises:
+        ValueError: If only one of scheduler or engine is provided.
+    """
+
+    def __init__(self, graph: GraphModule, specs: list[SubgraphSpec]):
+        from fastforward._orchestration.instruction_engine import (
+            InstructionEngine,
+            InstructionScheduler,
+        )
+
+        scheduler = InstructionScheduler()
+        engine = InstructionEngine()
+
+        composite_graph = build_composite_graph(graph, specs)
+        self._program = scheduler.schedule(composite_graph)
+        self._engine = engine
+
+    def optimize(self, *args: Any, **kwargs: Any) -> None:
+        """Execute optimization across all partitions.
+
+        Args:
+            *args: Positional inputs for the graph.
+            **kwargs: Keyword inputs for the graph.
+        """
+        self._engine.run(self._program, *args, **kwargs)

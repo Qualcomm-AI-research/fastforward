@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import functools
 import uuid
 
-from typing import Any
+from typing import Any, Iterable
 
+import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
@@ -13,7 +15,9 @@ from fastforward._orchestration.graph_module import (
     Direction,
     GraphModule,
     InputRef,
+    LocalOptimizer,
     NodeRef,
+    SubgraphSpec,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
@@ -399,6 +403,72 @@ def test_remap_subgraph_reference_attribute_ref() -> None:
     assert attribute_ref != alternative_attribute_ref
 
 
+def test_local_error_opt() -> None:
+    """Integration test for Local Error Optimization."""
+    # GIVEN a Model with two residual blocks and its GraphModule representation
+    model = Model()
+    graph = model.to_graph_module()
+
+    # GIVEN we store initial weights for comparison
+    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
+    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
+
+    # GIVEN a simple calibration dataset
+    calibration_data = [torch.randn(1, 5) for _ in range(10)]
+
+    # GIVEN a dummy optimization function
+    def dummy(module: torch.nn.Module, dataset: Iterable[torch.Tensor], lr: float) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=lr)
+
+        for batch in dataset:
+            optim.zero_grad()
+
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+
+            optim.step()
+
+    # GIVEN a SubgraphSpec that targets only the first residual's linear layer
+    specs = [
+        SubgraphSpec(
+            graph.node_ref(model.residual_1.linear),
+            graph.node_ref(model.residual_1.linear),
+            fn=functools.partial(dummy, lr=0.1),
+        )
+    ]
+
+    # WHEN we run the LocalOptimizer on the calibration data
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN only residual_1's linear weights should have changed
+    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
+    assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
+
+
+def test_local_optimization_overlapping_specs_raises() -> None:
+    """Test that LocalOptimizer rejects overlapping specs."""
+    # GIVEN two SubgraphSpecs that overlap
+    model = Model()
+    graph = model.to_graph_module()
+    specs = [
+        SubgraphSpec(
+            input=graph.node_ref(graph.residual_1.linear),
+            output=graph.node_ref(graph.residual_1.relu),
+        ),
+        SubgraphSpec(
+            input=graph.node_ref(graph.residual_1.linear),
+            output=graph.node_ref(graph.residual_1.relu),
+        ),
+    ]
+
+    # WHEN we try to create an optimizer with overlapping specs
+    # THEN it should raise a ValueError
+    with pytest.raises(ValueError, match="Overlapping nodes"):
+        LocalOptimizer(graph, specs)
+
+
 def test_call_module_single_tensor_arg() -> None:
     """Test that CallModule correctly handles a single tensor argument without unpacking tensor elements."""
     # GIVEN a simple linear module
@@ -420,3 +490,296 @@ def test_call_module_single_tensor_arg() -> None:
     output_dataset = register[target_id]
     assert len(output_dataset) == 1
     assert output_dataset.batches[0].shape == (2, 3)
+
+
+def test_local_optimization_with_attribute_refs() -> None:
+    """Test LocalOptimizer with AttributeRef outputs in subgraphs."""
+    # GIVEN a model that returns multiple outputs
+    model = MultiOutputModel()
+    graph = model.to_graph_module()
+
+    # GIVEN we track initial weights
+    initial_linear1_weight = model.linear1.weight.data.clone()
+    initial_linear2_weight = model.linear2.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [torch.randn(1, 5) for _ in range(5)]
+
+    # GIVEN an optimization function
+    def optimize_first_output(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN a spec targeting the first output path
+    specs = [
+        SubgraphSpec(
+            input=graph.node_ref(graph.linear1),
+            output=graph.node_ref(graph.relu),
+            fn=optimize_first_output,
+        )
+    ]
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN linear1 should be optimized
+    assert not torch.allclose(initial_linear1_weight, model.linear1.weight.data)
+    # THEN linear2 should remain unchanged
+    assert torch.allclose(initial_linear2_weight, model.linear2.weight.data)
+
+
+def test_local_optimization_multiple_non_overlapping_specs() -> None:
+    """Test LocalOptimizer with multiple non-overlapping specs."""
+    # GIVEN a model with two residual blocks
+    model = Model()
+    graph = model.to_graph_module()
+
+    # GIVEN we track initial weights
+    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
+    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [torch.randn(1, 5) for _ in range(5)]
+
+    # GIVEN a simple optimization function
+    def simple_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN two non-overlapping specs
+    specs = [
+        SubgraphSpec(
+            input=graph.node_ref(graph.residual_1.linear),
+            output=graph.node_ref(graph.residual_1.linear),
+            fn=simple_opt,
+        ),
+        SubgraphSpec(
+            input=graph.node_ref(graph.residual_2.linear),
+            output=graph.node_ref(graph.residual_2.linear),
+            fn=simple_opt,
+        ),
+    ]
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN both residual blocks should be optimized
+    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
+    assert not torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
+
+
+def test_local_optimization_entire_graph() -> None:
+    """Test LocalOptimizer when spec covers entire graph."""
+    # GIVEN a model and its graph
+    model = Model()
+    graph = model.to_graph_module()
+
+    # GIVEN we track all weights
+    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
+    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [torch.randn(1, 5) for _ in range(5)]
+
+    # GIVEN an optimization function
+    def full_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN a spec covering the entire graph
+    specs = [
+        SubgraphSpec(
+            input=graph.node_ref(graph.residual_1.linear),
+            output=graph.node_ref(graph.sigmoid),
+            fn=full_opt,
+        )
+    ]
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN all weights should be optimized
+    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
+    assert not torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
+
+
+def test_local_optimization_with_const_inputs() -> None:
+    """Test LocalOptimizer with Const inputs in the graph."""
+    # GIVEN a graph with a constant input
+    const_value = torch.randn(5)
+    graph = GraphModule()
+    input_ref = graph.add_input("input")
+    const_node = graph.add_node("const_node", ConstReturn(), args=[input_ref, Const(const_value)])
+    linear = torch.nn.Linear(5, 3)
+    linear_node = graph.add_node("linear", linear, args=[const_node])
+    graph.add_output(linear_node)
+
+    # GIVEN we track initial weights
+    initial_weight = linear.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [None for _ in range(5)]
+
+    # GIVEN an optimization function
+    def opt_with_const(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN a spec targeting the linear layer
+    specs = [
+        SubgraphSpec(
+            input=linear_node,
+            output=linear_node,
+            fn=opt_with_const,
+        )
+    ]
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN the linear layer should be optimized
+    assert not torch.allclose(initial_weight, linear.weight.data)
+
+
+def test_local_optimization_no_specs() -> None:
+    """Test LocalOptimizer with no optimization specs (only partitioning)."""
+    # GIVEN a model and its graph
+    model = Model()
+    graph = model.to_graph_module()
+
+    # GIVEN we track initial weights
+    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
+    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [torch.randn(1, 5) for _ in range(5)]
+
+    # GIVEN no optimization specs (empty list)
+    specs: list[SubgraphSpec] = []
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN no weights should change (only forward passes)
+    assert torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
+    assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
+
+
+def test_local_optimization_with_kwargs() -> None:
+    """Test LocalOptimizer with modules that use keyword arguments."""
+    # GIVEN a graph with keyword arguments
+    graph = GraphModule()
+    input_ref = graph.add_input("input")
+    const_value = torch.randn(5)
+    const_node = graph.add_node(
+        "const_node",
+        ConstReturnKwargs(),
+        args=[input_ref],
+        kwargs={"const_kwarg": Const(const_value)},
+    )
+    linear = torch.nn.Linear(5, 3)
+    linear_node = graph.add_node("linear", linear, args=[const_node])
+    graph.add_output(linear_node)
+
+    # GIVEN we track initial weights
+    initial_weight = linear.weight.data.clone()
+
+    # GIVEN calibration data
+    calibration_data = [None for _ in range(5)]
+
+    # GIVEN an optimization function
+    def opt_kwargs(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN a spec targeting the linear layer
+    specs = [
+        SubgraphSpec(
+            input=linear_node,
+            output=linear_node,
+            fn=opt_kwargs,
+        )
+    ]
+
+    # WHEN we run the optimizer
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data)
+
+    # THEN the linear layer should be optimized
+    assert not torch.allclose(initial_weight, linear.weight.data)
+
+
+def test_local_optimization_with_multiple_inputs() -> None:
+    """Test LocalOptimizer with graph that has multiple inputs."""
+    # GIVEN a graph with multiple inputs
+    graph = GraphModule()
+    input1 = graph.add_input("input1")
+    input2 = graph.add_input("input2")
+
+    linear = torch.nn.Linear(5, 5)
+    (merged,) = graph.add_subgraph("add", Add().to_graph_module(), [input1, input2])
+    output = graph.add_node("linear", linear, args=[merged])
+    graph.add_output(output)
+
+    # GIVEN we track initial weights
+    initial_weight = linear.weight.data.clone()
+
+    # GIVEN calibration data with separate iterables for each input
+    calibration_data_input1 = [torch.randn(1, 5) for _ in range(5)]
+    calibration_data_input2 = [torch.randn(1, 5) for _ in range(5)]
+
+    # GIVEN an optimization function
+    def multi_input_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
+        for batch in dataset:
+            optim.zero_grad()
+            output = module(batch)
+            loss = (output**2).mean()
+            loss.backward()
+            optim.step()
+
+    # GIVEN a spec targeting the linear layer
+    specs = [
+        SubgraphSpec(
+            input=output,
+            output=output,
+            fn=multi_input_opt,
+        )
+    ]
+
+    # WHEN we run the optimizer with multiple input datasets
+    optimizer = LocalOptimizer(graph, specs)
+    optimizer.optimize(calibration_data_input1, calibration_data_input2)
+
+    # THEN the linear layer should be optimized
+    assert not torch.allclose(initial_weight, linear.weight.data)
