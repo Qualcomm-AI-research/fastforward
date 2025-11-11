@@ -311,15 +311,10 @@ class V1SchemaHandler:
             raise ValueError(msg)
 
         if self._lpbq_processor is not None:
-            if self._lpbq_processor.can_export_as_lpbq(qparams):
-                return self._lpbq_processor.generate_lpbq_encoding(name, qparams)
-            else:
-                msg = f"LPBQ enabled, but operation/parameter {name} cannot use LPBQ format. "
-                msg += "Requirements are not met - falling back to standard PER_BLOCK encoding"
-                logger.info(msg)
-
-        entry["enc_type"] = "PER_BLOCK"
-        entry["block_size"] = block_sizes[0]
+            return self._lpbq_processor.generate_lpbq_encoding(name, qparams)
+        else:
+            entry["enc_type"] = "PER_BLOCK"
+            entry["block_size"] = block_sizes[0]
         return entry
 
     def build_encodings_dictionary(

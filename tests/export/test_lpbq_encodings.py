@@ -73,14 +73,12 @@ def test_lpbq_eligibility_check(
         scales, torch.Size(data_shape), torch.Size(tile_size), bitwidth
     )
 
-    can_apply = processor.can_export_as_lpbq(processed_params)
-
     # THEN the incorrect cases should raise an error.
     if should_fail:
-        assert not can_apply
+        with pytest.raises(ValueError):
+            processor.generate_lpbq_encoding("test", processed_params)
     # THEN the correct cases should create a new LPBQ encoding.
     else:
-        assert can_apply
         encoding = processor.generate_lpbq_encoding("test", processed_params)
         assert encoding["enc_type"] == "LPBQ"
 
@@ -175,8 +173,7 @@ def test_lpbq_bitwidth_combinations(
             scales, torch.Size((64, 128)), torch.Size((4, 1)), compressed_bw
         )
 
-        # THEN LPQV encodings can be created
-        assert processor.can_export_as_lpbq(processed_params)
+        # THEN LPBQ encodings can be created
         encoding = processor.generate_lpbq_encoding("test_valid", processed_params)
         assert encoding["enc_type"] == "LPBQ"
 
@@ -289,36 +286,6 @@ def test_v1_schema_handler_perblock_fallback_when_lpbq_disabled() -> None:
     assert param_encoding["block_size"] == 4
     assert "compressed_bw" not in param_encoding
     assert "per_block_int_scale" not in param_encoding
-
-
-def test_v1_schema_handler_perblock_fallback_when_lpbq_ineligible() -> None:
-    """Test that PerBlock falls back to PER_BLOCK when LPBQ criteria aren't met."""
-    # GIVEN a V1SchemaHandler with LPBQ enabled
-    lpbq_processor = LPBQProcessor(
-        compressed_bw=4,
-        decompressed_bw=8,
-    )
-    handler = V1SchemaHandler(lpbq_processor=lpbq_processor)
-
-    # GIVEN PerBlock parameters that DON'T meet LPBQ criteria (wrong bitwidth)
-    encoding_dict: QuantParametersDict = {
-        "scale": torch.rand(16 * 128) * 0.1 + 0.001,  # blocks × channels
-        "offset": torch.zeros(16 * 128),
-        "num_bits": 8,  # Wrong bitwidth - doesn't match compressed_bw=4
-        "tile_size": (4, 1),  # Valid LPBQ pattern but wrong bitwidth
-        "data_shape": (64, 128),
-    }
-
-    # WHEN adding the encoding
-    handler.add_encoding("test_weight", encoding_dict, is_param=True)
-
-    # THEN it should fall back to standard PER_BLOCK
-    result = handler.build_encodings_dictionary()
-    param_encoding = next(e for e in result["param_encodings"])
-
-    assert param_encoding["enc_type"] == "PER_BLOCK"
-    assert param_encoding["block_size"] == 4
-    assert "compressed_bw" not in param_encoding
 
 
 def _create_test_params(
