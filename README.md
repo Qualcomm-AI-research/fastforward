@@ -34,7 +34,7 @@ change.
 
 - **More Quantization Methods**: Implementations of quantization methods such
   as Omniquant, GPTQ, SpinQuant, and others.
-- **Autoquant**: Automatic conversions any non-quantized PyTorch model into an
+- **Autoquant**: Automatic conversions of any non-quantized PyTorch model into an
   eager-mode quantized model.
 - **Export**: Generation of deployment artifacts for functional quantized neural
   networks.
