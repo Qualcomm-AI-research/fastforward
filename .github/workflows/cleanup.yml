@@ -8,8 +8,6 @@ jobs:
   cleanup:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
-    container:
-      image: python:3.14 # needs > 3.10 as the Docker ISO timestamp fails to parse using Python 3.10
     steps:
       - run: cp /tmp/certs/* /usr/local/share/ca-certificates/
       - run: update-ca-certificates
@@ -23,4 +21,4 @@ jobs:
         env:
           REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
         run: |
-          DOCKER_CREDENTIALS="${{ secrets.DOCKER_CREDENTIALS }}" python3 scripts/docker_cleanup.py --workflow-run-id  ${{ github.event.workflow_run.id }}
+          DOCKER_CREDENTIALS="${{ secrets.DOCKER_CREDENTIALS }}" python3 scripts/docker_cleanup.py

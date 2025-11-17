@@ -9,7 +9,8 @@ jobs:
   # Approach:
   # - Build a Docker image based on contents (=hash) of `./docker` and `./pyproject.toml`
   # - Cleanup script periodically deletes aged tags, forcing semi-frequent rebuilds.
-  # - If the image already exists (= no modifications of the relevant files), build can be skipped.
+  # - This also means that all Docker images we build are considered ephemeral.
+  # - If the image already exists in the hub (= no modifications of the relevant files), build can be skipped.
   prepare:
     if: github.server_url != 'https://github.com'
     name: Define what docker images should be built

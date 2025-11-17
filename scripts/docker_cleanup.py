@@ -39,6 +39,8 @@ import base64
 import datetime
 import json
 import os
+import re
+import sys
 import typing
 import urllib.request
 
@@ -215,7 +217,7 @@ class DockerImageQuery:
         print(f"Querying Docker registry for list of all tags for image `{image_name}`.")
         resp = self._make_request(image_name=image_name, endpoint="/tags/list")
         tags = resp.content_as_json()["tags"]
-        assert is_list_str(tags)
+        assert _is_list_str(tags)
         return tags
 
     def _get_manifest_for_tag(self, tag: str, image_name: str) -> Response:
@@ -240,7 +242,7 @@ class DockerImageQuery:
         resp = self._make_request(image_name=image_name, endpoint=f"/blobs/{digest}")
         created_at_str = resp.content_as_json()["created"]
 
-        created_at = datetime.datetime.fromisoformat(created_at_str)
+        created_at = _from_isoformat(created_at_str)
         now = datetime.datetime.now(tz=created_at.tzinfo)
 
         delta = abs(now - created_at)
@@ -266,7 +268,17 @@ class DockerImageQuery:
         )
 
 
-def is_list_str(val: typing.Any) -> typing.TypeGuard[list[str]]:
+def _from_isoformat(ts: str) -> datetime.datetime:
+    """Parse 8601 timestamp with nanosecond precision (Python 3.10 compatibility helper)."""
+    if sys.version_info <= (3, 10):
+        # Truncate fractional seconds to 6 digits and make TZ format compatible.
+        modified = re.sub(r"\.(\d{6})\d+", r".\1", ts).replace("Z", "+00:00")
+    else:
+        modified = ts
+    return datetime.datetime.fromisoformat(modified)
+
+
+def _is_list_str(val: typing.Any) -> typing.TypeGuard[list[str]]:
     """Type guards val through an explicit runtime check."""
     return isinstance(val, list) and all(isinstance(x, str) for x in val)
 
