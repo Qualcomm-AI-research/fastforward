@@ -17,8 +17,15 @@ jobs:
           sparse-checkout: |
             scripts/docker_cleanup.py
           sparse-checkout-cone-mode: false
-      - name: Delete outdated Docker tags of the provided image name
+      - name: Delete outdated Docker tags of all of FastForward's images
         env:
           REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
         run: |
           DOCKER_CREDENTIALS="${{ secrets.DOCKER_CREDENTIALS }}" python3 scripts/docker_cleanup.py
+      - name: Retrigger a build based on the code of the current default branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "cleanup-trigger"
+          git commit -m "This branch is based off the default branch and only serves to trigger image rebuilds". --allow-empty
+          git push --force --set-upstream origin HEAD
