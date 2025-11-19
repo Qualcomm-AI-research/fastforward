@@ -11,8 +11,7 @@ Workflow:
        matching a prefix
     2. Retrieves all tags for each matching image
     3. Inspects each tag's manifest to determine the image creation timestamp
-    4. Deletes images that exceed the retention period, while preserving protected
-       tags (e.g., "latest")
+    4. Deletes all images that exceed the retention period
 
 The cleanup strategy enables:
     - Reusing recent build images across CI runs (reducing build time from ~20min to ~1min)
@@ -31,7 +30,6 @@ Environment Variables:
 
 Security:
     - Requires proper authentication via environment variables
-    - Protected tags cannot be deleted
 """
 
 import argparse
@@ -44,7 +42,6 @@ import sys
 import typing
 import urllib.request
 
-_PROTECTED_TAGS = ["latest"]
 _OUTDATED_AFTER = datetime.timedelta(weeks=1)
 _DOCKER_IMAGE_PREFIX_ENV = "DOCKER_IMAGE"
 _MAX_AFFECTED_IMAGES = 10
@@ -191,9 +188,6 @@ class DockerImageQuery:
                 + ", ".join(tags)
             )
             for tag in tags:
-                if tag in _PROTECTED_TAGS:
-                    print(f"Skipping protected tag `{tag}`.")
-                    continue
                 print(f"Inspecting tag {tag}.")
                 manifest = self._get_manifest_for_tag(tag=tag, image_name=image_name)
                 if self._is_manifest_outdated(manifest=manifest, image_name=image_name):
