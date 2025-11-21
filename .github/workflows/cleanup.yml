@@ -9,9 +9,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     steps:
-      - run: cp /tmp/certs/* /usr/local/share/ca-certificates/
-      - run: update-ca-certificates
-      - run: python3 -m pip install requests
+      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/ && sudo update-ca-certificates
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
@@ -19,9 +17,13 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Delete outdated Docker tags of all of FastForward's images
         env:
-          REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
+          DOCKER_LOGIN: "${{ secrets.DOCKER_LOGIN }}" 
+          DOCKER_CREDENTIALS: "${{ secrets.DOCKER_CREDENTIALS }}"
+          DOCKER_IMAGE: "${{ vars.DOCKER_IMAGE }}"
+          DOCKER_REGISTRY: "${{ vars.DOCKER_REGISTRY }}"
+          SSL_CERT_FILE: "/etc/ssl/certs/ca-certificates.crt"
         run: |
-          DOCKER_CREDENTIALS="${{ secrets.DOCKER_CREDENTIALS }}" python3 scripts/docker_cleanup.py
+           python3 scripts/docker_cleanup.py
       - name: Retrigger a build based on the code of the current default branch
         run: |
           git config user.name "github-actions[bot]"

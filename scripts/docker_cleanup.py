@@ -24,6 +24,7 @@ Usage:
     $ python docker_cleanup.py [--dry-run] [--only-one]
 
 Environment Variables:
+    DOCKER_IMAGE: Docker image base name
     DOCKER_REGISTRY: Docker registry hostname
     DOCKER_LOGIN: Docker registry username
     DOCKER_CREDENTIALS: Docker registry password or access token
@@ -43,8 +44,7 @@ import typing
 import urllib.request
 
 _OUTDATED_AFTER = datetime.timedelta(weeks=1)
-_DOCKER_IMAGE_PREFIX_ENV = "DOCKER_IMAGE"
-_MAX_AFFECTED_IMAGES = 10
+_MAX_AFFECTED_IMAGES = 50
 
 
 def main() -> None:
@@ -84,14 +84,6 @@ def _get_docker_auth() -> tuple[str, str]:
     return user, password
 
 
-def _get_image_prefix() -> str:
-    image_prefix = os.getenv(_DOCKER_IMAGE_PREFIX_ENV)
-    if not image_prefix:
-        msg = f"Expected `{_DOCKER_IMAGE_PREFIX_ENV}` to be set."
-        raise EnvironmentError(msg)
-    return image_prefix
-
-
 class Response:
     """Encapsulates an HTTP response allowing multiple reads of the content."""
 
@@ -118,7 +110,7 @@ class DockerImageQuery:
         self.docker_registry = os.environ["DOCKER_REGISTRY"]
         self.docker_hub_api = f"https://{self.docker_registry}/v2"
         self.user, self.pw = _get_docker_auth()
-        self.image_name_prefix = _get_image_prefix()
+        self.image_name_prefix = os.environ["DOCKER_IMAGE"]
 
     def _query_image_names(self) -> tuple[str, ...]:
         """Queries the Docker registry catalog for all images we built.
@@ -264,7 +256,7 @@ class DockerImageQuery:
 
 def _from_isoformat(ts: str) -> datetime.datetime:
     """Parse 8601 timestamp with nanosecond precision (Python 3.10 compatibility helper)."""
-    if sys.version_info <= (3, 10):
+    if sys.version_info < (3, 11):
         # Truncate fractional seconds to 6 digits and make TZ format compatible.
         modified = re.sub(r"\.(\d{6})\d+", r".\1", ts).replace("Z", "+00:00")
     else:
