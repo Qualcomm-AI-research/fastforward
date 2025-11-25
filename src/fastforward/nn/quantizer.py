@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import collections
+import copy
 import logging
 
 from types import SimpleNamespace
@@ -309,6 +310,25 @@ class Quantizer(torch.nn.Module):
             for key, value in super().__getstate__().items()
             if key not in ignored_attribures and not isinstance(value, torch.Tensor)
         }
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        """Create a deepcopy circumventing custom __setstate_ and __getstate__."""
+        if id(self) in memo:
+            return memo[id(self)]  # type: ignore[no-any-return]
+
+        # Use torch.nn.Module.__getstate__
+        state = super().__getstate__()
+        new_state = copy.deepcopy(state, memo)
+
+        cls = type(self)
+        new_obj = cls.__new__(cls)
+
+        # Use torch.nn.Module.__setstate__ to set state on new_obj
+        super(Quantizer, new_obj).__setstate__(new_state)
+
+        memo[id(self)] = new_obj
+
+        return new_obj
 
     def quantize(self, data: torch.Tensor) -> torch.Tensor:
         """Quantize the input data.

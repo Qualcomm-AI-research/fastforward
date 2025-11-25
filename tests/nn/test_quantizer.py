@@ -8,7 +8,7 @@ from typing import Any, Callable
 import pytest
 import torch
 
-from fastforward.nn.quantizer import Quantizer, QuantizerMetadata, Tag
+from fastforward.nn.quantizer import Quantizer, QuantizerMetadata, QuantizerStub, Tag
 
 
 def test_register_override() -> None:
@@ -203,3 +203,15 @@ def test_quantizer_state_with_overrides() -> None:
     # WHEN getting raise an exception
     with pytest.raises(RuntimeError):
         quantizer.__getstate__()
+
+
+def test_quantizer_deepcopy() -> None:
+    quantizer = QuantizerStub()
+    quantizer.sub_module = torch.nn.Module()
+    setattr(quantizer, "attr", 5)
+
+    cloned_quantizer = copy.deepcopy(quantizer)
+    assert hasattr(cloned_quantizer, "sub_module")
+    assert cloned_quantizer.sub_module is not quantizer.sub_module
+    assert hasattr(cloned_quantizer, "attr")
+    assert cloned_quantizer.attr == 5
