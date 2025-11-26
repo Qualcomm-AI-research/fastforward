@@ -31,7 +31,7 @@ class SourceContextMemberError(AttributeError):
     """Exception for missing member in `SourceContext`."""
 
 
-_PassesT: TypeAlias = Sequence[libcst.CSTTransformer]
+_PassesT: TypeAlias = Sequence[libcst.CSTTransformer | type[libcst.CSTTransformer]]
 
 
 class SourceContext:

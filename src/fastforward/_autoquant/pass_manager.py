@@ -46,7 +46,13 @@ class PassResult(Generic[libcst.CSTNodeT]):
     altered: bool
 
 
-_PassT: TypeAlias = libcst.CSTTransformer | libcst.CSTVisitor | MetadataTransformer
+_PassT: TypeAlias = (
+    libcst.CSTTransformer
+    | libcst.CSTVisitor
+    | MetadataTransformer
+    | type[libcst.CSTTransformer]
+    | type[libcst.CSTVisitor]
+)
 
 
 class PassManager:
@@ -95,7 +101,7 @@ class PassManager:
                     + f"{self._pass_repr(pass_.transformer)}, {pass_.wrap_in_module})"
                 )
             case _:
-                return str(pass_)  # type: ignore[unreachable]
+                return str(pass_)
 
     def _validate(self, result: PassResult[libcst.CSTNodeT]) -> None:
         pass
@@ -165,6 +171,12 @@ class PassManager:
             raise ValueError(msg)
 
         return PassResult(cst=result_cst, altered=result_cst is not cst)
+
+    @_apply_pass.register
+    def _apply_metadata_callable(
+        self, pass_: type, cst: libcst.CSTNodeT
+    ) -> PassResult[libcst.CSTNodeT]:
+        return self._apply_pass(pass_(), cst)
 
 
 class PassManagerError(Exception):

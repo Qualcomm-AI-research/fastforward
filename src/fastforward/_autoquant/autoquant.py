@@ -189,7 +189,9 @@ def default_source_context(use_type_inference: bool = True) -> pysource.SourceCo
     )
 
 
-def default_preprocessing_passes(use_type_inferece: bool = True) -> Sequence[libcst.CSTTransformer]:
+def default_preprocessing_passes(
+    use_type_inferece: bool = True,
+) -> Sequence[libcst.CSTTransformer | type[libcst.CSTTransformer]]:
     MarkReplacementCandidatesPass = (
         passes.ExtendedMarkReplacementCandidates()
         if use_type_inferece
@@ -198,7 +200,7 @@ def default_preprocessing_passes(use_type_inferece: bool = True) -> Sequence[lib
     return [
         passes.ConvertSemicolonJoinedStatements(),
         MarkReplacementCandidatesPass,
-        passes.IsolateReplacementCandidates(),
+        passes.IsolateReplacementCandidates,
         passes.WrapAssignments(),
     ]
 
