@@ -168,7 +168,6 @@ print(quantized_linear)
 
 # %% [markdown]
 # ⏩ We can see that our QuantizedLinear has the same representation as the Linear, but instead there are four quantizer children added.
-#   - In this case the bias_quantizer is `None` since this layer does not have a bias.
 #
 # ⏩ Observe that all quantizers are set to be `QuantizerStub`s. These are no-op placeholders that can be replaced with quantizers if desired.
 #
@@ -251,11 +250,11 @@ print(f"{quantized_output.dequantize()=}")
 # %% [markdown]
 # # 4. Quantized Models
 # In the previous section we showed how to quantize a module:
-#   1. Turn an unquantized module into an unquantized module
+#   1. Turn an unquantized module into a quantized module
 #   2. Replace the desired QuantizerStubs with the desired Quantizers
 #   3. Estimate the quantizer ranges by passing data trough the model.
 #
-# Performing step 1. and 2. were quite laborious in our above example. Since we have to repeat these steps for every layer in the model, we have created helper tools to automatate these tasks. In the next section we will show how to use `autoquant` tool to automatically replace all layers with their Quantized counterparts (step 1.) and how to use the `QuantizationConfig` to automatically insert quantizers into the model (step 2.).
+# Performing step 1. and 2. were quite laborious in our above example. Since we have to repeat these steps for every layer in the model, we have created helper tools to automate these tasks. In the next section we will show how to use `autoquant` tool to automatically replace all layers with their Quantized counterparts (step 1.) and how to use the `QuantizationConfig` to automatically insert quantizers into the model (step 2.).
 
 # %% [markdown]
 # ⏩ We start by making a simple unquantized MLP model.
@@ -370,7 +369,7 @@ config.initialize(quantized_model)
 quantized_model
 
 # %% [markdown]
-# ✅ Observe that the quantizers in our quantized model are now setup up as expected.
+# ✅ Observe that the quantizers in our quantized model are now setup as expected.
 #
 # ⏩ All we have to do now is estimate the ranges for the quantizers, and we can use the quantized model!
 
