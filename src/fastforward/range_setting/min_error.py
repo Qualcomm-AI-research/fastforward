@@ -241,7 +241,7 @@ class MinErrorGridRangeEstimator(RangeEstimator[OverrideHandle, Quantizer]):
     A grid search as defined by `search_grid_generator` is performed to find the candidate
     that minimizes the given error.
 
-    `update_range_policy` specifies how often the the quantization grids should
+    `update_range_policy` specifies how often the quantization grids should
     be updated. If no such policy is provided, the ranges are updated after
     every step.
 
