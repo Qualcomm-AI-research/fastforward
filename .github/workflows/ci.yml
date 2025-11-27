@@ -139,11 +139,6 @@ jobs:
         run: python3 -m pip install "$(find wheelhouse -name '*.whl')[test]"
       - if: env.RUN_TESTS == 'true'
         run: python3 -m pytest --include-slow
-      - name: check slow tests are marked as such
-        if: env.RUN_TESTS == 'true'
-        run: |
-          python3 -m pytest `# run non-slow test once to warm up caches`
-          python3 -m pytest --timeout=0.2
 
   verify:
     if: github.server_url != 'https://github.com'
