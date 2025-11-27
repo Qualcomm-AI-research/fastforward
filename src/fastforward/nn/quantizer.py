@@ -422,6 +422,11 @@ class Quantizer(torch.nn.Module):
                 with torch.no_grad():
                     param.materialize(loaded_param.shape)
 
+    def reset_parameters(self) -> None:
+        """Reset parameters to state after quantizer initialization."""
+        msg = f"{type(self).__name__} does not implement 'reset_parameters'"
+        raise NotImplementedError(msg)
+
 
 class QuantizerStub(Quantizer):
     """Stub class for Quantizers.
@@ -484,3 +489,7 @@ class QuantizerStub(Quantizer):
             bool: True, indicating this is a stub.
         """
         return True
+
+    @typing_override
+    def reset_parameters(self) -> None:
+        pass

@@ -409,3 +409,13 @@ def test_linear_quantizer_unsigned_quantizer() -> None:
     quantizer.quantization_range = (-4.0, 16.0)
     assert quantizer.offset is None
     assert quantizer.symmetric
+
+
+def test_reset_parameters() -> None:
+    quantizer = fastforward.nn.LinearQuantizer(num_bits=8)
+    quantizer.quantization_range = -1, 1
+    assert not isinstance(quantizer.scale, torch.nn.UninitializedParameter)
+    assert not isinstance(quantizer.offset, torch.nn.UninitializedBuffer)
+    quantizer.reset_parameters()
+    assert isinstance(quantizer.scale, torch.nn.UninitializedParameter)
+    assert isinstance(quantizer.offset, torch.nn.UninitializedBuffer)

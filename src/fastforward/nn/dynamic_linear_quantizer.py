@@ -83,3 +83,7 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
             specific to this quantizer.
         """
         return AffineQuantizationFunction
+
+    @override
+    def reset_parameters(self) -> None:
+        pass

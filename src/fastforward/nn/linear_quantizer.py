@@ -141,7 +141,8 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         device: The device used for parameters
     """
 
-    offset: torch.Tensor | torch.nn.Parameter | None
+    scale: torch.nn.Parameter | torch.nn.UninitializedParameter
+    offset: torch.Tensor | torch.nn.Parameter | None | torch.nn.UninitializedBuffer
 
     def __init__(
         self,
@@ -188,12 +189,24 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
         #     arXiv preprint arXiv:2106.08295 (2021).
         return "offset" in self._buffers or self.offset is None
 
+    @override
     def reset_parameters(self) -> None:
-        """Reset parameters to scale=1, offset=0."""
         with torch.no_grad():
-            self.scale.fill_(1.0)
+            self.scale = torch.nn.UninitializedParameter(
+                device=self.scale.device,  # type: ignore[call-arg]
+                dtype=self.scale.dtype,
+            )
             if self.offset is not None:
-                _ = self.offset.fill_(0.0)
+                if isinstance(self.offset, torch.nn.Parameter):
+                    self.offset = torch.nn.UninitializedParameter(
+                        device=self.offset.device,  # type: ignore[call-arg]
+                        dtype=self.offset.dtype,
+                    )
+                else:
+                    self.offset = torch.nn.UninitializedBuffer(
+                        device=self.offset.device,  # type: ignore[call-arg]
+                        dtype=self.offset.dtype,
+                    )
 
     def _initialize_parameters(self, parameter_dimensionality: int) -> None:  # pylint: disable=arguments-differ
         """Internal method to materialize the uninitialized parameters of the quantizer."""
@@ -202,10 +215,11 @@ class LinearQuantizer(AbstractAffineQuantizer["affine_quant.StaticAffineQuantPar
             offset_shape = scale_shape if self.offset is not None else None
 
             with torch.no_grad():
-                self.scale.materialize(scale_shape)
+                self.scale.materialize(scale_shape)  # type: ignore[union-attr]
+                self.scale.fill_(1.0)
                 if offset_shape and self.offset is not None:
                     self.offset.materialize(offset_shape)  # type: ignore[attr-defined]
-            self.reset_parameters()
+                    self.offset.fill_(0.0)
 
     @override
     def extra_repr(self) -> str:
