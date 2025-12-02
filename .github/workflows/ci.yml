@@ -23,43 +23,25 @@ jobs:
         run: |
           test $(git hash-object .dockerignore) = 33dafa6305deba799c6f414184eb723f07ef8c1d # Reminder: If .dockerignore is changed, the files included in the image tag computation in the next line must be updated, too.
           echo "IMAGE_TAG=$(git ls-tree HEAD docker pyproject.toml | git hash-object --stdin | head -c 8)" >> $GITHUB_ENV
-      - env:
-          VER_PYTHON: "3.10"
-          VER_TORCH: "2.3"
-          VER_CUDA: "12.1"
-        run: |
-          MATRIX=$(echo "${MATRIX:-[]}" | jq -c '. += [{
-              VER_PYTHON:"${{ env.VER_PYTHON }}",
-              VER_TORCH:"${{ env.VER_TORCH }}",
-              VER_CUDA:"${{ env.VER_CUDA }}",
-              IMAGE_NAME:"${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_IMAGE }}-py${{ env.VER_PYTHON}}-pt${{env.VER_TORCH}}-cu${{ env.VER_CUDA }}",
-              IMAGE_TAG:"${{ env.IMAGE_TAG }}"
-            }]')
-          echo "MATRIX=$MATRIX" >> $GITHUB_ENV
-      - name: (Last step) Generate docker image names
+      - name: Generate matrix
         id: final
-        run: |
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "$MATRIX" > matrix.json
-      - name: Save matrix for follow up workflows
-        uses: actions/upload-artifact@v3
-        with:
-          name: matrix
-          path: matrix.json
+        env:
+          DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+          DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE }}
+        run: python3 scripts/ci_write_matrix_json.py
 
   docker:
     if: github.server_url != 'https://github.com'
-    name: Build docker images
+    name: Build Docker images for pytest and verify jobs
     runs-on: ubuntu-latest
     needs:
       - prepare
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - ${{ fromJSON(needs.prepare.outputs.matrix) }}
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
-      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/
-      - run: sudo update-ca-certificates
+      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/ && sudo update-ca-certificates
       - run: |
           echo IMAGE_TAG="${{ matrix.IMAGE_TAG }}" >> $GITHUB_ENV
           echo IMAGE_NAME="${{ matrix.IMAGE_NAME }}" >> $GITHUB_ENV
@@ -74,9 +56,42 @@ jobs:
             echo "Image ref not yet available, proceeding to build."
           fi
       - if: ${{ !env.SKIP_BUILD }}
-        run: sudo apt update -qq && sudo apt install -y make
+        uses: actions/checkout@v4
+      - if: ${{ !env.SKIP_BUILD }}
+        run: |
+          docker build -f docker/Dockerfile.ci -t "${IMAGE_NAME}:${IMAGE_TAG}" --build-arg VER_PYTHON="${{ matrix.VER_PYTHON }}" --build-arg VER_CUDA="${{ matrix.VER_CUDA }}" --build-arg VER_TORCH="${{ matrix.VER_TORCH}}" .
+          echo '${{ secrets.DOCKER_CREDENTIALS }}' | docker login --username '${{ secrets.DOCKER_LOGIN }}' --password-stdin '${{ vars.DOCKER_REGISTRY }}'
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+
+  docker-dev:
+    if: github.server_url != 'https://github.com'
+    name: Check if Docker dev env can be built
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+    strategy:
+      matrix:
+        include:
+          - ${{ fromJSON(needs.prepare.outputs.matrix)[0] }}
+    env:
+      IMAGE_NAME: "${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_IMAGE }}-dev"
+      IMAGE_TAG: "${{ matrix.IMAGE_TAG }}"
+    steps:
+      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+      - name: Check if image was already built before
+        run: |
+          IMAGE_REF=$(python3 -c "netloc, path = '${IMAGE_NAME}'.split('/',1); print(f'https://{netloc}/v2/{path}/manifests/${IMAGE_TAG}')")
+          echo "Checking if ${IMAGE_REF} was already built."
+          if curl --fail --silent --location --head --header "Authorization: Bearer ${{ secrets.DOCKER_CREDENTIALS }}" --header "Accept: application/vnd.docker.distribution.manifest.v2+json" "${IMAGE_REF}" ; then
+            echo "Image ref was already built, skipping build."
+            echo SKIP_BUILD=1 >> $GITHUB_ENV
+          else
+            echo "Image ref not yet available, proceeding to build."
+          fi
       - if: ${{ !env.SKIP_BUILD }}
         uses: actions/checkout@v4
+      - if: ${{ !env.SKIP_BUILD }}
+        run: sudo apt update -qq && sudo apt install -y make
       - if: ${{ !env.SKIP_BUILD }}
         run: |
           make build
@@ -99,25 +114,24 @@ jobs:
           name: "fastforward"
           path: "wheelhouse/*.whl"
           if-no-files-found: error
-          retention-days: 1d
+          retention-days: 1
 
   pytest:
     if: github.server_url != 'https://github.com'
-    name: tests
+    name: "tests (py${{ matrix.VER_PYTHON }}, torch${{ matrix.VER_TORCH }}, cuda${{ matrix.VER_CUDA }})"
     runs-on: k8s-gpu
-    needs: [wheels]
-    container:
-      image: python:${{ matrix.VER_PYTHON }}
+    needs: [prepare,wheels,docker]
     strategy:
       fail-fast: false
       matrix:
-        VER_PYTHON:
-          - "3.10"
-          - "3.12"
-        VER_TORCH:
-          - "2.4"
-          - "2.5"
-          - "2.6"
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    container:
+      image: "${{ matrix.IMAGE_NAME }}:${{ matrix.IMAGE_TAG }}"
+      credentials:
+        username: ${{ secrets.DOCKER_LOGIN }}
+        password: ${{ secrets.DOCKER_CREDENTIALS }}
+    env:
+      VER_CUDA: ${{ matrix.VER_CUDA }}
     steps:
       - name: check if tests can be skipped
         run: echo "RUN_TESTS=${{ github.ref_name == github.event.repository.default_branch || matrix.VER_PYTHON == '3.10' }}" >> $GITHUB_ENV
@@ -133,10 +147,7 @@ jobs:
           name: "fastforward"
           path: "wheelhouse"
       - if: env.RUN_TESTS == 'true'
-        run: |
-          python3 -m pip install torch==${{ matrix.VER_TORCH }} --extra-index-url https://download.pytorch.org/whl/cu124
-      - if: env.RUN_TESTS == 'true'
-        run: python3 -m pip install "$(find wheelhouse -name '*.whl')[test]"
+        run: python3 -m pip install --no-cache-dir --no-dependencies "$(find wheelhouse -name '*.whl')"
       - if: env.RUN_TESTS == 'true'
         run: python3 -m pytest --include-slow
 
@@ -153,10 +164,13 @@ jobs:
         username: ${{ secrets.DOCKER_LOGIN }}
         password: ${{ secrets.DOCKER_CREDENTIALS }}
     strategy:
+      fail-fast: false
       matrix:
         JOB:
           - NAME: mypy
+            PREPARE: "python3 -m pip install '.[docs]'"
           - NAME: shell-check
+            PREPARE: "apt update && apt install --yes shellcheck"
           - NAME: format
             ARGS: --check
           - NAME: lint
@@ -166,7 +180,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: "Setup verify step"
+        run: |
+          ${{ matrix.JOB.PREPARE || ':' }}
       - name: "verify --${{ matrix.JOB.NAME }} -- ${{ matrix.JOB.ARGS }}"
         run: |
-          . /etc/profile.d/conda.sh
           ./scripts/verify --${{ matrix.JOB.NAME }} -- ${{ matrix.JOB.ARGS }}

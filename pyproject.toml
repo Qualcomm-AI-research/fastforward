@@ -48,7 +48,6 @@ docs = [
   "mkdocs-material",
   "mkdocs-section-index",
   "mkdocstrings-python",
-  "ruff",
   "sentencepiece",
   "transformers==4.46.3",
   "tqdm",

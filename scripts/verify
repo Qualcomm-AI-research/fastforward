@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2317 # shellcheck does not realize that the functions we define are all
+#   called dynamically
 set -euo pipefail
 
 ####################################################################################################

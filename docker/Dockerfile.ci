@@ -1,0 +1,8 @@
+ARG VER_PYTHON=3.10
+FROM python:${VER_PYTHON}
+
+ARG VER_TORCH=2.4.0 \
+    VER_CUDA=11.8.0
+
+RUN --mount=type=bind,rw,target=/docker-ctx export CUDA_VERSION_NO_DOT=$(echo "${VER_CUDA}" | tr -d .) && python3 -m pip install --extra-index-url https://download.pytorch.org/whl/cu${CUDA_VERSION_NO_DOT} --no-cache-dir torch==${VER_TORCH} '/docker-ctx[test]' && python3 -m pip uninstall -y fastforward
+CMD ["/bin/bash"]
