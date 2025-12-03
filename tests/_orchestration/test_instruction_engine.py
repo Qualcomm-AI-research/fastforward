@@ -2,16 +2,13 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
-import uuid
 
 from typing import Any, Collection
 
 import pytest
 import torch
 
-from fastforward._orchestration.graph_module import (
-    GraphModule,
-)
+from fastforward._orchestration.graph_module import GraphModule, _BaseRef
 from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
     CallModule,
@@ -63,15 +60,15 @@ def test_prepare_input_register_validates_inputs() -> None:
     z = graph.add_input("z")
 
     # WHEN we bind with mixed positional and keyword args
-    register: dict[uuid.UUID, ActivationDataset] = InstructionEngine.prepare_input_register(
+    register: dict[_BaseRef, ActivationDataset] = InstructionEngine.prepare_input_register(
         graph._inputs, args=(10, 20), kwargs={"z": 30}
     )
 
     # THEN all inputs are wrapped as ActivationDatasets with correct IDs
     assert len(register) == 3
-    assert register[x.id].batches == [10]
-    assert register[y.id].batches == [20]
-    assert register[z.id].batches == [30]
+    assert register[x].batches == [10]
+    assert register[y].batches == [20]
+    assert register[z].batches == [30]
 
     # AND missing inputs raise TypeError
     with pytest.raises(TypeError, match="Missing required inputs"):
@@ -102,15 +99,15 @@ def test_instruction_generator_linear_layers() -> None:
     # THEN the engine contains: CallModule(node1), CallModule(node2), ReturnOutputs
     assert len(engine.instructions) == 3
     assert isinstance(engine.instructions[0], CallModule)
-    assert engine.instructions[0].args == [inputs.id]
-    assert engine.instructions[0].target == node_1.id
+    assert engine.instructions[0].args == [inputs]
+    assert engine.instructions[0].target == node_1
 
     assert isinstance(engine.instructions[1], CallModule)
-    assert engine.instructions[1].args == [node_1.id]
-    assert engine.instructions[1].target == node_2.id
+    assert engine.instructions[1].args == [node_1]
+    assert engine.instructions[1].target == node_2
 
     assert isinstance(engine.instructions[2], ReturnOutputs)
-    assert engine.instructions[2].outputs == [node_2.id]
+    assert engine.instructions[2].outputs == [node_2]
 
 
 def test_instruction_generator_with_attribute_ref() -> None:
@@ -134,15 +131,15 @@ def test_instruction_generator_with_attribute_ref() -> None:
     # THEN the engine contains: CallModule(tuple_node), LoadAttribute(extract [0]), CallModule(identity), ReturnOutputs
     assert len(engine.instructions) == 4
     assert isinstance(engine.instructions[0], CallModule)
-    assert engine.instructions[0].target == tuple_node.id
+    assert engine.instructions[0].target == tuple_node
 
     assert isinstance(engine.instructions[1], LoadAttribute)
-    assert engine.instructions[1].source == tuple_node.id
+    assert engine.instructions[1].source == tuple_node
     assert engine.instructions[1].attribute == 0
 
     assert isinstance(engine.instructions[2], CallModule)
     assert engine.instructions[2].args == [engine.instructions[1].target]
-    assert engine.instructions[2].target == identity_node.id
+    assert engine.instructions[2].target == identity_node
 
     assert isinstance(engine.instructions[3], ReturnOutputs)
 
@@ -174,10 +171,10 @@ def test_instruction_generator_with_optimization_spec() -> None:
     assert engine.instructions[0].fn is dummy_optimize
 
     assert isinstance(engine.instructions[1], CallModule)
-    assert engine.instructions[1].target == node_1.id
+    assert engine.instructions[1].target == node_1
 
     assert isinstance(engine.instructions[2], CallModule)
-    assert engine.instructions[2].target == node_2.id
+    assert engine.instructions[2].target == node_2
 
     assert isinstance(engine.instructions[3], ReturnOutputs)
 
@@ -235,12 +232,10 @@ def test_lifetime_management_pass() -> None:
     assert len(instructions) == 5
     assert isinstance(instructions[0], CallModule)
     assert (
-        isinstance(instructions[1], DeleteRegisterEntries)
-        and instructions[1].targets[0] == inputs.id
+        isinstance(instructions[1], DeleteRegisterEntries) and instructions[1].targets[0] == inputs
     )
     assert isinstance(instructions[2], CallModule)
     assert (
-        isinstance(instructions[3], DeleteRegisterEntries)
-        and instructions[3].targets[0] == node_1.id
+        isinstance(instructions[3], DeleteRegisterEntries) and instructions[3].targets[0] == node_1
     )
     assert isinstance(instructions[4], ReturnOutputs)

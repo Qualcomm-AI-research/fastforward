@@ -18,6 +18,7 @@ from fastforward._orchestration.graph_module import (
     LocalOptimizer,
     NodeRef,
     SubgraphSpec,
+    _BaseRef,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
@@ -475,19 +476,21 @@ def test_call_module_single_tensor_arg() -> None:
     module = torch.nn.Linear(5, 3)
 
     # GIVEN a register with a single tensor batch
-    input_id = uuid.uuid4()
-    target_id = uuid.uuid4()
-    register = {input_id: ActivationDataset([torch.randn(2, 5)])}
+    input_ref = InputRef(uuid.uuid4(), "input")
+    target_ref = NodeRef(uuid.uuid4(), "target")
+    register: dict[_BaseRef, ActivationDataset] = {
+        input_ref: ActivationDataset([torch.randn(2, 5)])
+    }
 
     # GIVEN a CallModule instruction with single arg
-    instruction = CallModule(module=module, args=[input_id], kwargs={}, target=target_id)
+    instruction = CallModule(module=module, args=[input_ref], kwargs={}, target=target_ref)
 
     # WHEN we execute the instruction
     instruction.execute(register)
 
     # THEN the output should be computed correctly
-    assert target_id in register
-    output_dataset = register[target_id]
+    assert target_ref in register
+    output_dataset = register[target_ref]
     assert len(output_dataset) == 1
     assert output_dataset.batches[0].shape == (2, 3)
 

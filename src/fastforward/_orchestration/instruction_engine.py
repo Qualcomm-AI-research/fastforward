@@ -5,7 +5,6 @@
 import abc
 import dataclasses
 import itertools
-import uuid
 
 from typing import (
     Any,
@@ -23,13 +22,12 @@ from fastforward._orchestration.graph_module import (
     Const,
     GraphModule,
     InputRef,
-    Node,
     NodeRef,
     _BaseRef,
     topological_sort,
 )
 
-Register: TypeAlias = dict[uuid.UUID, Any]
+Register: TypeAlias = dict[_BaseRef, Any]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -100,18 +98,18 @@ class Instruction(abc.ABC):
         """Execute this instruction.
 
         Args:
-            register: The execution register mapping IDs to values.
+            register: The execution register mapping references to values.
 
         Returns:
             The result of executing this instruction.
         """
 
-    def uses(self) -> Iterator[uuid.UUID]:
-        """Return UUIDs this instruction uses from the register."""
+    def uses(self) -> Iterator[_BaseRef]:
+        """Return references this instruction uses from the register."""
         return iter(())
 
-    def produces(self) -> Iterator[uuid.UUID]:
-        """Return UUIDs this instruction writes to the register."""
+    def produces(self) -> Iterator[_BaseRef]:
+        """Return references this instruction writes to the register."""
         return iter(())
 
 
@@ -119,13 +117,13 @@ class Instruction(abc.ABC):
 class StoreConstant(Instruction):
     """Store a constant value in the register."""
 
-    target: uuid.UUID
+    target: _BaseRef
     value: Any
 
     def execute(self, register: Register) -> None:  # noqa: D102
         register[self.target] = ActivationDataset.from_value(self.value)
 
-    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
 
 
@@ -133,8 +131,8 @@ class StoreConstant(Instruction):
 class LoadAttribute(Instruction):
     """Load an attribute/index from a register value and store result."""
 
-    source: uuid.UUID
-    target: uuid.UUID
+    source: _BaseRef
+    target: _BaseRef
     attribute: str | int
 
     def execute(self, register: Register) -> None:  # noqa: D102
@@ -147,10 +145,10 @@ class LoadAttribute(Instruction):
 
         register[self.target] = ActivationDataset(batches)
 
-    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.source])
 
-    def produces(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def produces(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
 
 
@@ -163,9 +161,9 @@ class CallModule(Instruction):
     """
 
     module: torch.nn.Module
-    args: Sequence[uuid.UUID]
-    kwargs: dict[str, uuid.UUID]
-    target: uuid.UUID
+    args: Sequence[_BaseRef]
+    kwargs: dict[str, _BaseRef]
+    target: _BaseRef
 
     def execute(self, register: Register) -> None:  # noqa: D102
         arg_datasets = [register[arg] for arg in self.args]
@@ -183,11 +181,11 @@ class CallModule(Instruction):
 
         register[self.target] = ActivationDataset(outputs)
 
-    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
         yield from self.kwargs.values()
 
-    def produces(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def produces(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
 
 
@@ -196,7 +194,7 @@ class OptimizeModule(Instruction):
     """Optimize a module in-place using batched data from the register."""
 
     module: torch.nn.Module
-    args: Sequence[uuid.UUID]
+    args: Sequence[_BaseRef]
     fn: Callable[[torch.nn.Module, Collection[Any]], None]
 
     def execute(self, register: Register) -> None:  # noqa: D102
@@ -204,7 +202,7 @@ class OptimizeModule(Instruction):
         merged_dataset = ActivationDataset.merge(arg_datasets)
         self.fn(self.module, merged_dataset)
 
-    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter(self.args)
 
 
@@ -226,7 +224,7 @@ class ReturnOutputs(Instruction):
         - Multiple batches, multiple outputs: tuple of tuples
     """
 
-    outputs: Sequence[uuid.UUID]
+    outputs: Sequence[_BaseRef]
 
     def execute(self, register: Register) -> Any:  # noqa: D102
         datasets = [register[output_id] for output_id in self.outputs]
@@ -245,7 +243,7 @@ class ReturnOutputs(Instruction):
         # Multiple batches, multiple outputs: tuple of tuples.
         return tuple(merged.batches)
 
-    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter(self.outputs)
 
 
@@ -253,7 +251,7 @@ class ReturnOutputs(Instruction):
 class DeleteRegisterEntries(Instruction):
     """Delete specified register entries to free memory."""
 
-    targets: Sequence[uuid.UUID]
+    targets: Sequence[_BaseRef]
 
     def execute(self, register: Register) -> None:  # noqa: D102
         for target_id in self.targets:
@@ -301,7 +299,7 @@ class InstructionEngine:
             kwargs: Keyword arguments from user.
 
         Returns:
-            Register mapping InputRef UUIDs to ActivationDataset values.
+            Register mapping InputRefs to ActivationDataset values.
 
         Raises:
             TypeError: If arguments don't match graph inputs.
@@ -328,8 +326,7 @@ class InstructionEngine:
             raise TypeError(msg)
 
         return {
-            input_refs[name].id: ActivationDataset.from_value(value)
-            for name, value in inputs.items()
+            input_refs[name]: ActivationDataset.from_value(value) for name, value in inputs.items()
         }
 
     @staticmethod
@@ -371,7 +368,7 @@ def lifetime_management_pass(instructions: Instructions) -> Instructions:
     Returns:
         New instruction sequence with DeleteRegisterEntries instructions inserted.
     """
-    keep_alive: set[uuid.UUID] = set()
+    keep_alive: set[_BaseRef] = set()
     for instruction in instructions:
         if isinstance(instruction, ReturnOutputs):
             keep_alive.update(instruction.uses())
@@ -419,7 +416,7 @@ def optimization_only_pass(instructions: Instructions) -> Instructions:
     if not has_optimize:
         return instructions
 
-    required_values: set[uuid.UUID] = set()
+    required_values: set[_BaseRef] = set()
     retained_instructions: list[Instruction] = []
 
     # Instructions can only depend on outputs from earlier instructions.
@@ -490,8 +487,7 @@ class InstructionScheduler:
         instructions: list[Instruction] = []
 
         for node_ref in order:
-            node = graph._nodes[node_ref.id]
-            instructions.extend(self._schedule_node(node))
+            instructions.extend(self._schedule_node(node_ref, graph))
 
         if graph._outputs:
             return_instruction, output_prerequisites = self._schedule_return(graph._outputs)
@@ -499,16 +495,19 @@ class InstructionScheduler:
 
         return tuple(instructions)
 
-    def _schedule_node(self, node: Node) -> list[Instruction]:
+    def _schedule_node(self, node_ref: NodeRef, graph: GraphModule) -> list[Instruction]:
         """Schedule instructions for a single node.
 
         Args:
-            node: Node to schedule instructions for.
+            node_ref: reference to node to be scheduled.
+            graph: GraphModule containing nodes.
 
         Returns:
             List of instructions to execute this node.
         """
         instructions: list[Instruction] = []
+
+        node = graph._nodes[node_ref.id]
 
         args = []
         for arg in node.args:
@@ -528,7 +527,7 @@ class InstructionScheduler:
 
         # Always execute the module to cache activations
         instructions.append(
-            CallModule(module=node.module, args=args, kwargs=kwargs, target=node.id)
+            CallModule(module=node.module, args=args, kwargs=kwargs, target=node_ref)
         )
 
         return instructions
@@ -538,7 +537,7 @@ class InstructionScheduler:
     ) -> tuple[ReturnOutputs, list[Instruction]]:
         """Schedule return instruction for graph outputs.
 
-        Compiles all output references to register IDs or constant values.
+        Compiles all output references to register slots.
 
         Args:
             outputs: List of output references from the graph.
@@ -547,47 +546,41 @@ class InstructionScheduler:
             Tuple of (ReturnOutputs instruction, prerequisite instructions for output preparation).
             Prerequisite instructions handle attribute extraction for AttributeRef outputs.
         """
-        output_ids = []
+        output_refs = []
         prerequisites: list[Instruction] = []
 
         for output_ref in outputs:
-            ref_id, new_instructions = self._schedule_ref_id(output_ref)
+            ref, new_instructions = self._schedule_ref_id(output_ref)
             prerequisites.extend(new_instructions)
-            output_ids.append(ref_id)
+            output_refs.append(ref)
 
-        return ReturnOutputs(outputs=output_ids), prerequisites
+        return ReturnOutputs(outputs=output_refs), prerequisites
 
-    def _schedule_ref_id(self, ref: _BaseRef) -> tuple[uuid.UUID, list[Instruction]]:
-        """Schedule instructions to resolve a reference to a register ID or constant value.
+    def _schedule_ref_id(self, ref: _BaseRef) -> tuple[_BaseRef, list[Instruction]]:
+        """Schedule instructions to resolve a reference to a register slot or constant value.
 
-        For most references (NodeRef, InputREef, Const) we map directly to register IDs or
-        values. AttributeRef requires runtime calculation so we first load the reference,
-        extract the attribute and storing that in a register.
+        NodeRef/InputRef are already usable register keys. Const adds a StoreConstant so the value
+        is populated under that key. AttributeRef appends a LoadAttribute such that its register key won't
+        overwrite the base reference slot.
 
         Args:
-            ref: Reference to schedule ID for.
+            ref: Reference whose runtime value must be resolved.
 
         Returns:
-            Tuple of (register_id_or_value, instructions_to_execute).
-            Register ID (UUID) for data references, constant value for Const.
+            The original reference and the instructions required to materialize its value.
         """
         match ref:
-            case NodeRef(id=node_id) | InputRef(id=node_id):
-                return node_id, []
+            case NodeRef() | InputRef():
+                return ref, []
             case Const(value=v):
                 # Store constant as ActivationDataset
-                const_id = uuid.uuid4()
-                store_instruction = StoreConstant(target=const_id, value=v)
-                return const_id, [store_instruction]
-            case AttributeRef(reference=base_ref, attribute=attr):
-                # Ensure the base reference is computed and get its ID.
-                base_id, base_instructions = self._schedule_ref_id(base_ref)
-
-                # Allocate a new register slot for attribute extraction.
-                target_id = uuid.uuid4()
-                load_instruction = LoadAttribute(source=base_id, target=target_id, attribute=attr)
-                return target_id, [*base_instructions, load_instruction]
-
+                store_instruction = StoreConstant(target=ref, value=v)
+                return ref, [store_instruction]
+            case AttributeRef(reference=attr_ref, attribute=attr):
+                base_ref, base_instructions = self._schedule_ref_id(attr_ref)
+                # Allocate the extracted value under the AttributeRef so the base output stays intact.
+                load_instruction = LoadAttribute(source=base_ref, target=ref, attribute=attr)
+                return ref, [*base_instructions, load_instruction]
             case _BaseRef():
                 msg = f"Unsupported reference type: {type(ref).__name__}"
                 raise TypeError(msg)
