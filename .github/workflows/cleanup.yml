@@ -26,8 +26,9 @@ jobs:
            python3 scripts/docker_cleanup.py
       - name: Retrigger a build based on the code of the current default branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "cleanup-trigger"
-          git commit -m "This branch is based off the default branch and only serves to trigger image rebuilds". --allow-empty
-          git push --force --set-upstream origin HEAD
+          curl -L -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            ${{ github.api_url }}/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"rebuild-images","client_payload":{"triggered_by":"cleanup"}}' \
+            && echo "Successfully triggered CI pipeline rebuild"

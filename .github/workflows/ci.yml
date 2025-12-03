@@ -4,6 +4,8 @@ on:
   push:
     branches-ignore:
       - "pages"
+  repository_dispatch:
+    types: [rebuild-images]
 
 jobs:
   # Approach:
