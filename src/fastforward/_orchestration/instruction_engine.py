@@ -105,6 +105,14 @@ class Instruction(abc.ABC):
             The result of executing this instruction.
         """
 
+    def uses(self) -> Iterator[uuid.UUID]:
+        """Return UUIDs this instruction uses from the register."""
+        return iter(())
+
+    def produces(self) -> Iterator[uuid.UUID]:
+        """Return UUIDs this instruction writes to the register."""
+        return iter(())
+
 
 @dataclasses.dataclass(frozen=True)
 class StoreConstant(Instruction):
@@ -115,6 +123,9 @@ class StoreConstant(Instruction):
 
     def execute(self, register: Register) -> None:  # noqa: D102
         register[self.target] = ActivationDataset.from_value(self.value)
+
+    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter([self.target])
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,6 +145,12 @@ class LoadAttribute(Instruction):
             batches = [getattr(batch, self.attribute) for batch in source_dataset]
 
         register[self.target] = ActivationDataset(batches)
+
+    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter([self.source])
+
+    def produces(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter([self.target])
 
 
 @dataclasses.dataclass(frozen=True)
@@ -165,6 +182,13 @@ class CallModule(Instruction):
 
         register[self.target] = ActivationDataset(outputs)
 
+    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        yield from self.args
+        yield from self.kwargs.values()
+
+    def produces(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter([self.target])
+
 
 @dataclasses.dataclass(frozen=True)
 class OptimizeModule(Instruction):
@@ -178,6 +202,9 @@ class OptimizeModule(Instruction):
         arg_datasets = [register[arg] for arg in self.args]
         merged_dataset = ActivationDataset.merge(arg_datasets)
         self.fn(self.module, merged_dataset)
+
+    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter(self.args)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -216,6 +243,9 @@ class ReturnOutputs(Instruction):
 
         # Multiple batches, multiple outputs: tuple of tuples.
         return tuple(merged.batches)
+
+    def uses(self) -> Iterator[uuid.UUID]:  # noqa: D102
+        return iter(self.outputs)
 
 
 Instructions: TypeAlias = Sequence[Instruction]
