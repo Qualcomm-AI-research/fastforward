@@ -4,6 +4,7 @@
 
 import abc
 import dataclasses
+import itertools
 import uuid
 
 from typing import (
@@ -248,6 +249,18 @@ class ReturnOutputs(Instruction):
         return iter(self.outputs)
 
 
+@dataclasses.dataclass(frozen=True)
+class DeleteRegisterEntries(Instruction):
+    """Delete specified register entries to free memory."""
+
+    targets: Sequence[uuid.UUID]
+
+    def execute(self, register: Register) -> None:  # noqa: D102
+        for target_id in self.targets:
+            if target_id in register:
+                del register[target_id]
+
+
 Instructions: TypeAlias = Sequence[Instruction]
 InstructionPass: TypeAlias = Callable[[Instructions], Instructions]
 
@@ -347,6 +360,84 @@ class InstructionEngine:
         """
         register = self.prepare_input_register(program.input_refs, args, kwargs)
         return self.run_instructions(program.instructions, register)
+
+
+def lifetime_management_pass(instructions: Instructions) -> Instructions:
+    """Insert DeleteRegisterEntries instructions to free memory when values are no longer needed.
+
+    Args:
+        instructions: Sequence of instructions to analyze.
+
+    Returns:
+        New instruction sequence with DeleteRegisterEntries instructions inserted.
+    """
+    keep_alive: set[uuid.UUID] = set()
+    for instruction in instructions:
+        if isinstance(instruction, ReturnOutputs):
+            keep_alive.update(instruction.uses())
+
+    last_use = {}
+
+    # Iterate in reverse to find the last instruction that depends on each register slot
+    for idx in range(len(instructions) - 1, -1, -1):
+        instruction = instructions[idx]
+        for uuid_id in itertools.chain(instruction.uses(), instruction.produces()):
+            if uuid_id not in last_use:
+                last_use[uuid_id] = idx
+
+    new_instructions: list[Instruction] = []
+    for idx, instruction in enumerate(instructions):
+        new_instructions.append(instruction)
+
+        # Delete any register entry that has no dependent instructions after this point
+        to_delete = [
+            uuid_id
+            for uuid_id, last_idx in last_use.items()
+            if last_idx == idx and uuid_id not in keep_alive
+        ]
+
+        if to_delete:
+            new_instructions.append(DeleteRegisterEntries(targets=to_delete))
+
+    return tuple(new_instructions)
+
+
+def optimization_only_pass(instructions: Instructions) -> Instructions:
+    """Keep only instructions needed for optimization.
+
+    This filters out any CallModule whose output is not needed for downstream optimization, which
+    might include ReturnOutputs if upstream instructions have been removed.
+    If no OptimizeModule instructions are present, returns instructions unchanged.
+
+    Args:
+        instructions: Sequence of instructions to analyze.
+
+    Returns:
+        Filtered instruction sequence.
+    """
+    has_optimize = any(isinstance(i, OptimizeModule) for i in instructions)
+    if not has_optimize:
+        return instructions
+
+    required_values: set[uuid.UUID] = set()
+    retained_instructions: list[Instruction] = []
+
+    # Instructions can only depend on outputs from earlier instructions.
+    # Iterate over instructions in reverse to determine dependency relationships.
+    for instruction in reversed(instructions):
+        if isinstance(instruction, OptimizeModule):
+            # Any dependency of OptimizeModule must be retained.
+            retained_instructions.append(instruction)
+            required_values.update(instruction.uses())
+        else:
+            outputs = set(instruction.produces())
+            if outputs & required_values:
+                # If this instruction produces any output required, directly or indirectly,
+                # by an OptimizeModule, retain this instruction and its dependencies.
+                retained_instructions.append(instruction)
+                required_values.update(instruction.uses())
+
+    return tuple(reversed(retained_instructions))
 
 
 class InstructionScheduler:

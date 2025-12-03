@@ -15,11 +15,14 @@ from fastforward._orchestration.graph_module import (
 from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
     CallModule,
+    DeleteRegisterEntries,
     InstructionEngine,
     InstructionScheduler,
     LoadAttribute,
     OptimizeModule,
     ReturnOutputs,
+    lifetime_management_pass,
+    optimization_only_pass,
 )
 
 
@@ -177,3 +180,67 @@ def test_instruction_generator_with_optimization_spec() -> None:
     assert engine.instructions[2].target == node_2.id
 
     assert isinstance(engine.instructions[3], ReturnOutputs)
+
+
+def test_optimization_only_pass() -> None:
+    """Test that optimization_only_pass keeps only instructions needed for optimization."""
+    # GIVEN a graph with optimization on node_1 and node_3, but not node_2
+    graph = GraphModule()
+    inputs = graph.add_input("x")
+    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
+    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
+    node_3 = graph.add_node("node_3", torch.nn.Identity(), [node_2])
+    graph.add_output(node_3)
+
+    def dummy_optimize(module: torch.nn.Module, dataset: Collection[Any]) -> None:
+        pass
+
+    graph._nodes[node_1.id] = dataclasses.replace(graph._nodes[node_1.id], delegate=dummy_optimize)
+    graph._nodes[node_3.id] = dataclasses.replace(graph._nodes[node_3.id], delegate=dummy_optimize)
+
+    # WHEN instructions are scheduled with the optimization_only_pass
+    scheduler = InstructionScheduler(passes=[optimization_only_pass])
+    instructions = scheduler.schedule(graph).instructions
+
+    # THEN the resulting instructions should be exactly 4,
+    # OptimizeModule(node_1) -> CallModule(node_1) -> CallModule(node_2) -> OptimizeModule(node_3)
+    # CallModule(node_3) is removed since nothing downstream depends on it, and because of that
+    # ReturnOutputs is also removed.
+    assert len(instructions) == 4
+    assert isinstance(instructions[0], OptimizeModule)
+    assert instructions[0].module is graph._nodes[node_1.id].module
+    assert isinstance(instructions[1], CallModule)
+    assert instructions[1].module is graph._nodes[node_1.id].module
+    assert isinstance(instructions[2], CallModule)
+    assert instructions[2].module is graph._nodes[node_2.id].module
+    assert isinstance(instructions[3], OptimizeModule)
+    assert instructions[3].module is graph._nodes[node_3.id].module
+
+
+def test_lifetime_management_pass() -> None:
+    """Test that lifetime_management_pass inserts ClearRegister after last use."""
+    # GIVEN a sequential graph x -> node_1 -> node_2 -> out
+    graph = GraphModule()
+    inputs = graph.add_input("x")
+    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
+    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
+    graph.add_output(node_2)
+
+    # WHEN instructions are scheduled with the lifetime_management_pass
+    scheduler = InstructionScheduler(passes=[lifetime_management_pass])
+    instructions = scheduler.schedule(graph).instructions
+
+    # THEN the resulting instructions should be exactly 5,
+    # CallM(node_1) -> Del(inp) -> CallM(node_2) -> Del(node_1) -> Ret(node_2)
+    assert len(instructions) == 5
+    assert isinstance(instructions[0], CallModule)
+    assert (
+        isinstance(instructions[1], DeleteRegisterEntries)
+        and instructions[1].targets[0] == inputs.id
+    )
+    assert isinstance(instructions[2], CallModule)
+    assert (
+        isinstance(instructions[3], DeleteRegisterEntries)
+        and instructions[3].targets[0] == node_1.id
+    )
+    assert isinstance(instructions[4], ReturnOutputs)

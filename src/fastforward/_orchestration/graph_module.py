@@ -937,9 +937,11 @@ class LocalOptimizer:
         from fastforward._orchestration.instruction_engine import (
             InstructionEngine,
             InstructionScheduler,
+            lifetime_management_pass,
+            optimization_only_pass,
         )
 
-        scheduler = InstructionScheduler()
+        scheduler = InstructionScheduler(passes=[optimization_only_pass, lifetime_management_pass])
         engine = InstructionEngine()
 
         composite_graph = build_composite_graph(graph, specs)
