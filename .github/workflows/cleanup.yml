@@ -2,7 +2,7 @@ name: Clean up
 
 on:
   schedule:
-    - cron: "45 2 * * *"
+    - cron: "45 2 * * SUN"
 
 jobs:
   cleanup:
