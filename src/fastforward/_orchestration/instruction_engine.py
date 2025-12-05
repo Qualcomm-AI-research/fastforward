@@ -137,11 +137,18 @@ class LoadAttribute(Instruction):
 
     def execute(self, register: Register) -> None:  # noqa: D102
         source_dataset = register[self.source]
+        sample = next(iter(source_dataset))
 
-        if isinstance(self.attribute, int):
-            batches = [batch[self.attribute] for batch in source_dataset]
-        else:
-            batches = [getattr(batch, self.attribute) for batch in source_dataset]
+        match self.attribute:
+            case int() as idx:
+                batches = [batch[idx] for batch in source_dataset]
+            case str() as key if isinstance(sample, Mapping):
+                batches = [batch[key] for batch in source_dataset]
+            case str() as attr if hasattr(sample, self.attribute):
+                batches = [getattr(batch, attr) for batch in source_dataset]
+            case _:
+                msg = f"Unsupported attribute type: {type(self.attribute).__name__}"
+                raise ValueError(msg)
 
         register[self.target] = ActivationDataset(batches)
 

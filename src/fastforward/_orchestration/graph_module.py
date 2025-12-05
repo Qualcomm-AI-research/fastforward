@@ -183,8 +183,18 @@ def remap_subgraph_reference(
         case NodeRef(id=ref_id, name=node_name):
             new_name = f"{scope_name}.{node_name}" if scope_name else node_name
             return NodeRef(ref_id, new_name)
-        # AttributeRef wraps another reference, so remap the wrapped reference.
-        case AttributeRef(reference=ref):
+        case AttributeRef(reference=ref, attribute=attr):
+            if isinstance(base := ref.unwrap_ref(), (NodeRef, InputRef)):
+                # Node/Input outside of subgraph that only requires attribute access
+                # (e.g. we do not need to remap 'base' only 'base[attr]').
+                # Here it is expected that 'base' is not present in context but 'base[attr]' is.
+                lifted_key = f"{base.name}[{attr}]"
+                is_external_node = isinstance(base, NodeRef) and base.name not in subgraph_nodes
+                is_external_input = isinstance(base, InputRef)
+                if (is_external_node or is_external_input) and lifted_key in new_context:
+                    return new_context[lifted_key]
+
+            # AttributeRef wraps another reference, so remap the wrapped reference.
             remapped_ref = remap_subgraph_reference(ref, new_context, subgraph_nodes, scope_name)
             return dataclasses.replace(old_reference, reference=remapped_ref)
         case InputRef(name=input_name):
@@ -614,32 +624,63 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
     """
     node_ids: set[uuid.UUID] = {ref.id for ref in path_nodes}
 
-    def _external_dependencies(node: Node) -> set[str]:
-        external_dependencies = set()
+    def _external_dependencies(node: Node) -> list[str]:
+        external_dependencies = []
         for arg in (*node.args, *node.kwargs.values()):
-            match arg.unwrap_ref():
-                case NodeRef(name=name, id=node_id) if node_id not in node_ids:
-                    external_dependencies.add(name)
-                case InputRef(name=name):
-                    external_dependencies.add(name)
+            base = arg.unwrap_ref()
+            is_external = isinstance(base, InputRef) or (
+                isinstance(base, NodeRef) and base.id not in node_ids
+            )
+            if not is_external:
+                continue
+
+            if isinstance(arg, AttributeRef):
+                external_dependencies.append(f"{base.name}[{arg.attribute}]")
+            else:
+                external_dependencies.append(str(base.name))
+
         return external_dependencies
 
-    external_inputs = {
-        external_dependency
-        for node_id in node_ids
-        for external_dependency in _external_dependencies(graph._nodes[node_id])
-    }
+    external_inputs = []
+    seen = set()
+    for node in path_nodes:
+        for external_dependency in _external_dependencies(graph._nodes[node.id]):
+            if external_dependency not in seen:
+                external_inputs.append(external_dependency)
+                seen.add(external_dependency)
 
     if not external_inputs:
         msg = f"Nodes for subgraph have no (external) inputs: {path_nodes}"
         raise ValueError(msg)
 
-    external_outputs = {
-        node_ref
-        for node_ref in path_nodes
-        if node_ref in graph._outputs
-        or any(dep not in path_nodes for dep in graph.node_outputs(node_ref))
-    }
+    # Determine which nodes must be exposed as subgraph outputs.
+    # These are either (1) nodes that are outside of the original graph or
+    # (2) nodes required by external nodes outside of the subgraph.
+    external_outputs = []
+    seen_outputs: set[NodeRef | AttributeRef] = set()
+
+    # (1) Include original graph outputs that are produced within this subgraph.
+    for ref in graph._outputs:
+        if (base := ref.unwrap_ref()) in path_nodes:
+            if ref not in seen_outputs:
+                external_outputs.append(ref)
+                seen_outputs.add(ref)
+
+    # (2) Include internal nodes that are used by nodes outside the subgraph.
+    for internal_ref in path_nodes:
+        for dependent_ref in graph.node_outputs(internal_ref):
+            if dependent_ref in path_nodes:
+                continue
+
+            # External nodes (outside the subgraph) that depend on internal nodes (inside the subgraph).
+            external_node = graph._nodes[dependent_ref.id]
+            for arg in itertools.chain(external_node.args, external_node.kwargs.values()):
+                base = arg.unwrap_ref()
+                if isinstance(base, NodeRef) and base.id == internal_ref.id:
+                    if base not in seen_outputs:
+                        external_outputs.append(base)
+                        seen_outputs.add(base)
+
     # Connect the inputs, nodes, and outputs to a new subgraph.
     subgraph = GraphModule()
 
@@ -661,7 +702,13 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
             node_id=source_node.id,
         )
 
-    subgraph.add_output(*external_outputs)
+    remapped_outputs: list[NodeRef | AttributeRef] = []
+    for ref in external_outputs:
+        remapped = remap_reference(old_reference=ref)
+        assert isinstance(remapped, (NodeRef, AttributeRef))
+        remapped_outputs.append(remapped)
+    subgraph.add_output(*remapped_outputs)
+
     return subgraph
 
 
@@ -736,33 +783,50 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
         for partition in partitions
         for node_ref in partition._node_refs.values()
     }
-    original_outputs = {
-        ref.unwrap_ref() for ref in graph._outputs if isinstance(ref.unwrap_ref(), NodeRef)
-    }
+
+    def _parse_base_and_attr(sig: str) -> tuple[str, Any | None]:
+        """Parse 'name' or 'name[attr]' into (name, attr or None)."""
+        base, sep, rest = sig.partition("[")
+        if not sep or not rest.endswith("]"):
+            return sig, None
+        attr: str | int
+        try:
+            attr = int(rest[:-1])
+        except ValueError:
+            attr = rest[:-1]
+        return base, attr
+
+    root_inputs = set()
+    for partition in partitions:
+        for input_name in partition.input_names:
+            base_name, _ = _parse_base_and_attr(input_name)
+            if base_name in graph._inputs:
+                root_inputs.add(base_name)
 
     composite = GraphModule()
-    composite_inputs: dict[str, InputRef] = {}
+    composite_inputs: dict[str, InputRef] = {
+        name: composite.add_input(name) for name in graph.input_names if name in root_inputs
+    }
     produced_refs: dict[NodeRef, NodeRef | AttributeRef] = {}
 
     def get_composite_arg(input_name: str) -> _BaseRef:
-        """Get or create composite graph reference for partition input."""
-        if input_name in graph._inputs:
-            if input_name not in composite_inputs:
-                composite_inputs[input_name] = composite.add_input(input_name)
-            return composite_inputs[input_name]
+        """Get or create a composite-graph reference for a partition input.
 
-        return produced_refs[name_to_node_ref[input_name]]
+        Args:
+            input_name: Partition input 'name' or 'name[attr]'.
 
-    def register_outputs(partition: GraphModule, partition_ref: NodeRef) -> None:
-        """Register partition outputs and add to composite graph outputs if needed."""
-        for idx, ref in enumerate(partition._outputs):
-            if not isinstance(output_ref := ref.unwrap_ref(), NodeRef):
-                continue
+        Returns:
+            A composite-graph reference to the base InputRef/NodeRef or AttributeRef.
+        """
+        base_name, attr = _parse_base_and_attr(input_name)
+        if base_name in graph._inputs:
+            base_ref: _BaseRef = composite_inputs[base_name]
+        else:
+            base_ref = produced_refs[name_to_node_ref[base_name]]
 
-            produced_ref = partition_ref if len(partition._outputs) == 1 else partition_ref[idx]
-            produced_refs[output_ref] = produced_ref
-            if output_ref in original_outputs:
-                composite.add_output(produced_ref)
+        if attr is None:
+            return base_ref
+        return base_ref[attr] if isinstance(attr, int) else getattr(base_ref, attr)
 
     # We have to add the partitions in topological order for correct dependency handling.
     processed: set[GraphModule] = set()
@@ -779,7 +843,25 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
             node = composite._nodes[partition_ref.id]
             composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate_fn)
 
-        register_outputs(partition, partition_ref)
+        # Ensure this partition's outputs are addressable to other partitions.
+        for ref in partition._outputs:
+            base = ref.unwrap_ref()
+            if not isinstance(base, NodeRef):
+                msg = f"Partition output unwrap did not return NodeRef: {type(base)}"
+                raise TypeError(msg)
+            produced_refs[base] = partition_ref
+
+            if isinstance(ref, AttributeRef):
+                produced_ref = (
+                    partition_ref[ref.attribute]
+                    if isinstance(ref.attribute, int)
+                    else getattr(partition_ref, ref.attribute)
+                )
+            else:
+                produced_ref = partition_ref
+
+            if ref in graph._outputs:
+                composite.add_output(produced_ref)
 
     return composite
 
