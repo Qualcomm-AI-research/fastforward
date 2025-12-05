@@ -11,11 +11,14 @@ from typing import (
     Callable,
     Collection,
     Iterator,
+    Mapping,
     Sequence,
     TypeAlias,
 )
 
 import torch
+
+from torch.utils.data import DataLoader
 
 from fastforward._orchestration.graph_module import (
     AttributeRef,
@@ -60,27 +63,40 @@ class ActivationDataset(Collection[Any]):
         if isinstance(value, cls):
             return value
 
-        batches = list(value) if isinstance(value, (list, tuple)) else [value]
+        batches = list(value) if isinstance(value, (list, DataLoader)) else [value]
         return cls(batches)
 
     @classmethod
     def merge(cls, datasets: Sequence["ActivationDataset"]) -> "ActivationDataset":
-        """Zip multiple ActivationDatasets (with identical lengths).
+        """Zip multiple ActivationDatasets.
+
+        All datasets must have the same length.
 
         Args:
             datasets: Non-empty sequence of ActivationDatasets to merge.
 
         Returns:
             ActivationDataset where each batch is a tuple of corresponding elements.
+
+        Raises:
+            ValueError: If datasets have different lengths.
         """
+        if len(datasets) == 0:
+            msg = "ActivationDataset.merge expects at least one dataset"
+            raise ValueError(msg)
+
         if len(datasets) == 1:
             return datasets[0]
 
-        try:
-            batches = [tuple(vals) for vals in zip(*[ds.batches for ds in datasets], strict=True)]
-        except ValueError as e:
-            msg = "Tried to merge datasets of unequal size"
-            raise ValueError(msg) from e
+        lengths = [len(ds) for ds in datasets]
+        if len(set(lengths)) > 1:
+            msg = f"Cannot merge datasets of different sizes: {lengths}"
+            raise ValueError(msg)
+
+        batches: list[tuple[Any, ...]] = []
+        for i in range(lengths[0]):
+            tpl = tuple(ds.batches[i] for ds in datasets)
+            batches.append(tpl)
 
         return ActivationDataset(batches)
 
@@ -173,18 +189,27 @@ class CallModule(Instruction):
     target: _BaseRef
 
     def execute(self, register: Register) -> None:  # noqa: D102
-        arg_datasets = [register[arg] for arg in self.args]
-        merged_args = ActivationDataset.merge(arg_datasets)
-
+        arg_datasets: list[ActivationDataset] = [register[arg] for arg in self.args]
         kwarg_datasets: dict[str, ActivationDataset] = {
             k: register[v] for k, v in self.kwargs.items()
         }
 
+        all_datasets = list(arg_datasets) + list(kwarg_datasets.values())
+        if not all_datasets:
+            total_len = 1
+        else:
+            lengths = [len(ds) for ds in all_datasets]
+            max_len = max(lengths)
+            if len({length for length in lengths if length > 1}) > 1:
+                msg = f"Incompatible batch sizes across args/kwargs: {lengths}"
+                raise ValueError(msg)
+            total_len = max_len
+
         outputs: list[Any] = []
-        for batch in merged_args:
-            batch_tuple = batch if isinstance(batch, tuple) else (batch,)
-            batch_kwargs = {k: v.batches[len(outputs)] for k, v in kwarg_datasets.items()}
-            outputs.append(self.module(*batch_tuple, **batch_kwargs))
+        for i in range(total_len):
+            args = tuple(ds.batches[0 if len(ds) == 1 else i] for ds in arg_datasets)
+            kwargs = {k: ds.batches[0 if len(ds) == 1 else i] for k, ds in kwarg_datasets.items()}
+            outputs.append(self.module(*args, **kwargs))
 
         register[self.target] = ActivationDataset(outputs)
 
