@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterable, Iterator, TypeAlias
 from unittest.mock import patch
 
 import fastforward
+import fastforward as ff
 import libcst
 import pytest
 import syrupy
@@ -493,6 +494,19 @@ class ExampleModule1B(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         y = torch.nn.functional.conv2d(x, x)
         return torch.nn.functional.linear(y, y)
+
+
+def test_pattern_based_replacement(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
+    module = ExampleModule1B()
+    rule = ff.autoquant.PatternRule.from_str(
+        pattern="torch.nn.functional.{func}({a}, {b})",
+        replacement="my_own.{func}({a}, {b})",
+    )
+    quantized = autoquant_with_defaults(
+        module, use_type_inference=False, replacement_patterns=[rule]
+    )
+    quantized = codeformat_with_defaults(quantized)
+    assert snapshot == quantized
 
 
 @pytest.mark.slow

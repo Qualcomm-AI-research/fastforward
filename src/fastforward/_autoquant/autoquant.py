@@ -13,7 +13,7 @@ import sys
 import types
 
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable, Iterable, TypeAlias
 
 import libcst
 import torch
@@ -25,6 +25,7 @@ from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.convert import convert_function
 from fastforward._autoquant.cst import node_creation, node_processing, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
+from fastforward._autoquant.cst.pattern import PatternRule, _PatternRuleTransformer
 from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
@@ -178,23 +179,28 @@ def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.Qua
     )
 
 
-#
-def default_source_context(use_type_inference: bool = True) -> pysource.SourceContext:
+def default_source_context(
+    use_type_inference: bool = True, replacement_patterns: Iterable[PatternRule] = ()
+) -> pysource.SourceContext:
     """Default source context for Autoquant.
 
     If no source context is provided, this context is used.
     """
-    return pysource.SourceContext(
-        preprocessing_passes=default_preprocessing_passes(use_type_inferece=use_type_inference)
-    )
+    passes = default_preprocessing_passes(use_type_inference=use_type_inference)
+    patterns = tuple(replacement_patterns)
+    if len(patterns) > 0:
+        # Ensure that patterns are applied first, this way the patterns are matched
+        # against the actual input.
+        passes = (_PatternRuleTransformer(patterns),) + tuple(passes)
+    return pysource.SourceContext(preprocessing_passes=passes)
 
 
 def default_preprocessing_passes(
-    use_type_inferece: bool = True,
+    use_type_inference: bool = True,
 ) -> Sequence[libcst.CSTTransformer | type[libcst.CSTTransformer]]:
     MarkReplacementCandidatesPass = (
         passes.ExtendedMarkReplacementCandidates()
-        if use_type_inferece
+        if use_type_inference
         else passes.MarkReplacementCandidates()
     )
     return [
@@ -217,10 +223,14 @@ def autoquant_with_defaults(
     module: torch.nn.Module,
     operator_table: optable.OperatorTable | None = None,
     use_type_inference: bool = True,
+    replacement_patterns: Iterable[PatternRule] = (),
 ) -> str:
     return autoquant(
         module=module,
-        source_context=default_source_context(use_type_inference=use_type_inference),
+        source_context=default_source_context(
+            use_type_inference=use_type_inference,
+            replacement_patterns=replacement_patterns,
+        ),
         operator_table=operator_table or default_optable(),
     )
 

@@ -896,3 +896,21 @@
           print("This is not a quantized function.")
   '''
 # ---
+# name: test_pattern_based_replacement
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModule1B
+  
+  
+  class QuantizedExampleModule1B(fastforward.nn.QuantizedModule, ExampleModule1B):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+  
+      def forward(self, x: torch.Tensor) -> torch.Tensor:
+          y = my_own.conv2d(x, x)
+          return my_own.linear(y, y)
+  
+  '''
+# ---

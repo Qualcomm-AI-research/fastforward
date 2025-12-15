@@ -65,7 +65,7 @@ def _autoquantize_str_to_classdef(
         msg = "Expected `src` to be a function with `self` as first parameter"
         raise ValueError(msg)
 
-    pm = PassManager(autoquant.default_preprocessing_passes(use_type_inferece=use_type_inference))
+    pm = PassManager(autoquant.default_preprocessing_passes(use_type_inference=use_type_inference))
     src_cst = pm(src_cst)
 
     funcdef = _retrieve_funcdef(src_cst)

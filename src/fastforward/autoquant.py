@@ -46,7 +46,7 @@ import dataclasses
 import pathlib
 import types
 
-from typing import overload
+from typing import Iterable, overload
 
 import torch
 
@@ -56,6 +56,8 @@ from fastforward._autoquant.autoquant import (
     codeformat_with_defaults,
     emit_code_of_module,
 )
+from fastforward._autoquant.cst import pattern
+from fastforward._autoquant.cst.pattern import PatternRule as PatternRule
 from fastforward._autoquant.pybuilder import writer as writer
 from fastforward._autoquant.pybuilder.importing import import_code
 from fastforward._quantops import optable
@@ -71,6 +73,7 @@ def autoquantize(
     force_overwrite: bool = False,
     auto_import: bool = False,
     use_type_inference: bool = True,
+    replacement_patterns: Iterable[pattern.PatternRule] = (),
 ) -> "AutoQuantizedCode": ...
 
 
@@ -83,6 +86,7 @@ def autoquantize(
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
     use_type_inference: bool = True,
+    replacement_patterns: Iterable[pattern.PatternRule] = (),
 ) -> "AutoQuantizedCode": ...
 
 
@@ -96,6 +100,7 @@ def autoquantize(
     code_writer: pybuilder.BasicCodeWriter | None = None,
     auto_import: bool = False,
     use_type_inference: bool = True,
+    replacement_patterns: Iterable[pattern.PatternRule] = (),
 ) -> "AutoQuantizedCode":
     """Create Python source code for quantized version of `module`.
 
@@ -113,9 +118,14 @@ def autoquantize(
         use_type_inference: If True, use type inference to reduce false
             positive function rewrites in autoquant at the cost of a longer
             runtime.
+        replacement_patterns: Iterable of `PatternRule`s that are applied to the input
+            before autoquant sees the input.
     """
     autoquant_code = autoquant_with_defaults(
-        module, operator_table, use_type_inference=use_type_inference
+        module,
+        operator_table,
+        use_type_inference=use_type_inference,
+        replacement_patterns=replacement_patterns,
     )
     formatted_code = codeformat_with_defaults(autoquant_code, code_formatter=code_formatter)
     pymodule_name = emit_code_of_module(
