@@ -35,6 +35,12 @@
 # ```
 
 # +
+import os
+
+os.environ["HF_DATASETS_CACHE"] = "/prj/corp/llm/lasvegas/llm-systems-scratch/cache/datasets/"
+os.environ["HF_HUB_CACHE"] = "/prj/corp/llm/lasvegas/llm-systems-scratch/cache/models"
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 import logging
 import pickle
 import warnings
@@ -86,7 +92,7 @@ torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703
 SEQUENCE_LENGTH = 128
 
 model, ptq_dataloader, test_dataloader = get_llama_and_dataloaders(
-    model_tag="TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T",
+    model_tag="TinyLlama/TinyLlama_v1.1",
     device="cuda",
     sequence_length=SEQUENCE_LENGTH,
 )
