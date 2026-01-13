@@ -11,6 +11,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
+    DEFAULT_CONTEXT,
     Const,
     Direction,
     GraphModule,
@@ -18,7 +19,6 @@ from fastforward._orchestration.graph_module import (
     LocalOptimizer,
     NodeRef,
     SubgraphSpec,
-    _BaseRef,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
@@ -26,6 +26,7 @@ from fastforward._orchestration.graph_module import (
 )
 from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
+    ActivationRegister,
     CallModule,
 )
 
@@ -475,24 +476,31 @@ def test_call_module_single_tensor_arg() -> None:
     # GIVEN a simple linear module
     module = torch.nn.Linear(5, 3)
 
-    # GIVEN a register with a single tensor batch
+    # GIVEN a register with a single tensor batch in context-aware format
     input_ref = InputRef(uuid.uuid4(), "input")
     target_ref = NodeRef(uuid.uuid4(), "target")
-    register: dict[_BaseRef, ActivationDataset] = {
-        input_ref: ActivationDataset([torch.randn(2, 5)])
+    register: ActivationRegister = {
+        input_ref: {DEFAULT_CONTEXT: ActivationDataset([torch.randn(2, 5)])}
     }
 
-    # GIVEN a CallModule instruction with single arg
-    instruction = CallModule(module=module, args=[input_ref], kwargs={}, target=target_ref)
+    # GIVEN a CallModule instruction with single arg and default context
+
+    instruction = CallModule(
+        module=module,
+        args=[input_ref],
+        kwargs={},
+        target=target_ref,
+        contexts=[DEFAULT_CONTEXT],
+    )
 
     # WHEN we execute the instruction
     instruction.execute(register)
 
     # THEN the output should be computed correctly
     assert target_ref in register
-    output_dataset = register[target_ref]
-    assert len(output_dataset) == 1
-    assert output_dataset.batches[0].shape == (2, 3)
+    output_contexts = register[target_ref]
+    assert len(output_contexts[DEFAULT_CONTEXT]) == 1
+    assert output_contexts[DEFAULT_CONTEXT].batches[0].shape == (2, 3)
 
 
 def test_local_optimization_with_attribute_refs() -> None:
@@ -786,3 +794,32 @@ def test_local_optimization_with_multiple_inputs() -> None:
 
     # THEN the linear layer should be optimized
     assert not torch.allclose(initial_weight, linear.weight.data)
+
+
+def test_node_with_no_inputs_executes_once() -> None:
+    """Test that nodes with no inputs execute once."""
+
+    class RNGTensor(torch.nn.Module):
+        """Generate a tensor."""
+
+        def forward(self) -> torch.Tensor:
+            return torch.randn(5)
+
+    # GIVEN a GraphModule with a tensor generator that has no inputs
+    graph = GraphModule()
+    x = graph.add_input("x")
+
+    # Node with NO inputs - just generates a tensor
+    y = graph.add_node("get_tensor", RNGTensor(), args=[])
+
+    # Node that uses both x and the generated y
+    (result,) = graph.add_subgraph("add", Add().to_graph_module(), [x, y])
+    graph.add_output(result)
+
+    # WHEN we execute the graph
+    x_input = torch.randn(5)
+    output = graph(x_input)
+
+    # THEN the output should be a valid tensor (x + y)
+    assert output.shape == (5,)
+    assert isinstance(output, torch.Tensor)

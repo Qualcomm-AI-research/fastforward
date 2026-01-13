@@ -6,10 +6,12 @@ import abc
 import dataclasses
 import itertools
 
+from collections import defaultdict
 from typing import (
     Any,
     Callable,
     Collection,
+    ContextManager,
     Iterator,
     Mapping,
     Sequence,
@@ -21,16 +23,17 @@ import torch
 from torch.utils.data import DataLoader
 
 from fastforward._orchestration.graph_module import (
+    DEFAULT_CONTEXT,
     AttributeRef,
     Const,
+    Contexts,
+    Delegate,
     GraphModule,
     InputRef,
     NodeRef,
     _BaseRef,
     topological_sort,
 )
-
-Register: TypeAlias = dict[_BaseRef, Any]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -101,6 +104,9 @@ class ActivationDataset(Collection[Any]):
         return ActivationDataset(batches)
 
 
+ActivationRegister: TypeAlias = dict[_BaseRef, dict[ContextManager[None], ActivationDataset | Any]]
+
+
 @dataclasses.dataclass(frozen=True)
 class Instruction(abc.ABC):
     """Base class for all instructions in the execution engine.
@@ -110,7 +116,7 @@ class Instruction(abc.ABC):
     """
 
     @abc.abstractmethod
-    def execute(self, register: Register) -> Any:
+    def execute(self, register: ActivationRegister) -> Any:
         """Execute this instruction.
 
         Args:
@@ -130,14 +136,15 @@ class Instruction(abc.ABC):
 
 
 @dataclasses.dataclass(frozen=True)
-class StoreConstant(Instruction):
-    """Store a constant value in the register."""
+class StoreValue(Instruction):
+    """Store a value in the register."""
 
     target: _BaseRef
     value: Any
+    contexts: Contexts
 
-    def execute(self, register: Register) -> None:  # noqa: D102
-        register[self.target] = ActivationDataset.from_value(self.value)
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
+        register[self.target] = {context: self.value for context in self.contexts}
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
@@ -151,22 +158,28 @@ class LoadAttribute(Instruction):
     target: _BaseRef
     attribute: str | int
 
-    def execute(self, register: Register) -> None:  # noqa: D102
-        source_dataset = register[self.source]
-        sample = next(iter(source_dataset))
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
+        source_contexts = register[self.source]
+        register[self.target] = {
+            context: self._extract_attribute(dataset)
+            for context, dataset in source_contexts.items()
+            if isinstance(dataset, ActivationDataset)
+        }
 
+    def _extract_attribute(self, dataset: ActivationDataset) -> ActivationDataset:
+        """Extract attribute/item from each batch in the dataset."""
         match self.attribute:
             case int() as idx:
-                batches = [batch[idx] for batch in source_dataset]
-            case str() as key if isinstance(sample, Mapping):
-                batches = [batch[key] for batch in source_dataset]
-            case str() as attr if hasattr(sample, self.attribute):
-                batches = [getattr(batch, attr) for batch in source_dataset]
-            case _:
-                msg = f"Unsupported attribute type: {type(self.attribute).__name__}"
-                raise ValueError(msg)
+                batches = [batch[idx] for batch in dataset]
+            case str() as key:
+                # Item access for mappings (dict, etc.)
+                try:
+                    batches = [batch[key] for batch in dataset]
+                except (KeyError, TypeError):
+                    # Attribute access for structured objects (dataclass, namedtuple, etc.)
+                    batches = [getattr(batch, key) for batch in dataset]
 
-        register[self.target] = ActivationDataset(batches)
+        return ActivationDataset(batches)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.source])
@@ -187,31 +200,87 @@ class CallModule(Instruction):
     args: Sequence[_BaseRef]
     kwargs: dict[str, _BaseRef]
     target: _BaseRef
+    contexts: Contexts
 
-    def execute(self, register: Register) -> None:  # noqa: D102
-        arg_datasets: list[ActivationDataset] = [register[arg] for arg in self.args]
-        kwarg_datasets: dict[str, ActivationDataset] = {
-            k: register[v] for k, v in self.kwargs.items()
-        }
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
+        results: dict[ContextManager[None], ActivationDataset] = {}
 
-        all_datasets = list(arg_datasets) + list(kwarg_datasets.values())
-        if not all_datasets:
-            total_len = 1
-        else:
-            lengths = [len(ds) for ds in all_datasets]
-            max_len = max(lengths)
-            if len({length for length in lengths if length > 1}) > 1:
-                msg = f"Incompatible batch sizes across args/kwargs: {lengths}"
-                raise ValueError(msg)
-            total_len = max_len
+        for context in self.contexts:
+            args_datasets, kwargs_datasets = self._gather_datasets(register, context)
+            with context:
+                outputs = self._forward_batches(args_datasets, kwargs_datasets)
+            results[context] = ActivationDataset(outputs)
 
-        outputs: list[Any] = []
-        for i in range(total_len):
-            args = tuple(ds.batches[0 if len(ds) == 1 else i] for ds in arg_datasets)
-            kwargs = {k: ds.batches[0 if len(ds) == 1 else i] for k, ds in kwarg_datasets.items()}
-            outputs.append(self.module(*args, **kwargs))
+        register[self.target] = results
 
-        register[self.target] = ActivationDataset(outputs)
+    def _gather_datasets(
+        self, register: ActivationRegister, context: ContextManager[None]
+    ) -> tuple[list[ActivationDataset], dict[str, ActivationDataset]]:
+        """Extract and validate positional and keyword argument datasets given a context name.
+
+        Args:
+            register: Register with contexts as keys and datasets as values.
+            context: The context which has generated the required datasets.
+
+        Returns:
+            Tuple of (arg_datasets, kwarg_datasets).
+        """
+        # The batch size is the length of any data loader we catch that is not a Constant.
+        # If there is no data loader the batch size is 1 (run once).
+        batch_size = 1
+        for ref in itertools.chain(self.args, self.kwargs.values()):
+            if not isinstance(ref, Const):
+                batch_size = len(register[ref][context])
+                break
+
+        def get_dataset(ref: _BaseRef) -> ActivationDataset:
+            # Repeat constant values for the entire batch.
+            if isinstance(ref, Const):
+                return ActivationDataset([ref.value] * batch_size)
+            return register[ref][context]
+
+        arg_datasets = [get_dataset(ref) for ref in self.args]
+        kwarg_datasets = {key: get_dataset(ref) for key, ref in self.kwargs.items()}
+
+        return arg_datasets, kwarg_datasets
+
+    def _forward_batches(
+        self, arg_datasets: list[ActivationDataset], kwarg_datasets: dict[str, ActivationDataset]
+    ) -> list[Any]:
+        """Forward pass arg and kwarg datasets through the module.
+
+        Args:
+            arg_datasets: List of argument datasets.
+            kwarg_datasets: Dictionary of keyword argument datasets.
+            context: Context manager to use during execution.
+
+        Returns:
+            List of module outputs for each batch.
+        """
+        if not arg_datasets and not kwarg_datasets:
+            return [self.module()]
+
+        outputs = []
+        kwarg_keys = list(kwarg_datasets.keys())
+        num_args = len(arg_datasets)
+
+        try:
+            for batch_data in zip(*arg_datasets, *kwarg_datasets.values(), strict=True):
+                batch_args = batch_data[:num_args]
+                batch_kwargs = dict(zip(kwarg_keys, batch_data[num_args:]))
+                outputs.append(self.module(*batch_args, **batch_kwargs))
+        except ValueError as e:
+            if "zip()" in str(e):
+                msg = (
+                    f"Dataset length mismatch in CallModule for {self.module.__class__.__name__}. "
+                    f"All inputs must have the same number of batches. "
+                    f"Please verify that all datasets passed to this module have matching lengths."
+                )
+                raise ValueError(msg) from e
+            else:
+                raise
+
+        return outputs
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -223,16 +292,26 @@ class CallModule(Instruction):
 
 @dataclasses.dataclass(frozen=True)
 class OptimizeModule(Instruction):
-    """Optimize a module in-place using batched data from the register."""
+    """Optimize a module in-place using batched data from the register.
+
+    Execute a user-defined optimization function (delegate) on the module using context
+    specific activations per arg.
+    """
 
     module: torch.nn.Module
     args: Sequence[_BaseRef]
-    fn: Callable[[torch.nn.Module, Collection[Any]], None]
+    delegate: Delegate
 
-    def execute(self, register: Register) -> None:  # noqa: D102
-        arg_datasets = [register[arg] for arg in self.args]
-        merged_dataset = ActivationDataset.merge(arg_datasets)
-        self.fn(self.module, merged_dataset)
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
+        delegate_args = []
+
+        for context in self.delegate.contexts:
+            # For each context, gather all arguments the module expects into an ActivationDataset.
+            context_args = [register[arg][context] for arg in self.args]
+            delegate_args.append(ActivationDataset.merge(context_args))
+
+        # Run the delegate function with per-context arguments required for the module.
+        self.delegate.fn(self.module, *delegate_args)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter(self.args)
@@ -240,40 +319,28 @@ class OptimizeModule(Instruction):
 
 @dataclasses.dataclass(frozen=True)
 class ReturnOutputs(Instruction):
-    """Merge and return output values from the register.
+    """Return output values from the register.
 
-    The expected outputs are first gathered and merged into a single
-    ActivationDataset. We then return the expected outputs (in batches)
-    as standard Python types based on the number of batches and outputs.
-
-    Args:
-        register: The execution register.
-
-    Returns:
-        - Single batch, single output: value
-        - Single batch, multiple outputs: tuple of values
-        - Multiple batches, single output: tuple of values
-        - Multiple batches, multiple outputs: tuple of tuples
+    Returns a dict mapping each execution context to its output values.
+    Output values are automatically unpacked based on batch/output count.
     """
 
     outputs: Sequence[_BaseRef]
 
-    def execute(self, register: Register) -> Any:  # noqa: D102
-        datasets = [register[output_id] for output_id in self.outputs]
-        merged = ActivationDataset.merge(datasets)
+    def execute(self, register: ActivationRegister) -> Any:  # noqa: D102
+        # Invert register[output_ref][context] to contexts[context] = [ds1, ds2, ...],
+        # and use this to create a single ActivationDataset per context.
+        context_outputs = defaultdict(list)
+        for output_ref in self.outputs:
+            for context, dataset in register[output_ref].items():
+                context_outputs[context].append(dataset)
 
-        num_outputs = len(self.outputs)
+        context_datasets = {
+            context: tuple(ActivationDataset.merge(datasets).batches)
+            for context, datasets in context_outputs.items()
+        }
 
-        # Single batch: return (either value or tuple of values).
-        if len(merged) == 1:
-            return merged.batches[0]
-
-        # Multiple batches, single output: flatten.
-        if num_outputs == 1:
-            return tuple(batch[0] for batch in merged.batches)
-
-        # Multiple batches, multiple outputs: tuple of tuples.
-        return tuple(merged.batches)
+        return context_datasets
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter(self.outputs)
@@ -285,7 +352,7 @@ class DeleteRegisterEntries(Instruction):
 
     targets: Sequence[_BaseRef]
 
-    def execute(self, register: Register) -> None:  # noqa: D102
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         for target_id in self.targets:
             if target_id in register:
                 del register[target_id]
@@ -293,6 +360,43 @@ class DeleteRegisterEntries(Instruction):
 
 Instructions: TypeAlias = Sequence[Instruction]
 InstructionPass: TypeAlias = Callable[[Instructions], Instructions]
+
+
+def _propagate_contexts(graph: GraphModule, order: list[NodeRef]) -> Mapping[_BaseRef, Contexts]:
+    """Determine which execution contexts each node needs based on downstream usage.
+
+    Contexts flow backward through he graph, where the forward path is defined by `order`.t
+
+    Args:
+        graph: GraphModule to analyze.
+        order: Node execution order.
+
+    Returns:
+        Mapping from references to their required execution contexts.
+    """
+    node_contexts: dict[_BaseRef, set[ContextManager[None]]] = defaultdict(set)
+
+    # If no delegates exist, we want to ensure the model still functions as expected (e.g. out = model(in)).
+    # We do this here by adding the default context to the outputs, and this will propagate to it's
+    # parents below.
+    graph_has_delegates = any(graph.node(ref).delegate is not None for ref in order)
+    if not graph_has_delegates and graph._outputs:
+        for out in graph._outputs:
+            node_contexts[out.unwrap_ref()] |= {DEFAULT_CONTEXT}
+
+    # Propagate backwards to the graph and ensure if a child node depends on context X
+    # the parent will also depend on context X.
+    for node_ref in reversed(order):
+        node = graph.node(node_ref)
+
+        # Node arguments represent parents in the graph. Propagate contexts to them.
+        for node_input in graph.node_inputs(node_ref):
+            node_contexts[node_input] |= node_contexts[node_ref]
+
+            if node.delegate is not None:
+                node_contexts[node_input] |= set(node.delegate.contexts)
+
+    return {ref: list(contexts) for ref, contexts in node_contexts.items()}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -306,6 +410,24 @@ class InstructionProgram:
 
     instructions: Instructions
     input_refs: dict[str, InputRef]
+
+    @property
+    def contexts(self) -> Contexts:
+        """All contexts used in program."""
+        all_contexts = set()
+
+        for instruction in self.instructions:
+            match instruction:
+                case CallModule(contexts=contexts):
+                    all_contexts.update(set(contexts))
+                case OptimizeModule(delegate=delegate):
+                    all_contexts.update(set(delegate.contexts))
+                case StoreValue(contexts=contexts):
+                    all_contexts.update(set(contexts))
+                case _:
+                    pass
+
+        return list(all_contexts)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -322,16 +444,18 @@ class InstructionEngine:
         input_refs: dict[str, InputRef],
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
-    ) -> Register:
+        contexts: Contexts,
+    ) -> ActivationRegister:
         """Prepare execution register from user inputs.
 
         Args:
             input_refs: Mapping from input names to InputRef objects.
             args: Positional arguments from user.
             kwargs: Keyword arguments from user.
+            contexts: Each input will be replicated across all provided contexts.
 
         Returns:
-            Register mapping InputRefs to ActivationDataset values.
+            register mapping InputRefs to ActivationDataset values.
 
         Raises:
             TypeError: If arguments don't match graph inputs.
@@ -357,12 +481,14 @@ class InstructionEngine:
             msg = f"Missing required inputs: {sorted(missing)}"
             raise TypeError(msg)
 
-        return {
-            input_refs[name]: ActivationDataset.from_value(value) for name, value in inputs.items()
-        }
+        register: dict[_BaseRef, Any] = {}
+        for input_name, value in inputs.items():
+            key = input_refs[input_name]
+            register[key] = {context: ActivationDataset.from_value(value) for context in contexts}
+        return register
 
     @staticmethod
-    def run_instructions(instructions: Instructions, register: Register) -> Any:
+    def run_instructions(instructions: Instructions, register: ActivationRegister) -> Any:
         """Run a sequence of instructions with the given register.
 
         Args:
@@ -387,7 +513,7 @@ class InstructionEngine:
         Returns:
             Result from instruction execution.
         """
-        register = self.prepare_input_register(program.input_refs, args, kwargs)
+        register = self.prepare_input_register(program.input_refs, args, kwargs, program.contexts)
         return self.run_instructions(program.instructions, register)
 
 
@@ -488,6 +614,7 @@ class InstructionScheduler:
     ) -> None:
         self._passes = passes or []
         self._ordering_strategy = ordering_strategy or topological_sort
+        self._node_contexts: Mapping[_BaseRef, Contexts] = {}
 
     def schedule(self, graph: GraphModule) -> InstructionProgram:
         """Schedule node execution and build an engine to run the graph.
@@ -499,7 +626,12 @@ class InstructionScheduler:
             InstructionEngine ready to execute the graph.
         """
         order = self._ordering_strategy(graph)
-        instructions = self._schedule(graph, order)
+
+        self._node_contexts = _propagate_contexts(graph, order)
+        try:
+            instructions = self._schedule(graph, order)
+        finally:
+            self._node_contexts = {}
 
         for pass_fn in self._passes:
             instructions = pass_fn(instructions)
@@ -539,7 +671,7 @@ class InstructionScheduler:
         """
         instructions: list[Instruction] = []
 
-        node = graph._nodes[node_ref.id]
+        node = graph.node(node_ref)
 
         args = []
         for arg in node.args:
@@ -555,11 +687,19 @@ class InstructionScheduler:
 
         # Inject optimization if specified
         if node.delegate is not None:
-            instructions.append(OptimizeModule(module=node.module, args=args, fn=node.delegate))
+            instructions.append(
+                OptimizeModule(module=node.module, args=args, delegate=node.delegate)
+            )
 
         # Always execute the module to cache activations
         instructions.append(
-            CallModule(module=node.module, args=args, kwargs=kwargs, target=node_ref)
+            CallModule(
+                module=node.module,
+                args=args,
+                kwargs=kwargs,
+                target=node_ref,
+                contexts=self._node_contexts.get(node_ref, []),
+            )
         )
 
         return instructions
@@ -604,9 +744,10 @@ class InstructionScheduler:
         match ref:
             case NodeRef() | InputRef():
                 return ref, []
-            case Const(value=v):
-                # Store constant as ActivationDataset
-                store_instruction = StoreConstant(target=ref, value=v)
+            case Const():
+                # Store the value of the constant directly to the register.
+                contexts = list(self._node_contexts.get(ref, set())) or [DEFAULT_CONTEXT]
+                store_instruction = StoreValue(target=ref, value=ref, contexts=contexts)
                 return ref, [store_instruction]
             case AttributeRef(reference=attr_ref, attribute=attr):
                 base_ref, base_instructions = self._schedule_ref_id(attr_ref)

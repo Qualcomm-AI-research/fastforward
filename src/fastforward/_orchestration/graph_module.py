@@ -25,11 +25,15 @@ import itertools
 import uuid
 
 from collections.abc import Collection, Mapping
+from contextlib import nullcontext
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ContextManager,
     Iterator,
+    Sequence,
+    TypeAlias,
 )
 
 import torch
@@ -205,6 +209,23 @@ def remap_subgraph_reference(
             assert False, f"Unexpected reference type {type(old_reference)}"
 
 
+# Contexts should be ordered to match delegate function signature.
+Contexts: TypeAlias = Sequence[ContextManager[None]]
+
+
+@dataclasses.dataclass(frozen=True)
+class Delegate:
+    """Defines a function to execute on a node and the contexts needed to generate its inputs.
+
+    Args:
+        fn: Function that receives the module and input activations as positional arguments.
+        contexts: Sequence of ContextManagers that generate input activations.
+    """
+
+    fn: Callable[..., None]
+    contexts: Contexts
+
+
 @dataclasses.dataclass(frozen=True)
 class Node:
     """A node in a 'GraphModule', which wraps a PyTorch module.
@@ -218,7 +239,7 @@ class Node:
         module: PyTorch module to execute
         args: Positional arguments (NodeRef/InputRef/Const)
         kwargs: Keyword arguments (NodeRef/InputRef/Const)
-        delegate: Optional function invoked on module depending on execution context
+        delegate: Optional delegate configuration attached to this node.
     """
 
     id: uuid.UUID
@@ -226,7 +247,7 @@ class Node:
     module: torch.nn.Module
     args: Collection[_BaseRef]
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
-    delegate: Callable[..., None] | None = None
+    delegate: Delegate | None = None
 
 
 class GraphModule(torch.nn.Module):
@@ -311,6 +332,20 @@ class GraphModule(torch.nn.Module):
 
         msg = f"Module {module} not found in Graphmodule."
         raise ValueError(msg)
+
+    def node(self, node_ref: NodeRef) -> Node:
+        """Return the Node for the given NodeRef.
+
+        Args:
+            node_ref: Reference to the node.
+
+        Returns:
+            The Node object.
+
+        Raises:
+            KeyError: If the node reference is not found in the graph.
+        """
+        return self._nodes[node_ref.id]
 
     def add_input(self, name: str) -> InputRef:
         """Add an input name to the graph."""
@@ -498,7 +533,18 @@ class GraphModule(torch.nn.Module):
             self._program = scheduler.schedule(self)
             self._engine = InstructionEngine()
 
-        return self._engine.run(self._program, *args, **kwargs)
+        # The engine produces per-context results.
+        outputs: dict[ContextManager[None], tuple[Any]] = self._engine.run(
+            self._program, *args, **kwargs
+        )
+
+        # If the output is a single value (non-batched) and produced by a single
+        # context, we return directly that value, mimicing the torch module behavior.
+        if len(outputs) == 1 and len(results := next(iter(outputs.values()))) == 1:
+            return results[0]
+
+        # Otherwise, return the dictionary itself.
+        return outputs
 
 
 class Direction(enum.Enum):
@@ -741,18 +787,36 @@ def topological_sort(graph: GraphModule) -> list[NodeRef]:
     return order
 
 
+DEFAULT_CONTEXT = nullcontext()
+
+
 @dataclasses.dataclass
 class SubgraphSpec:
     """A specification for extracting and optionally optimizing a subgraph.
 
     When the `input` and `output` layers of a GraphModule are selected, we can create a
-    subgraph that includes all layers on the path (inclusive). We assume that if a function
-    `fn` is defined, that this function will optimize the resulting subgraph later on.
+    subgraph that includes all layers on the path (inclusive).
+
+    Args:
+        input: The start node of the subgraph.
+        output: The end node of the subgraph.
+        fn: Optional optimization function to execute on the subgraph.
+        contexts: Sequence of ContextManagers that generate input activations. If
+            not specified, inputs are computed in a single default execution context.
     """
 
     input: NodeRef
     output: NodeRef
-    fn: Callable[[torch.nn.Module, Collection[Any]], None] | None = None
+
+    fn: dataclasses.InitVar[Callable[..., None] | None] = None
+    contexts: dataclasses.InitVar[Contexts | None] = None
+    delegate: Delegate | None = dataclasses.field(default=None, init=False)
+
+    def __post_init__(
+        self, fn: Callable[..., None] | None = None, contexts: Contexts | None = None
+    ) -> None:
+        if fn is not None:
+            self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
 
 
 def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
@@ -775,7 +839,9 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
     }
 
     partition_to_delegate = {
-        partition: spec.fn for partition, spec in zip(partitions[: len(specs)], specs)
+        partition: spec.delegate
+        for partition, spec in zip(partitions[: len(specs)], specs)
+        if spec.delegate is not None
     }
 
     node_to_partition = {
@@ -839,9 +905,9 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
         partition_args = [get_composite_arg(name) for name in partition.input_names]
         partition_ref = composite.add_node(f"partition_{partition_idx}", partition, partition_args)
 
-        if delegate_fn := partition_to_delegate.get(partition):
+        if delegate := partition_to_delegate.get(partition):
             node = composite._nodes[partition_ref.id]
-            composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate_fn)
+            composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate)
 
         # Ensure this partition's outputs are addressable to other partitions.
         for ref in partition._outputs:
@@ -1006,10 +1072,6 @@ class LocalOptimizer:
         graph: GraphModule to partition and optimize.
         specs: Partition boundaries with optional optimization functions. Each spec
             defines input/output nodes and an optional function to optimize that subgraph.
-        scheduler: Optional scheduler for transforming the composite graph into a program.
-            Must be provided together with engine. Defaults to InstructionScheduler.
-        engine: Optional engine for executing the program. Must be provided together
-            with scheduler. Defaults to InstructionEngine.
 
     Raises:
         ValueError: If only one of scheduler or engine is provided.
@@ -1032,6 +1094,8 @@ class LocalOptimizer:
 
     def optimize(self, *args: Any, **kwargs: Any) -> None:
         """Execute optimization across all partitions.
+
+        All input arguments must be iterables of the same length.
 
         Args:
             *args: Positional inputs for the graph.
