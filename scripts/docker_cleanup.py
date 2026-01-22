@@ -4,7 +4,7 @@
 
 This script is part of a CI optimization strategy that manages Docker build images
 to balance build speed with registry storage. It implements automatic cleanup of
-Docker images that are older than a configured retention period (default: 1 week).
+Docker images that are older than a configured retention period (default: 6 days).
 
 Workflow:
     1. Connects to the Docker registry and queries the catalog for all images
@@ -43,7 +43,7 @@ import sys
 import typing
 import urllib.request
 
-_OUTDATED_AFTER = datetime.timedelta(weeks=1)
+_OUTDATED_AFTER = datetime.timedelta(days=6)
 _MAX_AFFECTED_IMAGES = 50
 
 
