@@ -2,6 +2,10 @@ In reference to data modified/processed from https://github.com/huggingface/tran
 # Copyright 2018- The Hugging Face team. All rights reserved. Licensed under the Apache License, Version 2.0
 # License is provided for attribution purposes only, Not a Contribution
 
+In reference to code derived from https://github.com/IST-DASLab/gptq
+# Copyright 2022 IST Austria (Institute of Science and Technology Austria). Licensed under the Apache License, Version 2.0
+# License is provided for attribution purposes only, Not a Contribution
+
 
                                  Apache License
                            Version 2.0, January 2004
