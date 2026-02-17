@@ -243,6 +243,48 @@ def _child_result(
     )
 
 
+def query_for_module(
+    query: selector.BaseSelector | str,
+    root: torch.nn.Module,
+    *,
+    aliases: dict[str, selector.BaseSelector] | None = None,
+    root_aliases_attribute: str = "aliases",
+    stack_depth: int = 1,
+) -> selector.BaseSelector:
+    """Create Selector for root module.
+
+    Create a `BaseSelector` for `root` if `query` is a string. Otherwise, return a simplified
+    version of `query`. When a new `BaseSelector` is created, try to obtain aliases dictionary
+    from `root` using `root_aliases_attribute` if `aliases` is `None`.
+
+    Args:
+        query: Query to specify included/excluded submodules
+        root: Root module, all submodules of the root module are considered for inclusion
+            in the result set. root itself is never part of the result set.
+        aliases: Aliases to consider in the query. Any occurrence of `&<alias>`
+            is replaced by the corresponding query in aliases. If no aliases
+            are provided, try to use `root.<root_aliases_attribute>` as an alias
+            dictionary. Otherwise, don't use aliases.
+        root_aliases_attribute: The attribute name on `root` that contains aliases
+            to use when no explicit aliases are provided.
+        stack_depth: Number of frames to walk up the stack to determine 'calling context'.
+
+    Returns:
+        Collection of (sub)modules that satisfy `query`.
+    """
+    if aliases is None:
+        module_aliases = getattr(root, root_aliases_attribute, None)
+        if module_aliases is not None and _is_aliases_dict(module_aliases):
+            aliases = module_aliases
+        else:
+            aliases = {}
+    if isinstance(query, str):
+        query = mpath_parser.parse(
+            query, context=mpath_parser.get_caller_context(stack_depth=stack_depth), aliases=aliases
+        )
+    return query.simplify()
+
+
 def search(
     query: selector.BaseSelector | str,
     root: torch.nn.Module,
@@ -269,17 +311,9 @@ def search(
     Returns:
         Collection of (sub)modules that satisfy `query`.
     """
-    if aliases is None:
-        module_aliases = getattr(root, root_aliases_attribute, None)
-        if module_aliases is not None and _is_aliases_dict(module_aliases):
-            aliases = module_aliases
-        else:
-            aliases = {}
-    if isinstance(query, str):
-        query = mpath_parser.parse(
-            query, context=mpath_parser.get_caller_context(), aliases=aliases
-        )
-    query = query.simplify()
+    query = query_for_module(
+        query, root, aliases=aliases, root_aliases_attribute=root_aliases_attribute, stack_depth=2
+    )
 
     results = MPathCollection(root)
     selected_modules: set[torch.nn.Module] = set()

@@ -227,12 +227,13 @@ def find_quantizers(
         aliases: Aliases to consider in the query. Any occurrence of `&<alias>`
             is replaced by the corresponding query in aliases.
     """
-    if isinstance(query, str):
-        query = mpath._parser.parse(
-            query, context=mpath._parser.get_caller_context(), aliases=aliases
-        )
-    results = mpath.search(query, root_module)
-    return QuantizerCollection(root_module, results)
+    query = mpath.query_for_module(
+        query,
+        root_module,
+        aliases=aliases,
+        stack_depth=2,
+    )
+    return QuantizerCollection(root_module, mpath.search(query, root_module))
 
 
 @dataclasses.dataclass(frozen=True)

@@ -33,6 +33,7 @@ from typing import Any, NewType, cast
 from . import _parser, fragments, selector
 from ._search import FilterResult as FilterResult
 from ._search import MPathCollection as MPathCollection
+from ._search import query_for_module as query_for_module
 from ._search import search as search
 
 Fragment = selector.Fragment
