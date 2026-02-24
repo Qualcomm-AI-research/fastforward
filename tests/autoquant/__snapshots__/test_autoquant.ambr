@@ -518,6 +518,36 @@
           )
   '''
 # ---
+# name: test_autoquant_end_to_end[case-19]
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModule19
+  
+  
+  class QuantizedExampleModule19(fastforward.nn.QuantizedModule, ExampleModule19):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_mul_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_mul_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_mul_3: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_out: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, x: torch.Tensor) -> torch.Tensor | float:
+          x = self.quantizer_x(x)
+          out = torch.tensor(0)
+          out = self.quantizer_out(out)
+          try:
+              return fastforward.nn.functional.mul(x, x, output_quantizer=self.quantizer_mul_1)
+          except AttributeError:
+              out = fastforward.nn.functional.mul(x, 2, output_quantizer=self.quantizer_mul_2)
+          finally:
+              out = fastforward.nn.functional.mul(2, out, output_quantizer=self.quantizer_mul_3)
+          return out
+  '''
+# ---
 # name: test_autoquant_end_to_end[case-8]
   '''
   import fastforward

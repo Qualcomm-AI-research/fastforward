@@ -426,6 +426,21 @@ class ExampleModule18(torch.nn.Module):
 # --------------------------------------------------------------------------------
 
 
+class ExampleModule19(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor | float:
+        out = torch.tensor(0)
+        try:
+            return x * x
+        except AttributeError:
+            out = x * 2
+        finally:
+            out = 2 * out
+        return out
+
+
+# --------------------------------------------------------------------------------
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "input_module",
@@ -441,8 +456,9 @@ class ExampleModule18(torch.nn.Module):
         ExampleModule16(),
         ExampleModule17(),
         ExampleModule18(),
+        ExampleModule19(),
     ],
-    ids=[f"case-{i}" for i in range(8, 19)],
+    ids=[f"case-{i}" for i in range(8, 20)],
 )
 def test_autoquant_end_to_end(
     input_module: torch.nn.Module,

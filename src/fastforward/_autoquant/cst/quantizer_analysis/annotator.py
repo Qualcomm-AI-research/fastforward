@@ -448,6 +448,33 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         else:
             self._active_scope.merge(if_scope, inplace=True)
 
+    def evaluate_Try(self, node: libcst.Try) -> None:
+        with (
+            self.enter_scope() as try_scope,
+        ):
+            node.body.visit(self)
+
+        for handler in node.handlers:
+            with (
+                self.enter_scope() as handler_scope,
+            ):
+                handler.visit(self)
+                try_scope = try_scope.merge(handler_scope)
+
+        if (orelse := node.orelse) is not None:
+            with (
+                self.enter_scope() as orelse_scope,
+            ):
+                orelse.visit(self)
+                try_scope.merge(orelse_scope)
+
+        if (finalbody := node.finalbody) is not None:
+            with (
+                self.enter_scope() as finally_scope,
+            ):
+                finalbody.visit(self)
+                try_scope.overwrite(finally_scope)
+
     def evaluate_GeneralAssignment(self, node: nodes.GeneralAssignment) -> None:
         """Evaluate assignments.
 
