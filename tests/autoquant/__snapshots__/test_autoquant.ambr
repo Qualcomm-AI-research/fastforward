@@ -801,6 +801,29 @@
           return x
   '''
 # ---
+# name: test_autoquant_multiline_call
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModuleMultiline
+  
+  
+  class QuantizedExampleModuleMultiline(fastforward.nn.QuantizedModule, ExampleModuleMultiline):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_relu: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, x: torch.Tensor, n: int) -> torch.Tensor:
+          _tmp_71 = x.view(-1, 3)
+          _tmp_72 = _tmp_71.permute(1, 0)
+          y = _tmp_72.reshape(n, -1)
+          y = self.quantizer_y(y)
+          return fastforward.nn.functional.relu(y, output_quantizer=self.quantizer_relu)
+  
+  '''
+# ---
 # name: test_autoquant_with_overloaded_operator_table[CustomOpLinearModule]
   '''
   import fastforward

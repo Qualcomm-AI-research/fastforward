@@ -187,8 +187,9 @@ class _RequiredSymbolsVisitor(libcst.CSTVisitor):
         return False
 
     def visit_Attribute(self, node: libcst.Attribute) -> bool:
-        str_repr = libcst.Module([]).code_for_node(node)
-        if not self._record_import_symbol(str_repr):
+        parts = _importable_attribute_parts(node)
+        str_repr = ".".join(parts) if parts else ""
+        if not str_repr or not self._record_import_symbol(str_repr):
             node.value.visit(self)
         return False
 

@@ -775,3 +775,23 @@ def test_autoquant_with_overloaded_operator_table(
     # THEN the generated code must match the snapshot
     actual_code = codeformat_with_defaults(code=autoquant_code)
     assert snapshot == actual_code
+
+
+# fmt: off
+class ExampleModuleMultiline(torch.nn.Module):
+    def forward(self, x: torch.Tensor, n: int) -> torch.Tensor:
+        y = (
+            x
+            .view(-1, 3)
+            .permute(1, 0)
+            .reshape(n, -1)
+        )
+        return torch.relu(y)
+# fmt: on
+
+
+@pytest.mark.slow
+def test_autoquant_multiline_call(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
+    quantized = autoquant_with_defaults(ExampleModuleMultiline(), use_type_inference=False)
+    formatted = codeformat_with_defaults(quantized)
+    assert snapshot == formatted
