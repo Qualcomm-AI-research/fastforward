@@ -537,29 +537,6 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         self._count += 1
         assign_target = libcst.AssignTarget(assign_name)
 
-        # If the expression being isolated contains a Dot whose
-        # whitespace_before is ParenthesizedWhitespace (e.g., a multiline
-        # method chain that was originally inside parentheses), normalize
-        # that whitespace before creating the standalone assignment.
-        #
-        # Example:
-        #
-        #     y = (
-        #         x
-        #         .view(-1, 3)
-        #         .permute(1, 0)
-        #         .reshape(n, -1)
-        #     )
-        #
-        # When `x.view(-1, 3)` is isolated, LibCST preserves the newline
-        # before `.view(...)` as ParenthesizedWhitespace on the Dot node.
-        # That whitespace is valid only while the expression remains inside
-        # parentheses. After extraction we collapse it to empty whitespace
-        # and let the formatter choose the final layout.
-        original_expr = updated_node.original
-        if (normalized_expr := _normalize_dot_whitespace(original_expr)) is not None:
-            updated_node = ReplacementCandidate(normalized_expr)
-
         assignment = libcst.Assign([assign_target], updated_node)
 
         # Walk up the visitor stack. When we find a SimpleStatementLine,
@@ -761,36 +738,40 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         return UnresolvedQuantizedCall(**call_params, original_name=func_name, func_ref=func_ref)
 
 
-def _normalize_dot_whitespace(expr: _ExpressionT) -> _ExpressionT | None:
-    """Collapse ParenthesizedWhitespace on Dot nodes to empty SimpleWhitespace.
+class RemoveRedundantParenthesesTransformer(libcst.CSTTransformer):
+    """Removes unnecessary parentheses from expressions when it's safe to do so."""
 
-    ParenthesizedWhitespace on Dot.whitespace_before is only valid inside a
-    parenthesized context. When an expression is extracted from such a context
-    into a standalone assignment, that whitespace must be replaced so the
-    result is syntactically valid.
-
-    Returns:
-        The normalized expression if any Dot node was updated, or ``None`` if
-        no normalization was needed.
-    """
-
-    class _Normalizer(libcst.CSTTransformer):
-        changed: bool = False
-
-        @override
-        def leave_Dot(self, original_node: libcst.Dot, updated_node: libcst.Dot) -> libcst.Dot:
-            del original_node
-            if isinstance(updated_node.whitespace_before, libcst.ParenthesizedWhitespace):
-                self.changed = True
-                return updated_node.with_changes(whitespace_before=libcst.SimpleWhitespace(""))
+    def on_leave(  # type: ignore[override]
+        self,
+        original_node: libcst.CSTNode,
+        updated_node: libcst.CSTNode,
+    ) -> libcst.CSTNode:
+        """Check any node for unnecessary parentheses and remove them if safe."""
+        del original_node
+        # Only remove parentheses from nodes where they are unecesary
+        if not isinstance(
+            updated_node, (libcst.Name, libcst.Attribute, libcst.Call, libcst.Subscript)
+        ):
             return updated_node
 
-    normalizer = _Normalizer()
-    result = expr.visit(normalizer)
-    if not normalizer.changed:
-        return None
-    assert isinstance(result, type(expr))
-    return result
+        # Flatten ParenthesizedWhitespace on Dot nodes so removing outer parens
+        # doesn't leave behind newlines that were only valid inside them
+        if isinstance(updated_node, libcst.Attribute):
+            if isinstance(updated_node.dot.whitespace_before, libcst.ParenthesizedWhitespace):
+                updated_node = updated_node.with_changes(
+                    dot=updated_node.dot.with_changes(whitespace_before=libcst.SimpleWhitespace(""))
+                )
+
+        # Check if this node has lpar/rpar attributes (most expression nodes do)
+        if hasattr(updated_node, "lpar") and hasattr(updated_node, "rpar"):
+            lpar = getattr(updated_node, "lpar")
+            rpar = getattr(updated_node, "rpar")
+
+            # If there are parentheses, remove them
+            if lpar and rpar:
+                return updated_node.with_changes(lpar=(), rpar=())
+
+        return updated_node
 
 
 def _get_root(expr: libcst.BaseExpression) -> libcst.BaseExpression:

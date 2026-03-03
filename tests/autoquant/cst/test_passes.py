@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 import libcst as libcst
 import pytest
+import syrupy
 
 from fastforward._autoquant.autoquant import codeformat_with_defaults
 from fastforward._autoquant.cst import nodes, passes
@@ -337,3 +338,27 @@ def test_fold_temporaries(code: str, expected: str) -> None:
     actual = codeformat_with_defaults(transformed.code)
     expected = codeformat_with_defaults(dedent_strip(expected)[0])
     assert_strings_match_verbose(actual, expected)
+
+
+def test_redundant_parentheses(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
+    """Verifies redundant parentheses are removed while necessary ones are kept."""
+    # GIVEN code with redundant parentheses
+    (input,) = dedent_strip(
+        """
+        result = (foo.bar.cat())
+        value = (foo
+                 .bar
+                 .cat())
+        another = (obj.method())
+        attr_only = (foo.bar.cat)
+        also_remove_these = (foo.bar.cat(arg1, arg2))
+        keep = (foo + bar)
+        """
+    )
+
+    # WHEN we visit the code with RemoveRedundantParenthesesTransformer
+    module = libcst.parse_module(input)
+    result = module.visit(passes.RemoveRedundantParenthesesTransformer()).code
+
+    # THEN the result matches the snapshot
+    assert snapshot == result

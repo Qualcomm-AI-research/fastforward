@@ -205,6 +205,7 @@ def default_preprocessing_passes(
     )
     return [
         passes.ConvertSemicolonJoinedStatements(),
+        passes.RemoveRedundantParenthesesTransformer(),
         MarkReplacementCandidatesPass,
         passes.IsolateReplacementCandidates,
         passes.WrapAssignments(),
