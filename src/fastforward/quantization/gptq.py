@@ -9,14 +9,16 @@ from __future__ import annotations
 import logging
 import math
 
-from typing import cast
+from typing import Callable, cast
 
 import torch
 
 import fastforward as ff
+import fastforward.quantization.affine as affine_quant
 
 from fastforward._orchestration.graph_module import GraphModule
 from fastforward._orchestration.instruction_engine import ActivationDataset
+from fastforward.quantization import granularity as granularities
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,92 @@ def gptq(
     logger.info("[GPTQ][wbits=%d][%s] loss=%.6f", num_bits, layer_name, loss)
 
 
+def column_quantizer(
+    weight_quantizer: ff.nn.LinearQuantizer, weight_shape: torch.Size, col_index: int
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """Return a quantize-dequantize operator for a single column.
+
+    GPTQ optimizes consecutive (blocks of) columns. The quantizers in FastForward can operate
+    on various levels of granularity, so here we transform the selected granularity explicitly
+    to a PerChannel(channel_dim=0) setting (one scale/offset per row).
+
+    Args:
+        weight_quantizer: A calibrated LinearQuantizer.
+        weight_shape: Shape of the full weight tensor `(out_features, in_features)`.
+        col_index: Column index in the original weight matrix.
+
+    Returns:
+        A callable that takes a column and returns it quantized-dequantized.
+    """
+    out_features, in_features = weight_shape
+    scale: torch.Tensor = weight_quantizer.scale
+    offset: torch.Tensor | None = weight_quantizer.offset
+
+    match weight_quantizer.granularity:
+        case granularities.PerTensor():
+            # Expand the single scale for the entire column.
+            scale = scale.expand(out_features)
+            offset = offset.expand(out_features) if offset is not None else None
+
+        case granularities.PerChannel(channel_dims=(0,)):
+            pass  # Already one scale per row.
+
+        case granularities.PerChannel(channel_dims=(1,)):
+            # One scale for the entire column.
+            scale = scale[col_index].expand(out_features)
+            offset = offset[col_index].expand(out_features) if offset is not None else None
+
+        case granularities.PerChannel(channel_dims=(0, 1)):
+            # Per-element scale. NB: this is a valid configuration but a strange one.
+            scale = scale.view(out_features, in_features)[:, col_index]
+            offset = (
+                offset.view(out_features, in_features)[:, col_index] if offset is not None else None
+            )
+
+        case granularities.PerBlock(strict_blocks=False):
+            msg = "GPTQ does not support PerBlock with strict_blocks=False."
+            raise ValueError(msg)
+
+        case granularities.PerBlock() | granularities.PerTile():
+            tile_size = weight_quantizer.granularity.tile_size(weight_shape)
+            row_block_size, col_block_size = tile_size
+            num_row_blocks = out_features // row_block_size
+            num_col_blocks = in_features // col_block_size
+            col_block_idx = col_index // col_block_size
+
+            # Pick the correct column for this block.
+            scale = scale.view(num_row_blocks, num_col_blocks)[:, col_block_idx]
+
+            # broadcast the column values to get (out_features,) shape.
+            scale = scale.repeat_interleave(row_block_size)
+
+            offset = (
+                offset.view(num_row_blocks, num_col_blocks)[:, col_block_idx].repeat_interleave(
+                    row_block_size
+                )
+                if offset is not None
+                else None
+            )
+
+        case _:
+            msg = f"Unsupported granularity: {type(weight_quantizer.granularity).__name__}"
+            raise TypeError(msg)
+
+    ctx = affine_quant.quantization_context(
+        scale=scale,
+        offset=offset,
+        num_bits=weight_quantizer.num_bits,
+        granularity=granularities.PerChannel(channel_dim=0),
+        output_dtype=weight_quantizer.quantized_dtype,
+    )
+
+    def _quant_fn(col: torch.Tensor) -> torch.Tensor:
+        q = ctx.quantization_fn.quantize(col.unsqueeze(1), ctx.quantization_params)
+        return q.dequantize().flatten()
+
+    return _quant_fn
+
+
 def _gptq(
     layer: ff.nn.QuantizedLinear,
     activations: ActivationDataset,
@@ -124,11 +212,11 @@ def _gptq(
     # Approximate the hessian from the intermediate activations of the previous layer.
     hessian = calculate_hessian(layer, activations)
 
-    if actorder:
-        perm = torch.argsort(torch.diag(hessian), descending=True)
-        weights = weights[:, perm]
-        hessian = hessian[perm][:, perm]
-        invperm = torch.argsort(perm)
+    column_order = (
+        torch.argsort(torch.diag(hessian), descending=True) if actorder else torch.arange(columns)
+    )
+    weights = weights[:, column_order]
+    hessian = hessian[column_order][:, column_order]
 
     quantized_weights = torch.zeros_like(weights)  # [paper] // quantized output
     errors = torch.zeros_like(weights)  # [paper] // block quantization errors
@@ -144,9 +232,9 @@ def _gptq(
         # [paper] for j = i, ..., i + B - 1
         for j in range(block_end - i):
             # [paper] Q <- ... // quantize-dequantize columns
-            quantized_weights[:, i + j] = (
-                weight_quantizer(weights_block[:, j].unsqueeze(1)).dequantize().flatten()
-            )
+            orig_col = int(column_order[i + j].item())
+            quant_deq = column_quantizer(weight_quantizer, weights.shape, orig_col)
+            quantized_weights[:, i + j] = quant_deq(weights_block[:, j])
 
             # [paper] E <- ... // quantization error
             errors[:, i + j] = (weights_block[:, j] - quantized_weights[:, i + j]) / hessinv_block[
@@ -161,9 +249,9 @@ def _gptq(
         # [paper] W <- // update all remaining weights
         weights[:, block_end:] -= errors[:, i:block_end] @ hessian_inverse[i:block_end, block_end:]
 
-    if actorder:
-        quantized_weights = quantized_weights[:, invperm]
-        errors = errors[:, invperm]
+    restore_order = torch.argsort(column_order)
+    quantized_weights = quantized_weights[:, restore_order]
+    errors = errors[:, restore_order]
 
     # Modify weights in-place.
     layer.weight.copy_(quantized_weights.to(layer.weight.dtype))

@@ -57,8 +57,38 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 logging.basicConfig(level=logging.INFO)
 
+
+# -
+
+# ## GPTQ Parameters
+#
+# This section assumes familiarity with the GPTQ algorithm. For details, see
+# [Frantar et al., 2022](https://arxiv.org/abs/2210.17323).
+#
+# - `num_bits`: Bit-width for weight quantization.
+# - `symmetric`: Whether to use symmetric or asymmetric quantization.
+# - `granularity`: Controls how many scale/offset parameters are used per weight matrix.
+#   Finer granularity means more parameters and typically better perplexity at the cost of
+#   storage overhead.
+# - `block_size`: Number of columns processed per GPTQ block iteration.
+# - `perc_damp`: Dampening factor as a percentage of the mean Hessian diagonal, used to
+#   stabilize the Cholesky inversion.
+# - `act_order`: Whether to reorder columns by activation magnitude before quantization.
+#
+# For `granularity`, the following results were obtained on Llama-7B (W4, act-order, C4
+# calibration, WikiText-2 evaluation):
+#
+# | Granularity | Tile size | #scales | Perplexity |
+# |---|---|---|---|
+# | `ff.PerChannel(channel_dim=0)` | (1, 4096) | 4,096 | 6.09 |
+# | `ff.PerTile((32, 32))` | (32, 32) | 16,384 | 5.92 |
+# | `ff.PerBlock(block_dims=1, block_sizes=128, per_channel_dims=0)` | (1, 128) | 131,072 | 5.79 |
+#
+
+# +
 num_bits = 4
 symmetric = False
+
 granularity: ff.granularity.Granularity = ff.PerChannel(channel_dim=0)
 
 block_size = 128
@@ -118,7 +148,7 @@ def get_c4(
 
     random.seed(seed)
     loader = []
-    for _ in range(256):
+    for _ in range(128):
         while True:
             i = random.randint(0, len(traindata) - 1)
             tmp: TokenizedData = tokenizer(
