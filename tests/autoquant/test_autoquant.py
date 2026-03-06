@@ -4,11 +4,12 @@
 
 import contextlib
 import functools
+import operator
 import pathlib
 import sys
 import types
 
-from typing import Any, Callable, Iterable, Iterator, TypeAlias
+from typing import Any, Callable, Iterable, Iterator, TypeAlias, cast
 from unittest.mock import patch
 
 import fastforward
@@ -795,3 +796,20 @@ def test_autoquant_multiline_call(snapshot: syrupy.assertion.SnapshotAssertion) 
     quantized = autoquant_with_defaults(ExampleModuleMultiline(), use_type_inference=False)
     formatted = codeformat_with_defaults(quantized)
     assert snapshot == formatted
+
+
+class ExampleModuleBuiltinCallableAttr(torch.nn.Module):
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        op = operator.add
+        call = getattr(op, "__call__")
+        return cast(torch.Tensor, call(x, y))
+
+
+@pytest.mark.slow
+def test_autoquant_attribute_call_on_builtin_callable_does_not_crash() -> None:
+    """Regression for alias scan on objects without ``__dict__``.
+
+    The dependency scanner should not call ``vars(...)`` on builtin callable
+    objects reached via attribute calls (e.g. ``op.__call__(...)``).
+    """
+    _ = autoquant_with_defaults(ExampleModuleBuiltinCallableAttr(), use_type_inference=False)

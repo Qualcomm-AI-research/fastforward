@@ -862,10 +862,13 @@ def _find_dependent_functions(
                     continue
 
                 alias = None
-                for name, obj in vars(module).items():
-                    if obj is ref:
-                        alias = name
-                        break
+                try:
+                    for name, obj in vars(module).items():
+                        if obj is ref:
+                            alias = name
+                            break
+                except (TypeError, AttributeError):
+                    pass
 
                 # Only queue functions that are inspectable (Python-defined).
                 # Builtin function calls are replaced to quantized versions based on
