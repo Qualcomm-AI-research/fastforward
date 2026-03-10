@@ -19,6 +19,7 @@ from fastforward._orchestration.graph_module import (
     LocalOptimizer,
     NodeRef,
     SubgraphSpec,
+    build_composite_graph,
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
@@ -699,6 +700,51 @@ def test_local_optimization_no_specs() -> None:
     # THEN no weights should change (only forward passes)
     assert torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
     assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
+
+
+def _make_linear_chain(n: int, dim: int = 8) -> tuple[GraphModule, list[NodeRef]]:
+    """Build a sequential chain of `n` Linear layers and return (graph, node_refs)."""
+    layers = [torch.nn.Linear(dim, dim) for _ in range(n)]
+    graph = GraphModule()
+    prev: Any = graph.add_input("x")
+    node_refs: list[NodeRef] = []
+    for i, layer in enumerate(layers):
+        ref = graph.add_node(f"linear_{i}", layer, [prev])
+        node_refs.append(ref)
+        prev = ref
+    graph.add_output(node_refs[-1])
+    return graph, node_refs
+
+
+def test_build_composite_graph_single_mid_spec_partition_count() -> None:
+    # GIVEN a 10-node linear chain with a spec on node 4
+    graph, node_refs = _make_linear_chain(10)
+    specs = [SubgraphSpec(input=node_refs[4], output=node_refs[4])]
+
+    # WHEN we build the composite graph
+    composite = build_composite_graph(graph, specs)
+
+    # THEN the composite should have exactly 3 nodes (prefix, spec, suffix)
+    msg = f"Expected 3 composite nodes, got {len(composite._nodes)}. Node names: {[n.name for n in composite._nodes.values()]}"
+    assert len(composite._nodes) == 3, msg
+
+
+def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
+    # GIVEN an 8-node chain with specs on nodes 1 and 5
+    graph, node_refs = _make_linear_chain(8, dim=4)
+    specs = [
+        SubgraphSpec(input=node_refs[1], output=node_refs[1]),
+        SubgraphSpec(input=node_refs[5], output=node_refs[5]),
+    ]
+
+    # WHEN we build the composite graph and run a forward pass
+    composite = build_composite_graph(graph, specs)
+    x = torch.randn(1, 4)
+    composite_out = composite(x)
+    original_out = graph(x)
+
+    # THEN the outputs should be numerically identical
+    torch.testing.assert_close(composite_out, original_out)
 
 
 def test_local_optimization_with_kwargs() -> None:

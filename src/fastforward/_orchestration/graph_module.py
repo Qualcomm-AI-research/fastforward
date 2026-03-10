@@ -981,15 +981,26 @@ def _group_remaining_nodes_by_layer(
     if not remaining_nodes:
         return []
 
-    # For each remaining node, find which explicit nodes it depends on
+    # For each remaining node, find which explicit nodes form its upstream boundary.
+    # We traverse backward through remaining nodes freely, but stop (and collect) when
+    # we reach an explicit node — we do not traverse past explicit boundaries.
     node_dependencies: dict[NodeRef, set[NodeRef]] = {}
 
     for node in remaining_nodes:
-        # Find all explicit nodes reachable backward from this node
-        deps = find_reachable_nodes(
-            graph, node, direction=Direction.BACKWARD, allowlist=explicit_nodes
-        )
-        node_dependencies[node] = deps
+        boundary: set[NodeRef] = set()
+        seen: set[NodeRef] = {node}
+        stack: list[NodeRef] = [node]
+        while stack:
+            current = stack.pop()
+            for predecessor in graph.node_inputs(current):
+                if predecessor in seen:
+                    continue
+                seen.add(predecessor)
+                if predecessor in explicit_nodes:
+                    boundary.add(predecessor)
+                else:
+                    stack.append(predecessor)
+        node_dependencies[node] = boundary
 
     # Group nodes with the same dependency signature
     # Use tuple of sorted node ids as key since sets aren't hashable
@@ -1000,7 +1011,7 @@ def _group_remaining_nodes_by_layer(
             groups[deps_key] = set()
         groups[deps_key].add(node)
 
-    # Within each group, find connected components (forward only to respect order)
+    # Within each group, find connected components using bidirectional traversal.
     result: list[set[NodeRef]] = []
     for group_nodes in groups.values():
         components = _find_connected_components(graph, group_nodes)
@@ -1057,7 +1068,7 @@ def _find_connected_components(graph: GraphModule, nodes: set[NodeRef]) -> list[
         root = next(iter(nodes_to_visit))
 
         component = find_reachable_nodes(
-            graph, root, direction=Direction.FORWARD, allowlist=nodes_to_visit
+            graph, root, direction=Direction.BIDIRECTIONAL, allowlist=nodes_to_visit
         )
         components.append(component)
         nodes_to_visit -= component
