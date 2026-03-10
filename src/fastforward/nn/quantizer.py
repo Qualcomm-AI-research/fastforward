@@ -271,6 +271,32 @@ class Quantizer(torch.nn.Module):
         self.quant_metadata = None
         self._register_load_state_dict_pre_hook(self._load_state_dict_uninitialized_param_pre_hook)
 
+    @classmethod
+    def factory(cls, *args: Any, **kwargs: Any) -> Callable[[str, "Quantizer"], "Quantizer"]:
+        """Create a factory function that produces instances of this quantizer.
+
+        This method returns a factory function that can be used to instantiate
+        quantizers with pre-configured arguments. The factory function accepts
+        a name and current quantizer (for compatibility with quantizer replacement
+        patterns) but ignores them, always creating a new instance with the
+        provided args and kwargs.
+
+        Args:
+            *args: Positional arguments to pass to the quantizer constructor.
+            **kwargs: Keyword arguments to pass to the quantizer constructor.
+
+        Returns:
+            A factory function with signature (_name: str, _current_quantizer: Quantizer) -> Self
+            that creates new instances of this quantizer class.
+        """
+
+        def factory(_name: str, _current_quantizer: "Quantizer") -> "Quantizer":
+            return cls(*args, **kwargs)
+
+        factory.__name__ = f"{cls.__name__}_factory"
+
+        return factory
+
     def __setstate__(self, state: dict[str, Any]) -> None:
         """Restore the state of the Quantizer.
 

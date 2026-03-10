@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import contextlib
+import inspect
 import logging
 import textwrap
 import warnings
@@ -8,6 +10,7 @@ import warnings
 from collections import defaultdict
 from operator import attrgetter
 from pathlib import Path
+from types import ModuleType as PyModuleType
 from typing import Any, Iterator, Literal, TypeAlias, Union, cast
 
 import torch
@@ -95,6 +98,7 @@ def quantizer_state_dict(module: torch.nn.Module) -> dict[str, Any]:
 
 
 _QUANTIZED_MODULE_MAP: dict[type[torch.nn.Module], list[type["QuantizedModule"]]] = {}
+_QUANTIZED_MODULE_MAP_FILTER: tuple[PyModuleType, ...] | None = None
 
 
 def _record_quantized_module(cls: type["QuantizedModule"]) -> None:
@@ -198,6 +202,8 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         self: torch.nn.Module,
         extra_conversion: ModuleConversionDict | None = None,
         skip_quantized_modules: bool = False,
+        *,
+        ignore_global_module_map: bool = False,
     ) -> None:
         """Quantize children.
 
@@ -212,6 +218,9 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                 mapping as given by `quantized_module_map` is used.
             skip_quantized_modules: If `True` do not try to requantize already
                 quantized modules.
+            ignore_global_module_map: If True, ignore the global quantized module map and
+                only use `extra_conversion` (if provided) when determining which modules
+                need surrogates.
 
         Warning:
             If this method is used on a module that has submodules for which no
@@ -225,6 +234,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                     child,
                     extra_conversion=extra_conversion,
                     skip_quantized_modules=skip_quantized_modules,
+                    ignore_global_module_map=ignore_global_module_map,
                 )
 
     def register_quantizer(
@@ -618,7 +628,12 @@ def _check_quantizable(
     raise QuantizationError(textwrap.dedent(msg).strip())
 
 
-def surrogate_quantized_modules(model: torch.nn.Module) -> ModuleConversionDict:
+def surrogate_quantized_modules(
+    model: torch.nn.Module,
+    *,
+    extra_conversion: ModuleConversionDict | None = None,
+    ignore_global_module_map: bool = False,
+) -> ModuleConversionDict:
     """Create surrogate quantization modules for prototyping.
 
     Construct a `ModuleConversionDict` that contains surrogate quantized modules
@@ -654,12 +669,21 @@ def surrogate_quantized_modules(model: torch.nn.Module) -> ModuleConversionDict:
 
     Args:
         model: `Model` for which to create placeholder `QuantizedModule` implementations
+        extra_conversion: Additional module conversion mappings to use alongside the
+            global module map. If provided, these take precedence over the global map.
+        ignore_global_module_map: If True, ignore the global quantized module map and
+            only use `extra_conversion` (if provided) when determining which modules
+            need surrogates.
 
     Returns:
         a `ModuleConversionDict` that can be used as `extra_conversion` in `quantize_model`
     """
     module_map: ModuleConversionDict = {}
-    default_module_map: ModuleConversionDict = cast(ModuleConversionDict, quantized_module_map())
+
+    default_module_map = extra_conversion or {}
+    if not ignore_global_module_map:
+        default_module_map = {**quantized_module_map(), **default_module_map}
+
     for module in _missing_modules(
         model, module_map=default_module_map, skip_quantized_modules=True
     ):
@@ -678,6 +702,8 @@ def quantize_model(
     recursive: bool = True,
     extra_conversion: ModuleConversionDict | None = None,
     skip_quantized_modules: bool = False,
+    *,
+    ignore_global_module_map: bool = False,
 ) -> torch.nn.Module:
     """Convert modules and submodules to quantized counterparts.
 
@@ -696,8 +722,13 @@ def quantize_model(
       skip_quantized_modules: If True, do not attempt to replace already quantized modules. If
         False, quantized modules are treated as any other module and may be replaced if an entry
         is available in the conversion map or an error is thrown otherwise.
+      ignore_global_module_map: If True, only the module map passed as `extra_conversion` is
+        used to convert modules. Otherwise, the global module map is merged with `extra_conversion`
+        giving precedence to the latter.
     """
-    module_map = quantized_module_map() | (extra_conversion or {})
+    module_map = extra_conversion or {}
+    if not ignore_global_module_map:
+        module_map = {**quantized_module_map(), **module_map}
     _check_quantizable(model, module_map, skip_quantized_modules=skip_quantized_modules)
 
     if skip_quantized_modules and isinstance(model, QuantizedModule):
@@ -709,7 +740,9 @@ def quantize_model(
 
     if isinstance(model, QuantizedModule) and recursive:
         model.quantize_children(
-            extra_conversion=extra_conversion, skip_quantized_modules=skip_quantized_modules
+            extra_conversion=extra_conversion,
+            skip_quantized_modules=skip_quantized_modules,
+            ignore_global_module_map=ignore_global_module_map,
         )
 
     return model
@@ -750,6 +783,9 @@ def quantized_module_map() -> dict[ModuleType, QuantizedModuleType]:
     """
     mapping: dict[ModuleType, QuantizedModuleType] = {}
     for module_type, quantized_module_types in _QUANTIZED_MODULE_MAP.items():
+        quantized_module_types = list(
+            filter(_is_allow_listed_quantized_module, quantized_module_types)
+        )
         if not quantized_module_types:
             continue
         if len(quantized_module_types) > 1:
@@ -765,3 +801,47 @@ def quantized_module_map() -> dict[ModuleType, QuantizedModuleType]:
         mapping[module_type] = quantized_module_types[-1]
 
     return mapping
+
+
+@contextlib.contextmanager
+def filter_quantized_module_map(*modules: PyModuleType) -> Iterator[None]:
+    """Context manager to temporarily filter the quantized module map to specific modules.
+
+    This allows selective application of quantization mappings by restricting which
+    modules are considered during the context. Only quantized modules that are defined
+    in the allow-listed modules are part of the quantization mapping within the context.
+    When the context exits, the previous filter state is restored.
+
+    Args:
+        *modules: Variable number of Python module types to include in the allow list.
+                 Only quantized modules defined in these modules will be considered
+                 for quantization mapping within the context.
+    """
+    global _QUANTIZED_MODULE_MAP_FILTER
+    current_filters = _QUANTIZED_MODULE_MAP_FILTER
+    try:
+        _QUANTIZED_MODULE_MAP_FILTER = modules
+        yield
+    finally:
+        _QUANTIZED_MODULE_MAP_FILTER = current_filters
+
+
+def _is_allow_listed_quantized_module(cls: type[QuantizedModule]) -> bool:
+    if _QUANTIZED_MODULE_MAP_FILTER is None:
+        return True
+    return any(_is_class_from_module(cls, py_module) for py_module in _QUANTIZED_MODULE_MAP_FILTER)
+
+
+def _is_class_from_module(cls: ModuleType, module: PyModuleType) -> bool:
+    """Check if a class was originally defined in a given module or its submodules."""
+    # Get the module name as a string
+    if hasattr(module, "__name__"):
+        module_name = module.__name__
+    else:
+        module_name = str(module)
+
+    if class_module := inspect.getmodule(cls):
+        class_module_name = class_module.__name__
+        return class_module_name == module_name or class_module_name.startswith(module_name + ".")
+
+    return False

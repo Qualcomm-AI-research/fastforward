@@ -215,3 +215,23 @@ def test_quantizer_deepcopy() -> None:
     assert cloned_quantizer.sub_module is not quantizer.sub_module
     assert hasattr(cloned_quantizer, "attr")
     assert cloned_quantizer.attr == 5
+
+
+class _FactoryQuantizer(Quantizer):
+    def __init__(self, num_bits: int, mode: str) -> None:
+        super().__init__()
+        self.num_bits = num_bits
+        self.mode = mode
+
+
+def test_quantizer_factory() -> None:
+    # GIVEN a quantizer class with constructor args
+    factory = _FactoryQuantizer.factory(8, mode="per_tensor")
+    # WHEN the factory is invoked
+    quantizer = factory("q", Quantizer())
+
+    # THEN a configured quantizer instance is returned
+    assert isinstance(quantizer, _FactoryQuantizer)
+    assert quantizer.num_bits == 8
+    assert quantizer.mode == "per_tensor"
+    assert factory.__name__ == "_FactoryQuantizer_factory"

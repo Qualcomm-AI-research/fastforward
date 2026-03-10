@@ -3,6 +3,7 @@
 
 # pylint: disable=missing-function-docstring
 import itertools
+import sys
 
 from copy import deepcopy
 
@@ -237,6 +238,52 @@ def test_surrogate_quantized_modules() -> None:
     # appear in the default module map
     default_module_map = ff.nn.quantized_module.quantized_module_map()
     assert module_map[MyUnquantizableModule4] not in default_module_map
+
+
+def test_surrogate_quantized_modules_ignore_global_map() -> None:
+    # GIVEN a model with modules that are quantizable in the global map
+    model = torch.nn.Sequential(torch.nn.Linear(3, 3))
+
+    # WHEN creating surrogates while ignoring the global map
+    module_map = ff.surrogate_quantized_modules(model, ignore_global_module_map=True)
+
+    # THEN a surrogate is created for Linear instead of using the global mapping
+    assert torch.nn.Linear in module_map
+    quantized_linear = module_map[torch.nn.Linear]
+    assert isinstance(quantized_linear, type)
+    assert issubclass(quantized_linear, ff.nn.QuantizedModule)
+    assert quantized_linear.__name__.endswith("Surrogate")
+    assert quantized_linear is not ff.nn.QuantizedLinear
+
+
+def test_quantize_model_ignore_global_module_map() -> None:
+    # GIVEN a model with a module that only exists in the global map
+    model = torch.nn.Sequential(torch.nn.Linear(3, 3), MyModule1())
+
+    # WHEN quantizing with the global map ignored
+    # THEN an error is raised
+    with pytest.raises(ff.exceptions.QuantizationError):
+        ff.nn.quantize_model(
+            model,
+            extra_conversion={MyModule1: MyQuantizedModule1},
+            ignore_global_module_map=True,
+        )
+
+
+def test_filter_quantized_module_map() -> None:
+    # GIVEN the default module map includes built-in modules
+    mapping = ff.nn.quantized_module_map()
+    assert torch.nn.Linear in mapping
+
+    # WHEN filtering to the current test module
+    with ff.nn.quantized_module.filter_quantized_module_map(sys.modules[__name__]):
+        filtered = ff.nn.quantized_module_map()
+
+    # THEN only allow-listed quantized modules are present within the context
+    assert MyModule1 in filtered
+    assert torch.nn.Linear not in filtered
+    # THEN the global mapping is restored afterward
+    assert torch.nn.Linear in ff.nn.quantized_module_map()
 
 
 def test_quantizer_state_store_load() -> None:
