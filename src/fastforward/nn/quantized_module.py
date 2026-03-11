@@ -2,16 +2,18 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import contextlib
+import dataclasses
 import inspect
 import logging
 import textwrap
 import warnings
 
 from collections import defaultdict
+from io import TextIOBase
 from operator import attrgetter
 from pathlib import Path
 from types import ModuleType as PyModuleType
-from typing import Any, Iterator, Literal, TypeAlias, Union, cast
+from typing import Any, Iterator, Literal, Sequence, TypeAlias, Union, cast
 
 import torch
 import yaml
@@ -353,6 +355,10 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
             module.
         """
         return quantizer_state_dict(self)
+
+    def summarize_quantizers(self, writer: TextIOBase | None = None) -> "QuantizerSummaries":
+        """Return a summary container, optionally writing to a provided text stream."""
+        return summarize_quantizers(self, writer=writer)
 
     def save_quantization_state(
         self,
@@ -845,3 +851,74 @@ def _is_class_from_module(cls: ModuleType, module: PyModuleType) -> bool:
         return class_module_name == module_name or class_module_name.startswith(module_name + ".")
 
     return False
+
+
+def summarize_quantizers(
+    module: QuantizedModule, writer: TextIOBase | None = None
+) -> "QuantizerSummaries":
+    """Return a summary container of quantizers, optionally writing to a text stream."""
+    summaries = QuantizerSummaries(list(_summarize_quantizers(module)))
+    if writer is not None:
+        writer.write(f"{summaries}\n")
+    return summaries
+
+
+@dataclasses.dataclass
+class QuantizerSummary:
+    """Summary information about quantizers in a module.
+
+    Attributes:
+        quantizer_repr: String representation of the quantizer, typically showing
+            its type and configuration parameters.
+        locations: Sequence of quantizer location names in the module.
+    """
+
+    quantizer_repr: str
+    locations: Sequence[str]
+
+    @property
+    def count(self) -> int:
+        """Number of quantizers that share repr."""
+        return len(self.locations)
+
+    def __repr__(self) -> str:
+        deduped = _deduplicate_quantizer_names(list(self.locations))
+        locs = "\n".join(f"  - {loc[0]} ({loc[1]}x)" for loc in deduped)
+        return f"{self.quantizer_repr} used {self.count} times\n{locs}"
+
+
+@dataclasses.dataclass
+class QuantizerSummaries:
+    """Container for multiple quantizer summaries."""
+
+    summaries: list[QuantizerSummary]
+
+    def __repr__(self) -> str:
+        return "\n\n".join(repr(summary) for summary in self.summaries)
+
+
+def _summarize_quantizers(module: QuantizedModule) -> list[QuantizerSummary]:
+    repr_name_map: dict[str, list[str]] = {}
+    for name, quantizer in named_quantizers(module):
+        repr_name_map.setdefault(repr(quantizer), []).append(name)
+
+    summaries: list[QuantizerSummary] = []
+    for repr_, names in sorted(repr_name_map.items(), key=lambda item: len(item[1]), reverse=True):
+        summaries.append(QuantizerSummary(quantizer_repr=repr_, locations=names[:]))
+
+    return summaries
+
+
+def _deduplicate_quantizer_names(names: list[str]) -> Iterator[tuple[str, int]]:
+    """Deduplicate quantizer names by treating numeric path segments as wildcards."""
+    groups: dict[tuple[str | None, ...], list[str]] = {}
+    for name in names:
+        key = tuple(None if part.isdigit() else part for part in name.split("."))
+        groups.setdefault(key, []).append(name)
+
+    for group_key, names in sorted(groups.items(), key=lambda item: len(item[1]), reverse=True):
+        if len(names) == 1:
+            yield (names[0], 1)
+        else:
+            group_name = ".".join(part if part is not None else "[]" for part in group_key)
+            yield (group_name, len(names))

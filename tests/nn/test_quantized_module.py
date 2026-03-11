@@ -4,6 +4,7 @@
 # pylint: disable=missing-function-docstring
 import itertools
 import sys
+import textwrap
 
 from copy import deepcopy
 
@@ -12,7 +13,7 @@ import pytest
 import torch
 
 from fastforward.nn import QuantizerMetadata, QuantizerStub
-from fastforward.nn.quantized_module import SKIP_QUANTIZATION
+from fastforward.nn.quantized_module import SKIP_QUANTIZATION, _deduplicate_quantizer_names
 
 
 class _QuantizerSubclass(ff.nn.Quantizer):
@@ -48,6 +49,56 @@ def test_quantizer_module_named_quantizers() -> None:
         quantizers.remove(quantizer)
     assert len(quantizer_names) == 0
     assert len(quantizers) == 0
+
+
+def test_deduplicate_quantizer_names() -> None:
+    names = [
+        "foo.bar.0.baz.1.cat",
+        "foo.bar.0.baz.2.cat",
+        "foo.bar.12.baz.23.cat",
+        "alpha.1.beta",
+        "alpha.2.beta",
+        "solo.3.end",
+    ]
+
+    assert list(_deduplicate_quantizer_names(names)) == [
+        ("foo.bar.[].baz.[].cat", 3),
+        ("alpha.[].beta", 2),
+        ("solo.3.end", 1),
+    ]
+
+
+def test_quantized_module_summarize_quantizers() -> None:
+    class Model(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.decoder = torch.nn.ModuleList([torch.nn.Linear(10, 10), torch.nn.Linear(10, 10)])
+
+    model = Model()
+    extra_conversion = ff.nn.quantized_module.surrogate_quantized_modules(model)
+    ff.quantize_model(model, extra_conversion=extra_conversion)
+
+    ff.find_quantizers(model, "**/output_quantizer").initialize(ff.nn.LinearQuantizer, num_bits=4)
+    ff.find_quantizers(model, "*/0/weight_quantizer").initialize(ff.nn.LinearQuantizer, num_bits=2)
+    ff.find_quantizers(model, "*/1/weight_quantizer").initialize(
+        ff.nn.LinearQuantizer, num_bits=2, granularity=ff.PerChannel()
+    )
+
+    summary = model.summarize_quantizers()
+    expected = textwrap.dedent(
+        """\
+        LinearQuantizer(num_bits=4, granularity=PerTensor(), symmetric=True) used 2 times
+          - decoder.[].output_quantizer (2x)
+
+        LinearQuantizer(num_bits=2, granularity=PerTensor(), symmetric=True) used 1 times
+          - decoder.0.weight_quantizer (1x)
+
+        LinearQuantizer(num_bits=2, granularity=PerChannel(channel=0), symmetric=True) used 1 times
+          - decoder.1.weight_quantizer (1x)
+        """
+    ).strip()
+
+    assert repr(summary) == expected
 
 
 def test_quantizer_module_named_quantizers_after_replace() -> None:
