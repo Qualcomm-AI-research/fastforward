@@ -13,7 +13,6 @@ with the following exceptions, modifications and additions:
 - Prefer to define an error message outside of the raise statement:
 
   ```python
-
   # Discouraged
   raise TypeError(f"a long error message with {string_interpolation}")
 
