@@ -575,15 +575,17 @@ def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) ->
     1. Iterating through all function specifications until no changes occur
     2. For each function, examining all the functions it calls
     3. Collecting quantizers from called functions and adding them as dependencies
+       while preserving per-callsite multiplicity
     4. Tracking the source path of each quantizer to handle circular dependencies:
-       - If a quantizer originates from the current function, truncate the path
+       - If the current function already appears in a quantizer trace, truncate at
+         the first occurrence of the current function
        - Otherwise, extend the path to include the current function
     5. Updating call arguments when new quantizer dependencies are discovered
 
     Circular dependency resolution:
     When function A calls function B, and B (directly or indirectly) calls A,
-    the algorithm prevents infinite propagation by recognizing when a quantizer's
-    source path would create a cycle and truncating it appropriately.
+    the algorithm prevents infinite propagation by truncating traces that revisit
+    a function already present in the propagation path.
 
     Args:
         func_specs: Dictionary mapping function references to their quantized
@@ -604,32 +606,45 @@ def _propagate_quantizers(func_specs: dict[_FuncRef, _QuantizedFunctionSpec]) ->
                 call_func_ref = unresolved_call.func_ref
                 new_call_args = []
 
-                # Collect all quantizers needed by the called function
-                for quant_arg in func_specs[call_func_ref].quantizers(skip_forwarded=True):
-                    # Break circular dependencies by truncating the source path.
-                    # This marks the quantizer as 'forwarded' since it's passed
-                    # to another function, causing it to be skipped in subsequent
-                    # iterations due to `skip_forwarded=True`, effectively
-                    # preventing infinite loops in the dependency graph.
-                    if quant_arg.src[0] is func_ref:
-                        new_call_args.append(
-                            _QuantizerRefTrace(src=quant_arg.src[:1], ref=quant_arg.ref)
-                        )
-                    else:
-                        # Extend source path to track propagation chain
-                        new_call_args.append(
-                            _QuantizerRefTrace(src=quant_arg.src + (func_ref,), ref=quant_arg.ref)
-                        )
+                callee_spec = func_specs[call_func_ref]
+
+                # Keep quantizer multiplicity per callee callsite while preventing
+                # unbounded growth from cyclic self/cross-call forwarding.
+                source_groups: list[list[_QuantizerRefTrace]] = [callee_spec.local_quantizers]
+                source_groups.extend(
+                    [arg for arg in callee_args if len(arg.src) > 1]
+                    for callee_args in callee_spec.calls.values()
+                )
+
+                for quant_group in source_groups:
+                    # Deduplicate only within the same source group (local refs or a
+                    # single callee callsite). This preserves per-callsite multiplicity
+                    # required by codegen while still collapsing cyclic duplicates.
+                    for quant_arg in dict.fromkeys(quant_group):
+                        # Break circular dependencies by truncating the source path
+                        # if this caller already appears in the propagation chain.
+                        #
+                        # Without this truncation, cycles can keep extending traces
+                        # indefinitely (e.g., (a, b, c) -> (a, b, c, b) -> ...),
+                        # preventing convergence of the fixed-point propagation loop.
+                        if func_ref in quant_arg.src:
+                            idx = quant_arg.src.index(func_ref)
+                            new_src = quant_arg.src[: idx + 1]
+                        else:
+                            # Extend source path to track propagation chain.
+                            new_src = quant_arg.src + (func_ref,)
+
+                        new_call_args.append(_QuantizerRefTrace(src=new_src, ref=quant_arg.ref))
 
                 # Update call args if new quantizers were discovered
-                if len(new_call_args) != len(call_args):
+                if new_call_args != call_args:
                     spec.calls[unresolved_call] = new_call_args
                     changed = True
 
 
 _SignatureRefMap: TypeAlias = dict[
     _FuncRef,
-    dict[tuple[nodes.UnresolvedQuantizedCall, nodes.QuantizerReference], nodes.QuantizerReference],
+    dict[nodes.UnresolvedQuantizedCall, list[nodes.QuantizerReference]],
 ]
 
 
@@ -658,10 +673,10 @@ def _generate_signatures(
         func_specs: Mapping from function references to their quantized function specifications
 
     Returns:
-        A tuple containing three dictionaries:
+        A tuple containing two mappings:
         - Mapping from function references to their quantizer parameter signatures
-        - Mapping from function references to dictionaries that map original quantizer
-          references to their corresponding signature references
+        - Mapping from function references to per-call ordered lists of the caller-side
+          quantizer references used to bind each callee signature parameter
     """
     signatures: dict[_FuncRef, tuple[nodes.QuantizerReference, ...]] = {}
     signature_ref_map: _SignatureRefMap = {}
@@ -679,14 +694,24 @@ def _generate_signatures(
             signature.append(arg.ref)
 
         for unresolved_call, quant_args in spec.calls.items():
+            mapped_refs: list[nodes.QuantizerReference] = []
             for arg in quant_args:
-                assert len(arg.src) > 1  # Assert that arg is not a local quantizer
+                if len(arg.src) == 1:
+                    # The quantizer already belongs to the current function's
+                    # signature/local refs (e.g., recursive cycle back-edge).
+                    # Reuse that reference directly instead of creating an
+                    # extra prefixed parameter.
+                    mapped_refs.append(arg.ref)
+                    continue
+
                 with quantizer_refs.push_context(func_contexts[func_ref]):
                     prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
                     name = f"{prefix}_{arg.ref.value}"
                     sigref = quantizer_refs.create_reference(name)
                 signature.append(sigref)
-                refs[(unresolved_call, arg.ref)] = sigref
+                mapped_refs.append(sigref)
+
+            refs[unresolved_call] = mapped_refs
 
         signatures[func_ref] = tuple(signature)
         signature_ref_map[func_ref] = refs
@@ -721,8 +746,9 @@ def _resolve_calls(
         func_contexts: Mapping from function references to their function contexts
         func_specs: Mapping from function references to their quantized function specs
         signatures: Mapping from function references to their quantizer parameter signatures
-        signature_ref_map: Mapping from function references to dictionaries that map
-                          original quantizer references to their signature references
+        signature_ref_map: Mapping from function references to per-call ordered
+                          quantizer references aligned with each unresolved call's
+                          propagated quantizer argument order
         calls: Output dictionary that will be populated with resolved call arguments
               for each unresolved quantized call
     """
@@ -731,14 +757,25 @@ def _resolve_calls(
 
         for unresolved_call, args in spec.calls.items():
             call_args = []
-            for param, arg in zip(signatures[unresolved_call.func_ref], args):
+            callee_signature = signatures[unresolved_call.func_ref]
+            caller_mapped_refs = signature_ref_map.get(func_ref, {}).get(unresolved_call)
+
+            for idx, (param, arg) in enumerate(zip(callee_signature, args)):
                 if is_instance_method:
                     with quantizer_refs.push_context(func_contexts[func_ref]):
                         prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
                         name = f"{prefix}_{arg.ref.value}"
                         value = quantizer_refs.create_quantizer_expression(name)
                 else:
-                    value = signature_ref_map[func_ref][(unresolved_call, arg.ref)]
+                    if caller_mapped_refs is None:
+                        # Caller has no generated signature (e.g., instance method).
+                        # Reconstruct the expected propagated reference name.
+                        with quantizer_refs.push_context(func_contexts[func_ref]):
+                            prefix = "_".join(fn.__name__ for fn in reversed(arg.src[:-1]))
+                            name = f"{prefix}_{arg.ref.value}"
+                            value = quantizer_refs.create_reference(name)
+                    else:
+                        value = caller_mapped_refs[idx]
                 call_args.append(_CallArg(keyword=param, value=value))
             calls[unresolved_call] = tuple(call_args)
 

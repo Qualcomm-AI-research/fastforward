@@ -5,11 +5,13 @@
 import contextlib
 import functools
 import logging
+import multiprocessing as mp
 import operator
 import pathlib
 import sys
 import types
 
+from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Iterator, TypeAlias, cast
 from unittest.mock import patch
 
@@ -23,12 +25,16 @@ import torch
 from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.autoquant import (
     _find_known_quantized_modules,
+    _propagate_quantizers,
+    _QuantizedFunctionSpec,
+    _QuantizerRefTrace,
     autoquant,
     autoquant_with_defaults,
     codeformat_with_defaults,
     default_source_context,
 )
 from fastforward._autoquant.cst import passes
+from fastforward._autoquant.cst.nodes import QuantizerReference
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._quantops import OperatorTable, optable
 from fastforward.autoquant import autoquantize
@@ -872,3 +878,70 @@ def test_autoquant_logs_and_continues_on_source_context_error(
         f"Failed to quantize '{expected_function_name}'" in record.message
         for record in caplog.records
     )
+
+
+@dataclass(frozen=True)
+class _FakeCall:
+    """Minimal call object for propagation tests.
+
+    `_propagate_quantizers` only requires a `func_ref` attribute on call keys.
+    """
+
+    func_ref: Callable[..., Any]
+    callsite_id: int
+
+
+def _build_cyclic_specs() -> dict[Callable[..., Any], _QuantizedFunctionSpec]:
+    def f0() -> None:
+        return None
+
+    def f1() -> None:
+        return None
+
+    def f2() -> None:
+        return None
+
+    specs = {
+        f0: _QuantizedFunctionSpec(f0),
+        f1: _QuantizedFunctionSpec(f1),
+        f2: _QuantizedFunctionSpec(f2),
+    }
+
+    specs[f0].local_quantizers.append(
+        _QuantizerRefTrace(src=(f0,), ref=QuantizerReference(value="q0", refid=0))
+    )
+    specs[f2].local_quantizers.append(
+        _QuantizerRefTrace(src=(f2,), ref=QuantizerReference(value="q2", refid=1))
+    )
+
+    # Call graph:
+    #   f0 -> f1, f0 -> f0
+    #   f1 -> f2, f1 -> f1
+    #   f2 -> f1
+    specs[f0].calls[cast(Any, _FakeCall(func_ref=f1, callsite_id=0))] = []
+    specs[f0].calls[cast(Any, _FakeCall(func_ref=f0, callsite_id=1))] = []
+    specs[f1].calls[cast(Any, _FakeCall(func_ref=f2, callsite_id=2))] = []
+    specs[f1].calls[cast(Any, _FakeCall(func_ref=f1, callsite_id=3))] = []
+    specs[f2].calls[cast(Any, _FakeCall(func_ref=f1, callsite_id=4))] = []
+
+    return specs
+
+
+def _worker_propagate_cyclic_specs() -> None:
+    _propagate_quantizers(_build_cyclic_specs())
+
+
+@pytest.mark.slow
+def test_propagate_quantizers_converges_on_cyclic_trace_growth() -> None:
+    """Propagation should converge even when call graph contains cycles."""
+    process = mp.Process(target=_worker_propagate_cyclic_specs, daemon=True)
+    process.start()
+    process.join(timeout=2.0)
+
+    try:
+        assert not process.is_alive(), "Propagation did not converge within timeout"
+        assert process.exitcode == 0
+    finally:
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=5.0)
