@@ -68,7 +68,9 @@ def autoquant(
     func_queue = collections.deque[_AqTask]()
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
         mod_type = type(mod)
-        func_queue.append(_AqTask(module=mod_type, function=mod_type.forward))
+        # Keep the accessed member name stable even when the underlying
+        # function object comes from an inherited/aliased implementation.
+        func_queue.append(_AqTask(module=mod_type, function=mod_type.forward, alias="forward"))
 
     # Process each method and its dependencies
     while func_queue:
@@ -92,7 +94,11 @@ def autoquant(
                 # module.
 
                 qualified_module_name = fully_qualified_name(task.module)
-                func_ctx = FunctionContext.from_function_reference(task.function, task.module)
+                func_ctx = FunctionContext.from_function_reference(
+                    task.function,
+                    task.module,
+                    member_name=func_name,
+                )
                 module_src = source_context.get(qualified_module_name)
                 func_src = module_src.member(func_name)
                 with quantizer_refs.push_context(func_ctx):
@@ -121,9 +127,16 @@ def autoquant(
                     continue
 
                 # Convert method to quantized version
-                qualified_class_name = fully_qualified_name(task.module)
+                source_module, source_name = _resolve_method_owner_and_name(
+                    task.module, func_name, task.function
+                )
+
+                qualified_class_name = fully_qualified_name(source_module)
                 src_class = source_context.get(qualified_class_name)
-                method_src = src_class.member(func_name)
+                method_src = src_class.member(source_name)
+                # Source lookup may resolve through an inherited/aliased member,
+                # but quantizer ownership must stay on the concrete module method
+                # being converted (e.g., subclass `forward`).
                 method_ctx = FunctionContext.from_method(task.module, func_name)
                 with quantizer_refs.push_context(method_ctx):
                     func_builder = convert_function(
@@ -132,6 +145,9 @@ def autoquant(
                         func_ctx=method_ctx,
                         quantizer_refs=quantizer_refs,
                     )
+                    # Methods on quantized classes must retain the accessed method name
+                    # (e.g., `forward`) even when source is resolved through aliases.
+                    func_builder.name = func_name
                     cls_builder.add_method(func_builder)
 
                 # Queue dependent methods for processing
@@ -173,6 +189,36 @@ class _AqTask:
     function: Callable[..., Any]
     module: type[torch.nn.Module] | types.ModuleType
     alias: str | None = None
+
+
+def _unwrap_method_owner_member(member: Any) -> Any:
+    if isinstance(member, (classmethod, staticmethod)):
+        return member.__func__
+    return member
+
+
+def _resolve_method_owner_and_name(
+    module_type: type[torch.nn.Module],
+    accessed_name: str,
+    func: Callable[..., Any],
+) -> tuple[type[torch.nn.Module], str]:
+    """Resolve class scope/member name for source lookup of method tasks.
+
+    Methods can be inherited or aliased (for example ``forward = helper_func``),
+    where ``func.__name__`` differs from the call-site member name. Resolve by
+    member identity across the MRO so source is loaded from the defining scope.
+    """
+    for owner in module_type.__mro__:
+        owner_member = _unwrap_method_owner_member(owner.__dict__.get(accessed_name, None))
+        if owner_member is func:
+            return owner, accessed_name
+
+    for owner in module_type.__mro__:
+        for name, member in owner.__dict__.items():
+            if _unwrap_method_owner_member(member) is func:
+                return owner, name
+
+    return module_type, accessed_name
 
 
 def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
@@ -786,13 +832,15 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
                     continue
 
                 if ff.type_common.method_type(ModuleType, attr) is not MethodType.NO_METHOD:
-                    yield _AqTask(module=ModuleType, function=getattr(ModuleType, attr))
+                    yield _AqTask(module=ModuleType, function=getattr(ModuleType, attr), alias=attr)
 
             case libcst.Name(call_func_name):
                 if method_type == MethodType.METHOD and call_func_name == ctx.instance_var:
                     # When calling self() in a torch.nn.Module subclass, this invokes
                     # __call__ which delegates to forward(). Track as "forward" call.
-                    yield _AqTask(module=ModuleType, function=getattr(ModuleType, "forward"))
+                    yield _AqTask(
+                        module=ModuleType, function=getattr(ModuleType, "forward"), alias="forward"
+                    )
 
 
 def _find_dependent_functions(

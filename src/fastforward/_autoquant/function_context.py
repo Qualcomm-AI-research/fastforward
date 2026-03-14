@@ -43,14 +43,15 @@ class FunctionContext:
         cls,
         func_ref: Callable[..., Any] | None,
         module: types.ModuleType | torch.nn.Module | type[torch.nn.Module] | None,
+        member_name: str | None = None,
     ) -> Self:
         if func_ref is None or module is None:
             return cls(func=func_ref)
 
         if isinstance(module, torch.nn.Module):
-            return cls._from_torch_module(type(module), func_ref)
+            return cls._from_torch_module(type(module), func_ref, member_name)
         elif isinstance(module, type) and issubclass(module, torch.nn.Module):
-            return cls._from_torch_module(module, func_ref)
+            return cls._from_torch_module(module, func_ref, member_name)
         elif isinstance(module, types.ModuleType):
             return cls._from_py_module(module, func_ref)
         else:
@@ -58,9 +59,22 @@ class FunctionContext:
 
     @classmethod
     def _from_torch_module(
-        cls, module: type[torch.nn.Module], func_ref: Callable[..., Any]
+        cls,
+        module: type[torch.nn.Module],
+        func_ref: Callable[..., Any],
+        member_name: str | None,
     ) -> Self:
-        meth_type = method_type(module, func_ref.__name__)
+        lookup_name = member_name or func_ref.__name__
+        meth_type = method_type(module, lookup_name)
+        if meth_type is MethodType.NO_METHOD:
+            # `method_type` only checks attributes directly on the type. For
+            # inherited alias methods (e.g. `forward = helper` on a base class),
+            # resolve method semantics through the MRO.
+            for owner in module.__mro__[1:]:
+                owner_meth_type = method_type(owner, lookup_name)
+                if owner_meth_type is not MethodType.NO_METHOD:
+                    meth_type = owner_meth_type
+                    break
 
         instance_var, class_var = None, None
         if meth_type in (MethodType.METHOD, MethodType.CLASS_METHOD):
@@ -94,4 +108,4 @@ class FunctionContext:
 
     @classmethod
     def from_method(cls, module: type, name: str) -> Self:
-        return cls.from_function_reference(getattr(module, name), module)
+        return cls.from_function_reference(getattr(module, name), module, member_name=name)

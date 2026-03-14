@@ -264,7 +264,7 @@ class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
 
     @name.setter
     def name(self, new_name: str) -> None:
-        self._func_def = self._funcdef.with_changes(name=libcst.Name(new_name))
+        self._funcdef = self._funcdef.with_changes(name=libcst.Name(new_name))
 
 
 class InitQuantizationMethod(NodeBuilder[libcst.FunctionDef]):

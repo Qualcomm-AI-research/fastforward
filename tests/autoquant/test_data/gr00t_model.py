@@ -46,18 +46,33 @@ class Gr00tPadBlock(nn.Module):
         return get_timestep_embedding(timesteps, 257)
 
 
+def _gr00t_inherited_alias_impl(self: nn.Module, x: torch.Tensor) -> torch.Tensor:
+    return F.pad(x, (0, 1), mode="constant", value=0.0)
 
-class Gr00tModelInspited(nn.Module):
+
+class Gr00tBaseInheritedOps(nn.Module):
+    """Defines `forward` via inherited alias to module-level helper."""
+
+    forward = _gr00t_inherited_alias_impl
+
+
+class Gr00tInheritedScopeBlock(Gr00tBaseInheritedOps):
+    """Child inherits aliased forward without rebinding helper name."""
+
+
+class Gr00tModelInspired(nn.Module):
     """Top-level GR00T-referenced wrapper used by E2E harness."""
 
     def __init__(self):
         super().__init__()
         self.pad = Gr00tPadBlock()
+        self.inherited_scope = Gr00tInheritedScopeBlock()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pad(x)
+        x = self.inherited_scope(x)
         return x
 
 
 def get_model() -> torch.nn.Module:
-    return Gr00tModelInspited()
+    return Gr00tModelInspired()

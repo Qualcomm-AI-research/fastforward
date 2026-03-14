@@ -1,7 +1,12 @@
 import fastforward
 import torch
+import torch.nn as nn
 
-from tests.autoquant.test_data.gr00t_model import Gr00tModelInspited, Gr00tPadBlock
+from tests.autoquant.test_data.gr00t_model import (
+    Gr00tInheritedScopeBlock,
+    Gr00tModelInspired,
+    Gr00tPadBlock,
+)
 
 
 def quantized_get_timestep_embedding(
@@ -24,12 +29,13 @@ def quantized_get_timestep_embedding(
     return emb
 
 
-class QuantizedGr00tModelInspited(fastforward.nn.QuantizedModule, Gr00tModelInspited):
+class QuantizedGr00tModelInspired(fastforward.nn.QuantizedModule, Gr00tModelInspired):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pad(x)
+        x = self.inherited_scope(x)
         return x
 
 
@@ -61,3 +67,15 @@ class QuantizedGr00tPadBlock(fastforward.nn.QuantizedModule, Gr00tPadBlock):
             quantizer_embedding_dim=self.quantizer_get_timestep_embedding_embedding_dim,
         )
 
+
+class QuantizedGr00tInheritedScopeBlock(fastforward.nn.QuantizedModule, Gr00tInheritedScopeBlock):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.quantizer_pad: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+        self.quantizer_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+
+    def forward(self: nn.Module, x: torch.Tensor) -> torch.Tensor:
+        x = self.quantizer_x(x)
+        return fastforward.nn.functional.pad(
+            x, (0, 1), mode="constant", value=0.0, output_quantizer=self.quantizer_pad
+        )
