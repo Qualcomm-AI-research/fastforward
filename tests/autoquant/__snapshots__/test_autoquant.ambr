@@ -816,9 +816,9 @@
           self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
   
       def forward(self, x: torch.Tensor, n: int) -> torch.Tensor:
-          _tmp_71 = x.view(-1, 3)
-          _tmp_72 = _tmp_71.permute(1, 0)
-          y = _tmp_72.reshape(n, -1)
+          _tmp_77 = x.view(-1, 3)
+          _tmp_78 = _tmp_77.permute(1, 0)
+          y = _tmp_78.reshape(n, -1)
           y = self.quantizer_y(y)
           return fastforward.nn.functional.relu(y, output_quantizer=self.quantizer_relu)
   
@@ -949,6 +949,18 @@
   
       def forward(self) -> None:
           print("This is not a quantized function.")
+  '''
+# ---
+# name: test_module_builder_imports_fallback_for_invalid_symbols
+  '''
+  import importlib
+  
+  import torch
+  
+  local_name = getattr(importlib.import_module("torch.nn.functional"), "invalid-attr")
+  
+  Siglip2EncoderLayer = importlib.import_module("transformers_modules.Eagle-Block2A-2B-v2.modeling_siglip2").Siglip2EncoderLayer
+  
   '''
 # ---
 # name: test_pattern_based_replacement

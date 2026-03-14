@@ -80,7 +80,21 @@ class ModuleBuilder(NodeBuilder[libcst.Module]):
             if imports := getattr(statement, "required_imports", None):
                 required_imports |= set(imports)
 
-        yield from (import_symbol.as_node() for import_symbol in required_imports)
+        ordered_imports = sorted(
+            required_imports, key=lambda imp: (imp.module or "", imp.name, imp.asname or "")
+        )
+        importlib_needed = any(not import_symbol.is_valid() for import_symbol in ordered_imports)
+
+        if importlib_needed:
+            importlib_statement = libcst.parse_statement("import importlib")
+            assert isinstance(importlib_statement, libcst.SimpleStatementLine)
+            yield importlib_statement
+
+        for import_symbol in ordered_imports:
+            if import_symbol.is_valid():
+                yield import_symbol.as_node()
+            else:
+                yield import_symbol.as_fallback_node()
 
     def build_module(
         self, quantizer_refs: QuantizerReferenceCollection

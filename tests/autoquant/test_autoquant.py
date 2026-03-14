@@ -36,6 +36,7 @@ from fastforward._autoquant.autoquant import (
 from fastforward._autoquant.cst import passes
 from fastforward._autoquant.cst.nodes import QuantizerReference
 from fastforward._autoquant.pysource import SourceContext
+from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._quantops import OperatorTable, optable
 from fastforward.autoquant import autoquantize
 from fastforward.testing.metrics import sqnr as metric_sqnr
@@ -532,6 +533,57 @@ def test_pattern_based_replacement(snapshot: syrupy.assertion.SnapshotAssertion)
     )
     quantized = codeformat_with_defaults(quantized)
     assert snapshot == quantized
+
+
+def test_module_builder_imports_fallback_for_invalid_symbols(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
+    class _StubStatementBuilder:
+        """Minimal statement-builder test double for ModuleBuilder.
+
+        ModuleBuilder.add_function() expects an object with a
+        ``required_imports`` attribute and a ``build(...)`` method returning
+        a ``libcst.SimpleStatementLine``. This stub keeps the test focused on
+        import statement generation (including invalid-symbol fallbacks)
+        without depending on full autoquant builder internals.
+        """
+
+        def __init__(self, required_imports: tuple[ImportSymbol, ...]) -> None:
+            self.required_imports = required_imports
+
+        def build(self, quantizer_refs: object) -> libcst.SimpleStatementLine:
+            del quantizer_refs
+            statement = libcst.parse_statement("pass")
+            assert isinstance(statement, libcst.SimpleStatementLine)
+            return statement
+
+    module_builder = pybuilder.ModuleBuilder(origin=None)
+    module_builder.add_function(
+        cast(
+            Any,
+            _StubStatementBuilder(
+                required_imports=(
+                    ImportSymbol(name="torch"),
+                    ImportSymbol(
+                        name="Siglip2EncoderLayer",
+                        module="transformers_modules.Eagle-Block2A-2B-v2.modeling_siglip2",
+                    ),
+                    ImportSymbol(
+                        name="invalid-attr",
+                        module="torch.nn.functional",
+                        asname="local_name",
+                    ),
+                )
+            ),
+        )
+    )
+
+    cst_module = libcst.Module([])
+    rendered_imports = "\n".join(
+        cst_module.code_for_node(stmt) for stmt in module_builder.import_statements()
+    )
+
+    assert snapshot == rendered_imports
 
 
 @pytest.mark.slow

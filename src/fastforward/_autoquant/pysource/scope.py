@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import keyword
 
 import libcst
 
@@ -19,6 +20,64 @@ class ImportSymbol:
     name: str
     asname: str | None = None
     module: str | None = None
+
+    @staticmethod
+    def _is_valid_identifier(name: str) -> bool:
+        return name.isidentifier() and not keyword.iskeyword(name)
+
+    @classmethod
+    def _is_valid_dotted_name(cls, name: str) -> bool:
+        parts = name.split(".")
+        return bool(parts) and all(cls._is_valid_identifier(part) for part in parts)
+
+    def is_valid(self) -> bool:
+        if self.asname is not None and not self._is_valid_identifier(self.asname):
+            return False
+
+        if self.module is None:
+            return self._is_valid_dotted_name(self.name)
+
+        return self._is_valid_dotted_name(self.module) and self._is_valid_identifier(self.name)
+
+    def as_fallback_node(self) -> libcst.SimpleStatementLine:
+        local_name = self.asname or self.name
+        if not self._is_valid_identifier(local_name):
+            message = (
+                "Unable to emit dynamic import fallback: no valid local binding "
+                f"for import symbol name={self.name!r}, asname={self.asname!r}, module={self.module!r}"
+            )
+            raise ValueError(message)
+
+        import_target = self.module or self.name
+        import_module_call = libcst.Call(
+            func=libcst.Attribute(
+                value=libcst.Name("importlib"),
+                attr=libcst.Name("import_module"),
+            ),
+            args=[libcst.Arg(value=libcst.SimpleString(f'"{import_target}"'))],
+        )
+
+        if self.module is None:
+            value: libcst.BaseExpression = import_module_call
+        elif self._is_valid_identifier(self.name):
+            value = libcst.Attribute(value=import_module_call, attr=libcst.Name(self.name))
+        else:
+            value = libcst.Call(
+                func=libcst.Name("getattr"),
+                args=[
+                    libcst.Arg(value=import_module_call),
+                    libcst.Arg(value=libcst.SimpleString(f'"{self.name}"')),
+                ],
+            )
+
+        return libcst.SimpleStatementLine(
+            body=[
+                libcst.Assign(
+                    targets=[libcst.AssignTarget(target=libcst.Name(local_name))],
+                    value=value,
+                )
+            ]
+        )
 
     def as_node(self) -> libcst.SimpleStatementLine:
         """Create import CST node for symbol."""
