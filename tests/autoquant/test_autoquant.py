@@ -197,6 +197,37 @@ class ExampleModule7(torch.nn.Module):
         return x
 
 
+def _attribute_alias_target(x: torch.Tensor) -> torch.Tensor:
+    return torch.relu(x)
+
+
+_attribute_alias_primary = _attribute_alias_target
+_attribute_alias_secondary = _attribute_alias_target
+_THIS_MODULE = sys.modules[__name__]
+
+
+class ExampleModuleAttributeAlias(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, _THIS_MODULE._attribute_alias_secondary(x))
+
+
+class ExampleModuleAttributeAliasPrimary(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, _THIS_MODULE._attribute_alias_primary(x))
+
+
+def _public_api_impl(x: torch.Tensor) -> torch.Tensor:
+    return torch.relu(x)
+
+
+public_api = _public_api_impl
+
+
+class ExampleModulePublicApiAlias(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, _THIS_MODULE.public_api(x))
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -533,6 +564,24 @@ def test_pattern_based_replacement(snapshot: syrupy.assertion.SnapshotAssertion)
     )
     quantized = codeformat_with_defaults(quantized)
     assert snapshot == quantized
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("input_module",),
+    [
+        pytest.param(ExampleModuleAttributeAlias(), id="module-alias-secondary"),
+        pytest.param(ExampleModuleAttributeAliasPrimary(), id="module-alias-primary"),
+        pytest.param(ExampleModulePublicApiAlias(), id="module-alias-public-api"),
+    ],
+)
+def test_autoquant_prefers_attribute_name_for_module_alias_resolution(
+    input_module: torch.nn.Module,
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
+    actual = autoquant_with_defaults(input_module, use_type_inference=False)
+    actual = codeformat_with_defaults(actual)
+    assert snapshot == actual
 
 
 def test_module_builder_imports_fallback_for_invalid_symbols(

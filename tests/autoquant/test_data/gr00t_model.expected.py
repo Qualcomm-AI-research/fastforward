@@ -1,8 +1,11 @@
 import fastforward
 import torch
 import torch.nn as nn
+from fake_diffusers.models.activations import GELU as __ffaq_base_GELU_0
+from fake_torch.nn.modules.activation import GELU as __ffaq_base_GELU_1
 
 from tests.autoquant.test_data.gr00t_model import (
+    Gr00tDuplicateGELUBlock,
     Gr00tInheritedScopeBlock,
     Gr00tModelInspired,
     Gr00tPadBlock,
@@ -36,6 +39,7 @@ class QuantizedGr00tModelInspired(fastforward.nn.QuantizedModule, Gr00tModelInsp
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pad(x)
         x = self.inherited_scope(x)
+        x = self.duplicate_gelu(x)
         return x
 
 
@@ -56,8 +60,8 @@ class QuantizedGr00tPadBlock(fastforward.nn.QuantizedModule, Gr00tPadBlock):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        _tmp_2 = x.flatten()
-        timesteps = _tmp_2.to(dtype=torch.float32)
+        _tmp_12 = x.flatten()
+        timesteps = _tmp_12.to(dtype=torch.float32)
         return quantized_get_timestep_embedding(
             timesteps,
             257,
@@ -79,3 +83,29 @@ class QuantizedGr00tInheritedScopeBlock(fastforward.nn.QuantizedModule, Gr00tInh
         return fastforward.nn.functional.pad(
             x, (0, 1), mode="constant", value=0.0, output_quantizer=self.quantizer_pad
         )
+
+
+class QuantizedGr00tDuplicateGELUBlock(fastforward.nn.QuantizedModule, Gr00tDuplicateGELUBlock):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.diffusers_gelu(x)
+        x = self.torch_gelu(x)
+        return x
+
+
+class QuantizedGELU_0(fastforward.nn.QuantizedModule, __ffaq_base_GELU_0):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x
+
+
+class QuantizedGELU_1(fastforward.nn.QuantizedModule, __ffaq_base_GELU_1):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x

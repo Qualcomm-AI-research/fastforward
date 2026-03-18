@@ -13,7 +13,7 @@ import sys
 import types
 
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Callable, Iterable, TypeAlias
+from typing import Any, Callable, Iterable, TypeAlias, cast
 
 import libcst
 import torch
@@ -39,6 +39,48 @@ MethodType = ff.type_common.MethodType
 logger = logging.getLogger(__name__)
 
 
+class QuantizedClassNameAllocator:
+    """Allocates collision-safe base aliases and quantized class names."""
+
+    def __init__(self, module_types: Sequence[type[torch.nn.Module]]) -> None:
+        self._type_name_totals = collections.Counter(mod_type.__name__ for mod_type in module_types)
+        self._type_name_next_index: collections.Counter[str] = collections.Counter()
+        self._used_quantized_class_names: set[str] = set()
+        self._used_base_import_aliases: set[str] = set()
+
+    @staticmethod
+    def _alloc_unique_name(preferred: str, used_names: set[str]) -> str:
+        if preferred not in used_names:
+            used_names.add(preferred)
+            return preferred
+
+        index = 1
+        while True:
+            candidate = f"{preferred}_{index}"
+            if candidate not in used_names:
+                used_names.add(candidate)
+                return candidate
+            index += 1
+
+    def for_module_type(self, mod_type: type[torch.nn.Module]) -> tuple[str, str]:
+        type_name = mod_type.__name__
+        total = self._type_name_totals[type_name]
+        index = self._type_name_next_index[type_name]
+        self._type_name_next_index[type_name] += 1
+
+        if total > 1:
+            preferred_base_alias = f"__ffaq_base_{type_name}_{index}"
+            preferred_quantized_name = f"Quantized{type_name}_{index}"
+        else:
+            preferred_base_alias = type_name
+            preferred_quantized_name = f"Quantized{type_name}"
+
+        return (
+            self._alloc_unique_name(preferred_base_alias, self._used_base_import_aliases),
+            self._alloc_unique_name(preferred_quantized_name, self._used_quantized_class_names),
+        )
+
+
 def autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
@@ -56,13 +98,34 @@ def autoquant(
     """
     quantizer_refs = QuantizerReferenceCollection()
     module_builder = pybuilder.ModuleBuilder(origin=type(module))
-    class_builders: dict[type, pybuilder.QuantizedModuleBuilder] = {}
+    class_builders: dict[type[torch.nn.Module], pybuilder.QuantizedModuleBuilder] = {}
 
     # Skip modules that are already quantized
     pre_quantized_modules = _find_known_quantized_modules()
+
+    unquantized_module_types: list[type[torch.nn.Module]] = []
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
         mod_type = type(mod)
-        class_builders[mod_type] = _cls_builder_for_module(mod_type)
+        if mod_type not in unquantized_module_types:
+            unquantized_module_types.append(mod_type)
+
+    class_name_allocator = QuantizedClassNameAllocator(unquantized_module_types)
+
+    def _ensure_class_builder(mod_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
+        if mod_type in class_builders:
+            return class_builders[mod_type]
+
+        base_alias, quantized_name = class_name_allocator.for_module_type(mod_type)
+        class_builder = _cls_builder_for_module(
+            mod_type,
+            quantized_name=quantized_name,
+            base_alias=base_alias,
+        )
+        class_builders[mod_type] = class_builder
+        return class_builder
+
+    for mod_type in unquantized_module_types:
+        _ensure_class_builder(mod_type)
 
     # Queue all forward methods for processing
     func_queue = collections.deque[_AqTask]()
@@ -93,14 +156,23 @@ def autoquant(
                 # quantized version of the function in the quantized (Python)
                 # module.
 
+                source_member_name = _resolve_function_source_member_name(
+                    task.module, accessed_name=func_name, func=task.function
+                )
                 qualified_module_name = fully_qualified_name(task.module)
                 func_ctx = FunctionContext.from_function_reference(
                     task.function,
                     task.module,
-                    member_name=func_name,
+                    member_name=source_member_name,
+                )
+                logger.info(
+                    "autoquant: loading helper source %s.%s (accessed as %s)",
+                    qualified_module_name,
+                    source_member_name,
+                    func_name,
                 )
                 module_src = source_context.get(qualified_module_name)
-                func_src = module_src.member(func_name)
+                func_src = module_src.member(source_member_name)
                 with quantizer_refs.push_context(func_ctx):
                     func_builder = convert_function(
                         src=func_src,
@@ -120,9 +192,7 @@ def autoquant(
                 # If task.module is a PyTorch module (in contrast to a Python module), create
                 # a new member function on the quantized module. This can be an instance, class, or
                 # static method.
-                if task.module not in class_builders:
-                    class_builders[task.module] = _cls_builder_for_module(task.module)
-                cls_builder = class_builders[task.module]
+                cls_builder = _ensure_class_builder(task.module)
                 if cls_builder.has_method(func_name):
                     continue
 
@@ -221,13 +291,43 @@ def _resolve_method_owner_and_name(
     return module_type, accessed_name
 
 
-def _cls_builder_for_module(module_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
+def _resolve_function_source_member_name(
+    module: types.ModuleType,
+    accessed_name: str,
+    func: Callable[..., Any],
+) -> str:
+    """Resolve module member name for source lookup of helper-function tasks.
+
+    Helpers can be referenced through aliases (e.g. ``mod.alias(...)`` where
+    ``mod.alias is mod.actual_func``). Source lookup should follow the canonical
+    defining name when available while preserving call-site alias separately.
+    """
+    module_dict = getattr(module, "__dict__", None)
+    if isinstance(module_dict, dict):
+        if module_dict.get(accessed_name, None) is func:
+            return accessed_name
+
+        for name, member in module_dict.items():
+            if member is func:
+                return cast(str, name)
+
+    return accessed_name
+
+
+def _cls_builder_for_module(
+    module_type: type[torch.nn.Module],
+    quantized_name: str,
+    base_alias: str,
+) -> pybuilder.QuantizedModuleBuilder:
     qualified_class_name = fully_qualified_name(module_type)
     base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
+    import_alias = base_alias if base_alias != base_class_name else None
     return pybuilder.QuantizedModuleBuilder(
-        f"Quantized{module_type.__name__}",
-        bases=(module_type.__name__,),
-        required_imports=(ImportSymbol(name=base_class_name, module=base_module_name),),
+        quantized_name,
+        bases=(base_alias,),
+        required_imports=(
+            ImportSymbol(name=base_class_name, module=base_module_name, asname=import_alias),
+        ),
         origin=module_type,
     )
 
@@ -489,13 +589,21 @@ def _resolve_all_quantized_calls(
     #    mapping for later reference updates.
     #    For example, `mod.submod.helper`` becomes `quantized_mod_submod_helper`.
     helper_function_names: dict[_FuncRef, libcst.BaseExpression] = {}
-    used_helper_names: dict[str, int] = {}
+    used_global_names = {cls_builder.name for cls_builder in builder.classes()}
+    for func_builder in builder.functions():
+        if func_builder.origin.method_type is not MethodType.NO_METHOD:
+            used_global_names.add(func_builder.name)
+
     for func_ref, func_builder in func_builder_map.items():
         if func_builder.origin.method_type is MethodType.NO_METHOD:
-            new_name = f"quantized_{func_builder.name}"
-            used_helper_names[new_name] = used_helper_names.get(new_name, 0) + 1
-            if used_helper_names[new_name] > 1:
-                new_name = f"{new_name}_{used_helper_names[new_name]}"
+            preferred_name = f"quantized_{func_builder.name}"
+            new_name = preferred_name
+            suffix = 2
+            while new_name in used_global_names:
+                new_name = f"{preferred_name}_{suffix}"
+                suffix += 1
+
+            used_global_names.add(new_name)
             func_builder.cst = func_builder.cst.with_changes(name=libcst.Name(new_name))
             helper_function_names[func_ref] = libcst.Name(new_name)
 
@@ -970,13 +1078,24 @@ def _find_dependent_functions(
                     continue
 
                 alias = None
-                try:
-                    for name, obj in vars(module).items():
-                        if obj is ref:
-                            alias = name
-                            break
-                except (TypeError, AttributeError):
-                    pass
+                # Prefer the exact attribute used at the callsite (e.g. `mod.public_api(...)`).
+                # This keeps generated helper naming/source lookup aligned with user code,
+                # even when multiple module attributes point to the same function object.
+                if isinstance(call_expr.func.attr, libcst.Name):
+                    attr_name = call_expr.func.attr.value
+                    if getattr(module, attr_name, None) is ref:
+                        alias = attr_name
+
+                # Fallback: if the callsite attribute cannot be validated, recover any
+                # module-level alias by identity. This handles alias-heavy modules where
+                # several names can reference the same underlying function object.
+                if alias is None:
+                    module_dict = getattr(module, "__dict__", None)
+                    if isinstance(module_dict, dict):
+                        for name, obj in module_dict.items():
+                            if obj is ref:
+                                alias = name
+                                break
 
                 # Only queue functions that are inspectable (Python-defined).
                 # Builtin function calls are replaced to quantized versions based on

@@ -264,22 +264,22 @@
       x: torch.Tensor,
       *,
       quantizer_add: fastforward.nn.Quantizer,
-      quantizer__tmp_22: fastforward.nn.Quantizer,
-      quantizer__tmp_23: fastforward.nn.Quantizer,
+      quantizer__tmp_25: fastforward.nn.Quantizer,
+      quantizer__tmp_26: fastforward.nn.Quantizer,
       quantizer_inner_helper_mul_1: fastforward.nn.Quantizer,
       quantizer_inner_helper_x_1: fastforward.nn.Quantizer,
       quantizer_inner_helper_mul_2: fastforward.nn.Quantizer,
       quantizer_inner_helper_x_2: fastforward.nn.Quantizer,
   ) -> torch.Tensor:
-      _tmp_22 = quantized_inner_helper(
+      _tmp_25 = quantized_inner_helper(
           x, quantizer_mul=quantizer_inner_helper_mul_1, quantizer_x=quantizer_inner_helper_x_1
       )
-      _tmp_22 = quantizer__tmp_22(_tmp_22)
-      _tmp_23 = quantized_inner_helper(
+      _tmp_25 = quantizer__tmp_25(_tmp_25)
+      _tmp_26 = quantized_inner_helper(
           x, quantizer_mul=quantizer_inner_helper_mul_2, quantizer_x=quantizer_inner_helper_x_2
       )
-      _tmp_23 = quantizer__tmp_23(_tmp_23)
-      return fastforward.nn.functional.add(_tmp_22, _tmp_23, output_quantizer=quantizer_add)
+      _tmp_26 = quantizer__tmp_26(_tmp_26)
+      return fastforward.nn.functional.add(_tmp_25, _tmp_26, output_quantizer=quantizer_add)
   
   
   # --------------------------------------------------------------------------------
@@ -302,10 +302,10 @@
       def __init_quantization__(self) -> None:
           super().__init_quantization__()
           self.quantizer_outer_helper_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
-          self.quantizer_outer_helper__tmp_22: fastforward.nn.Quantizer = (
+          self.quantizer_outer_helper__tmp_25: fastforward.nn.Quantizer = (
               fastforward.nn.QuantizerStub()
           )
-          self.quantizer_outer_helper__tmp_23: fastforward.nn.Quantizer = (
+          self.quantizer_outer_helper__tmp_26: fastforward.nn.Quantizer = (
               fastforward.nn.QuantizerStub()
           )
           self.quantizer_outer_helper_inner_helper_mul_1: fastforward.nn.Quantizer = (
@@ -325,8 +325,8 @@
           return quantized_outer_helper(
               x,
               quantizer_add=self.quantizer_outer_helper_add,
-              quantizer__tmp_22=self.quantizer_outer_helper__tmp_22,
-              quantizer__tmp_23=self.quantizer_outer_helper__tmp_23,
+              quantizer__tmp_25=self.quantizer_outer_helper__tmp_25,
+              quantizer__tmp_26=self.quantizer_outer_helper__tmp_26,
               quantizer_inner_helper_mul_1=self.quantizer_outer_helper_inner_helper_mul_1,
               quantizer_inner_helper_x_1=self.quantizer_outer_helper_inner_helper_x_1,
               quantizer_inner_helper_mul_2=self.quantizer_outer_helper_inner_helper_mul_2,
@@ -428,8 +428,8 @@
       def __init_quantization__(self) -> None:
           super().__init_quantization__()
           self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
-          self.quantizer__tmp_24: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
-          self.quantizer__tmp_25: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer__tmp_27: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer__tmp_28: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_sub_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_a: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
           self.quantizer_sqnr_b: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
@@ -449,15 +449,15 @@
           self.quantizer_sqnr_eps: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
   
       def forward(self, x: torch.Tensor) -> Tensor:
-          _tmp_24 = quantized_sqnr(
+          _tmp_27 = quantized_sqnr(
               x,
               x,
               quantizer_sub=self.quantizer_sqnr_sub_1,
               quantizer_a=self.quantizer_sqnr_a,
               quantizer_b=self.quantizer_sqnr_b,
           )
-          _tmp_24 = self.quantizer__tmp_24(_tmp_24)
-          _tmp_25 = quantized_sqnr_2(
+          _tmp_27 = self.quantizer__tmp_27(_tmp_27)
+          _tmp_28 = quantized_sqnr_2(
               x,
               x,
               quantizer_sub=self.quantizer_sqnr_sub_2,
@@ -471,8 +471,8 @@
               quantizer_quantized_tensor=self.quantizer_sqnr_quantized_tensor,
               quantizer_eps=self.quantizer_sqnr_eps,
           )
-          _tmp_25 = self.quantizer__tmp_25(_tmp_25)
-          return fastforward.nn.functional.add(_tmp_24, _tmp_25, output_quantizer=self.quantizer_add)
+          _tmp_28 = self.quantizer__tmp_28(_tmp_28)
+          return fastforward.nn.functional.add(_tmp_27, _tmp_28, output_quantizer=self.quantizer_add)
   '''
 # ---
 # name: test_autoquant_end_to_end[case-18]
@@ -816,11 +816,135 @@
           self.quantizer_y: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
   
       def forward(self, x: torch.Tensor, n: int) -> torch.Tensor:
-          _tmp_77 = x.view(-1, 3)
-          _tmp_78 = _tmp_77.permute(1, 0)
-          y = _tmp_78.reshape(n, -1)
+          _tmp_87 = x.view(-1, 3)
+          _tmp_88 = _tmp_87.permute(1, 0)
+          y = _tmp_88.reshape(n, -1)
           y = self.quantizer_y(y)
           return fastforward.nn.functional.relu(y, output_quantizer=self.quantizer_relu)
+  
+  '''
+# ---
+# name: test_autoquant_prefers_attribute_name_for_module_alias_resolution[module-alias-primary]
+  '''
+  from typing import cast
+  
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModuleAttributeAliasPrimary
+  
+  
+  def quantized__attribute_alias_primary(
+      x: torch.Tensor,
+      *,
+      quantizer_relu: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ) -> torch.Tensor:
+      x = quantizer_x(x)
+      return fastforward.nn.functional.relu(x, output_quantizer=quantizer_relu)
+  
+  
+  class QuantizedExampleModuleAttributeAliasPrimary(
+      fastforward.nn.QuantizedModule, ExampleModuleAttributeAliasPrimary
+  ):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer__attribute_alias_target_relu: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+          self.quantizer__attribute_alias_target_x: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+  
+      def forward(self, x: torch.Tensor) -> torch.Tensor:
+          _tmp_6 = quantized__attribute_alias_primary(
+              x,
+              quantizer_relu=self.quantizer__attribute_alias_target_relu,
+              quantizer_x=self.quantizer__attribute_alias_target_x,
+          )
+          return cast(torch.Tensor, _tmp_6)
+  
+  '''
+# ---
+# name: test_autoquant_prefers_attribute_name_for_module_alias_resolution[module-alias-public-api]
+  '''
+  from typing import cast
+  
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModulePublicApiAlias
+  
+  
+  def quantized_public_api(
+      x: torch.Tensor,
+      *,
+      quantizer_relu: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ) -> torch.Tensor:
+      x = quantizer_x(x)
+      return fastforward.nn.functional.relu(x, output_quantizer=quantizer_relu)
+  
+  
+  class QuantizedExampleModulePublicApiAlias(
+      fastforward.nn.QuantizedModule, ExampleModulePublicApiAlias
+  ):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer__public_api_impl_relu: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+          self.quantizer__public_api_impl_x: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, x: torch.Tensor) -> torch.Tensor:
+          _tmp_7 = quantized_public_api(
+              x,
+              quantizer_relu=self.quantizer__public_api_impl_relu,
+              quantizer_x=self.quantizer__public_api_impl_x,
+          )
+          return cast(torch.Tensor, _tmp_7)
+  
+  '''
+# ---
+# name: test_autoquant_prefers_attribute_name_for_module_alias_resolution[module-alias-secondary]
+  '''
+  from typing import cast
+  
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant import ExampleModuleAttributeAlias
+  
+  
+  def quantized__attribute_alias_secondary(
+      x: torch.Tensor,
+      *,
+      quantizer_relu: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ) -> torch.Tensor:
+      x = quantizer_x(x)
+      return fastforward.nn.functional.relu(x, output_quantizer=quantizer_relu)
+  
+  
+  class QuantizedExampleModuleAttributeAlias(
+      fastforward.nn.QuantizedModule, ExampleModuleAttributeAlias
+  ):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer__attribute_alias_target_relu: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+          self.quantizer__attribute_alias_target_x: fastforward.nn.Quantizer = (
+              fastforward.nn.QuantizerStub()
+          )
+  
+      def forward(self, x: torch.Tensor) -> torch.Tensor:
+          _tmp_5 = quantized__attribute_alias_secondary(
+              x,
+              quantizer_relu=self.quantizer__attribute_alias_target_relu,
+              quantizer_x=self.quantizer__attribute_alias_target_x,
+          )
+          return cast(torch.Tensor, _tmp_5)
   
   '''
 # ---

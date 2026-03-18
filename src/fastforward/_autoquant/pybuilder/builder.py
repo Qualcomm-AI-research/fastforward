@@ -152,6 +152,10 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
         return any(meth.name == method_name for meth in self._methods)
 
     @property
+    def name(self) -> str:
+        return self._name
+
+    @property
     def required_imports(self) -> tuple[ImportSymbol, ...]:
         """Imports that are required for this class."""
         required_imports: set[ImportSymbol] = set(self._required_imports)
