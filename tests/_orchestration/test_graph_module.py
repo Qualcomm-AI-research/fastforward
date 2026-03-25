@@ -12,6 +12,7 @@ import torch
 
 from fastforward._orchestration.graph_module import (
     DEFAULT_CONTEXT,
+    AttributeRef,
     Const,
     Direction,
     GraphModule,
@@ -771,6 +772,65 @@ def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
 
     # THEN the composite output should match the original graph
     torch.testing.assert_close(composite(x), graph(x))
+
+
+def test_build_composite_graph_multi_output_partition_as_graph_outputs() -> None:
+    # GIVEN a graph with a shared layer where both branches are graph outputs
+    #   inp -> shared -> up   -> output[0]
+    #                 -> down -> output[1]
+    graph = GraphModule()
+    inp = graph.add_input("inp")
+    shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
+    up = graph.add_node("up", torch.nn.Linear(4, 4), [shared])
+    down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
+    graph.add_output(up, down)
+
+    # GIVEN a spec that splits the graph into partitions:
+    # P0: {inp -> shared -> down} that returns both shared and down
+    # P1: {P0[shared] -> up}
+    # Outputs: up (from P1), down (from P0[down])
+    specs = [SubgraphSpec(input=up, output=up)]
+
+    # WHEN we build the composite graph and run a forward pass
+    composite = build_composite_graph(graph, specs=specs)
+    x = torch.randn(1, 4)
+
+    # THEN the composite output should match the original graph
+    composite_out = composite(x)
+    graph_out = graph(x)
+    torch.testing.assert_close(composite_out[0], graph_out[0])
+    torch.testing.assert_close(composite_out[1], graph_out[1])
+
+
+def test_rebase_maps_partition_output_ref_to_composite_ref() -> None:
+    # GIVEN an "encoder" node that produces some object with .hidden_states attribute
+    encoder = NodeRef(uuid.uuid4(), "encoder")
+    encoder_attribute = encoder.hidden_states
+
+    # GIVEN a partition, that the encoder is part of.
+    partition_ref = NodeRef(uuid.uuid4(), "partition_0")
+
+    # GIVEN the assumption that partition_0 has two outputs:
+    # [0]: 'encoder.hidden_states' used downstream somewhere directly
+    # [1]: 'encoder' used downstream somewhere, perhaps another value accessed.
+    base_attribute = partition_ref[0]
+    base_encoder = partition_ref[1]
+
+    # WHEN the partition wraps the encoder, all refs to encoder's outputs must be
+    # redirected to the partition's outputs instead. rebase() does this while
+    # preserving any attribute access that was on the original ref.
+    composite_attribute = encoder_attribute.rebase(base_attribute)
+    composite_encoder = encoder.rebase(base_encoder)
+
+    # THEN the plain ref is simply replaced by its new base
+    # (trivial case - the ref has no attribute access, so rebasing just swaps the pointer)
+    assert composite_encoder == base_encoder
+
+    # THEN the attribute access is preserved on the new base
+    # (complex case - the ref carries .hidden_states, which is re-attached to the new base)
+    assert isinstance(composite_attribute, AttributeRef)
+    assert composite_attribute.reference == base_attribute
+    assert composite_attribute.attribute == "hidden_states"
 
 
 def test_local_optimization_with_kwargs() -> None:

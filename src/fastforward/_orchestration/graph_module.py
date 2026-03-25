@@ -885,6 +885,8 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
     composite_inputs: dict[str, InputRef] = {
         name: composite.add_input(name) for name in graph.input_names if name in root_inputs
     }
+    composite_outputs: dict[NodeRef | AttributeRef, NodeRef | AttributeRef] = {}
+
     produced_refs: dict[NodeRef, NodeRef | AttributeRef] = {}
 
     def get_composite_arg(input_name: str) -> _BaseRef:
@@ -935,7 +937,10 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
             if ref in graph._outputs:
                 rebased = ref.rebase(base_ref)
                 assert isinstance(rebased, (NodeRef, AttributeRef))
-                composite.add_output(rebased)
+                composite_outputs[ref] = rebased
+
+    for ref in graph._outputs:
+        composite.add_output(composite_outputs[ref])
 
     return composite
 
