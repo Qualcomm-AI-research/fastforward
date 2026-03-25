@@ -58,6 +58,10 @@ class _BaseRef:
         """Extract the base NodeRef or InputRef."""
         return self
 
+    def rebase(self, new_base: _BaseRef) -> _BaseRef:
+        """Preserve attribute access when a reference's base is replaced during graph rewriting."""
+        return new_base
+
 
 @dataclasses.dataclass(frozen=True)
 class NamedRef(_BaseRef):
@@ -126,6 +130,14 @@ class AttributeRef(_BaseRef):
         if isinstance(self.reference, AttributeRef):
             return self.reference.unwrap_ref()
         return self.reference
+
+    def rebase(self, new_base: _BaseRef) -> AttributeRef:
+        """Preserve attribute access when a reference's base is replaced during graph rewriting."""
+        return (
+            new_base[self.attribute]
+            if isinstance(self.attribute, int)
+            else getattr(new_base, self.attribute)
+        )
 
 
 def resolve_reference(reference: _BaseRef, context: dict[uuid.UUID, Any]) -> Any:
@@ -909,25 +921,21 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
             node = composite._nodes[partition_ref.id]
             composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate)
 
-        # Ensure this partition's outputs are addressable to other partitions.
-        for ref in partition._outputs:
+        # Map each partition output to a composite-level reference so downstream
+        # partitions (and graph outputs) can address them.
+        for i, ref in enumerate(partition._outputs):
             base = ref.unwrap_ref()
             if not isinstance(base, NodeRef):
                 msg = f"Partition output unwrap did not return NodeRef: {type(base)}"
                 raise TypeError(msg)
-            produced_refs[base] = partition_ref
 
-            if isinstance(ref, AttributeRef):
-                produced_ref = (
-                    partition_ref[ref.attribute]
-                    if isinstance(ref.attribute, int)
-                    else getattr(partition_ref, ref.attribute)
-                )
-            else:
-                produced_ref = partition_ref
+            base_ref = partition_ref if len(partition._outputs) == 1 else partition_ref[i]
+            produced_refs[base] = base_ref
 
             if ref in graph._outputs:
-                composite.add_output(produced_ref)
+                rebased = ref.rebase(base_ref)
+                assert isinstance(rebased, (NodeRef, AttributeRef))
+                composite.add_output(rebased)
 
     return composite
 

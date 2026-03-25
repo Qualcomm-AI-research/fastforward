@@ -747,6 +747,32 @@ def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
     torch.testing.assert_close(composite_out, original_out)
 
 
+def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
+    # GIVEN a graph with a shared layer
+    #   inp -> shared -> up   ->
+    #                 -> down -> add -> output
+    graph = GraphModule()
+    inp = graph.add_input("inp")
+    shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
+    up = graph.add_node("up", torch.nn.Linear(4, 4), [shared])
+    down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
+    add = graph.add_node("add", Add(), [up, down])
+    graph.add_output(add)
+
+    # GIVEN a spec that splits the graph into partitions:
+    # P0: {inp -> shared -> down} that returns both shared and down
+    # {P0[shared] -> up}
+    # {P0[down], P1 -> add}
+    specs = [SubgraphSpec(input=up, output=up)]
+
+    # WHEN we build the composite graph and run a forward pass
+    composite = build_composite_graph(graph, specs=specs)
+    x = torch.randn(1, 4)
+
+    # THEN the composite output should match the original graph
+    torch.testing.assert_close(composite(x), graph(x))
+
+
 def test_local_optimization_with_kwargs() -> None:
     """Test LocalOptimizer with modules that use keyword arguments."""
     # GIVEN a graph with keyword arguments
