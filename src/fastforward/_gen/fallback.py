@@ -59,6 +59,7 @@ __all__ = [
     "cat",
     "index_add",
     "cumsum",
+    "pad",
 ]
 
 
@@ -71,6 +72,7 @@ def linear(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -113,6 +115,7 @@ def conv1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -163,6 +166,7 @@ def conv2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -213,6 +217,7 @@ def conv3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -259,6 +264,7 @@ def softmax(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -283,6 +289,7 @@ def relu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -307,6 +314,7 @@ def sigmoid(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -338,6 +346,7 @@ def conv_transpose1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -390,6 +399,7 @@ def conv_transpose2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -442,6 +452,7 @@ def conv_transpose3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -492,6 +503,7 @@ def avg_pool1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -528,6 +540,7 @@ def avg_pool2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -564,6 +577,7 @@ def avg_pool3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -601,6 +615,7 @@ def embedding(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -637,6 +652,7 @@ def layer_norm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -677,6 +693,7 @@ def matmul(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -710,6 +727,7 @@ def mm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -743,6 +761,7 @@ def bmm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -777,6 +796,7 @@ def add(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -815,6 +835,7 @@ def sub(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -852,6 +873,7 @@ def mul(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -889,6 +911,7 @@ def div(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -926,6 +949,7 @@ def pow(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -963,6 +987,7 @@ def sum(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -987,6 +1012,7 @@ def bitwise_not(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1011,6 +1037,7 @@ def negative(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1035,6 +1062,7 @@ def positive(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1060,6 +1088,7 @@ def bitwise_and(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1093,6 +1122,7 @@ def bitwise_or(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1126,6 +1156,7 @@ def bitwise_xor(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1159,6 +1190,7 @@ def floor_divide(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1196,6 +1228,7 @@ def bitwise_left_shift(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1233,6 +1266,7 @@ def bitwise_right_shift(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1270,6 +1304,7 @@ def remainder(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1306,6 +1341,7 @@ def silu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1331,6 +1367,7 @@ def gelu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1361,6 +1398,7 @@ def scaled_dot_product_attention(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1412,6 +1450,7 @@ def dropout(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1437,6 +1476,7 @@ def permute(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1462,6 +1502,7 @@ def cat(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1494,6 +1535,7 @@ def index_add(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1527,6 +1569,7 @@ def cumsum(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
 ) -> torch.Tensor:
+
     if strict_quantization and output_quantizer is None:
         raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
 
@@ -1539,6 +1582,34 @@ def cumsum(
         input = input.dequantize()
 
     output = torch.cumsum(input=input, dim=dim)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:127
+def pad(
+    input: torch.Tensor,
+    pad: Sequence[int],
+    mode: str = "...",
+    value: float | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.nn.functional.pad(input=input, pad=pad, mode=mode, value=value)
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output

@@ -123,3 +123,6 @@
 
 - op: "cumsum(input: Quantized, dim: int) -> Quantized"
   fallback: torch.cumsum
+
+- op: "pad(input: Quantized, pad: Sequence[int], mode: str = ..., value: Optional[float] = None) -> Quantized"
+  fallback: torch.nn.functional.pad

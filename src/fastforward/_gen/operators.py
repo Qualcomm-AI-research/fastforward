@@ -61,6 +61,7 @@ __all__ = [
     "cat",
     "index_add",
     "cumsum",
+    "pad",
 ]
 
 
@@ -73,6 +74,7 @@ def linear(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -107,6 +109,7 @@ def conv1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -149,6 +152,7 @@ def conv2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -191,6 +195,7 @@ def conv3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -229,6 +234,7 @@ def softmax(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -257,6 +263,7 @@ def relu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -279,6 +286,7 @@ def sigmoid(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -308,6 +316,7 @@ def conv_transpose1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -353,6 +362,7 @@ def conv_transpose2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -398,6 +408,7 @@ def conv_transpose3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -441,6 +452,7 @@ def avg_pool1d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -480,6 +492,7 @@ def avg_pool2d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -519,6 +532,7 @@ def avg_pool3d(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -559,6 +573,7 @@ def embedding(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -599,6 +614,7 @@ def layer_norm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -632,6 +648,7 @@ def matmul(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -659,6 +676,7 @@ def mm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -686,6 +704,7 @@ def bmm(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -714,6 +733,7 @@ def add(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -744,6 +764,7 @@ def sub(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -773,6 +794,7 @@ def mul(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -800,6 +822,7 @@ def div(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -827,6 +850,7 @@ def pow(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -854,6 +878,7 @@ def sum(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -880,6 +905,7 @@ def bitwise_not(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -902,6 +928,7 @@ def negative(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -924,6 +951,7 @@ def positive(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -947,6 +975,7 @@ def bitwise_and(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -974,6 +1003,7 @@ def bitwise_or(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1001,6 +1031,7 @@ def bitwise_xor(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1028,6 +1059,7 @@ def floor_divide(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1055,6 +1087,7 @@ def bitwise_left_shift(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1082,6 +1115,7 @@ def bitwise_right_shift(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1109,6 +1143,7 @@ def remainder(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1135,6 +1170,7 @@ def silu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1158,6 +1194,7 @@ def gelu(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1190,6 +1227,7 @@ def scaled_dot_product_attention(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1229,6 +1267,7 @@ def dropout(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1260,6 +1299,7 @@ def permute(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1287,6 +1327,7 @@ def cat(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1317,6 +1358,7 @@ def index_add(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1350,6 +1392,7 @@ def cumsum(
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool | None = None,
 ) -> torch.Tensor:
+
     if strict_quantization is None:
         strict_quantization = fastforward.get_strict_quantization()
 
@@ -1364,6 +1407,40 @@ def cumsum(
     return selected_op(
         input=input,
         dim=dim,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:127
+def pad(
+    input: torch.Tensor,
+    pad: Sequence[int],
+    mode: str = "...",
+    value: float | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "pad",
+        input=input,
+        pad=pad,
+        mode=mode,
+        value=value,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.pad
+    return selected_op(
+        input=input,
+        pad=pad,
+        mode=mode,
+        value=value,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )
