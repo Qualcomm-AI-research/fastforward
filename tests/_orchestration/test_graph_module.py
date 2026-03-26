@@ -17,7 +17,6 @@ from fastforward._orchestration.graph_module import (
     Direction,
     GraphModule,
     InputRef,
-    LocalOptimizer,
     NodeRef,
     SubgraphSpec,
     build_composite_graph,
@@ -25,6 +24,7 @@ from fastforward._orchestration.graph_module import (
     find_nodes_on_path,
     find_reachable_nodes,
     inference_mode,
+    local_optimize,
     remap_subgraph_reference,
 )
 from fastforward._orchestration.instruction_engine import (
@@ -443,9 +443,9 @@ def test_local_error_opt() -> None:
         )
     ]
 
-    # WHEN we run the LocalOptimizer on the calibration data
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    # WHEN we run local_optimize on the calibration data
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN only residual_1's linear weights should have changed
     assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
@@ -453,7 +453,7 @@ def test_local_error_opt() -> None:
 
 
 def test_local_optimization_overlapping_specs_raises() -> None:
-    """Test that LocalOptimizer rejects overlapping specs."""
+    """Test that local_optimize rejects overlapping specs."""
     # GIVEN two SubgraphSpecs that overlap
     model = Model()
     graph = model.to_graph_module()
@@ -468,10 +468,10 @@ def test_local_optimization_overlapping_specs_raises() -> None:
         ),
     ]
 
-    # WHEN we try to create an optimizer with overlapping specs
+    # WHEN we try to create a local_optimize context with overlapping specs
     # THEN it should raise a ValueError
     with pytest.raises(ValueError, match="Overlapping nodes"):
-        LocalOptimizer(graph, specs)
+        local_optimize(graph, specs)
 
 
 def test_call_module_single_tensor_arg() -> None:
@@ -507,7 +507,7 @@ def test_call_module_single_tensor_arg() -> None:
 
 
 def test_local_optimization_with_attribute_refs() -> None:
-    """Test LocalOptimizer with AttributeRef outputs in subgraphs."""
+    """Test local_optimize with AttributeRef outputs in subgraphs."""
     # GIVEN a model that returns multiple outputs
     model = MultiOutputModel()
     graph = model.to_graph_module()
@@ -539,8 +539,8 @@ def test_local_optimization_with_attribute_refs() -> None:
     ]
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN linear1 should be optimized
     assert not torch.allclose(initial_linear1_weight, model.linear1.weight.data)
@@ -549,7 +549,7 @@ def test_local_optimization_with_attribute_refs() -> None:
 
 
 def test_local_optimization_multiple_non_overlapping_specs() -> None:
-    """Test LocalOptimizer with multiple non-overlapping specs."""
+    """Test local_optimize with multiple non-overlapping specs."""
     # GIVEN a model with two residual blocks
     model = Model()
     graph = model.to_graph_module()
@@ -586,8 +586,8 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     ]
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN both residual blocks should be optimized
     assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
@@ -595,7 +595,7 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
 
 
 def test_local_optimization_entire_graph() -> None:
-    """Test LocalOptimizer when spec covers entire graph."""
+    """Test local_optimize when spec covers entire graph."""
     # GIVEN a model and its graph
     model = Model()
     graph = model.to_graph_module()
@@ -627,8 +627,8 @@ def test_local_optimization_entire_graph() -> None:
     ]
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN all weights should be optimized
     assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
@@ -636,7 +636,7 @@ def test_local_optimization_entire_graph() -> None:
 
 
 def test_local_optimization_with_const_inputs() -> None:
-    """Test LocalOptimizer with Const inputs in the graph."""
+    """Test local_optimize with Const inputs in the graph."""
     # GIVEN a graph with a constant input
     const_value = torch.randn(5)
     graph = GraphModule()
@@ -672,15 +672,15 @@ def test_local_optimization_with_const_inputs() -> None:
     ]
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN the linear layer should be optimized
     assert not torch.allclose(initial_weight, linear.weight.data)
 
 
 def test_local_optimization_no_specs() -> None:
-    """Test LocalOptimizer with no optimization specs (only partitioning)."""
+    """Test local_optimize with no optimization specs (only partitioning)."""
     # GIVEN a model and its graph
     model = Model()
     graph = model.to_graph_module()
@@ -696,8 +696,8 @@ def test_local_optimization_no_specs() -> None:
     specs: list[SubgraphSpec] = []
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN no weights should change (only forward passes)
     assert torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
@@ -835,7 +835,7 @@ def test_rebase_maps_partition_output_ref_to_composite_ref() -> None:
 
 
 def test_local_optimization_with_kwargs() -> None:
-    """Test LocalOptimizer with modules that use keyword arguments."""
+    """Test local_optimize with modules that use keyword arguments."""
     # GIVEN a graph with keyword arguments
     graph = GraphModule()
     input_ref = graph.add_input("input")
@@ -876,15 +876,15 @@ def test_local_optimization_with_kwargs() -> None:
     ]
 
     # WHEN we run the optimizer
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data)
+    with local_optimize(graph, specs):
+        graph(calibration_data)
 
     # THEN the linear layer should be optimized
     assert not torch.allclose(initial_weight, linear.weight.data)
 
 
 def test_local_optimization_with_multiple_inputs() -> None:
-    """Test LocalOptimizer with graph that has multiple inputs."""
+    """Test local_optimize with graph that has multiple inputs."""
     # GIVEN a graph with multiple inputs
     graph = GraphModule()
     input1 = graph.add_input("input1")
@@ -922,8 +922,8 @@ def test_local_optimization_with_multiple_inputs() -> None:
     ]
 
     # WHEN we run the optimizer with multiple input datasets
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(calibration_data_input1, calibration_data_input2)
+    with local_optimize(graph, specs):
+        graph(calibration_data_input1, calibration_data_input2)
 
     # THEN the linear layer should be optimized
     assert not torch.allclose(initial_weight, linear.weight.data)

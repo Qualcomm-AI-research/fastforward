@@ -45,7 +45,7 @@ import fastforward as ff
 import torch
 
 from fastforward._orchestration import graph_module
-from fastforward._orchestration.graph_module import inference_mode
+from fastforward._orchestration.graph_module import inference_mode, local_optimize
 from fastforward._orchestration.instruction_engine import OffloadEverything
 from transformers import AutoTokenizer, LlamaForCausalLM
 
@@ -168,7 +168,7 @@ calibration_set = get_c4(model_name, sequence_length=2048, seed=0)
 #
 # Each attention projection (Q, K, V, O) and MLP projection (gate, up, down) is quantized
 # individually in sequential order - equivalent to `--true-sequential` in the original GPTQ.
-# Each layer is wrapped in a `SubgraphSpec` that tells the `LocalOptimizer` which subgraph
+# Each layer is wrapped in a `SubgraphSpec` that tells `local_optimize` which subgraph
 # to pass to `ff.quantization.gptq`.
 
 # +
@@ -188,10 +188,9 @@ for proj_name in projection_names:
 # if not directly needed.
 offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
 
-optimizer = graph_module.LocalOptimizer(graph, specs, offloading_strategy=offloading)
-
 with torch.inference_mode(), ff.strict_quantization(False):
-    optimizer.optimize(calibration_set)
+    with local_optimize(graph, specs, offloading_strategy=offloading):
+        graph(calibration_set)
 # -
 
 # ## Evaluate on WikiText-2

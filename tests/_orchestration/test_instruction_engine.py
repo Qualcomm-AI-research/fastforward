@@ -14,10 +14,10 @@ import torch
 from fastforward._orchestration.graph_module import (
     Delegate,
     GraphModule,
-    LocalOptimizer,
     NodeRef,
     SubgraphSpec,
     _BaseRef,
+    local_optimize,
 )
 from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
@@ -532,9 +532,8 @@ def test_local_optimizer_with_offload_everything_only_updates_targeted_layer() -
         compute_device=torch.device("cpu"),
         storage_device=torch.device("cpu"),
     )
-    LocalOptimizer(
-        graph, _make_optimizer_specs(model, graph), offloading_strategy=offloading
-    ).optimize(calibration_data)
+    with local_optimize(graph, _make_optimizer_specs(model, graph), offloading_strategy=offloading):
+        graph(calibration_data)
 
     # THEN only residual_1's weights changed
     assert not torch.allclose(initial_w1, model.residual_1.linear.weight.data)
@@ -550,7 +549,8 @@ def test_local_optimizer_without_offloading_only_updates_targeted_layer() -> Non
     calibration_data = [torch.randn(1, 5) for _ in range(10)]
 
     # WHEN we optimize without an offloading strategy
-    LocalOptimizer(graph, _make_optimizer_specs(model, graph)).optimize(calibration_data)
+    with local_optimize(graph, _make_optimizer_specs(model, graph)):
+        graph(calibration_data)
 
     # THEN only residual_1's weights changed
     assert not torch.allclose(initial_w1, model.residual_1.linear.weight.data)

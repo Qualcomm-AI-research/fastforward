@@ -11,7 +11,7 @@ import fastforward as ff
 import torch
 
 from datasets import load_dataset
-from fastforward._orchestration.graph_module import GraphModule, LocalOptimizer, SubgraphSpec
+from fastforward._orchestration.graph_module import GraphModule, SubgraphSpec, local_optimize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
@@ -381,8 +381,8 @@ if __name__ == "__main__":
     )
 
     # Perform layerwise optimization (decoder layers).
-    optimizer = LocalOptimizer(graph, specs)
-    optimizer.optimize(train_loader)
+    with local_optimize(graph, specs):
+        graph(train_loader)
 
     mse_quant_perplexity = evaluate_model(model, valid_loader, max_num_batches=None)
     print("Perplexity over wikitext-validation:")

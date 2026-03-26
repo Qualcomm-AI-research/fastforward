@@ -547,10 +547,15 @@ class GraphModule(torch.nn.Module):
             self._program = scheduler.schedule(self)
             self._engine = InstructionEngine()
 
-        # The engine produces per-context results.
-        outputs: dict[ContextManager[None], tuple[Any]] = self._engine.run(
+        # The engine produces per-context results.  When the program has no
+        # ReturnOutputs instruction (e.g. optimization-only schedules) the
+        # engine returns None.
+        outputs: dict[ContextManager[None], tuple[Any]] | None = self._engine.run(
             self._program, *args, **kwargs
         )
+
+        if outputs is None:
+            return None
 
         # If the output is a single value (non-batched) and produced by a single
         # context, we return directly that value, mimicing the torch module behavior.
@@ -1161,54 +1166,39 @@ def inference_mode(
     return _GraphExecutionContext(graph, program, _InferenceEngine())
 
 
+def local_optimize(
+    graph: GraphModule,
+    specs: list[SubgraphSpec],
+    offloading_strategy: OffloadingStrategy | None = None,
+) -> _GraphExecutionContext:
+    """Context manager that configures a graph for local optimization.
 
-class LocalOptimizer:
-    """Partitions a GraphModule and applies optimization functions to selected subgraphs.
+    Builds a composite graph from the provided specs, schedules it with lifetime
+    management passes, and temporarily installs the resulting program on the original
+    graph. The original state is restored on exit.
 
     Args:
-        graph: GraphModule to partition and optimize.
+        graph: The GraphModule to optimize.
         specs: Partition boundaries with optional optimization functions. Each spec
             defines input/output nodes and an optional function to optimize that subgraph.
-        offloading_strategy: Strategy for moving module weights and activations between devices.
-            Defaults to `None` (no device movement).
+        offloading_strategy: Optional strategy for moving weights and activations between
+            devices during execution.
 
-    Raises:
-        ValueError: If only one of scheduler or engine is provided.
+    Returns:
+        A context manager that yields the configured graph.
     """
+    from fastforward._orchestration.instruction_engine import (
+        InstructionEngine,
+        InstructionPass,
+        InstructionScheduler,
+        lifetime_management_pass,
+        optimization_only_pass,
+    )
 
-    def __init__(
-        self,
-        graph: GraphModule,
-        specs: list[SubgraphSpec],
-        offloading_strategy: OffloadingStrategy | None = None,
-    ):
-        from fastforward._orchestration.instruction_engine import (
-            InstructionEngine,
-            InstructionPass,
-            InstructionScheduler,
-            lifetime_management_pass,
-            optimization_only_pass,
-        )
+    passes: list[InstructionPass] = [optimization_only_pass, lifetime_management_pass]
+    if offloading_strategy is not None:
+        passes.append(offloading_strategy.create_instruction_pass(graph))
 
-        # The offloading pass depends on the final instruction order, so it runs last.
-        passes: list[InstructionPass] = [optimization_only_pass, lifetime_management_pass]
-        if offloading_strategy is not None:
-            passes.append(offloading_strategy.create_instruction_pass(graph))
-
-        scheduler = InstructionScheduler(passes=passes)
-        engine = InstructionEngine()
-
-        composite_graph = build_composite_graph(graph, specs)
-        self._program = scheduler.schedule(composite_graph)
-        self._engine = engine
-
-    def optimize(self, *args: Any, **kwargs: Any) -> None:
-        """Execute optimization across all partitions.
-
-        All input arguments must be iterables of the same length.
-
-        Args:
-            *args: Positional inputs for the graph.
-            **kwargs: Keyword inputs for the graph.
-        """
-        self._engine.run(self._program, *args, **kwargs)
+    composite = build_composite_graph(graph, specs)
+    program = InstructionScheduler(passes=passes).schedule(composite)
+    return _GraphExecutionContext(graph, program, InstructionEngine())
