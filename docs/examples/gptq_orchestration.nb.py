@@ -44,6 +44,7 @@ import fastforward as ff
 import torch
 
 from fastforward._orchestration import graph_module
+from fastforward._orchestration.instruction_engine import OffloadEverything
 from transformers import AutoTokenizer, LlamaForCausalLM
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
@@ -114,7 +115,6 @@ w_quantizers.initialize(
 )
 
 graph = to_graph_module(model)
-model.to(device)
 # -
 
 # ## Load Calibration Dataset
@@ -130,12 +130,7 @@ class TokenizedData(Protocol):
 
 
 # +
-def get_c4(
-    model: str,
-    sequence_length: int,
-    seed: int,
-    device: torch.device,
-) -> list[torch.Tensor]:
+def get_c4(model: str, sequence_length: int, seed: int) -> list[torch.Tensor]:
     """Load a subset of C4 as a calibration set."""
     traindata = datasets.load_dataset(
         "allenai/c4",
@@ -161,11 +156,11 @@ def get_c4(
                 break
         i = random.randint(0, tmp.input_ids.shape[1] - sequence_length - 1)
         j = i + sequence_length
-        loader.append(tmp.input_ids[:, i:j].to(device))
+        loader.append(tmp.input_ids[:, i:j])
     return loader
 
 
-calibration_set = get_c4(model_name, sequence_length=2048, seed=0, device=device)
+calibration_set = get_c4(model_name, sequence_length=2048, seed=0)
 # -
 
 # ## Run GPTQ Optimization
@@ -188,7 +183,11 @@ for proj_name in projection_names:
         layer_ref = graph.node_ref(match.module)
         specs.append(graph_module.SubgraphSpec(input=layer_ref, output=layer_ref, fn=gptq_fn))
 
-optimizer = graph_module.LocalOptimizer(graph, specs)
+# We provide an offloading strategy that puts model weights and intermediate activations to cpu
+# if not directly needed.
+offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+
+optimizer = graph_module.LocalOptimizer(graph, specs, offloading_strategy=offloading)
 
 with torch.inference_mode(), ff.strict_quantization(False):
     optimizer.optimize(calibration_set)
@@ -204,13 +203,7 @@ with torch.inference_mode(), ff.strict_quantization(False):
 
 
 # +
-def get_wikitext2(
-    model: str,
-    nsamples: int,
-    sequence_length: int,
-    seed: int,
-    device: torch.device,
-) -> list[torch.Tensor]:
+def get_wikitext2(model: str, nsamples: int, sequence_length: int, seed: int) -> list[torch.Tensor]:
     """Build a WikiText-2 validation set for perplexity evaluation."""
     testdata = datasets.load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
     tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False)
@@ -221,7 +214,7 @@ def get_wikitext2(
     for _ in range(nsamples):
         i = random.randint(0, testenc.input_ids.shape[1] - sequence_length - 1)
         j = i + sequence_length
-        sequences.append(testenc.input_ids[:, i:j].to(device))
+        sequences.append(testenc.input_ids[:, i:j])
     return sequences
 
 
@@ -249,9 +242,7 @@ def evaluate(model: LlamaForCausalLM, dataset: list[torch.Tensor]) -> float:
     return float(torch.exp(torch.tensor(nll_sum / total_tokens)))
 
 
-validation_set = get_wikitext2(
-    model_name, nsamples=128, sequence_length=2048, seed=0, device=device
-)
+validation_set = get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
 with ff.strict_quantization(False):
     perplexity = evaluate(model, validation_set)
 

@@ -41,6 +41,7 @@ import torch
 if TYPE_CHECKING:
     from fastforward._orchestration.instruction_engine import (
         InstructionEngine,
+        OffloadingStrategy,
     )
 
 
@@ -1096,20 +1097,33 @@ class LocalOptimizer:
         graph: GraphModule to partition and optimize.
         specs: Partition boundaries with optional optimization functions. Each spec
             defines input/output nodes and an optional function to optimize that subgraph.
+        offloading_strategy: Strategy for moving module weights and activations between devices.
+            Defaults to `None` (no device movement).
 
     Raises:
         ValueError: If only one of scheduler or engine is provided.
     """
 
-    def __init__(self, graph: GraphModule, specs: list[SubgraphSpec]):
+    def __init__(
+        self,
+        graph: GraphModule,
+        specs: list[SubgraphSpec],
+        offloading_strategy: OffloadingStrategy | None = None,
+    ):
         from fastforward._orchestration.instruction_engine import (
             InstructionEngine,
+            InstructionPass,
             InstructionScheduler,
             lifetime_management_pass,
             optimization_only_pass,
         )
 
-        scheduler = InstructionScheduler(passes=[optimization_only_pass, lifetime_management_pass])
+        # The offloading pass depends on the final instruction order, so it runs last.
+        passes: list[InstructionPass] = [optimization_only_pass, lifetime_management_pass]
+        if offloading_strategy is not None:
+            passes.append(offloading_strategy.create_instruction_pass(graph))
+
+        scheduler = InstructionScheduler(passes=passes)
         engine = InstructionEngine()
 
         composite_graph = build_composite_graph(graph, specs)
