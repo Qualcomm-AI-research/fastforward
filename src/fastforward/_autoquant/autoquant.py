@@ -106,7 +106,7 @@ def autoquant(
             module_builder.add_function(func_builder)
 
             # Queue dependent functions for processing
-            for new_task in _find_dependent_functions(func_src, func_ctx):
+            for new_task in _find_dependent_functions(func_src, func_ctx, operator_table):
                 func_queue.append(new_task)
 
         elif issubclass(task.module, torch.nn.Module):
@@ -136,7 +136,7 @@ def autoquant(
             # Queue dependent methods for processing
             for new_task in itertools.chain(
                 _find_dependent_methods(method_src, method_ctx),
-                _find_dependent_functions(method_src, method_ctx),
+                _find_dependent_functions(method_src, method_ctx, operator_table),
             ):
                 if new_task.function in operator_table:
                     # If function is in operator_table, it will be converted
@@ -739,6 +739,7 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
     Args:
         func_src: The source code representation of the function to analyze.
         ctx: The `FunctionContext` of `func_src`.
+        operator_table: Operator lookup table used to detect quantized leaf ops.
 
     Returns:
         An iterator of method names that are dependencies of the given function.
@@ -788,7 +789,7 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
 
 
 def _find_dependent_functions(
-    func_src: pysource.PySource, ctx: FunctionContext
+    func_src: pysource.PySource, ctx: FunctionContext, operator_table: optable.OperatorTable
 ) -> Iterator[_AqTask]:
     """Find Python functions that are called by the given function.
 
@@ -799,6 +800,7 @@ def _find_dependent_functions(
     Args:
         func_src: The source code representation of the function to analyze.
         ctx: The `FunctionContext` of `func_src`.
+        operator_table: Operator lookup table used to detect quantized leaf ops.
 
     Returns:
         An iterator of `_AqTask` objects representing Python functions that are called
@@ -849,6 +851,20 @@ def _find_dependent_functions(
                 ref = scope_vars.get(func_name)
                 module = sys.modules.get(ref.__module__) if ref is not None else None
                 if ref is not None and module is not None:
+                    # Only queue Python functions that have regular source files.
+                    # Skip builtins, extension-backed, and frozen functions.
+                    if inspect.isbuiltin(ref) or not inspect.isfunction(ref):
+                        continue
+                    source_file = inspect.getsourcefile(ref)
+                    if source_file is None or source_file.startswith("<frozen "):
+                        continue
+
+                    # Registered operators are quantized via direct callsite replacement.
+                    # Do not descend into their Python fallback implementation, or we may
+                    # emit redundant wrappers for already-supported ops.
+                    if ref in operator_table:
+                        continue
+
                     alias = None
                     if getattr(module, func_name, None) is ref:
                         alias = func_name
@@ -874,6 +890,15 @@ def _find_dependent_functions(
                 # Builtin function calls are replaced to quantized versions based on
                 # the operator table during function conversion.
                 if not inspect.isbuiltin(ref) and inspect.isfunction(ref):
+                    source_file = inspect.getsourcefile(ref)
+                    if source_file is None or source_file.startswith("<frozen "):
+                        continue
+
+                    # Keep registered operators as leaf nodes handled by the operator
+                    # table to avoid generating wrappers for their Python fallbacks.
+                    if ref in operator_table:
+                        continue
+
                     yield _AqTask(
                         module=module,
                         function=ref,
