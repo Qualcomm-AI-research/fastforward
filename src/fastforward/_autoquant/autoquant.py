@@ -78,78 +78,85 @@ def autoquant(
         if any(b.origin.func is task.function for b in module_builder.functions()):
             continue
 
-        if isinstance(task.function, type):
-            logger.warning(
-                "Skipping '%s' because it is a class and class constructors are not supported. "
-                + "This may require further manual conversion for correct quantization.",
-                fully_qualified_name(task.function),
-            )
-        elif inspect.ismodule(task.module):
-            # If task.module is a Python module (in contrast to a PyTorch
-            # module), treat the function as a 'helper' function. Create a new
-            # quantized version of the function in the quantized (Python)
-            # module.
-
-            qualified_module_name = fully_qualified_name(task.module)
-            func_ctx = FunctionContext.from_function_reference(task.function, task.module)
-            module_src = source_context.get(qualified_module_name)
-            func_src = module_src.member(func_name)
-            with quantizer_refs.push_context(func_ctx):
-                func_builder = convert_function(
-                    src=func_src,
-                    optable=operator_table,
-                    func_ctx=func_ctx,
-                    quantizer_refs=quantizer_refs,
+        try:
+            if isinstance(task.function, type):
+                logger.warning(
+                    "Skipping '%s' because it is a class and class constructors are not supported. "
+                    + "This may require further manual conversion for correct quantization.",
+                    fully_qualified_name(task.function),
                 )
-            if task.alias is not None:
-                func_builder.name = task.alias
-            module_builder.add_function(func_builder)
+            elif inspect.ismodule(task.module):
+                # If task.module is a Python module (in contrast to a PyTorch
+                # module), treat the function as a 'helper' function. Create a new
+                # quantized version of the function in the quantized (Python)
+                # module.
 
-            # Queue dependent functions for processing
-            for new_task in _find_dependent_functions(func_src, func_ctx, operator_table):
-                func_queue.append(new_task)
+                qualified_module_name = fully_qualified_name(task.module)
+                func_ctx = FunctionContext.from_function_reference(task.function, task.module)
+                module_src = source_context.get(qualified_module_name)
+                func_src = module_src.member(func_name)
+                with quantizer_refs.push_context(func_ctx):
+                    func_builder = convert_function(
+                        src=func_src,
+                        optable=operator_table,
+                        func_ctx=func_ctx,
+                        quantizer_refs=quantizer_refs,
+                    )
+                if task.alias is not None:
+                    func_builder.name = task.alias
+                module_builder.add_function(func_builder)
 
-        elif issubclass(task.module, torch.nn.Module):
-            # If task.module is a PyTorch module (in contrast to a Python module), create
-            # a new member function on the quantized module. This can be an instance, class, or
-            # static method.
-            if task.module not in class_builders:
-                class_builders[task.module] = _cls_builder_for_module(task.module)
-            cls_builder = class_builders[task.module]
-            if cls_builder.has_method(func_name):
-                continue
+                # Queue dependent functions for processing
+                for new_task in _find_dependent_functions(func_src, func_ctx, operator_table):
+                    func_queue.append(new_task)
 
-            # Convert method to quantized version
-            qualified_class_name = fully_qualified_name(task.module)
-            src_class = source_context.get(qualified_class_name)
-            method_src = src_class.member(func_name)
-            method_ctx = FunctionContext.from_method(task.module, func_name)
-            with quantizer_refs.push_context(method_ctx):
-                func_builder = convert_function(
-                    src=method_src,
-                    optable=operator_table,
-                    func_ctx=method_ctx,
-                    quantizer_refs=quantizer_refs,
-                )
-                cls_builder.add_method(func_builder)
-
-            # Queue dependent methods for processing
-            for new_task in itertools.chain(
-                _find_dependent_methods(method_src, method_ctx),
-                _find_dependent_functions(method_src, method_ctx, operator_table),
-            ):
-                if new_task.function in operator_table:
-                    # If function is in operator_table, it will be converted
-                    # directly and no further analysis is required.
+            elif issubclass(task.module, torch.nn.Module):
+                # If task.module is a PyTorch module (in contrast to a Python module), create
+                # a new member function on the quantized module. This can be an instance, class, or
+                # static method.
+                if task.module not in class_builders:
+                    class_builders[task.module] = _cls_builder_for_module(task.module)
+                cls_builder = class_builders[task.module]
+                if cls_builder.has_method(func_name):
                     continue
-                func_queue.append(new_task)
 
-        else:
-            msg = (  # type: ignore[unreachable]
+                # Convert method to quantized version
+                qualified_class_name = fully_qualified_name(task.module)
+                src_class = source_context.get(qualified_class_name)
+                method_src = src_class.member(func_name)
+                method_ctx = FunctionContext.from_method(task.module, func_name)
+                with quantizer_refs.push_context(method_ctx):
+                    func_builder = convert_function(
+                        src=method_src,
+                        optable=operator_table,
+                        func_ctx=method_ctx,
+                        quantizer_refs=quantizer_refs,
+                    )
+                    cls_builder.add_method(func_builder)
+
+                # Queue dependent methods for processing
+                for new_task in itertools.chain(
+                    _find_dependent_methods(method_src, method_ctx),
+                    _find_dependent_functions(method_src, method_ctx, operator_table),
+                ):
+                    if new_task.function in operator_table:
+                        # If function is in operator_table, it will be converted
+                        # directly and no further analysis is required.
+                        continue
+                    func_queue.append(new_task)
+
+            else:
+                msg = (  # type: ignore[unreachable]
+                    f"Failed to quantize '{task.function.__name__}' of '{task.module}' because "
+                    + f"'{task.module}' is not a Python or Pytorch module."
+                )
+                logger.warning(msg)
+        except Exception as err:
+            msg = (
                 f"Failed to quantize '{task.function.__name__}' of '{task.module}' because "
-                + f"'{task.module}' is not a Python or Pytorch module."
+                + f"{type(err).__name__} was raised: {err}"
             )
-            logger.warning(msg)
+            logger.warning(msg, exc_info=err)
 
     for class_builder in class_builders.values():
         module_builder.add_class(class_builder)

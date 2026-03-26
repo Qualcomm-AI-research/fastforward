@@ -4,6 +4,7 @@
 
 import contextlib
 import functools
+import logging
 import operator
 import pathlib
 import sys
@@ -813,3 +814,61 @@ def test_autoquant_attribute_call_on_builtin_callable_does_not_crash() -> None:
     objects reached via attribute calls (e.g. ``op.__call__(...)``).
     """
     _ = autoquant_with_defaults(ExampleModuleBuiltinCallableAttr(), use_type_inference=False)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("target_qualified_name", "expected_function_name"),
+    [
+        pytest.param(
+            __name__,
+            "wrapper",
+            id="inspect_ismodule_branch",
+        ),
+        pytest.param(
+            f"{__name__}.ExampleModule15",
+            "forward",
+            id="issubclass_torch_module_branch",
+        ),
+    ],
+)
+def test_autoquant_logs_and_continues_on_source_context_error(
+    target_qualified_name: str,
+    expected_function_name: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # GIVEN a module and a source context that fails for one target qualified name
+    class _FailingSourceContext(SourceContext):
+        """Wrap a base source context and raise for a configured qualified name."""
+
+        def __init__(self, base: SourceContext, target_qualified_name: str) -> None:
+            super().__init__()
+            self._base = base
+            self._target_qualified_name = target_qualified_name
+
+        @override
+        def get(self, qualified_name: str) -> pysource.PySource:
+            if qualified_name == self._target_qualified_name:
+                raise Exception("boom")
+            return self._base.get(qualified_name)
+
+    module = ExampleModule15()
+    base_source_context = default_source_context(use_type_inference=False)
+    source_context = _FailingSourceContext(base_source_context, target_qualified_name)
+
+    # WHEN autoquant processes the module
+    with caplog.at_level(logging.WARNING, logger="fastforward._autoquant.autoquant"):
+        generated = autoquant(
+            module=module,
+            source_context=source_context,
+            operator_table=optable.OperatorTable.from_yaml(
+                alias_extensions=optable.STR_ALIASES_EXTENSIONS
+            ),
+        )
+
+    # THEN conversion stays non-fatal and the failure is logged with context
+    assert isinstance(generated, str)
+    assert any(
+        f"Failed to quantize '{expected_function_name}'" in record.message
+        for record in caplog.records
+    )

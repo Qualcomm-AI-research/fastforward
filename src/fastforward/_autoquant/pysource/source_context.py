@@ -230,7 +230,15 @@ class _ModuleSource:
         return PySource(self._source_context, qualified_name)
 
     def _read_module_cst(self, module: ModuleType) -> libcst.Module:
-        src = inspect.getsource(module)
+        try:
+            src = inspect.getsource(module)
+        except (OSError, TypeError) as err:
+            msg = (
+                f"Could not load Python source for module '{fully_qualified_name(module)}'. "
+                + "This module may be extension-backed/compiled and cannot be autoquant source-analyzed."
+            )
+            raise SourceContextError(msg) from err
+
         module_cst = libcst.parse_module(textwrap.dedent(src))
 
         pm = PassManager(self._preprocessing_passes)
