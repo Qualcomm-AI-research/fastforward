@@ -41,6 +41,7 @@ import torch
 if TYPE_CHECKING:
     from fastforward._orchestration.instruction_engine import (
         InstructionEngine,
+        InstructionProgram,
         OffloadingStrategy,
     )
 
@@ -1088,6 +1089,77 @@ def _find_connected_components(graph: GraphModule, nodes: set[NodeRef]) -> list[
         nodes_to_visit -= component
 
     return components
+
+
+class _GraphExecutionContext:
+    """Context manager that temporarily swaps a graph's execution program and engine.
+
+    On enter, the graph's `_program` and `_engine` are replaced with the provided
+    values. On exit, the original state is restored.
+
+    Args:
+        graph: The GraphModule whose execution state will be temporarily replaced.
+        program: The program to install for the duration of the context.
+        engine: The engine to install for the duration of the context.
+    """
+
+    def __init__(
+        self,
+        graph: GraphModule,
+        program: InstructionProgram,
+        engine: InstructionEngine,
+    ) -> None:
+        self._graph = graph
+        self._original_program = graph._program
+        self._original_engine = graph._engine
+        graph._program = program
+        graph._engine = engine
+
+    def __enter__(self) -> GraphModule:
+        return self._graph
+
+    def __exit__(self, *args: Any) -> None:
+        self._graph._program = self._original_program
+        self._graph._engine = self._original_engine
+
+
+def inference_mode(
+    graph: GraphModule,
+    offloading_strategy: OffloadingStrategy | None = None,
+) -> _GraphExecutionContext:
+    """Context manager that configures a graph for inference with optional offloading.
+
+    Temporarily replaces the graph's execution program with one that includes lifetime
+    management and optional device offloading. The original state is restored on exit.
+
+    Args:
+        graph: The GraphModule to configure for inference.
+        offloading_strategy: Optional strategy for moving weights and activations between
+            devices during execution.
+
+    Returns:
+        A context manager that yields the configured graph.
+    """
+    from fastforward._orchestration.instruction_engine import (
+        InstructionEngine,
+        InstructionPass,
+        InstructionScheduler,
+        lifetime_management_pass,
+    )
+
+    passes: list[InstructionPass] = [lifetime_management_pass]
+    if offloading_strategy is not None:
+        passes.append(offloading_strategy.create_instruction_pass(graph))
+
+    program = InstructionScheduler(passes=passes).schedule(graph)
+
+    class _InferenceEngine(InstructionEngine):
+        @torch.inference_mode()
+        def run(self, program: Any, *args: Any, **kwargs: Any) -> Any:
+            return super().run(program, *args, **kwargs)
+
+    return _GraphExecutionContext(graph, program, _InferenceEngine())
+
 
 
 class LocalOptimizer:

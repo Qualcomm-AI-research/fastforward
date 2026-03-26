@@ -24,6 +24,7 @@ from fastforward._orchestration.graph_module import (
     create_subgraph,
     find_nodes_on_path,
     find_reachable_nodes,
+    inference_mode,
     remap_subgraph_reference,
 )
 from fastforward._orchestration.instruction_engine import (
@@ -955,3 +956,84 @@ def test_node_with_no_inputs_executes_once() -> None:
     # THEN the output should be a valid tensor (x + y)
     assert output.shape == (5,)
     assert isinstance(output, torch.Tensor)
+
+
+def test_inference_mode_restores_state_on_exit() -> None:
+    # GIVEN a fresh GraphModule (program and engine are None)
+    model = Model()
+    graph = model.to_graph_module()
+    original_program = graph._program
+    original_engine = graph._engine
+    assert original_program is None
+    assert original_engine is None
+
+    # WHEN we enter and exit inference_mode
+    with inference_mode(graph):
+        # THEN program and engine should be set inside the context
+        assert graph._program is not None
+        assert graph._engine is not None
+
+    # THEN program and engine should be restored to their original values
+    assert graph._program is original_program
+    assert graph._engine is original_engine
+
+
+def test_inference_mode_restores_previously_compiled_state() -> None:
+    # GIVEN a GraphModule that has already been used (program/engine are set)
+    model = Model()
+    graph = model.to_graph_module()
+    x = torch.randn(1, 5)
+    graph(x)  # triggers compilation
+    original_program = graph._program
+    original_engine = graph._engine
+    assert original_program is not None
+    assert original_engine is not None
+
+    # WHEN we enter and exit inference_mode
+    with inference_mode(graph):
+        assert graph._program is not original_program
+        assert graph._engine is not original_engine
+
+    # THEN the original program and engine should be restored
+    assert graph._program is original_program
+    assert graph._engine is original_engine
+
+
+def test_inference_mode_produces_same_output_as_default() -> None:
+    # Given a GraphModule and an input tensor
+    model = Model()
+    graph = model.to_graph_module()
+    x = torch.randn(1, 5)
+
+    # When we run the graph normally and under inference_mode
+    default_output = graph(x)
+    with inference_mode(graph):
+        inference_output = graph(x)
+
+    # Then both outputs should be identical
+    torch.testing.assert_close(inference_output, default_output)
+
+
+def test_inference_mode_enables_torch_inference_mode() -> None:
+    # Given a module that records whether torch.is_inference_mode_enabled during forward
+    class ProbeModule(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.is_on_inference_mode = False
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            self.is_on_inference_mode = torch.is_inference_mode_enabled()
+            return x
+
+    probe = ProbeModule()
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    out = graph.add_node("probe", probe, [inp])
+    graph.add_output(out)
+
+    # When we run the graph under inference_mode
+    with inference_mode(graph):
+        graph(torch.randn(1, 5))
+
+    # Then torch inference mode should have been active during forward
+    assert probe.is_on_inference_mode

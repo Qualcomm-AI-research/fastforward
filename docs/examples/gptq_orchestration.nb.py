@@ -34,6 +34,7 @@
 # +
 import functools
 import logging
+import math
 import os
 import random
 
@@ -44,9 +45,9 @@ import fastforward as ff
 import torch
 
 from fastforward._orchestration import graph_module
+from fastforward._orchestration.graph_module import inference_mode
 from fastforward._orchestration.instruction_engine import OffloadEverything
 from transformers import AutoTokenizer, LlamaForCausalLM
-from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from doc_helpers.llama_graph_module import to_graph_module
 from doc_helpers.quick_start.quantized_models import (
@@ -218,33 +219,26 @@ def get_wikitext2(model: str, nsamples: int, sequence_length: int, seed: int) ->
     return sequences
 
 
-@torch.no_grad()
-def evaluate(model: LlamaForCausalLM, dataset: list[torch.Tensor]) -> float:
+def evaluate(model: graph_module.GraphModule, dataset: list[torch.Tensor]) -> float:
     """Compute perplexity on a dataset of token-id sequences."""
-    model_device = next(model.parameters()).device
+    loss_fct = torch.nn.CrossEntropyLoss(reduction="sum")
     nll_sum = 0.0
     total_tokens = 0
 
     for batch in dataset:
-        batch = batch.to(model_device)
-        out: CausalLMOutputWithPast = model(input_ids=batch)
-        shift_logits = out.logits[:, :-1, :].contiguous()
-        shift_labels = batch[:, 1:].contiguous()
+        logits = model(batch)
+        nll_sum += loss_fct(
+            logits[:, :-1].reshape(-1, logits.size(-1)).to(device),
+            batch[:, 1:].reshape(-1).to(device),
+        ).item()
+        total_tokens += batch.size(1) - 1
 
-        loss_fct = torch.nn.CrossEntropyLoss(reduction="sum")
-        loss: torch.Tensor = loss_fct(
-            shift_logits.view(-1, shift_logits.size(-1)),
-            shift_labels.view(-1),
-        )
-        nll_sum += float(loss.item())
-        total_tokens += shift_labels.numel()
-
-    return float(torch.exp(torch.tensor(nll_sum / total_tokens)))
+    return math.exp(nll_sum / total_tokens)
 
 
 validation_set = get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
-with ff.strict_quantization(False):
-    perplexity = evaluate(model, validation_set)
+with inference_mode(graph, offloading_strategy=offloading), ff.strict_quantization(False):
+    perplexity = evaluate(graph, validation_set)
 
 print(f"Wiki2 PPL 4bit-GPTQ LLaMA-7B: {perplexity:.4f}  (original paper: 6.09)")
 # -
