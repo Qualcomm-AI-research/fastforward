@@ -741,6 +741,63 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
 class RemoveRedundantParenthesesTransformer(libcst.CSTTransformer):
     """Removes unnecessary parentheses from expressions when it's safe to do so."""
 
+    def _normalize_attribute_dot_whitespace(self, node: libcst.CSTNode) -> libcst.CSTNode:
+        """Normalize dot-leading whitespace that is only legal in parenthesized continuation.
+
+        ParenthesizedWhitespace on ``Attribute.dot.whitespace_before`` can become invalid when
+        expressions are rewritten. Converting it to ``SimpleWhitespace("")`` is a minimal,
+        structural normalization and is safe to apply independent of parenthesis stripping.
+        """
+        if isinstance(node, libcst.Attribute) and isinstance(
+            node.dot.whitespace_before, libcst.ParenthesizedWhitespace
+        ):
+            return node.with_changes(
+                dot=node.dot.with_changes(whitespace_before=libcst.SimpleWhitespace(""))
+            )
+        return node
+
+    def _parenthesized_whitespace_has_comment(
+        self,
+        whitespace: libcst.ParenthesizedWhitespace,
+    ) -> bool:
+        """Return whether the parenthesized whitespace contains comments."""
+        # In libcst typing, first_line/last_line are SimpleWhitespace and do not carry comments.
+        # Comments (if present) are attached to EmptyLine entries.
+        return any(line.comment is not None for line in whitespace.empty_lines)
+
+    def _paren_contains_comment_sensitive_layout(
+        self,
+        lpar: Sequence[libcst.LeftParen],
+        rpar: Sequence[libcst.RightParen],
+    ) -> bool:
+        """Detect comment layouts tied to paren trivia placement."""
+        for left_paren in lpar:
+            left_ws = left_paren.whitespace_after
+            if isinstance(
+                left_ws, libcst.ParenthesizedWhitespace
+            ) and self._parenthesized_whitespace_has_comment(left_ws):
+                return True
+
+        for right_paren in rpar:
+            right_ws = right_paren.whitespace_before
+            if isinstance(
+                right_ws, libcst.ParenthesizedWhitespace
+            ) and self._parenthesized_whitespace_has_comment(right_ws):
+                return True
+
+        return False
+
+    def _looks_multiline_sensitive(self, node: libcst.CSTNode) -> bool:
+        """Detect multiline-sensitive patterns where removing parens is unsafe."""
+        # Example: ("a" "b").format(x)
+        # Keep wrapper parens around implicit concatenation + chained attribute/call.
+        return (
+            isinstance(node, libcst.Call)
+            and isinstance(node.func, libcst.Attribute)
+            and isinstance(node.func.value, libcst.ConcatenatedString)
+            and isinstance(node.func.value.whitespace_between, libcst.ParenthesizedWhitespace)
+        )
+
     def on_leave(  # type: ignore[override]
         self,
         original_node: libcst.CSTNode,
@@ -748,19 +805,16 @@ class RemoveRedundantParenthesesTransformer(libcst.CSTTransformer):
     ) -> libcst.CSTNode:
         """Check any node for unnecessary parentheses and remove them if safe."""
         del original_node
+
+        # Always normalize dot-leading whitespace first. This is a structural safety rewrite and
+        # is independent from whether outer parentheses are removed.
+        updated_node = self._normalize_attribute_dot_whitespace(updated_node)
+
         # Only remove parentheses from nodes where they are unecesary
         if not isinstance(
             updated_node, (libcst.Name, libcst.Attribute, libcst.Call, libcst.Subscript)
         ):
             return updated_node
-
-        # Flatten ParenthesizedWhitespace on Dot nodes so removing outer parens
-        # doesn't leave behind newlines that were only valid inside them
-        if isinstance(updated_node, libcst.Attribute):
-            if isinstance(updated_node.dot.whitespace_before, libcst.ParenthesizedWhitespace):
-                updated_node = updated_node.with_changes(
-                    dot=updated_node.dot.with_changes(whitespace_before=libcst.SimpleWhitespace(""))
-                )
 
         # Check if this node has lpar/rpar attributes (most expression nodes do)
         if hasattr(updated_node, "lpar") and hasattr(updated_node, "rpar"):
@@ -768,10 +822,59 @@ class RemoveRedundantParenthesesTransformer(libcst.CSTTransformer):
             rpar = getattr(updated_node, "rpar")
 
             # If there are parentheses, remove them
-            if lpar and rpar:
+            if lpar and rpar and self._can_safely_remove_parens(updated_node, lpar, rpar):
                 return updated_node.with_changes(lpar=(), rpar=())
 
         return updated_node
+
+    def _can_safely_remove_parens(
+        self,
+        node: libcst.CSTNode,
+        lpar: Sequence[libcst.LeftParen],
+        rpar: Sequence[libcst.RightParen],
+    ) -> bool:
+        # Case 1: opening-paren carries parenthesized whitespace/newline semantics.
+        # Keep parens to preserve multiline continuation legality.
+        # Example:
+        #   x = (
+        #       foo
+        #   )
+        if any(
+            isinstance(paren.whitespace_after, libcst.ParenthesizedWhitespace) for paren in lpar
+        ):
+            return False
+
+        # Case 2: closing-paren carries parenthesized whitespace/newline semantics.
+        # Keep parens to avoid reshaping newline/comment boundaries.
+        # Example:
+        #   x = (foo
+        #   )
+        if any(
+            isinstance(paren.whitespace_before, libcst.ParenthesizedWhitespace) for paren in rpar
+        ):
+            return False
+
+        # Case 3: multiline-sensitive expression pattern (e.g., implicit string concat followed
+        # by attribute/call chaining). Paren removal can make output invalid.
+        # Example:
+        #   ("a"
+        #    "b").format(x)
+        if self._looks_multiline_sensitive(node):
+            return False
+
+        # Case 4: comments/layout are anchored to the paren region.
+        # Removing parens can displace trivia and change meaning/validity.
+        # Example:
+        #   x = (  # keep this comment with grouped expr
+        #       foo
+        #   )
+        if self._paren_contains_comment_sensitive_layout(lpar, rpar):
+            return False
+
+        # Case 5: only now do we consider removal safe.
+        # Example safe case:
+        #   x = (foo) -> x = foo
+        return True
 
 
 def _get_root(expr: libcst.BaseExpression) -> libcst.BaseExpression:
