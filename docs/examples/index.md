@@ -7,6 +7,7 @@ Here is a list of examples which you could check to learn how to use FastForward
 * [MPath: a utility for submodule selection](mpath.nb.py)
 * [Exporting tinyLlama](export_llama.nb.py)
 * [Save and load quantization state](save_load_quantization_state.nb.py)
+* [Autoquant](autoquant.md)
 
 ## Internal Documentation
 

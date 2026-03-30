@@ -29,13 +29,13 @@ change.
   This helps to catch common quantization mistakes early.
 - **mpath**: A utility to describe, access, and update multiple layers in
   a module hierarchy at a higher level of abstraction.
+- **Autoquant**: An (experimental) feature that supports automatic conversion of any
+  non-quantized PyTorch moedl into an eager-mode quantized model.
 
 ## Roadmap
 
 - **More Quantization Methods**: Implementations of quantization methods such
   as Omniquant, GPTQ, SpinQuant, and others.
-- **Autoquant**: Automatic conversions of any non-quantized PyTorch model into an
-  eager-mode quantized model.
 - **Export**: Generation of deployment artifacts for functional quantized neural
   networks.
 
@@ -46,6 +46,7 @@ To get started, explore these tutorials:
 - [Getting Started: Quantizing a LLM from Scratch](https://qualcomm-ai-research.github.io/fastforward/latest/examples/quantizing_networks.nb/)
 - [Quick Start: Quantization of Llama-v3](https://qualcomm-ai-research.github.io/fastforward/latest/examples/quick_start_quantize_llms.nb/)
 - [Save and load quantization state](https://qualcomm-ai-research.github.io/fastforward/latest/examples/save_load_quantization_state.nb/)
+- [Autoquantizing PyTorch Modules](https://qualcomm-ai-research.github.io/fastforward/latest/examples/autoquant.nb/)
 
 For more tutorials and the API reference, visit the [general documentation](https://qualcomm-ai-research.github.io/fastforward).
 
