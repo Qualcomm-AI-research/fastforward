@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import ast
+
 from collections.abc import Sequence
 
 import libcst as libcst
@@ -353,6 +355,9 @@ def test_redundant_parentheses(snapshot: syrupy.assertion.SnapshotAssertion) -> 
         attr_only = (foo.bar.cat)
         also_remove_these = (foo.bar.cat(arg1, arg2))
         keep = (foo + bar)
+        keep2 = ('Traceback(filename={!r}, '
+                    'lineno={!r},)'.format(
+                    self.filename, self.lineno))
         """
     )
 
@@ -360,5 +365,7 @@ def test_redundant_parentheses(snapshot: syrupy.assertion.SnapshotAssertion) -> 
     module = libcst.parse_module(input)
     result = module.visit(passes.RemoveRedundantParenthesesTransformer()).code
 
+    # THEN the result is a valid python code
+    ast.parse(result)
     # THEN the result matches the snapshot
     assert snapshot == result
