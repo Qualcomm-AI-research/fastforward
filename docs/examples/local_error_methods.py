@@ -176,10 +176,7 @@ def decoder_layer_only_spec(graph: GraphModule, fn: LocalErrorFn) -> list[Subgra
         A list of subgraphspecs corresponding to decoder layers.
     """
     layers = ff.mpath.search("**/[cls:quantized_llama.QuantizedLlamaDecoderLayer]", graph)
-    return [
-        SubgraphSpec(graph.node_ref(layer.module), graph.node_ref(layer.module), fn=fn)
-        for layer in layers
-    ]
+    return [SubgraphSpec(layer.module, layer.module, fn=fn) for layer in layers]
 
 
 def opt_mse(

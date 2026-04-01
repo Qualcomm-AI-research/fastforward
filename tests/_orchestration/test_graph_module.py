@@ -437,8 +437,8 @@ def test_local_error_opt() -> None:
     # GIVEN a SubgraphSpec that targets only the first residual's linear layer
     specs = [
         SubgraphSpec(
-            graph.node_ref(model.residual_1.linear),
-            graph.node_ref(model.residual_1.linear),
+            model.residual_1.linear,
+            model.residual_1.linear,
             fn=functools.partial(dummy, lr=0.1),
         )
     ]
@@ -459,12 +459,12 @@ def test_local_optimization_overlapping_specs_raises() -> None:
     graph = model.to_graph_module()
     specs = [
         SubgraphSpec(
-            input=graph.node_ref(graph.residual_1.linear),
-            output=graph.node_ref(graph.residual_1.relu),
+            input=graph.residual_1.linear,
+            output=graph.residual_1.relu,
         ),
         SubgraphSpec(
-            input=graph.node_ref(graph.residual_1.linear),
-            output=graph.node_ref(graph.residual_1.relu),
+            input=graph.residual_1.linear,
+            output=graph.residual_1.relu,
         ),
     ]
 
@@ -532,8 +532,8 @@ def test_local_optimization_with_attribute_refs() -> None:
     # GIVEN a spec targeting the first output path
     specs = [
         SubgraphSpec(
-            input=graph.node_ref(graph.linear1),
-            output=graph.node_ref(graph.relu),
+            input=graph.linear1,
+            output=graph.relu,
             fn=optimize_first_output,
         )
     ]
@@ -574,13 +574,13 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     # GIVEN two non-overlapping specs
     specs = [
         SubgraphSpec(
-            input=graph.node_ref(graph.residual_1.linear),
-            output=graph.node_ref(graph.residual_1.linear),
+            input=graph.residual_1.linear,
+            output=graph.residual_1.linear,
             fn=simple_opt,
         ),
         SubgraphSpec(
-            input=graph.node_ref(graph.residual_2.linear),
-            output=graph.node_ref(graph.residual_2.linear),
+            input=graph.residual_2.linear,
+            output=graph.residual_2.linear,
             fn=simple_opt,
         ),
     ]
@@ -620,8 +620,8 @@ def test_local_optimization_entire_graph() -> None:
     # GIVEN a spec covering the entire graph
     specs = [
         SubgraphSpec(
-            input=graph.node_ref(graph.residual_1.linear),
-            output=graph.node_ref(graph.sigmoid),
+            input=graph.residual_1.linear,
+            output=graph.sigmoid,
             fn=full_opt,
         )
     ]
@@ -665,8 +665,8 @@ def test_local_optimization_with_const_inputs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=linear_node,
-            output=linear_node,
+            input=linear,
+            output=linear,
             fn=opt_with_const,
         )
     ]
@@ -704,24 +704,21 @@ def test_local_optimization_no_specs() -> None:
     assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
-def _make_linear_chain(n: int, dim: int = 8) -> tuple[GraphModule, list[NodeRef]]:
-    """Build a sequential chain of `n` Linear layers and return (graph, node_refs)."""
-    layers = [torch.nn.Linear(dim, dim) for _ in range(n)]
+def _make_linear_chain(n: int, dim: int = 8) -> tuple[GraphModule, list[torch.nn.Module]]:
+    """Build a sequential chain of `n` Linear layers and return (graph, modules)."""
+    layers: list[torch.nn.Module] = [torch.nn.Linear(dim, dim) for _ in range(n)]
     graph = GraphModule()
     prev: Any = graph.add_input("x")
-    node_refs: list[NodeRef] = []
     for i, layer in enumerate(layers):
-        ref = graph.add_node(f"linear_{i}", layer, [prev])
-        node_refs.append(ref)
-        prev = ref
-    graph.add_output(node_refs[-1])
-    return graph, node_refs
+        prev = graph.add_node(f"linear_{i}", layer, [prev])
+    graph.add_output(prev)
+    return graph, layers
 
 
 def test_build_composite_graph_single_mid_spec_partition_count() -> None:
     # GIVEN a 10-node linear chain with a spec on node 4
-    graph, node_refs = _make_linear_chain(10)
-    specs = [SubgraphSpec(input=node_refs[4], output=node_refs[4])]
+    graph, layers = _make_linear_chain(10)
+    specs = [SubgraphSpec(input=layers[4], output=layers[4])]
 
     # WHEN we build the composite graph
     composite = build_composite_graph(graph, specs)
@@ -733,10 +730,10 @@ def test_build_composite_graph_single_mid_spec_partition_count() -> None:
 
 def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
     # GIVEN an 8-node chain with specs on nodes 1 and 5
-    graph, node_refs = _make_linear_chain(8, dim=4)
+    graph, layers = _make_linear_chain(8, dim=4)
     specs = [
-        SubgraphSpec(input=node_refs[1], output=node_refs[1]),
-        SubgraphSpec(input=node_refs[5], output=node_refs[5]),
+        SubgraphSpec(input=layers[1], output=layers[1]),
+        SubgraphSpec(input=layers[5], output=layers[5]),
     ]
 
     # WHEN we build the composite graph and run a forward pass
@@ -756,7 +753,8 @@ def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
     graph = GraphModule()
     inp = graph.add_input("inp")
     shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
-    up = graph.add_node("up", torch.nn.Linear(4, 4), [shared])
+    up_module = torch.nn.Linear(4, 4)
+    up = graph.add_node("up", up_module, [shared])
     down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
     add = graph.add_node("add", Add(), [up, down])
     graph.add_output(add)
@@ -765,7 +763,7 @@ def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
     # P0: {inp -> shared -> down} that returns both shared and down
     # {P0[shared] -> up}
     # {P0[down], P1 -> add}
-    specs = [SubgraphSpec(input=up, output=up)]
+    specs = [SubgraphSpec(input=up_module, output=up_module)]
 
     # WHEN we build the composite graph and run a forward pass
     composite = build_composite_graph(graph, specs=specs)
@@ -782,7 +780,8 @@ def test_build_composite_graph_multi_output_partition_as_graph_outputs() -> None
     graph = GraphModule()
     inp = graph.add_input("inp")
     shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
-    up = graph.add_node("up", torch.nn.Linear(4, 4), [shared])
+    up_module = torch.nn.Linear(4, 4)
+    up = graph.add_node("up", up_module, [shared])
     down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
     graph.add_output(up, down)
 
@@ -790,7 +789,7 @@ def test_build_composite_graph_multi_output_partition_as_graph_outputs() -> None
     # P0: {inp -> shared -> down} that returns both shared and down
     # P1: {P0[shared] -> up}
     # Outputs: up (from P1), down (from P0[down])
-    specs = [SubgraphSpec(input=up, output=up)]
+    specs = [SubgraphSpec(input=up_module, output=up_module)]
 
     # WHEN we build the composite graph and run a forward pass
     composite = build_composite_graph(graph, specs=specs)
@@ -869,8 +868,8 @@ def test_local_optimization_with_kwargs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=linear_node,
-            output=linear_node,
+            input=linear,
+            output=linear,
             fn=opt_kwargs,
         )
     ]
@@ -915,8 +914,8 @@ def test_local_optimization_with_multiple_inputs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=output,
-            output=output,
+            input=linear,
+            output=linear,
             fn=multi_input_opt,
         )
     ]

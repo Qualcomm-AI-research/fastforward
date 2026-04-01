@@ -501,7 +501,7 @@ class _Model(torch.nn.Module):
         return graph
 
 
-def _make_optimizer_specs(model: _Model, graph: GraphModule) -> list[SubgraphSpec]:
+def _make_optimizer_specs(model: _Model) -> list[SubgraphSpec]:
     def dummy(module: torch.nn.Module, dataset: Iterable[torch.Tensor], lr: float) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=lr)
         for batch in dataset:
@@ -512,8 +512,8 @@ def _make_optimizer_specs(model: _Model, graph: GraphModule) -> list[SubgraphSpe
 
     return [
         SubgraphSpec(
-            graph.node_ref(model.residual_1.linear),
-            graph.node_ref(model.residual_1.linear),
+            model.residual_1.linear,
+            model.residual_1.linear,
             fn=functools.partial(dummy, lr=0.1),
         )
     ]
@@ -532,7 +532,7 @@ def test_local_optimizer_with_offload_everything_only_updates_targeted_layer() -
         compute_device=torch.device("cpu"),
         storage_device=torch.device("cpu"),
     )
-    with local_optimize(graph, _make_optimizer_specs(model, graph), offloading_strategy=offloading):
+    with local_optimize(graph, _make_optimizer_specs(model), offloading_strategy=offloading):
         graph(calibration_data)
 
     # THEN only residual_1's weights changed
@@ -549,7 +549,7 @@ def test_local_optimizer_without_offloading_only_updates_targeted_layer() -> Non
     calibration_data = [torch.randn(1, 5) for _ in range(10)]
 
     # WHEN we optimize without an offloading strategy
-    with local_optimize(graph, _make_optimizer_specs(model, graph)):
+    with local_optimize(graph, _make_optimizer_specs(model)):
         graph(calibration_data)
 
     # THEN only residual_1's weights changed

@@ -813,19 +813,19 @@ DEFAULT_CONTEXT = nullcontext()
 class SubgraphSpec:
     """A specification for extracting and optionally optimizing a subgraph.
 
-    When the `input` and `output` layers of a GraphModule are selected, we can create a
+    When the `input` and `output` modules of a GraphModule are selected, we can create a
     subgraph that includes all layers on the path (inclusive).
 
     Args:
-        input: The start node of the subgraph.
-        output: The end node of the subgraph.
+        input: The start module of the subgraph.
+        output: The end module of the subgraph.
         fn: Optional optimization function to execute on the subgraph.
         contexts: Sequence of ContextManagers that generate input activations. If
             not specified, inputs are computed in a single default execution context.
     """
 
-    input: NodeRef
-    output: NodeRef
+    input: torch.nn.Module
+    output: torch.nn.Module
 
     fn: dataclasses.InitVar[Callable[..., None] | None] = None
     contexts: dataclasses.InitVar[Contexts | None] = None
@@ -1059,7 +1059,9 @@ def _extract_node_sets_from_specs(
     node_sets: list[set[NodeRef]] = []
 
     for spec in specs:
-        nodes = find_nodes_on_path(graph, spec.input, spec.output)
+        input_ref = graph.node_ref(spec.input)
+        output_ref = graph.node_ref(spec.output)
+        nodes = find_nodes_on_path(graph, input_ref, output_ref)
 
         if overlap := nodes & used:
             msg = f"Overlapping nodes in subgraph specs: {overlap}"

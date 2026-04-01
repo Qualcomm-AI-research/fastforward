@@ -181,8 +181,7 @@ projection_names = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_pro
 specs = []
 for proj_name in projection_names:
     for match in ff.mpath.search(f"*/{proj_name}", graph):
-        layer_ref = graph.node_ref(match.module)
-        specs.append(graph_module.SubgraphSpec(input=layer_ref, output=layer_ref, fn=gptq_fn))
+        specs.append(graph_module.SubgraphSpec(input=match.module, output=match.module, fn=gptq_fn))
 
 # We provide an offloading strategy that puts model weights and intermediate activations to cpu
 # if not directly needed.
