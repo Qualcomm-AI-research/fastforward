@@ -7,24 +7,77 @@ import libcst
 import pytest
 
 from fastforward._autoquant.pybuilder.builder import ModuleBuilder
-from fastforward._autoquant.pysource.scope import ImportSymbol, _resolve_relative_module_name
+from fastforward._autoquant.pysource.scope import (
+    ImportSymbol,
+    _resolve_relative_module_name,
+    find_required_imports,
+    infer_scopes,
+)
 
 
-def test_resolve_relative_module_name() -> None:
-    relative_root = "path.tocurrent.module"
-    module_name = "other.submodule"
+@pytest.mark.parametrize(
+    ("relative_root", "relative_levels", "module_name", "expected"),
+    [
+        ("path.tocurrent.module", 0, "other.submodule", "other.submodule"),
+        ("path.tocurrent.module", 1, "other.submodule", "path.tocurrent.other.submodule"),
+        ("path.tocurrent.module", 2, "other.submodule", "path.other.submodule"),
+        # Going beyond package root is clamped to the current package root.
+        ("path.tocurrent.module", 3, "other.submodule", "path.tocurrent.other.submodule"),
+        ("tree", 1, "sequence", "tree.sequence"),
+        ("tree", 1, None, "tree"),
+        # With no imported module, over-deep traversal is clamped to package root.
+        ("tree.leaf", 2, None, "tree"),
+        ("tree.leaf", 3, None, "tree"),
+        # Reproduces invalid autoquant import like
+        # `from diffusers.models.utils import deprecate` when the original source
+        # uses `from ...utils import deprecate` inside a nested module such as
+        # `diffusers.models.unets.unet_2d_condition`.
+        ("diffusers.models.unets.unet_2d_condition", 3, "utils", "diffusers.utils"),
+    ],
+)
+def test_resolve_relative_module_name(
+    relative_root: str, relative_levels: int, module_name: str | None, expected: str
+) -> None:
+    assert _resolve_relative_module_name(relative_root, relative_levels, module_name) == expected
 
-    resolved = _resolve_relative_module_name(relative_root, 0, module_name)
-    assert resolved == "other.submodule"
 
-    resolved = _resolve_relative_module_name(relative_root, 1, module_name)
-    assert resolved == "path.tocurrent.other.submodule"
+@pytest.mark.parametrize(
+    ("module_lines", "module_name", "expected_import"),
+    [
+        (
+            [
+                "from .sequence import _sequence_like",
+                "",
+                "def demo():",
+                "    return _sequence_like(1)",
+            ],
+            "tree",
+            ImportSymbol(name="_sequence_like", module="tree.sequence"),
+        ),
+        (
+            [
+                "from ...utils import deprecate",
+                "",
+                "def demo(msg):",
+                '    return deprecate("scale", "1.0.0", msg)',
+            ],
+            "diffusers.models.unets.unet_2d_condition",
+            ImportSymbol(name="deprecate", module="diffusers.utils"),
+        ),
+    ],
+)
+def test_find_required_imports_resolves_relative_imports(
+    module_lines: list[str], module_name: str, expected_import: ImportSymbol
+) -> None:
+    module = libcst.parse_module("\n".join(module_lines))
+    funcdef = module.body[1]
+    assert isinstance(funcdef, libcst.FunctionDef)
 
-    resolved = _resolve_relative_module_name(relative_root, 2, module_name)
-    assert resolved == "path.other.submodule"
+    scopes = infer_scopes(module)
+    function_scope = scopes[funcdef]
 
-    resolved = _resolve_relative_module_name(relative_root, 3, module_name)
-    assert resolved == "other.submodule"
+    imports = find_required_imports(funcdef, function_scope, module_name=module_name)
+    assert expected_import in imports
 
 
 @pytest.mark.parametrize(

@@ -335,12 +335,22 @@ def _resolve_relative_module_name(
     if relative_levels == 0:
         return module_name
 
-    name_atoms = relative_root.split(".")
-    resolved_module = ".".join(name_atoms[:-relative_levels])
-    if resolved_module:
-        return f"{resolved_module}.{module_name}"
-    else:
-        return module_name
+    # `relative_root` is the module where the import appears (e.g.
+    # `diffusers.models.attention`). Relative imports resolve against that
+    # module's package (`diffusers.models`), not the full module path.
+    package_root = relative_root.rsplit(".", 1)[0] if "." in relative_root else relative_root
+    name_atoms = package_root.split(".")
+    # A single leading dot resolves against the current package; only dots
+    # beyond the first move upwards in the package hierarchy.
+    levels_up = relative_levels - 1
+    resolved_module = ".".join(name_atoms[:-levels_up]) if levels_up > 0 else package_root
+    # If the relative level climbs above package root, keep the package root as
+    # fallback base instead of returning an empty/invalid module path.
+    if not resolved_module:
+        resolved_module = package_root
+    if not module_name:
+        return resolved_module
+    return f"{resolved_module}.{module_name}"
 
 
 def _node_to_str(node: libcst.CSTNode) -> str:
