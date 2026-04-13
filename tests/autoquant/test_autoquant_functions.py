@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import ast
+
 import fastforward as ff
 import pytest
 import syrupy
@@ -55,4 +57,119 @@ def test_autoquant_skip_isolation_for_if_expr(snapshot: syrupy.assertion.Snapsho
         return out
     """
     result = _autoquantize_str(input)
+    assert snapshot == result
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("input", "use_type_inference"),
+    [
+        pytest.param(
+            """
+            def forward(self, x: torch.Tensor, idx: int) -> torch.Tensor:
+                y = x + 1
+                z = y[idx] * 0 + y
+                return z
+            """,
+            False,
+            id="subscript_load_before_assignment",
+        ),
+        pytest.param(
+            """
+            def forward(self, image_flags: list[int], lengths: torch.Tensor):
+                valid_mask = []
+                for flag, length in zip(image_flags, lengths):
+                    valid_mask.extend([flag] * length)
+                return valid_mask
+            """,
+            False,
+            id="loop_list_load_before_assignment",
+        ),
+        pytest.param(
+            """
+            def forward(self, x: torch.Tensor, cat_ids: torch.Tensor) -> torch.Tensor:
+                selected_W = self.W[cat_ids]
+                selected_b = self.b[cat_ids]
+                return torch.bmm(x, selected_W) + selected_b.unsqueeze(1)
+            """,
+            True,
+            id="selected_b_unsqueeze_load_before_assignment_with_type_inference",
+        ),
+    ],
+)
+def test_autoquant_load_before_assignment(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+    input: str,
+    use_type_inference: bool,
+) -> None:
+    """Verifies autoquant can emit quantized expressions that read local variables before assignment."""
+    result = _autoquantize_str(input, use_type_inference=use_type_inference)
+
+    ast.parse(result)
+    assert snapshot == result
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "input",
+    [
+        pytest.param(
+            """
+            def forward(self, values: list[tuple[int, int]], b: torch.Tensor):
+                hw_list = []
+                for x, y in values:
+                    hw_list.extend([(x, y)] * b + [(x, y)] * b)
+                return hw_list
+            """,
+            id="loop_tuple_shared_quantized_value",
+        ),
+        pytest.param(
+            """
+            def forward(self, x: torch.Tensor, idx: int) -> torch.Tensor:
+                y = x + 1
+                a = y[idx] * 2
+                b = y[idx] * 3
+                return a + b
+            """,
+            id="repeated_subscript_shared_quantized_value",
+        ),
+    ],
+)
+def test_autoquant_shared_quantized_value(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+    input: str,
+) -> None:
+    result = _autoquantize_str(input)
+
+    ast.parse(result)
+    assert snapshot == result
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "input",
+    [
+        pytest.param(
+            """
+            def forward(self, xs: list[torch.Tensor], ys: list[torch.Tensor]) -> list[torch.Tensor]:
+                return [x + y for x, y in zip(xs, ys)]
+            """,
+            id="comprehension_fallback",
+        ),
+        pytest.param(
+            """
+            def forward(self, x: torch.Tensor, y: torch.Tensor, flag: bool):
+                return x if flag and y.sum() > 0 else y
+            """,
+            id="boolean_and_fallback",
+        ),
+    ],
+)
+def test_autoquant_unsupported_contexts_fallback_inline(
+    snapshot: syrupy.assertion.SnapshotAssertion, input: str
+) -> None:
+    # These expression contexts cannot always be safely rewritten via explicit
+    # hoisted temporaries while preserving evaluation semantics.
+    result = _autoquantize_str(input)
+    ast.parse(result)
     assert snapshot == result

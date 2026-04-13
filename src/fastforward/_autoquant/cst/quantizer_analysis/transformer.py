@@ -18,6 +18,7 @@ from fastforward._autoquant.cst.quantizer_analysis.unimplemented import NotImple
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 
 from .annotator import QuantizationAnnotation, QuantizationAnnotationProvider
+logger = logging.getLogger(__name__)
 
 
 def _create_inline_quantize_statement(
@@ -53,13 +54,17 @@ class ExprOccurrence(Enum):
 
 
 class _InlineQuantization:
-    """Replaces expressions to be quantized inline with their quantized counterparts.
+    """Apply inline quantization with safe reuse for repeated expression uses.
 
-    Roughly, we replace
-    1. `[x for x in y]` with `[quantizer_x(x) for x in y]`
-    2. and 3 combined. `[x, x for x in y]` with `[(__ff0:=quantizer_x(x)), __ff0 for x in y]`
+    For each quantization annotation this helper rewrites expression occurrences
+    directly in-place. A single occurrence becomes ``quantizer(expr)``.
+    Repeated occurrences within the same expression use a walrus-bound temporary
+    (``__ffN``) so the quantizer call runs once and later uses reference the
+    bound value.
 
-    These three cases align with the values of ExprOccurrence.
+    Quantizer references are memoized by ``annotation.quantizer_id`` to keep a
+    stable one-to-one mapping between data-flow annotation and generated
+    quantizer symbol.
     """
 
     def __init__(self, quantizer_refs: QuantizerReferenceCollection) -> None:
@@ -67,6 +72,7 @@ class _InlineQuantization:
         self._occurrence: dict[QuantizationAnnotation, ExprOccurrence] = {}
         self._named_expr_tracker: dict[QuantizationAnnotation, int] = {}
         self._quantizer_refs = quantizer_refs
+        self._quantizer_refs_by_id: dict[int, libcst.BaseExpression] = {}
 
     def add_annotations(self, annotations: Iterable[QuantizationAnnotation]) -> None:
         """Keeps track of annotations that should be replaced."""
@@ -90,7 +96,11 @@ class _InlineQuantization:
     def maybe_quantize_expression(
         self, original_node: libcst.CSTNode, updated_node: libcst.CSTNode
     ) -> libcst.CSTNode:
-        """Replaces (inline) an expression to be quantized."""
+        """Rewrite a node to inline quantization when it has an annotation.
+
+        For repeated annotated uses, this method emits a walrus assignment on
+        the primary occurrence and ``Name`` references on secondary occurrences.
+        """
         if not isinstance(updated_node, libcst.BaseExpression):
             return updated_node
         if (annotation := self._node_annotations.get(original_node)) is None:
@@ -101,9 +111,16 @@ class _InlineQuantization:
         # _quantizer_refs.create_quantizer_expression has side effects. Only
         # call it when the result is actually used.
         def quant_statement() -> libcst.Call:
+            quantizer_id = annotation.quantizer_id
+            if quantizer_id is not None and quantizer_id in self._quantizer_refs_by_id:
+                quantizer_ref = self._quantizer_refs_by_id[quantizer_id]
+            else:
+                quantizer_ref = self._quantizer_refs.create_quantizer_expression(annotation.target)
+                if quantizer_id is not None:
+                    self._quantizer_refs_by_id[quantizer_id] = quantizer_ref
             return _create_inline_quantize_statement(
                 expr=updated_node,
-                quantizer_name=self._quantizer_refs.create_quantizer_expression(annotation.target),
+                quantizer_name=quantizer_ref,
             )
 
         if usage is ExprOccurrence.UNIQUE:
@@ -118,10 +135,16 @@ class _InlineQuantization:
 
 
 class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedStatements):
-    """Quantizes assignments, input parameters, context variables and loop variables.
+    """Inject quantization statements/replacements for annotated function bodies.
 
-    Note: We inherit from ConvertSemicolonJoinedStatements as this class may merge several
-    statements into a single line, introducing semicolons in the generated code.
+    The transformer combines three mechanisms:
+    - explicit quantize statements inserted at dependency-safe positions,
+    - inline quantization for unsafe expression contexts where hoisting could
+      cause load-before-assignment,
+    - block-local deduplication of repeated quantizer calls.
+
+    It inherits from ``ConvertSemicolonJoinedStatements`` because some rewrites
+    can introduce semicolon-joined output that must be normalized.
     """
 
     METADATA_DEPENDENCIES = (QuantizationAnnotationProvider,)
@@ -134,6 +157,7 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         self._inline_quantization = _InlineQuantization(quantizer_refs)
         self._quantizer_refs = quantizer_refs
         self._expr_replacements: dict[libcst.CSTNode, libcst.CSTNode] = {}
+        self._inline_quantize_replacements: dict[libcst.CSTNode, libcst.BaseExpression] = {}
         self._quantizer_refs_by_id: dict[int, libcst.BaseExpression] = {}
 
     def _get_annotations(
@@ -143,6 +167,46 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         if metadata := self.get_metadata(QuantizationAnnotationProvider, original_node, None):
             return list(sorted(metadata))
         return None
+
+    @staticmethod
+    def _should_inline_quantized_use(use: libcst.CSTNode) -> bool:
+        """Return whether quantization of `use` must happen inline.
+
+        Hoisting quantization of container/subscript expressions to the beginning
+        of a block can read loop-scoped locals before they are assigned.
+        """
+        return isinstance(
+            use,
+            (
+                libcst.Subscript,
+                libcst.List,
+                libcst.Tuple,
+                libcst.Set,
+                libcst.Dict,
+            ),
+        )
+
+    def _quantizer_ref_for_annotation(
+        self, annotation: QuantizationAnnotation
+    ) -> libcst.BaseExpression:
+        """Return a stable quantizer expression for an annotation.
+
+        ``annotation.quantizer_id`` is used as cache key so separate rewrites
+        that refer to the same data-flow annotation reuse the same quantizer
+        symbol.
+        """
+        quantizer_id = annotation.quantizer_id
+        if quantizer_id is not None and quantizer_id in self._quantizer_refs_by_id:
+            return self._quantizer_refs_by_id[quantizer_id]
+
+        quantizer_ref = self._quantizer_refs.create_quantizer_expression(annotation.target)
+        if quantizer_id is not None:
+            self._quantizer_refs_by_id[quantizer_id] = quantizer_ref
+        return quantizer_ref
+
+    @staticmethod
+    def _node_code(node: libcst.CSTNode) -> str:
+        return libcst.Module([]).code_for_node(node)
 
     def leave_FunctionDef(
         self, original_node: libcst.FunctionDef, updated_node: libcst.FunctionDef
@@ -166,17 +230,31 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
 
         # Keep docstring in its original place
         updated_body = _insert_in_indented_block(updated_node.body, statements)
-        return updated_node.with_changes(body=updated_body)
+        updated_function = updated_node.with_changes(body=updated_body)
+
+        # Run call dedup after all expression rewrites are in place so repeated
+        # inline quantizer calls can be materialized into shared `_tmp_` values.
+        deduped = updated_function.visit(_QuantizerCallDedup())
+        if not isinstance(deduped, libcst.FunctionDef):
+            _fail_due_to_mismatch()
+        return deduped
 
     def visit_IndentedBlock(self, node: libcst.IndentedBlock) -> bool:
-        # Record expression replacements for quantized variables. all uses of the original
-        # expression will be replaced with the quantization target variable name.
-        # The actual replacement occurs in `on_leave`.
-        # The quantizer calls for these expressions are introduced in leave_IndentedBlock.
+        # Record replacements for every annotation in the block.
+        # Unsafe expression uses are inlined unless the annotation can be
+        # materialized and reused via its target variable.
         if (annotations := self._get_annotations(node)) is not None:
             for annotation in annotations:
-                replacement = libcst.Name(annotation.target)
-                self._expr_replacements.update((use, replacement) for use in annotation.uses)
+                quantizer_ref: libcst.BaseExpression | None = None
+                for use in annotation.uses:
+                    if isinstance(use, libcst.Name):
+                        self._expr_replacements[use] = libcst.Name(annotation.target)
+                    elif self._should_inline_quantized_use(use):
+                        if quantizer_ref is None:
+                            quantizer_ref = self._quantizer_ref_for_annotation(annotation)
+                        self._inline_quantize_replacements[use] = quantizer_ref
+                    else:
+                        self._expr_replacements[use] = libcst.Name(annotation.target)
 
         return True
 
@@ -184,33 +262,29 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         self, original_node: libcst.IndentedBlock, updated_node: libcst.IndentedBlock
     ) -> libcst.IndentedBlock:
         if (annotations := self._get_annotations(original_node)) is None:
-            return updated_node
+            # Reuse can still be improved in blocks where quantized calls were
+            # emitted inline, even if the block itself carries no annotations.
+            return _dedup_repeated_quantizer_calls(updated_node)
 
-        # Insert quantizer call statements at the beginning of the block for
-        # each annotated expression. These statements assign the quantized
-        # result to a target variable, which will replace all uses of the
-        # original expression (as set up in visit_IndentedBlock).
-        quantize_statements = []
+        # Insert quantizer call statements for annotations that are not replaced
+        # inline. Placement is dependency-aware: for each injected statement we
+        # place it after the first assignment of all local names loaded by the
+        # statement's source expression.
+        quantize_statements: list[tuple[libcst.SimpleStatementLine, libcst.BaseExpression]] = []
         for annotation in annotations:
-            quantizer_id = annotation.quantizer_id
+            use_expr = cast(libcst.BaseExpression, annotation.uses[0])
+            if self._should_inline_quantized_use(use_expr):
+                continue
 
-            # Reuse quantizer expressions with the same ID to avoid creating duplicates
-            if quantizer_id is not None and quantizer_id in self._quantizer_refs_by_id:
-                quantizer_ref = self._quantizer_refs_by_id[quantizer_id]
-            else:
-                quantizer_ref = self._quantizer_refs.create_quantizer_expression(annotation.target)
-                if quantizer_id is not None:
-                    self._quantizer_refs_by_id[quantizer_id] = quantizer_ref
-
-            # Create quantizer call statement: target = quantizer(original_expression)
             statement = create_quantize_statement(
                 target=annotation.target,
-                source=cast(libcst.BaseExpression, annotation.uses[0]),
-                quantizer_ref=quantizer_ref,
+                source=use_expr,
+                quantizer_ref=self._quantizer_ref_for_annotation(annotation),
             )
-            quantize_statements.append(statement)
+            quantize_statements.append((statement, use_expr))
 
-        return _insert_in_indented_block(updated_node, quantize_statements)
+        updated = _insert_dependency_aware_quantize_statements(updated_node, quantize_statements)
+        return _dedup_repeated_quantizer_calls(updated)
 
     def leave_GeneralAssignment(
         self, original_node: nodes.GeneralAssignment, updated_node: nodes.GeneralAssignment
@@ -357,6 +431,12 @@ class QuantizerFunctionTransformer(NotImplementedMixin, ConvertSemicolonJoinedSt
         if original_node in self._expr_replacements:
             return self._expr_replacements[original_node]
 
+        if original_node in self._inline_quantize_replacements:
+            if not isinstance(updated_node, libcst.BaseExpression):
+                _fail_due_to_mismatch()
+            quantizer_ref = self._inline_quantize_replacements[original_node]
+            return _create_inline_quantize_statement(updated_node, quantizer_ref)
+
         modified_updated_node = super().on_leave(original_node, updated_node)
         if not isinstance(modified_updated_node, libcst.CSTNode):
             return modified_updated_node
@@ -392,6 +472,285 @@ def _insert_in_indented_block(
     else:
         updated_body = (*nodes, *node.body)
     return node.with_changes(body=updated_body)
+
+
+def _insert_dependency_aware_quantize_statements(
+    node: libcst.IndentedBlock,
+    statements: Iterable[tuple[libcst.SimpleStatementLine, libcst.BaseExpression]],
+) -> libcst.IndentedBlock:
+    """Insert quantize statements after their local-name dependencies are available.
+
+    Each tuple contains the statement to insert and the source expression used
+    to derive dependencies. For every dependency name found in the source
+    expression, insertion is delayed until after the first assignment to that
+    name in the same block.
+    """
+    body = list(node.body)
+
+    # Insert after docstring (if present) by default.
+    insert_base = 1 if _has_docstring(node) else 0
+    for statement, source_expr in statements:
+        deps = _collect_loaded_name_values(source_expr)
+        deps.discard("self")
+
+        insert_idx = insert_base
+        if deps:
+            first_assignments = _first_assignments_in_block(body)
+            dep_positions = [first_assignments[name] for name in deps if name in first_assignments]
+            if dep_positions:
+                insert_idx = max(insert_idx, max(dep_positions) + 1)
+
+        body.insert(insert_idx, statement)
+        insert_base = insert_idx + 1
+
+    return node.with_changes(body=tuple(body))
+
+
+def _first_assignments_in_block(body: list[libcst.BaseStatement]) -> dict[str, int]:
+    """Return the first statement index assigning each simple local name."""
+    first_assignments: dict[str, int] = {}
+    for idx, stmt in enumerate(body):
+        if not isinstance(stmt, libcst.SimpleStatementLine) or len(stmt.body) != 1:
+            continue
+
+        small_stmt = stmt.body[0]
+        if isinstance(small_stmt, libcst.Assign):
+            if len(small_stmt.targets) != 1:
+                continue
+            target = small_stmt.targets[0].target
+            if isinstance(target, libcst.Name):
+                first_assignments.setdefault(target.value, idx)
+            continue
+
+        if isinstance(small_stmt, nodes.GeneralAssignment):
+            if len(small_stmt.targets) != 1 or small_stmt.value is None:
+                continue
+            target = small_stmt.targets[0]
+            if isinstance(target, libcst.Name):
+                first_assignments.setdefault(target.value, idx)
+
+    return first_assignments
+
+
+def _collect_loaded_name_values(expr: libcst.CSTNode) -> set[str]:
+    """Collect ``Name`` values referenced inside an expression subtree."""
+
+    class _NameCollector(libcst.CSTVisitor):
+        def __init__(self) -> None:
+            super().__init__()
+            self.names: set[str] = set()
+
+        def visit_Name(self, node: libcst.Name) -> bool:
+            self.names.add(node.value)
+            return True
+
+    collector = _NameCollector()
+    expr.visit(collector)
+    return collector.names
+
+
+class _QuantizerCallDedup(libcst.CSTTransformer):
+    """Deduplicate repeated quantizer calls inside a single indented block.
+
+    The transformer looks for repeated calls of the shape
+    ``self.quantizer*(...)`` and rewrites them to use a shared temporary
+    variable with ``_tmp_`` prefix.
+
+    The first occurrence determines the insertion point of the temporary
+    assignment, and all occurrences are replaced with that temporary name.
+    """
+
+    def __init__(self) -> None:
+        """Initialize per-transformer state for `_tmp_` name allocation."""
+        self._created_temp_suffixes: set[int] = set()
+
+    @staticmethod
+    def _call_key(expr: libcst.BaseExpression) -> str | None:
+        """Return a stable key for supported quantizer calls.
+
+        During transformation, quantizer attributes may still carry temporary
+        names before final name disambiguation. For ``QuantizerReference``
+        attributes we key by ``refid`` to avoid merging distinct quantizers that
+        currently share the same temporary textual name.
+        """
+        if not isinstance(expr, libcst.Call):
+            return None
+        if not isinstance(expr.func, libcst.Attribute):
+            return None
+        if not isinstance(expr.func.value, libcst.Name) or expr.func.value.value != "self":
+            return None
+
+        attr = expr.func.attr
+        expr_code = libcst.Module([]).code_for_node(expr)
+        if isinstance(attr, nodes.QuantizerReference):
+            return f"quantizer_ref:{attr.refid}:{expr_code}"
+        if not attr.value.startswith("quantizer"):
+            return None
+
+        return f"quantizer_name:{expr_code}"
+
+    @staticmethod
+    def _tmp_suffix(name: str) -> int | None:
+        """Parse numeric suffix from `_tmp_<n>` names, or return ``None``."""
+        if not name.startswith("_tmp_"):
+            return None
+        suffix = name[5:]
+        if not suffix.isdigit():
+            return None
+        return int(suffix)
+
+    def _next_tmp_name(self) -> str:
+        """Allocate the next available `_tmp_<n>` variable name."""
+        suffix = 1
+        while suffix in self._created_temp_suffixes:
+            suffix += 1
+        self._created_temp_suffixes.add(suffix)
+        return f"_tmp_{suffix}"
+
+    @override
+    def leave_IndentedBlock(
+        self, original_node: libcst.IndentedBlock, updated_node: libcst.IndentedBlock
+    ) -> libcst.IndentedBlock:
+        """Rewrite a block so repeated quantizer calls are evaluated once.
+
+        Steps:
+        1. Collect existing `_tmp_` suffixes to avoid name collisions.
+        2. Count quantizer call occurrences and record first occurrence index.
+        3. For calls repeated more than once, allocate shared `_tmp_` names.
+        4. Replace repeated call expressions with the corresponding temp name.
+        5. Insert ``_tmp_`` assignments before the first statement using each
+           repeated call.
+        """
+        del original_node
+
+        body = list(updated_node.body)
+
+        for stmt in body:
+
+            class _TmpScan(libcst.CSTVisitor):
+                def visit_Name(self, node: libcst.Name) -> bool:
+                    suffix = _QuantizerCallDedup._tmp_suffix(node.value)
+                    if suffix is not None:
+                        self_suffixes.add(suffix)
+                    return True
+
+            self_suffixes = self._created_temp_suffixes
+            stmt.visit(_TmpScan())
+
+        first_stmt_idx: dict[str, int] = {}
+        first_call_expr: dict[str, libcst.Call] = {}
+        counts: dict[str, int] = {}
+
+        for idx, stmt in enumerate(body):
+
+            class _CallScan(libcst.CSTVisitor):
+                # Nested suites/comprehensions are deduped independently when
+                # their own block is visited. Do not mix scopes here.
+                def visit_IndentedBlock(self, node: libcst.IndentedBlock) -> bool:
+                    del node
+                    return False
+
+                def visit_ListComp(self, node: libcst.ListComp) -> bool:
+                    del node
+                    return False
+
+                def visit_SetComp(self, node: libcst.SetComp) -> bool:
+                    del node
+                    return False
+
+                def visit_DictComp(self, node: libcst.DictComp) -> bool:
+                    del node
+                    return False
+
+                def visit_GeneratorExp(self, node: libcst.GeneratorExp) -> bool:
+                    del node
+                    return False
+
+                def visit_Call(self, node: libcst.Call) -> bool:
+                    key = _QuantizerCallDedup._call_key(node)
+                    if key is None:
+                        return True
+                    counts[key] = counts.get(key, 0) + 1
+                    if key not in first_stmt_idx:
+                        first_stmt_idx[key] = idx
+                        first_call_expr[key] = node
+                    return True
+
+            stmt.visit(_CallScan())
+
+        repeated_keys = [k for k, c in counts.items() if c > 1]
+        if not repeated_keys:
+            return updated_node
+
+        temp_by_call = {key: self._next_tmp_name() for key in repeated_keys}
+
+        class _ReplaceCall(libcst.CSTTransformer):
+            # Keep rewrites local to the current block; nested suites and
+            # comprehensions are transformed on their own visit.
+            def visit_IndentedBlock(self, node: libcst.IndentedBlock) -> bool:
+                del node
+                return False
+
+            def visit_ListComp(self, node: libcst.ListComp) -> bool:
+                del node
+                return False
+
+            def visit_SetComp(self, node: libcst.SetComp) -> bool:
+                del node
+                return False
+
+            def visit_DictComp(self, node: libcst.DictComp) -> bool:
+                del node
+                return False
+
+            def visit_GeneratorExp(self, node: libcst.GeneratorExp) -> bool:
+                del node
+                return False
+
+            def leave_Call(
+                self, original_node: libcst.Call, updated_node: libcst.Call
+            ) -> libcst.BaseExpression:
+                key = _QuantizerCallDedup._call_key(original_node)
+                if key is not None and key in temp_by_call:
+                    return libcst.Name(value=temp_by_call[key])
+                return updated_node
+
+        for i, stmt in enumerate(body):
+            replaced = stmt.visit(_ReplaceCall())
+            if not isinstance(replaced, libcst.BaseStatement):
+                _fail_due_to_mismatch()
+            body[i] = replaced
+
+        inserts: list[tuple[int, libcst.SimpleStatementLine]] = []
+        for key in repeated_keys:
+            inserts.append((
+                first_stmt_idx[key],
+                libcst.SimpleStatementLine(
+                    body=[
+                        libcst.Assign(
+                            targets=[
+                                libcst.AssignTarget(target=libcst.Name(value=temp_by_call[key]))
+                            ],
+                            value=first_call_expr[key],
+                        )
+                    ]
+                ),
+            ))
+
+        offset = 0
+        for idx, stmt in sorted(inserts, key=lambda x: x[0]):
+            body.insert(idx + offset, stmt)
+            offset += 1
+
+        return updated_node.with_changes(body=tuple(body))
+
+
+def _dedup_repeated_quantizer_calls(node: libcst.IndentedBlock) -> libcst.IndentedBlock:
+    """Apply `_QuantizerCallDedup` to one block and preserve type safety."""
+    transformed = node.visit(_QuantizerCallDedup())
+    if not isinstance(transformed, libcst.IndentedBlock):
+        _fail_due_to_mismatch()
+    return transformed
 
 
 def _fail_due_to_mismatch() -> NoReturn:
