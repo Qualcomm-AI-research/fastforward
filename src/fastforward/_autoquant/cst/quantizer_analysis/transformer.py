@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import logging
+
 from enum import Enum, auto
 from typing import Iterable, NoReturn, TypeVar, cast
 
@@ -18,6 +20,7 @@ from fastforward._autoquant.cst.quantizer_analysis.unimplemented import NotImple
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 
 from .annotator import QuantizationAnnotation, QuantizationAnnotationProvider
+
 logger = logging.getLogger(__name__)
 
 

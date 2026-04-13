@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import logging
+
 import libcst
 
 from fastforward._autoquant.cst.passes import QuantizedCounterpartReplacer
@@ -14,6 +16,8 @@ from .cst.quantizer_analysis.transformer import QuantizerFunctionTransformer
 from .pass_manager import PassManager
 from .pybuilder import QuantizedFunctionBuilder
 from .pysource import PySource
+
+logger = logging.getLogger(__name__)
 
 
 def convert_function(
@@ -44,6 +48,11 @@ def convert_function(
         A CST that represents a quantized method. This method is not yet added
         to `clsbuilder`, but its required quantizers are.
     """
+    logger.info(
+        "convert_function: converting %s (%s)",
+        src.qualified_name,
+        func_ctx.method_type.name if func_ctx.method_type is not None else None,
+    )
     src_cst = src.cst(NodeType=libcst.FunctionDef)
     dst_cst = autoquantize_funcdef(
         src_cst=src_cst,

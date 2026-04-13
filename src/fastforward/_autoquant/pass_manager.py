@@ -3,10 +3,13 @@
 #
 import dataclasses
 import functools
+import logging
 
 from typing import Generic, Sequence, TypeAlias
 
 import libcst
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -74,9 +77,22 @@ class PassManager:
         self._passes = passes
 
     def __call__(self, cst: libcst.CSTNodeT) -> libcst.CSTNodeT:
+        """Apply configured passes in order and return the final CST.
+
+        Each pass is logged, wrapped in contextual error handling, and validated
+        when it reports a structural change. The output of one pass becomes the
+        input to the next.
+        """
         current = cst
         result = PassResult(cst=cst, altered=False)
         for i, pass_ in enumerate(self._passes):
+            logger.info(
+                "PassManager: applying pass %d/%d (%s) on %s",
+                i + 1,
+                len(self._passes),
+                self._pass_repr(pass_),
+                type(current).__name__,
+            )
             try:
                 result = self._apply_pass(pass_, current)
             except Exception as e:
@@ -87,6 +103,12 @@ class PassManager:
                 raise PassManagerError(msg) from e
             if result.altered:
                 self._validate(result)
+                logger.info(
+                    "PassManager: pass %d (%s) altered %s",
+                    i + 1,
+                    self._pass_repr(pass_),
+                    type(current).__name__,
+                )
             current = result.cst
 
         return result.cst

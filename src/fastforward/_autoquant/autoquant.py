@@ -140,7 +140,19 @@ def autoquant(
         task = func_queue.popleft()
 
         func_name = task.alias or task.function.__name__
+        logger.info(
+            "autoquant: dequeued task module=%s function=%s alias=%s remaining=%d",
+            fully_qualified_name(task.module),
+            task.function.__name__,
+            task.alias,
+            len(func_queue),
+        )
         if any(b.origin.func is task.function for b in module_builder.functions()):
+            logger.info(
+                "autoquant: skipping already converted function %s.%s",
+                fully_qualified_name(task.module),
+                func_name,
+            )
             continue
 
         try:
@@ -171,6 +183,9 @@ def autoquant(
                     source_member_name,
                     func_name,
                 )
+                logger.info(
+                    "autoquant: loading helper source %s.%s", qualified_module_name, func_name
+                )
                 module_src = source_context.get(qualified_module_name)
                 func_src = module_src.member(source_member_name)
                 with quantizer_refs.push_context(func_ctx):
@@ -186,6 +201,11 @@ def autoquant(
 
                 # Queue dependent functions for processing
                 for new_task in _find_dependent_functions(func_src, func_ctx, operator_table):
+                    logger.info(
+                        "autoquant: queue dependent helper %s.%s",
+                        fully_qualified_name(new_task.module),
+                        new_task.alias or new_task.function.__name__,
+                    )
                     func_queue.append(new_task)
 
             elif issubclass(task.module, torch.nn.Module):
@@ -202,6 +222,13 @@ def autoquant(
                 )
 
                 qualified_class_name = fully_qualified_name(source_module)
+                logger.info(
+                    "autoquant: loading method source %s.%s (accessed as %s.%s)",
+                    qualified_class_name,
+                    source_name,
+                    fully_qualified_name(task.module),
+                    func_name,
+                )
                 src_class = source_context.get(qualified_class_name)
                 method_src = src_class.member(source_name)
                 # Source lookup may resolve through an inherited/aliased member,
@@ -229,6 +256,12 @@ def autoquant(
                         # If function is in operator_table, it will be converted
                         # directly and no further analysis is required.
                         continue
+                    logger.info(
+                        "autoquant: queue dependency module=%s function=%s alias=%s",
+                        fully_qualified_name(new_task.module),
+                        new_task.function.__name__,
+                        new_task.alias,
+                    )
                     func_queue.append(new_task)
 
             else:

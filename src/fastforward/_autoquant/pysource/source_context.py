@@ -3,6 +3,7 @@
 
 import dataclasses
 import inspect
+import logging
 import operator as py_operator
 import textwrap
 import types
@@ -21,6 +22,8 @@ from fastforward._autoquant.cst.validation import ensure_type
 from fastforward._autoquant.pass_manager import PassManager
 from fastforward._autoquant.pysource.scope import infer_scopes
 from fastforward._import import QualifiedNameReference, fully_qualified_name
+
+logger = logging.getLogger(__name__)
 
 
 class SourceContextError(RuntimeError):
@@ -105,9 +108,15 @@ class SourceContext:
         return module_src.member_scope(resolved_name.obj_name)
 
     def _get_module_source(self, module: ModuleType) -> "_ModuleSource":
+        """Return cached module source, loading and preprocessing on first use."""
         if module not in self._modules:
+            logger.info("SourceContext: loading module source for %s", fully_qualified_name(module))
             self._modules[module] = _ModuleSource(
                 module, source_context=self, preprocessing_passes=self._preprocessing_passes
+            )
+        else:
+            logger.info(
+                "SourceContext: using cached module source for %s", fully_qualified_name(module)
             )
         return self._modules[module]
 
@@ -230,6 +239,13 @@ class _ModuleSource:
         return PySource(self._source_context, qualified_name)
 
     def _read_module_cst(self, module: ModuleType) -> libcst.Module:
+        """Read module source and run configured preprocessing passes.
+
+        Raises:
+            SourceContextError: If ``inspect`` cannot provide Python source for
+                the requested module.
+        """
+        logger.info("SourceContext: reading module CST for %s", fully_qualified_name(module))
         try:
             src = inspect.getsource(module)
         except (OSError, TypeError) as err:
@@ -243,6 +259,7 @@ class _ModuleSource:
 
         pm = PassManager(self._preprocessing_passes)
         module_cst = pm(module_cst)
+        logger.info("SourceContext: finished preprocessing module %s", fully_qualified_name(module))
         return module_cst
 
     def qualified_name(self) -> str:
