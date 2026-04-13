@@ -81,7 +81,7 @@ class _EvaluationAggregator:
             results = [
                 self.metric_fn(a.reshape(-1), b.reshape(-1)) for a, b in zip(result1, result2)
             ]
-            results_mean = torch.tensor(results).mean()
+            results_mean = torch.stack(results).mean()
             cross_results[(stage_ref1, stage_ref2)] = results_mean
         return cross_results
 

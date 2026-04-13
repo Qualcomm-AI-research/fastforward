@@ -212,6 +212,36 @@ def test_pipeline_stage_output_is_not_suppressed(
     assert "stage-stdout" in captured.out
 
 
+def test_compare_eval_stages_preserves_metric_dtype_and_device() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def eval_stage(
+        modules: tuple[torch.nn.Module], sample_inputs: _SampleInputsT, context: dict[str, Any]
+    ) -> list[torch.Tensor]:
+        del modules, sample_inputs, context
+        return []
+
+    def custom_metric(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        return (a - b).abs().mean().to(dtype=torch.float64)
+
+    pipeline = Pipeline()
+    stage1 = pipeline.register_eval_stage(eval_stage, "eval_stage1")
+    stage2 = pipeline.register_eval_stage(eval_stage, "eval_stage2")
+
+    results: dict[StageReference, list[torch.Tensor]] = {
+        stage1: [torch.randn(5, device=device), torch.randn(5, device=device)],
+        stage2: [torch.randn(5, device=device), torch.randn(5, device=device)],
+    }
+
+    eval_results = pipeline._compare_eval_stages(results, eval_metric=custom_metric)
+    metric_result = eval_results[(stage1, stage2)]
+
+    assert metric_result.dtype == torch.float64
+    assert metric_result.device.type == device.type
+    if device.index is not None:
+        assert metric_result.device.index == device.index
+
+
 def test_pipeline_full_with_eval_stage(
     mock_module: torch.nn.Module, sample_inputs: _SampleInputsT
 ) -> None:
