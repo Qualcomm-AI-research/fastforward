@@ -29,6 +29,15 @@ def sample_inputs() -> _SampleInputsT:
     return [((torch.randn(1, 10),), {})]
 
 
+def test_pipeline_stage_register_duplicate_name_raises() -> None:
+    pipeline = Pipeline()
+    pipeline.register_stage(dummy_stage_fn, "stage1")
+
+    with pytest.raises(ValueError, match="Stage name 'stage1' is already registered"):
+        pipeline.register_stage(another_dummy_stage_fn, "stage1")
+
+
+
 def test_pipeline_stage_register() -> None:
     # GIVEN a pipeline instance
     pipeline = Pipeline()

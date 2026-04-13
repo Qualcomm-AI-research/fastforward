@@ -102,6 +102,10 @@ class Pipeline:
         self, stage_fn: Callable[..., Any], name: str, capture_stage_output: bool = False
     ) -> StageReference:
         """Register a stage to be executed in the pipeline."""
+        if name in self._stages.values():
+            msg = f"Stage name '{name}' is already registered"
+            raise ValueError(msg)
+
         stage_reference = StageReference(stage_fn, name)
         self._stages[stage_reference] = stage_reference.name
         if capture_stage_output is True:
