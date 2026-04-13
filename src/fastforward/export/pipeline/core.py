@@ -192,6 +192,9 @@ class Pipeline:
         eval_results = self._compare_eval_stages(exec_ctx.results, eval_metric=eval_metric)
 
         if _return_last:
+            if not pipeline:
+                msg = "Cannot return last stage result: no stages are registered"
+                raise ValueError(msg)
             return ({pipeline[-1].name: exec_ctx.get_results(pipeline[-1])}, eval_results)
         return (
             {stage.name: exec_ctx.get_results(stage) for stage in self._result_stages},

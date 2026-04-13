@@ -192,6 +192,13 @@ def test_pipeline_full_no_eval_stage(
     assert results[simple_stage_ref.name] == mock_module
 
 
+def test_pipeline_return_last_raises_on_empty_pipeline(sample_inputs: _SampleInputsT) -> None:
+    pipeline = Pipeline()
+
+    with pytest.raises(ValueError, match="Cannot return last stage result"):
+        pipeline(torch.nn.Identity(), sample_inputs, _return_last=True)
+
+
 def test_pipeline_stage_output_is_not_suppressed(
     mock_module: torch.nn.Module, sample_inputs: _SampleInputsT, capfd: pytest.CaptureFixture[str]
 ) -> None:
