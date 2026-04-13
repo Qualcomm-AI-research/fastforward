@@ -192,6 +192,26 @@ def test_pipeline_full_no_eval_stage(
     assert results[simple_stage_ref.name] == mock_module
 
 
+def test_pipeline_stage_output_is_not_suppressed(
+    mock_module: torch.nn.Module, sample_inputs: _SampleInputsT, capfd: pytest.CaptureFixture[str]
+) -> None:
+    def noisy_stage(
+        modules: tuple[torch.nn.Module], sample_inputs: _SampleInputsT, context: dict[str, Any]
+    ) -> torch.nn.Module:
+        del sample_inputs, context
+        print("stage-stdout")
+        return modules[0]
+
+    pipeline = Pipeline()
+    pipeline.register_stage(noisy_stage, "noisy_stage")
+
+    built_pipeline = pipeline._build_pipeline()
+    pipeline._execute_pipeline(built_pipeline, mock_module, sample_inputs)
+
+    captured = capfd.readouterr()
+    assert "stage-stdout" in captured.out
+
+
 def test_pipeline_full_with_eval_stage(
     mock_module: torch.nn.Module, sample_inputs: _SampleInputsT
 ) -> None:

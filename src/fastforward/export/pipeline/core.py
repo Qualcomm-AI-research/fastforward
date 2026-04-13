@@ -8,10 +8,8 @@ ordered export stages with dependency resolution and optional stage-to-stage
 evaluation.
 """
 
-import contextlib
 import dataclasses
 import itertools
-import os
 
 from typing import Any, Callable, TypeAlias
 
@@ -161,12 +159,7 @@ class Pipeline:
 
         for stage in pipeline:
             args, kwargs = exec_ctx.resolve_stage_inputs(stage)
-            with (
-                open(os.devnull, "w") as f,
-                contextlib.redirect_stderr(f),
-                contextlib.redirect_stdout(f),
-            ):
-                result = stage.stage_fn(*args, **kwargs)
+            result = stage.stage_fn(*args, **kwargs)
             exec_ctx.save_result(stage, result)
 
         return exec_ctx
