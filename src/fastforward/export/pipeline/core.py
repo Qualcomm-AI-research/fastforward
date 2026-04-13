@@ -1,6 +1,13 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+"""Internal stage-based pipeline primitives for export pipeline composition.
+
+This module provides lightweight infrastructure used to compose and execute
+ordered export stages with dependency resolution and optional stage-to-stage
+evaluation.
+"""
+
 import contextlib
 import dataclasses
 import itertools
