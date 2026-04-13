@@ -108,6 +108,15 @@ def test_build_pipeline_circular_dependency() -> None:
         pipeline._build_pipeline()
 
 
+def test_build_target_stage_raises_for_unknown_stage() -> None:
+    pipeline = Pipeline()
+    pipeline.register_stage(dummy_stage_fn, "stage1")
+    unknown_stage = StageReference(dummy_stage_fn, "unknown_stage")
+
+    with pytest.raises(ValueError, match="Target stage 'unknown_stage' is not a known stage"):
+        pipeline._build_pipeline(target_stage=unknown_stage)
+
+
 def test_build_target_stage() -> None:
     # GIVEN a pipeline with chained dependencies
     pipeline = Pipeline()

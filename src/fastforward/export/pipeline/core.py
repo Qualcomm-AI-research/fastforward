@@ -146,6 +146,10 @@ class Pipeline:
             pipeline.append(stage)
 
         # Visit each stage and its dependencies
+        if target_stage is not None and target_stage not in self._stages:
+            msg = f"Target stage '{target_stage}' is not a known stage"
+            raise ValueError(msg)
+
         stages = [target_stage] if target_stage else self._stages
         for stage in stages:
             depth_first_traversal(stage)
