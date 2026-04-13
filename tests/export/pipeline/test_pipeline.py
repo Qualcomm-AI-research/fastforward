@@ -6,7 +6,8 @@ from typing import Any, TypeAlias
 import pytest
 import torch
 
-from fastforward.export.pipeline import Pipeline, StageReference, _ExecutionContext
+from fastforward.export.pipeline import Pipeline, StageReference
+from fastforward.export.pipeline.core import _ExecutionContext
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 
@@ -35,7 +36,6 @@ def test_pipeline_stage_register_duplicate_name_raises() -> None:
 
     with pytest.raises(ValueError, match="Stage name 'stage1' is already registered"):
         pipeline.register_stage(another_dummy_stage_fn, "stage1")
-
 
 
 def test_pipeline_stage_register() -> None:
