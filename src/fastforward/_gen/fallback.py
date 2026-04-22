@@ -340,8 +340,8 @@ def conv_transpose1d(
     stride: Union[Size, int] = 1,
     padding: Union[Size, int] = 0,
     output_padding: Union[Size, int] = 0,
-    dilation: Union[Size, int] = 1,
     groups: int = 1,
+    dilation: Union[Size, int] = 1,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -377,8 +377,8 @@ def conv_transpose1d(
         stride=stride,
         padding=padding,
         output_padding=output_padding,
-        dilation=dilation,
         groups=groups,
+        dilation=dilation,
     )
     if output_quantizer is not None:
         output = output_quantizer(output)
@@ -393,8 +393,8 @@ def conv_transpose2d(
     stride: Union[Size, int] = 1,
     padding: Union[Size, int] = 0,
     output_padding: Union[Size, int] = 0,
-    dilation: Union[Size, int] = 1,
     groups: int = 1,
+    dilation: Union[Size, int] = 1,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -430,8 +430,8 @@ def conv_transpose2d(
         stride=stride,
         padding=padding,
         output_padding=output_padding,
-        dilation=dilation,
         groups=groups,
+        dilation=dilation,
     )
     if output_quantizer is not None:
         output = output_quantizer(output)
@@ -446,8 +446,8 @@ def conv_transpose3d(
     stride: Union[Size, int] = 1,
     padding: Union[Size, int] = 0,
     output_padding: Union[Size, int] = 0,
-    dilation: Union[Size, int] = 1,
     groups: int = 1,
+    dilation: Union[Size, int] = 1,
     *,
     output_quantizer: Optional["Quantizer"] = None,
     strict_quantization: bool = True,
@@ -483,8 +483,8 @@ def conv_transpose3d(
         stride=stride,
         padding=padding,
         output_padding=output_padding,
-        dilation=dilation,
         groups=groups,
+        dilation=dilation,
     )
     if output_quantizer is not None:
         output = output_quantizer(output)

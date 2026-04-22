@@ -19,13 +19,13 @@
 - op: "sigmoid(input: Quantized) -> Quantized"
   fallback: torch.sigmoid
 
-- op: "conv_transpose1d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+- op: "conv_transpose1d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, groups: int = 1, dilation: int | Size = 1) -> Quantized"
   fallback: torch.nn.functional.conv_transpose1d
 
-- op: "conv_transpose2d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+- op: "conv_transpose2d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, groups: int = 1, dilation: int | Size = 1) -> Quantized"
   fallback: torch.nn.functional.conv_transpose2d
 
-- op: "conv_transpose3d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, dilation: int | Size = 1, groups: int = 1) -> Quantized"
+- op: "conv_transpose3d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, groups: int = 1, dilation: int | Size = 1) -> Quantized"
   fallback: torch.nn.functional.conv_transpose3d
 
 - op: "avg_pool1d(input: Quantized, kernel_size: int | Size, stride: int | Size, padding: int | Size = 0, ceil_mode: Bool = False, count_include_pad: Bool = True) -> Quantized"
