@@ -55,7 +55,7 @@ class RuffFormatter(SubprocessCodeFormatter):
             head = (
                 "ruff",
                 "--config",
-                'lint.isort.known-third-party = ["fastforward"]',
+                'lint.isort.known-third-party = ["fastforward"]\nlint.isort.known-first-party = ["tests"]',
                 "check",
                 "--isolated",
                 "--fix",
