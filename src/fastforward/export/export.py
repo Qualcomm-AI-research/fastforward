@@ -26,6 +26,7 @@ import onnx
 import onnxscript
 import torch
 
+from packaging import version
 from torch.export.exported_program import ExportedProgram
 from torch.export.graph_signature import InputKind, InputSpec
 from torch.fx.graph import Graph
@@ -507,7 +508,7 @@ def export(
             If this is combined with per channel quantization on the weights then your encodings will be pointing
             to the wrong dimension of the weights.
     """
-    if torch.__version__ < "2.5":
+    if version.parse(torch.__version__) < version.parse("2.5"):
         msg = (
             "Export functionality is only supported for PyTorch version 2.5 and above. "
             "Please upgrade your PyTorch installation to use this feature."
@@ -535,9 +536,16 @@ def export(
     with export_mode(True), warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning, module="onnxscript.*")
         warnings.filterwarnings("ignore", category=DeprecationWarning, module="torch._dynamo.*")
+        if version.parse(torch.__version__) < version.parse("2.6"):
+            _decomp_table = dict(torch._decomp.core_aten_decompositions())
+        else:
+            _decomp_table = dict(torch.export.default_decompositions())  # type: ignore[attr-defined]
+        custom_translation_table = (onnx_export_options or {}).get("custom_translation_table", {})
+        for op, _ in custom_translation_table.items():
+            _decomp_table.pop(op, None)
         dynamo_exported_program = torch.export.export(
             model, args=data, kwargs=model_kwargs
-        ).run_decompositions()
+        ).run_decompositions(_decomp_table)
 
     dynamo_exported_program, new_old_input_spec_mapping, raw_logs = process_dynamo_program(
         dynamo_exported_program, graph_operators
