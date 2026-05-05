@@ -57,6 +57,7 @@ ARG VER_PYTHON=3.10 \
 
 RUN ${CONDA_PREFIX}/bin/conda create --quiet --name ${CONDA_DEFAULT_ENV} -y --strict-channel-priority \
         python=${VER_PYTHON} \
+        pip \
         python-build \
         cuda-gdb \
         cuda-nvcc \
