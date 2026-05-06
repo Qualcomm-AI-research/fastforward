@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from unittest.mock import MagicMock, patch
+
 import libcst
 import pytest
 
@@ -161,6 +163,77 @@ def test_no_match_leaves_code_unchanged() -> None:
 
     # THEN: The code should remain unchanged
     assert result.code == "x + y\n"
+
+
+def test_small_statement_replacement_does_not_create_nested_statement_line() -> None:
+    """Replacing a small statement with expression returns `Expr`, not `SimpleStatementLine`."""
+    # GIVEN: A rule that replaces an assignment with an expression, applied to a small statement
+    rule = PatternRule.from_str("a = b", "b + 1")
+    statement_line = libcst.parse_statement("a = b")
+    assert isinstance(statement_line, libcst.SimpleStatementLine)
+    small_stmt = statement_line.body[0]
+
+    # WHEN: The rule is applied to the small statement directly
+    result = rule.apply(small_stmt)
+
+    # THEN: The result is an `Expr` node, not a `SimpleStatementLine`, so it
+    # can be placed back into a `SimpleStatementLine.body` without nesting
+    assert isinstance(result, libcst.Expr)
+    rebuilt_line = libcst.SimpleStatementLine(body=(result,))
+    assert libcst.Module([rebuilt_line]).code == "b + 1\n"
+
+
+def test_pattern_rule_transformer_handles_semicolon_statements() -> None:
+    """Transformer should not crash when traversing semicolon-joined statements."""
+    # GIVEN: A module with semicolon-joined statements and a rule that matches within them
+    source = "x = 1; y = 2\nif x: print(x); print(y)\n"
+    module = libcst.parse_module(source)
+    rule = PatternRule.from_str("{a} = 1", "{a} = 100")
+
+    # WHEN: The transformer traverses the module
+    transformed = module.visit(_PatternRuleTransformer([rule]))
+
+    # THEN: The rule is applied correctly inside the semicolon-joined line
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == "x = 100; y = 2\nif x: print(x); print(y)\n"
+
+
+@patch("fastforward._autoquant.cst.pattern._to_code", side_effect=TypeError("boom"))
+def test_pattern_rule_transformer_fallback_key_on_codegen_error(_mock: MagicMock) -> None:
+    """Cycle dedup should continue if `_to_code` raises for a visited statement node."""
+    # GIVEN: A module with `_to_code` patched to always raise
+    source = "x = 1\n"
+    module = libcst.parse_module(source)
+    rule = PatternRule.from_str("{a}", "{a}")
+
+    # WHEN: The transformer is applied with the broken serializer
+    transformed = module.visit(_PatternRuleTransformer([rule]))
+
+    # THEN: No exception is raised and the module is unchanged
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == source
+
+
+def test_pattern_rule_transformer_replacement_with_multiple_statements_semicolon_and_newline() -> (
+    None
+):
+    """Semicolon-joined replacements are supported, newline-separated replacements are rejected."""
+    # GIVEN: A module with a single assignment
+    source = "a = 1\n"
+    module = libcst.parse_module(source)
+    semicolon_rule = PatternRule.from_str("a = 1", "b = 2; c = 3")
+
+    # WHEN: The transformer is applied with a semicolon-joined replacement
+    transformed = module.visit(_PatternRuleTransformer([semicolon_rule]))
+
+    # THEN: The replacement is accepted and the semicolon is preserved in output
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == "b = 2; c = 3\n"
+
+    # WHEN: A newline-separated replacement is constructed
+    # THEN: A ValueError is raised at rule construction time
+    with pytest.raises(ValueError, match="Pattern must be a single statement or expression"):
+        PatternRule.from_str("a = 1", "b = 2\nc = 3")
 
 
 def _as_expr_module(node: libcst.CSTNode) -> libcst.Module:

@@ -53,6 +53,21 @@ def test_statement_suite_to_indented_block() -> None:
     assert_input_transforms_as_expected(input, transformer, expected)
 
 
+def test_convert_semicolon_nested_statement_line() -> None:
+    """ConvertSemicolonJoinedStatements must not crash on nested SimpleStatementLine."""
+    # Build a SimpleStatementLine whose body accidentally contains another
+    # SimpleStatementLine — a transient shape PatternRule can produce.
+    inner = libcst.parse_statement("x = 1")
+    assert isinstance(inner, libcst.SimpleStatementLine)
+    outer = libcst.SimpleStatementLine(body=(inner,))  # type: ignore[arg-type]
+    module = libcst.Module(body=(outer,))
+
+    result = module.visit(passes.ConvertSemicolonJoinedStatements())
+
+    assert isinstance(result, libcst.Module)
+    assert result.code
+
+
 _ASSIGNMENT_IN = """
 a: int
 x: int = 10
