@@ -6,6 +6,7 @@ from typing import Any, TypeAlias, cast
 import torch
 import torch.fx
 
+from packaging import version
 from torch.fx.passes.infra.pass_base import PassResult
 from torch.fx.passes.infra.pass_manager import PassManager
 
@@ -116,16 +117,25 @@ def stage_capture_impl_ff(
     Raises:
         ValueError: If sample_inputs is empty
     """
-    del context
     (module,) = modules
     if len(sample_inputs) == 0:
         raise ValueError("sample_inputs cannot be empty")
 
     sample_args, sample_kwargs = sample_inputs[0]
+    custom_translation_table = context.get("torch_export_decomp_table", {})
 
     with ff.export_mode(True), torch.no_grad(), ff.strict_quantization(False):
         exported = torch.export.export(module, sample_args, sample_kwargs)
-    exported = exported.run_decompositions()
+
+    if version.parse(torch.__version__) < version.parse("2.6"):
+        _decomp_table = dict(torch._decomp.core_aten_decompositions())
+    else:
+        _decomp_table = dict(torch.export.default_decompositions())  # type: ignore[attr-defined]
+
+    for op, _ in custom_translation_table.items():
+        _decomp_table.pop(op, None)
+
+    exported = exported.run_decompositions(_decomp_table)
     captured = exported.module()
 
     pasman = PassManager([

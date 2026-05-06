@@ -4,6 +4,7 @@
 import fastforward as ff
 import pytest
 import torch
+import torch.nn.functional as F
 
 from fastforward.export.stages.base_pipeline_stages import (
     _SampleInputsT,
@@ -13,6 +14,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     stage_passthrough_ff_module,
     stage_quantized_eval,
 )
+from packaging import version
 
 
 class _QuantizerModule(ff.nn.Quantizer):
@@ -79,6 +81,16 @@ class _DequantizableOutputModule(torch.nn.Module):
 class _IdentityQuantizedModule(ff.nn.QuantizedModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x
+
+
+class _LinearProbeQuantizedModule(ff.nn.QuantizedModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(4, 4))
+        self.bias = torch.nn.Parameter(torch.randn(4))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.linear(x, self.weight, self.bias)
 
 
 def _build_graph_module_with_unused_get_attr_quantizer_reference() -> tuple[
@@ -199,6 +211,38 @@ def test_stage_capture_impl_ff_returns_graph_module_with_valid_sample_inputs() -
 
     # THEN: The stage should return a captured FX GraphModule.
     assert isinstance(captured_module, torch.fx.GraphModule)
+
+
+def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:
+    # GIVEN: A module with a linear op that is decomposed by default.
+    module = _LinearProbeQuantizedModule()
+    sample_inputs: _SampleInputsT = [((torch.randn(1, 4),), {})]
+    if version.parse(torch.__version__) < version.parse("2.6"):
+        default_decomp_table = torch._decomp.core_aten_decompositions()
+    else:
+        default_decomp_table = torch.export.default_decompositions()  # type: ignore[attr-defined]
+    if torch.ops.aten.linear.default not in default_decomp_table:
+        pytest.skip("aten.linear.default is not present in the default decomposition table")
+
+    # WHEN: Capturing once with full decompositions and once excluding linear decomposition.
+    captured_default = stage_capture_impl_ff((module,), sample_inputs, context={})
+    captured_linear_preserved = stage_capture_impl_ff(
+        (module,),
+        sample_inputs,
+        context={"torch_export_decomp_table": {torch.ops.aten.linear.default: True}},
+    )
+    default_targets = [
+        str(node.target) for node in captured_default.graph.nodes if node.op == "call_function"
+    ]
+    preserved_targets = [
+        str(node.target)
+        for node in captured_linear_preserved.graph.nodes
+        if node.op == "call_function"
+    ]
+
+    # THEN: Excluding linear from the decomposition table should keep aten.linear in the captured graph.
+    assert "aten.linear.default" not in default_targets
+    assert "aten.linear.default" in preserved_targets
 
 
 def test_stage_cleanup_ff_quantizer_artifacts_prunes_unused_get_attrs_and_succeeds() -> None:
