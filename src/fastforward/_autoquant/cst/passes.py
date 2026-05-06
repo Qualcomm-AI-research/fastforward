@@ -50,6 +50,21 @@ _BaseStatements: TypeAlias = libcst.SimpleStatementLine | libcst.BaseCompoundSta
 _SuiteT = TypeVar("_SuiteT", libcst.IndentedBlock, libcst.Module)
 
 
+def _flatten_small_statements(
+    body: Sequence[libcst.BaseSmallStatement],
+) -> list[libcst.BaseSmallStatement]:
+    # Recursively unwrap any transient nested SimpleStatementLine nodes that
+    # PatternRule may produce, so downstream semicolon normalization only sees
+    # BaseSmallStatement items and never hits a missing .semicolon attribute.
+    result: list[libcst.BaseSmallStatement] = []
+    for stmt in body:
+        if isinstance(stmt, libcst.SimpleStatementLine):
+            result.extend(_flatten_small_statements(stmt.body))
+        else:
+            result.append(stmt)
+    return result
+
+
 class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
     """Convert semicolon-separated statement into newline-separated statements.
 
@@ -81,7 +96,7 @@ class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
         del original_node
         new_body: list[libcst.SimpleStatementLine] = []
         semicolon = libcst.BaseSmallStatement.semicolon  # use default semicolon
-        for statement in updated_node.body:
+        for statement in _flatten_small_statements(updated_node.body):
             line = libcst.SimpleStatementLine(body=[statement.with_changes(semicolon=semicolon)])
             new_body.append(line)
         return libcst.IndentedBlock(body=tuple(new_body))
@@ -90,16 +105,16 @@ class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
     def leave_SimpleStatementLine(
         self, original_node: libcst.SimpleStatementLine, updated_node: libcst.SimpleStatementLine
     ) -> libcst.BaseStatement | libcst.FlattenSentinel[libcst.BaseStatement]:
-        if len(updated_node.body) == 1:
-            return updated_node
-        else:
+        flat = _flatten_small_statements(updated_node.body)
+        if len(flat) == 1:
+            return updated_node.with_changes(body=flat)
 
-            def _as_statement_line(node: libcst.BaseSmallStatement) -> libcst.SimpleStatementLine:
-                node = node.with_changes(semicolon=libcst.MaybeSentinel.DEFAULT)
-                return libcst.SimpleStatementLine(body=(node,))
+        def _as_statement_line(node: libcst.BaseSmallStatement) -> libcst.SimpleStatementLine:
+            node = node.with_changes(semicolon=libcst.MaybeSentinel.DEFAULT)
+            return libcst.SimpleStatementLine(body=(node,))
 
-            nodes = [_as_statement_line(statement) for statement in updated_node.body]
-            return libcst.FlattenSentinel(nodes)
+        nodes = [_as_statement_line(s) for s in flat]
+        return libcst.FlattenSentinel(nodes)
 
 
 class WrapAssignments(libcst.CSTTransformer):

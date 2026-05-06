@@ -39,7 +39,14 @@ class PatternRule:
         if recursive:
             return cst.visit(_PatternRuleTransformer([self]))  # type: ignore[return-value]
 
-        if (captures := m.extract(cst, self.pattern)) is None:
+        captures = m.extract(cst, self.pattern)
+        if captures is None and isinstance(cst, libcst.SimpleStatementLine) and len(cst.body) == 1:
+            # Allow small-statement patterns (e.g., "a = 1") to match a full
+            # statement line so multi-small-statement replacements can be
+            # returned as a valid `SimpleStatementLine`.
+            captures = m.extract(cst.body[0], self.pattern)
+
+        if captures is None:
             return cst
 
         for key, capture in captures.items():
@@ -50,10 +57,23 @@ class PatternRule:
         replacement = self.replacement.visit(_CaptureTransformer(captures))  # type: ignore[arg-type]
         assert isinstance(replacement, libcst.CSTNode)
 
-        if isinstance(cst, libcst.BaseStatement):
+        if isinstance(cst, libcst.BaseSmallStatement):
+            match replacement:
+                case libcst.BaseExpression():
+                    replacement = libcst.Expr(replacement)
+                case libcst.SimpleStatementLine(body=body) if len(body) == 1:
+                    replacement = body[0]
+                case libcst.BaseStatement():
+                    # A small-statement slot cannot hold a full statement node.
+                    # Defer this rewrite to the enclosing `SimpleStatementLine`
+                    # where applicable.
+                    return cst
+        elif isinstance(cst, libcst.BaseStatement):
             match replacement:
                 case libcst.BaseExpression():
                     replacement = libcst.SimpleStatementLine([libcst.Expr(replacement)])
+                case libcst.BaseSmallStatement():
+                    replacement = libcst.SimpleStatementLine([replacement])
 
         return replacement
 
@@ -93,16 +113,24 @@ class _PatternRuleTransformer(libcst.CSTTransformer):
         updated_node = super().on_leave(original_node, updated_node)  # type: ignore[assignment]
         return self._apply_rules(updated_node)
 
+    @staticmethod
+    def _node_key(node: libcst.CSTNode) -> str:
+        """Return a stable key for cycle detection without hard-failing on codegen edge cases."""
+        try:
+            return _to_code(node)
+        except Exception:
+            return f"{type(node).__name__}:{repr(node)}"
+
     def _apply_rules(self, node: libcst.CSTNode) -> libcst.CSTNode:
         idx = 0
         current_node = node
-        seen_nodes = {_to_code(current_node)}
+        seen_nodes = {self._node_key(current_node)}
         while idx < len(self._rules):
             updated_node = self._rules[idx].apply(current_node)
             if updated_node is current_node:
                 # continue loop early without extra checks
                 idx += 1
-            elif (code_repr := _to_code(updated_node)) not in seen_nodes:
+            elif (code_repr := self._node_key(updated_node)) not in seen_nodes:
                 idx = 0
                 seen_nodes.add(code_repr)
                 current_node = updated_node
