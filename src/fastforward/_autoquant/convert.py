@@ -11,6 +11,7 @@ from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol, find_required_imports
 from fastforward._quantops import OperatorTable
+from fastforward.type_common import MethodType
 
 from .cst.quantizer_analysis.transformer import QuantizerFunctionTransformer
 from .pass_manager import PassManager
@@ -18,6 +19,68 @@ from .pybuilder import QuantizedFunctionBuilder
 from .pysource import PySource
 
 logger = logging.getLogger(__name__)
+
+
+class _AnchorBareSuperCalls(libcst.CSTTransformer):
+    """Rewrite bare ``super()`` calls to anchored ``super(ClassName, self)`` calls."""
+
+    def __init__(self, owner_class_name: str, self_name: str) -> None:
+        self._owner_class_name = owner_class_name
+        self._self_name = self_name
+
+    def leave_Call(
+        self,
+        original_node: libcst.Call,
+        updated_node: libcst.Call,
+    ) -> libcst.BaseExpression:
+        del original_node
+
+        func = updated_node.func
+        if not isinstance(func, libcst.Attribute):
+            return updated_node
+
+        super_call = func.value
+        if not isinstance(super_call, libcst.Call):
+            return updated_node
+
+        if not isinstance(super_call.func, libcst.Name) or super_call.func.value != "super":
+            return updated_node
+
+        if len(super_call.args) != 0:
+            # Already explicit super(...)
+            return updated_node
+
+        anchored_super = super_call.with_changes(
+            args=(
+                libcst.Arg(libcst.Name(self._owner_class_name)),
+                libcst.Arg(libcst.Name(self._self_name)),
+            )
+        )
+        return updated_node.with_changes(func=func.with_changes(value=anchored_super))
+
+
+def _owner_class_name(src: PySource) -> str | None:
+    parts = src.qualified_name.split(".")
+    if len(parts) < 2:
+        return None
+    return parts[-2]
+
+
+def _rewrite_super_calls(
+    cst: libcst.FunctionDef,
+    src: PySource,
+    func_ctx: FunctionContext,
+) -> libcst.FunctionDef:
+    if func_ctx.method_type is not MethodType.METHOD or func_ctx.instance_var is None:
+        return cst
+
+    owner = _owner_class_name(src)
+    if owner is None:
+        return cst
+
+    rewritten = cst.visit(_AnchorBareSuperCalls(owner, func_ctx.instance_var))
+    assert isinstance(rewritten, libcst.FunctionDef)
+    return rewritten
 
 
 def convert_function(
@@ -62,6 +125,7 @@ def convert_function(
     )
 
     assert isinstance(dst_cst, libcst.FunctionDef)
+    dst_cst = _rewrite_super_calls(dst_cst, src=src, func_ctx=func_ctx)
     required_imports = _infer_imports(src, dst_cst)
 
     return QuantizedFunctionBuilder(dst_cst, required_imports, origin=func_ctx)
