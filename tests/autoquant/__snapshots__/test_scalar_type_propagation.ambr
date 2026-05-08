@@ -1,0 +1,275 @@
+# serializer version: 1
+# name: test_autoquant_snapshot[standalone-in_projection_packed]
+  '''
+  
+  def forward(self, query: torch.Tensor) -> list[torch.Tensor]:
+      return quantized__in_projection_packed(  # type: ignore[attr-defined, no-any-return]
+          query,
+          query,
+          query,
+          self.in_proj_weight,
+          self.in_proj_bias,
+          quantizer_linear_1=self.quantizer__in_projection_packed_linear_1,
+          quantizer_linear_2=self.quantizer__in_projection_packed_linear_2,
+          quantizer_linear_3=self.quantizer__in_projection_packed_linear_3,
+          quantizer_linear_4=self.quantizer__in_projection_packed_linear_4,
+          quantizer_linear_5=self.quantizer__in_projection_packed_linear_5,
+          quantizer_linear_6=self.quantizer__in_projection_packed_linear_6,
+          quantizer_w_kv=self.quantizer__in_projection_packed_w_kv,
+          quantizer_w_q_1=self.quantizer__in_projection_packed_w_q_1,
+          quantizer_b_kv_1=self.quantizer__in_projection_packed_b_kv_1,
+          quantizer_b_q_1=self.quantizer__in_projection_packed_b_q_1,
+          quantizer_b_kv_2=self.quantizer__in_projection_packed_b_kv_2,
+          quantizer_b_q_2=self.quantizer__in_projection_packed_b_q_2,
+          quantizer_w_k=self.quantizer__in_projection_packed_w_k,
+          quantizer_w_q_2=self.quantizer__in_projection_packed_w_q_2,
+          quantizer_w_v=self.quantizer__in_projection_packed_w_v,
+          quantizer_b_k_1=self.quantizer__in_projection_packed_b_k_1,
+          quantizer_b_q_3=self.quantizer__in_projection_packed_b_q_3,
+          quantizer_b_v_1=self.quantizer__in_projection_packed_b_v_1,
+          quantizer_b_k_2=self.quantizer__in_projection_packed_b_k_2,
+          quantizer_b_q_4=self.quantizer__in_projection_packed_b_q_4,
+          quantizer_b_v_2=self.quantizer__in_projection_packed_b_v_2,
+          quantizer_q=self.quantizer__in_projection_packed_q,
+          quantizer_k=self.quantizer__in_projection_packed_k,
+          quantizer_v=self.quantizer__in_projection_packed_v,
+          quantizer_w=self.quantizer__in_projection_packed_w,
+          quantizer_b=self.quantizer__in_projection_packed_b,
+      )
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-nameexpr_int_annotated]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> int:
+      E: int = q.size(-1)
+      x = E * 2
+      _y = E + 1
+      return x
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-num_heads_and_scale]
+  '''
+  
+  def forward(self, q: torch.Tensor, _k: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      _r = self.num_heads % 2
+      s = self.scale * 2.0
+      s = self.quantizer_s(s)
+      return fastforward.nn.functional.mul(q, s, output_quantizer=self.quantizer_mul)
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-num_heads_only]
+  '''
+  
+  def forward(self, q: torch.Tensor, _k: torch.Tensor) -> torch.Tensor:
+      _r = self.num_heads % 2
+      return q
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-shape_tuple_unpack]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      x, y, z = t.shape
+      w = x * y + z
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-size_dim_scalar]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      n = t.size(0)
+      w = n * 2
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-size_no_args_unpack]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      a, b = t.size()
+      w = a * b
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-torch_size_variable]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      s = t.shape
+      x, y = s
+      w = x + y
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-typed_local_int]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      num_heads: int = 8
+      t = fastforward.nn.functional.add(q, q, output_quantizer=self.quantizer_add)
+      _r = num_heads * 2
+      return t
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[standalone-unary_neg_literal]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      # -1 and -2 as dimension indices: the is_simple_literal guard must
+      # prevent these unary negations from being wrapped in quantizer calls.
+      a = fastforward.nn.functional.add(q, q, output_quantizer=self.quantizer_add)
+      return a.unsqueeze(-1)
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-in_projection_packed]
+  '''
+  
+  def forward(self, query: torch.Tensor) -> list[torch.Tensor]:
+      return quantized__in_projection_packed(  # type: ignore[attr-defined, no-any-return]
+          query,
+          query,
+          query,
+          self.in_proj_weight,
+          self.in_proj_bias,
+          quantizer_linear_1=self.quantizer__in_projection_packed_linear_1,
+          quantizer_linear_2=self.quantizer__in_projection_packed_linear_2,
+          quantizer_linear_3=self.quantizer__in_projection_packed_linear_3,
+          quantizer_linear_4=self.quantizer__in_projection_packed_linear_4,
+          quantizer_linear_5=self.quantizer__in_projection_packed_linear_5,
+          quantizer_linear_6=self.quantizer__in_projection_packed_linear_6,
+          quantizer_w_kv=self.quantizer__in_projection_packed_w_kv,
+          quantizer_w_q_1=self.quantizer__in_projection_packed_w_q_1,
+          quantizer_b_kv_1=self.quantizer__in_projection_packed_b_kv_1,
+          quantizer_b_q_1=self.quantizer__in_projection_packed_b_q_1,
+          quantizer_b_kv_2=self.quantizer__in_projection_packed_b_kv_2,
+          quantizer_b_q_2=self.quantizer__in_projection_packed_b_q_2,
+          quantizer_w_k=self.quantizer__in_projection_packed_w_k,
+          quantizer_w_q_2=self.quantizer__in_projection_packed_w_q_2,
+          quantizer_w_v=self.quantizer__in_projection_packed_w_v,
+          quantizer_b_k_1=self.quantizer__in_projection_packed_b_k_1,
+          quantizer_b_q_3=self.quantizer__in_projection_packed_b_q_3,
+          quantizer_b_v_1=self.quantizer__in_projection_packed_b_v_1,
+          quantizer_b_k_2=self.quantizer__in_projection_packed_b_k_2,
+          quantizer_b_q_4=self.quantizer__in_projection_packed_b_q_4,
+          quantizer_b_v_2=self.quantizer__in_projection_packed_b_v_2,
+          quantizer_q=self.quantizer__in_projection_packed_q,
+          quantizer_k=self.quantizer__in_projection_packed_k,
+          quantizer_v=self.quantizer__in_projection_packed_v,
+          quantizer_w=self.quantizer__in_projection_packed_w,
+          quantizer_b=self.quantizer__in_projection_packed_b,
+      )
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-nameexpr_int_annotated]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> int:
+      E: int = q.size(-1)
+      x = E * 2
+      _y = E + 1
+      return x
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-num_heads_and_scale]
+  '''
+  
+  def forward(self, q: torch.Tensor, _k: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      _r = self.num_heads % 2
+      s = self.scale * 2.0
+      s = self.quantizer_s(s)
+      return fastforward.nn.functional.mul(q, s, output_quantizer=self.quantizer_mul)
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-num_heads_only]
+  '''
+  
+  def forward(self, q: torch.Tensor, _k: torch.Tensor) -> torch.Tensor:
+      _r = self.num_heads % 2
+      return q
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-shape_tuple_unpack]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      x, y, z = t.shape
+      w = x * y + z
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-size_dim_scalar]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      n = t.size(0)
+      w = n * 2
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-size_no_args_unpack]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      a, b = t.size()
+      w = a * b
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-torch_size_variable]
+  '''
+  
+  def forward(self, t: torch.Tensor) -> int:
+      s = t.shape
+      x, y = s
+      w = x + y
+      return w
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-typed_local_int]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      num_heads: int = 8
+      t = fastforward.nn.functional.add(q, q, output_quantizer=self.quantizer_add)
+      _r = num_heads * 2
+      return t
+  
+  '''
+# ---
+# name: test_autoquant_snapshot[with_nn_functional-unary_neg_literal]
+  '''
+  
+  def forward(self, q: torch.Tensor) -> torch.Tensor:
+      q = self.quantizer_q(q)
+      # -1 and -2 as dimension indices: the is_simple_literal guard must
+      # prevent these unary negations from being wrapped in quantizer calls.
+      a = fastforward.nn.functional.add(q, q, output_quantizer=self.quantizer_add)
+      return a.unsqueeze(-1)
+  
+  '''
+# ---
