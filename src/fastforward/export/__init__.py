@@ -4,3 +4,7 @@
 from fastforward.flags import export_mode  # noqa: F401
 
 from .export import export as export
+from .pipeline import ExportArtifacts as ExportArtifacts
+from .pipeline import ExportRequest as ExportRequest
+from .pipeline import QnnOnnxOptions as QnnOnnxOptions
+from .pipeline import export_with_pipeline as export_with_pipeline

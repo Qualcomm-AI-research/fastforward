@@ -129,3 +129,12 @@ class ExportOrchestrator:
 
         context.update(dict(request.options))
         return context
+
+
+def export_with_pipeline(
+    request: ExportRequest,
+    orchestrator: ExportOrchestrator | None = None,
+) -> ExportArtifacts:
+    """Export using the pipeline-based orchestrator API."""
+    active_orchestrator = orchestrator or ExportOrchestrator()
+    return active_orchestrator.export(request)

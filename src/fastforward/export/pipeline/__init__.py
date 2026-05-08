@@ -7,5 +7,6 @@ from .orchestrator import ExportArtifacts as ExportArtifacts
 from .orchestrator import ExportOrchestrator as ExportOrchestrator
 from .orchestrator import ExportRequest as ExportRequest
 from .orchestrator import QnnOnnxOptions as QnnOnnxOptions
+from .orchestrator import export_with_pipeline as export_with_pipeline
 from .registry import PipelineRegistry as PipelineRegistry
 from .registry import build_default_registry as build_default_registry

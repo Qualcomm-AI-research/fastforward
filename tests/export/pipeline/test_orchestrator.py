@@ -13,6 +13,7 @@ from fastforward.export.pipeline.orchestrator import (
     ExportOrchestrator,
     ExportRequest,
     QnnOnnxOptions,
+    export_with_pipeline,
 )
 from fastforward.export.pipeline.registry import PipelineRegistry
 
@@ -136,3 +137,34 @@ def test_orchestrator_pipeline_factory_override_is_used() -> None:
     orchestrator = ExportOrchestrator(registry=PipelineRegistry())
     request = _request(pathlib.Path("."), pipeline_factory=_override_writer_factory)
     assert orchestrator._resolve_pipeline_factory(request) is _override_writer_factory
+
+
+def test_orchestrator_request_target_format_selects_pipeline(tmp_path: pathlib.Path) -> None:
+    registry = PipelineRegistry()
+    registry.register("qnn", "onnx", _artifact_writer_factory)
+    registry.register("qnn", "proto", _override_writer_factory)
+    orchestrator = ExportOrchestrator(registry=registry)
+
+    request = ExportRequest(
+        model=torch.nn.Identity(),
+        sample_inputs=[((torch.randn(1, 4),), {})],
+        output_dir=tmp_path,
+        model_name="model",
+        target="qnn",
+        format="proto",
+        options=QnnOnnxOptions().to_context(),
+    )
+
+    result = orchestrator.export(request)
+    assert result.stage_outputs["write_override"] == tmp_path / "model.encodings"
+
+
+def test_export_with_pipeline_uses_provided_orchestrator(tmp_path: pathlib.Path) -> None:
+    registry = PipelineRegistry()
+    registry.register("qnn", "onnx", _artifact_writer_factory)
+    orchestrator = ExportOrchestrator(registry=registry)
+
+    result = export_with_pipeline(_request(tmp_path), orchestrator=orchestrator)
+
+    assert result.pipeline_name == "_artifact_writer_factory"
+    assert (tmp_path / "model.onnx").is_file()
