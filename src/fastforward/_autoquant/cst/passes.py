@@ -266,8 +266,7 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
         updated_node: libcst.UnaryOperation,
     ) -> libcst.BaseExpression:
         expr_type_info = self.get_metadata(MypyTypeProvider, original_node.expression, None)
-        out_type_info = self.get_metadata(MypyTypeProvider, original_node, None)
-        type_info = [expr_type_info, out_type_info]
+        type_info = [expr_type_info]
 
         result = self._determine_replacement_candidate(type_info, updated_node)
         return result or super().leave_UnaryOperation(original_node, updated_node)
@@ -280,8 +279,7 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
     ) -> libcst.BaseExpression:
         lhs_type_info = self.get_metadata(MypyTypeProvider, original_node.left, None)
         rhs_type_info = self.get_metadata(MypyTypeProvider, original_node.right, None)
-        out_type_info = self.get_metadata(MypyTypeProvider, original_node, None)
-        type_info = [lhs_type_info, rhs_type_info, out_type_info]
+        type_info = [lhs_type_info, rhs_type_info]
 
         result = self._determine_replacement_candidate(type_info, updated_node)
         return result or super().leave_BinaryOperation(original_node, updated_node)

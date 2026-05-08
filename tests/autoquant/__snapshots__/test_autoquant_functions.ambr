@@ -28,10 +28,9 @@
       selected_W = self.W[cat_ids]
       selected_W = self.quantizer_selected_W(selected_W)
       selected_b = self.b[cat_ids]
-      selected_b_unsqueeze_1 = self.quantizer_selected_b_unsqueeze_1(selected_b.unsqueeze(1))
       _tmp_1 = fastforward.nn.functional.bmm(x, selected_W, output_quantizer=self.quantizer_bmm)
       return fastforward.nn.functional.add(
-          _tmp_1, selected_b_unsqueeze_1, output_quantizer=self.quantizer_add
+          _tmp_1, selected_b.unsqueeze(1), output_quantizer=self.quantizer_add
       )
   
   '''

@@ -727,6 +727,13 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         match node:
             case libcst.Name(value=var):
                 self._ensure_quantized_var(var)
+            case libcst.Call():
+                # Plain libcst.Call nodes (not QuantizedCall / UnresolvedQuantizedCall)
+                # are either builtins that cannot be meaningfully quantized, or
+                # expressions that type-aware preprocessing confirmed are non-Tensor.
+                # Inserting an inline quantizer for these is both semantically wrong
+                # and produces spurious quantizers (e.g. quantizer_math_sqrt_...).
+                pass
             case libcst.BaseExpression():
                 if not is_simple_literal(node):
                     self._nonlocal_symbol_scope.record(node)

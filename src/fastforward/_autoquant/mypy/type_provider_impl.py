@@ -108,6 +108,14 @@ class MypyTypeProvider(libcst.VisitorMetadataProvider[_ProvidedType]):
         return super().on_visit(node)
 
 
+_BUILTIN_CONSTRUCTORS: dict[str, str] = {
+    "float": "builtins.float",
+    "int": "builtins.int",
+    "bool": "builtins.bool",
+    "complex": "builtins.complex",
+}
+
+
 class _TypeExtractionVisitor(TraverserVisitor):
     """Visitor that extracts type information from mypy AST nodes.
 
@@ -143,9 +151,117 @@ class _TypeExtractionVisitor(TraverserVisitor):
         with self.expr_checker.chk.scope.push_function(o):
             super().visit_func_def(o)
 
+    def _get_prestored_type(self, node: mypy.nodes.Node) -> mypy.types.Type | None:
+        """Return a type for node from pre-stored mypy AST data, without the binder.
+
+        The binder can be in a corrupted state when processing large modules
+        (e.g. torch.nn.functional), causing expr_checker.accept() to return
+        AnyType for all expressions. This method reads types that mypy stored
+        during build() and are immune to that corruption.
+
+        Covers:
+          (a) NameExpr / MemberExpr pointing to a Var: read Var.type directly.
+          (b) MemberExpr on a typed object: look up the attribute in the class
+              symbol table via the object expression's pre-stored Var type.
+          (c) Literal expressions: return their known built-in types.
+          (d) Built-in type constructor calls (float(), int(), bool(), ...):
+              return the constructor's return type without evaluating the call.
+          (e) Binary operations where both operands resolve recursively to
+              non-Tensor pre-stored types: propagate float as scalar result.
+          (f) Unary operations where the operand resolves to a non-Tensor
+              pre-stored type: propagate float as scalar result.
+        """
+        chk = self.expr_checker.chk
+
+        # (a) RefExpr (NameExpr or MemberExpr) pointing directly to a typed Var
+        if isinstance(node, mypy.nodes.RefExpr):
+            if isinstance(node.node, mypy.nodes.Var) and node.node.type is not None:
+                return node.node.type
+
+        # (b) MemberExpr where the object expression is a typed Var
+        # e.g. self.num_heads where self: Foo and Foo.num_heads: int
+        if isinstance(node, mypy.nodes.MemberExpr):
+            expr = node.expr
+            if isinstance(expr, mypy.nodes.RefExpr):
+                obj_var = expr.node
+                if isinstance(obj_var, mypy.nodes.Var) and isinstance(
+                    obj_var.type, mypy.types.Instance
+                ):
+                    sym = obj_var.type.type.names.get(node.name)
+                    if sym is not None and isinstance(sym.node, mypy.nodes.Var):
+                        member_type = sym.node.type
+                        if member_type is not None:
+                            return member_type
+
+        # (c) Literal expressions — types are always known regardless of binder
+        try:
+            if isinstance(node, mypy.nodes.IntExpr):
+                return chk.named_type("builtins.int")
+            if isinstance(node, mypy.nodes.FloatExpr):
+                return chk.named_type("builtins.float")
+            if isinstance(node, mypy.nodes.StrExpr):
+                return chk.named_type("builtins.str")
+            if isinstance(node, mypy.nodes.BytesExpr):
+                return chk.named_type("builtins.bytes")
+        except KeyError:
+            pass
+
+        # (d) Built-in type constructor calls: float(x), int(x), bool(x), complex(x).
+        # These always return a scalar type regardless of the argument.
+        if isinstance(node, mypy.nodes.CallExpr) and isinstance(node.callee, mypy.nodes.NameExpr):
+            if node.callee.name in _BUILTIN_CONSTRUCTORS:
+                try:
+                    return chk.named_type(_BUILTIN_CONSTRUCTORS[node.callee.name])
+                except KeyError:
+                    pass
+
+        # (e) and (f) require knowing whether operand types are Tensor — get
+        # the tensor type once, bail out if unavailable (e.g. torch not imported).
+        try:
+            tensor_type = chk.named_type("torch.Tensor")
+        except KeyError:
+            return None
+
+        # (e) Binary operations where both operands resolve recursively to known
+        # non-Tensor types. Stores float as a conservative scalar result so that
+        # outer expressions (e.g. math.sqrt(1.0 / float(E))) can see their
+        # argument is non-Tensor rather than AnyType from the corrupted binder.
+        if isinstance(node, mypy.nodes.OpExpr):
+            left_type = self._get_prestored_type(node.left)
+            right_type = self._get_prestored_type(node.right)
+            if (
+                left_type is not None
+                and right_type is not None
+                and not mypy.subtypes.is_subtype(left_type, tensor_type)
+                and not mypy.subtypes.is_subtype(right_type, tensor_type)
+            ):
+                try:
+                    return chk.named_type("builtins.float")
+                except KeyError:
+                    pass
+
+        # (f) Unary operations where the operand resolves to a known non-Tensor type.
+        if isinstance(node, mypy.nodes.UnaryExpr):
+            operand_type = self._get_prestored_type(node.expr)
+            if operand_type is not None and not mypy.subtypes.is_subtype(operand_type, tensor_type):
+                try:
+                    return chk.named_type("builtins.float")
+                except KeyError:
+                    pass
+
+        return None
+
     def enter_node(self, node: mypy.nodes.Node) -> bool:
         if (code_range := self._code_range_for_node(node)) is None:
             return True  # Still try children
+
+        # Priority 1: read pre-stored types that are immune to binder corruption.
+        # These cover NameExpr, typed MemberExpr (self.*), and literal expressions.
+        if (typ := self._get_prestored_type(node)) is not None:
+            self.range_type_map[code_range] = typ
+            return True
+
+        # Priority 2: fall back to expr_checker.accept() for all other expressions.
         try:
             if isinstance(node, mypy.nodes.Expression):
                 output_buf = io.StringIO()

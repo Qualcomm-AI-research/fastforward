@@ -526,11 +526,16 @@ def _first_assignments_in_block(body: list[libcst.BaseStatement]) -> dict[str, i
             continue
 
         if isinstance(small_stmt, nodes.GeneralAssignment):
-            if len(small_stmt.targets) != 1 or small_stmt.value is None:
+            if small_stmt.value is None:
                 continue
-            target = small_stmt.targets[0]
-            if isinstance(target, libcst.Name):
-                first_assignments.setdefault(target.value, idx)
+            for target in small_stmt.targets:
+                if isinstance(target, libcst.Name):
+                    first_assignments.setdefault(target.value, idx)
+                elif isinstance(target, libcst.Tuple):
+                    # Tuple unpack: _B, _Nt, E = q.shape — register each Name element.
+                    for el in target.elements:
+                        if isinstance(el.value, libcst.Name):
+                            first_assignments.setdefault(el.value.value, idx)
 
     return first_assignments
 
