@@ -9,9 +9,12 @@ from typing import Any, Callable, TypeAlias
 import torch
 
 from fastforward.export._export_schemas import EncodingSchemaHandler, V1SchemaHandler
+from fastforward.export.pipeline.core import Pipeline, StageReference
+from fastforward.export.pipeline.registry import PipelineRegistry, build_default_registry
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
-_PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Any]
+_PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Pipeline]
+_EvalResultsT: TypeAlias = dict[tuple[StageReference, StageReference], torch.Tensor]
 
 
 @dataclass(slots=True)
@@ -65,3 +68,64 @@ class QnnOnnxOptions:
             "verbose": self.verbose,
         }
 
+
+@dataclass(slots=True)
+class ExportArtifacts:
+    """Artifacts and metadata produced by a pipeline export run."""
+
+    pipeline_name: str
+    stage_outputs: dict[str, Any] = field(default_factory=dict)
+    eval_results: _EvalResultsT = field(default_factory=dict)
+
+
+class ExportOrchestrator:
+    """Resolve and execute an export pipeline from an `ExportRequest`."""
+
+    def __init__(
+        self,
+        registry: PipelineRegistry | None = None,
+    ) -> None:
+        self._registry = registry or build_default_registry()
+
+    def export(self, request: ExportRequest) -> ExportArtifacts:
+        """Run export for the given request and return produced artifact metadata."""
+        output_dir = self._build_output_dir(request)
+        pipeline_factory = self._resolve_pipeline_factory(request)
+        pipeline_context = self._build_pipeline_context(request, output_dir)
+
+        pipeline = pipeline_factory(pipeline_context)
+        stage_outputs, eval_results = pipeline(request.model, request.sample_inputs)
+
+        return ExportArtifacts(
+            pipeline_name=getattr(pipeline_factory, "__name__", type(pipeline_factory).__name__),
+            stage_outputs=stage_outputs,
+            eval_results=eval_results,
+        )
+
+    def _resolve_pipeline_factory(self, request: ExportRequest) -> _PipelineFactoryT:
+        if request.pipeline_factory is not None:
+            return request.pipeline_factory
+
+        return self._registry.get(request.target, request.format)
+
+    def _build_output_dir(self, request: ExportRequest) -> pathlib.Path:
+        raw_output_dir = request.output_dir
+        if isinstance(raw_output_dir, pathlib.Path):
+            output_dir = raw_output_dir
+        else:
+            output_dir = pathlib.Path(raw_output_dir)
+        output_dir.mkdir(exist_ok=True, parents=True)
+        return output_dir
+
+    def _build_pipeline_context(
+        self,
+        request: ExportRequest,
+        output_dir: pathlib.Path,
+    ) -> dict[str, Any]:
+        context: dict[str, Any] = {
+            "output_dir": output_dir,
+            "model_name": request.model_name,
+        }
+
+        context.update(dict(request.options))
+        return context

@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import pathlib
+
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -29,6 +31,7 @@ from fastforward.export.stages.onnx.onnx_export_stages import (
     stage_fix_onnx_reshape_allowzero,
     stage_onnx_proto_to_encodings,
     stage_rename_onnx_input_output_names,
+    stage_save_onnx_proto,
 )
 from onnx import TensorProto, helper
 from onnxscript import ir
@@ -335,7 +338,9 @@ def test_extract_qnn_encodings_from_onnx_proto_raises_on_invalid_json_metadata()
         extract_qnn_encodings_from_onnx_proto(proto)
 
 
-def test_stage_onnx_proto_to_encodings_returns_encodings_dictionary() -> None:
+def test_stage_onnx_proto_to_encodings_returns_encodings_dictionary(
+    tmp_path: pathlib.Path,
+) -> None:
     x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
     y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
     relu_node = helper.make_node("Relu", inputs=["x"], outputs=["y"], name="relu_node")
@@ -349,11 +354,41 @@ def test_stage_onnx_proto_to_encodings_returns_encodings_dictionary() -> None:
         ),
     )
 
-    encodings = stage_onnx_proto_to_encodings((proto,), sample_inputs=[], context={})
+    encodings_path = tmp_path / "model.encodings"
+    encodings = stage_onnx_proto_to_encodings(
+        (proto,),
+        sample_inputs=[],
+        context={"output_dir": tmp_path, "model_name": "model"},
+    )
 
     assert isinstance(encodings, dict)
     assert "activation_encodings" in encodings
     assert "param_encodings" in encodings
+    assert encodings_path.is_file()
+
+
+def test_stage_save_onnx_proto_saves_to_context_resolved_path(
+    tmp_path: pathlib.Path,
+) -> None:
+    x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+    y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+    relu_node = helper.make_node("Relu", inputs=["x"], outputs=["y"], name="relu_node")
+    graph = helper.make_graph([relu_node], "g", [x], [y], initializer=[])
+    proto = helper.make_model(graph)
+
+    output = stage_save_onnx_proto(
+        (proto,),
+        sample_inputs=[],
+        context={
+            "output_dir": tmp_path,
+            "model_name": "model",
+            "onnx_save_kwargs": {"save_as_external_data": False},
+        },
+    )
+
+    assert output is proto
+    onnx_output_path = tmp_path / "model.onnx"
+    assert onnx_output_path.is_file()
 
 
 def _assert_common_metadata_present(metadata_props: dict[str, str]) -> None:

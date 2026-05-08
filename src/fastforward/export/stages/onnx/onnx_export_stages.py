@@ -42,6 +42,16 @@ _FF_FORMAT_VALUE_JSON = "json"
 _FF_FORMAT_VERSION_VALUE_V1 = "1"
 
 
+def _resolve_output_path_from_context(
+    context: dict[str, Any],
+    *,
+    suffix: str,
+) -> pathlib.Path:
+    output_dir = context["output_dir"]
+    model_name = context["model_name"]
+    return pathlib.Path(output_dir) / f"{model_name}.{suffix}"
+
+
 def _rename_onnx_input_output_names(
     model: ir.Model,
     input_names: list[str] | None,
@@ -486,7 +496,7 @@ def stage_save_onnx_proto(
     del sample_inputs
     proto = modules[0]
 
-    onnx_output_path = pathlib.Path(context.get("onnx_output_path", "model.onnx"))
+    onnx_output_path = _resolve_output_path_from_context(context, suffix="onnx")
     onnx_save_kwargs = context.get("onnx_save_kwargs", {})
     if not isinstance(onnx_save_kwargs, dict):
         msg = "Expected context['onnx_save_kwargs'] to be type dict, but got type %s" % (
@@ -593,9 +603,8 @@ def stage_onnx_proto_to_encodings(
         encoding_schema_handler=schema_handler,
     )
 
-    output_path = context.get("encodings_output_path")
-    if output_path is not None:
-        with open(output_path, "w") as fp:
-            json.dump(encodings_dictionary, fp, indent=4)
+    output_path = _resolve_output_path_from_context(context, suffix="encodings")
+    with open(output_path, "w") as fp:
+        json.dump(encodings_dictionary, fp, indent=4)
 
     return encodings_dictionary

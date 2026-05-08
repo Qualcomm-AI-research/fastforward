@@ -3,7 +3,7 @@
 
 from typing import Any
 
-from fastforward.export.pipeline import Pipeline
+from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
     stage_cleanup_ff_quantizer_artifacts,
