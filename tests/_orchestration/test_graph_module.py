@@ -1041,22 +1041,22 @@ def test_inference_mode_restores_previously_compiled_state() -> None:
 
 
 def test_inference_mode_produces_same_output_as_default() -> None:
-    # Given a GraphModule and an input tensor
+    # GIVEN a GraphModule and an input tensor
     model = Model()
     graph = model.to_graph_module()
     x = torch.randn(1, 5)
 
-    # When we run the graph normally and under inference_mode
+    # WHEN we run the graph normally and under inference_mode
     default_output = graph(x)
     with inference_mode(graph):
         inference_output = graph(x)
 
-    # Then both outputs should be identical
+    # THEN both outputs should be identical
     torch.testing.assert_close(inference_output, default_output)
 
 
 def test_inference_mode_enables_torch_inference_mode() -> None:
-    # Given a module that records whether torch.is_inference_mode_enabled during forward
+    # GIVEN a module that records whether torch.is_inference_mode_enabled during forward
     class ProbeModule(torch.nn.Module):
         def __init__(self) -> None:
             super().__init__()
@@ -1072,9 +1072,9 @@ def test_inference_mode_enables_torch_inference_mode() -> None:
     out = graph.add_node("probe", probe, [inp])
     graph.add_output(out)
 
-    # When we run the graph under inference_mode
+    # WHEN we run the graph under inference_mode
     with inference_mode(graph):
         graph(torch.randn(1, 5))
 
-    # Then torch inference mode should have been active during forward
+    # THEN torch inference mode should have been active during forward
     assert probe.is_on_inference_mode

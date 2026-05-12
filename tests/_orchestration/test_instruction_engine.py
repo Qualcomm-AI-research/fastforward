@@ -32,6 +32,8 @@ from fastforward._orchestration.instruction_engine import (
     OffloadEverything,
     OptimizeModule,
     ReturnOutputs,
+    _cancel_module_round_trips,
+    _cancel_redundant_activation_moves,
     _weight_offloading_pass,
     lifetime_management_pass,
     optimization_only_pass,
@@ -658,3 +660,105 @@ def test_weight_offloading_pass_post_restore_uses_per_parameter_devices() -> Non
     assert isinstance(device_map, dict)
     assert "weight" in device_map
     assert "bias" in device_map
+
+
+def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
+    # GIVEN an instruction stream where an nn.Module produces output on compute_device,
+    # followed by an activation round-trip and a MoveModule round-trip
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+
+    linear = torch.nn.Linear(4, 4)
+    linear_out = NodeRef(uuid.uuid4(), "linear_out")
+    instructions = (
+        CallModule(
+            module=linear,
+            args=(),
+            kwargs={},
+            target=linear_out,
+            contexts=(nullcontext(),),
+        ),
+        MoveActivations(device=storage, register_ref=linear_out),
+        MoveActivations(device=compute, register_ref=linear_out),
+        MoveModule(device=storage, module=linear),
+        MoveModule(device=compute, module=linear),
+    )
+
+    # WHEN the cancellation passes run
+    result = _cancel_module_round_trips(instructions, compute, storage)
+    result = _cancel_redundant_activation_moves(result, compute)
+
+    # THEN the activation round-trip is eliminated (output already on compute)
+    activation_moves = [i for i in result if isinstance(i, MoveActivations)]
+    assert activation_moves == []
+
+    # AND the adjacent MoveModule round-trip is eliminated
+    module_moves = [i for i in result if isinstance(i, MoveModule)]
+    assert module_moves == []
+
+
+def test_cancel_pass_preserves_necessary_moves_for_non_module_callables() -> None:
+    # GIVEN a mixed instruction stream:
+    #   (a) an aten op with no inputs — output device is unknown
+    #   (b) an aten op chain where inputs are on compute — state propagates
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+
+    # (a) aten op with no inputs: state unknown → compute move must survive
+    arange_out = NodeRef(uuid.uuid4(), "arange_out")
+
+    # (b) aten chain: src is on compute → both aten outputs are on compute → round-trips cancel
+    src = NodeRef(uuid.uuid4(), "linear_out")
+    aten_a_out = NodeRef(uuid.uuid4(), "aten_a_out")
+    aten_b_out = NodeRef(uuid.uuid4(), "aten_b_out")
+
+    instructions = (
+        # (a) unknown producer
+        CallModule(
+            module=lambda: torch.arange(8),
+            args=(),
+            kwargs={},
+            target=arange_out,
+            contexts=(nullcontext(),),
+        ),
+        MoveActivations(device=storage, register_ref=arange_out),
+        MoveActivations(device=compute, register_ref=arange_out),
+        # (b) aten chain: src moved to compute by _weight_offloading_pass
+        MoveActivations(device=compute, register_ref=src),
+        CallModule(
+            module=torch.transpose,
+            args=(src,),
+            kwargs={},
+            target=aten_a_out,
+            contexts=(nullcontext(),),
+        ),
+        MoveActivations(device=storage, register_ref=aten_a_out),
+        MoveActivations(device=compute, register_ref=aten_a_out),
+        CallModule(
+            module=torch.transpose,
+            args=(aten_a_out,),
+            kwargs={},
+            target=aten_b_out,
+            contexts=(nullcontext(),),
+        ),
+        MoveActivations(device=storage, register_ref=aten_b_out),
+        MoveActivations(device=compute, register_ref=aten_b_out),
+    )
+
+    # WHEN the cancellation pass runs
+    result = _cancel_redundant_activation_moves(instructions, compute)
+
+    # THEN the compute move for the unknown producer survives (can't prove it's on compute)
+    arange_moves = [
+        i for i in result if isinstance(i, MoveActivations) and i.register_ref == arange_out
+    ]
+    assert len(arange_moves) == 1
+    assert arange_moves[0].device == compute
+
+    # AND the aten chain's round-trips are all eliminated (state is known to be compute)
+    chain_moves = [
+        i
+        for i in result
+        if isinstance(i, MoveActivations) and i.register_ref in (aten_a_out, aten_b_out)
+    ]
+    assert chain_moves == []

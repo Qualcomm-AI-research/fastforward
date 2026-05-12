@@ -822,58 +822,98 @@ def _offloading_pass(
     """
     instructions = _weight_offloading_pass(instructions, compute_device, storage_device, graph)
     instructions = _activation_offloading_pass(instructions, compute_device, storage_device)
-    instructions = _cancel_redundant_placement_pass(instructions, compute_device, storage_device)
+
+    # Cancel out compute(M1) -> storage(M1) -> compute(M1) placements for any module M1.
+    instructions = _cancel_module_round_trips(instructions, compute_device, storage_device)
+
+    # Drop activation moves that the tracked device state proves redundant.
+    instructions = _cancel_redundant_activation_moves(instructions, compute_device)
     return instructions
 
 
-def _cancel_redundant_placement_pass(
-    instructions: Instructions,
-    compute_device: torch.device,
-    storage_device: torch.device,
+def _cancel_module_round_trips(
+    instructions: Instructions, compute_device: torch.device, storage_device: torch.device
 ) -> Instructions:
-    """Cancel adjacent inverse device placement pairs.
-
-    Removes pairs of consecutive `MoveModule` or `MoveActivations` instructions
-    that move the same target to storage and then immediately back to compute, since the
-    round-trip has no effect.
-
-    Args:
-        instructions: Sequence of instructions to optimize.
-        compute_device: The compute device.
-        storage_device: The storage device.
-
-    Returns:
-        New instruction sequence with redundant placement pairs removed.
-    """
-    # Device pair covers any round-trip (compute -> storage and storage -> compute).
+    """Cancel adjacent MoveModule round-trips."""
     device_pair = {compute_device, storage_device}
-    cancelled: set[int] = set()
 
-    for i in range(len(instructions) - 1):
-        if i in cancelled:
-            continue
-        a = instructions[i]
-        b = instructions[i + 1]
-        match (a, b):
-            case (
-                MoveModule(module=m_a, device=d_a),
-                MoveModule(module=m_b, device=d_b),
-            ) if (
-                m_a is m_b
-                and isinstance(d_a, torch.device)
-                and isinstance(d_b, torch.device)
-                and {d_a, d_b} == device_pair
-            ):
-                cancelled.add(i)
-                cancelled.add(i + 1)
-            case (
-                MoveActivations(register_ref=ref_a, device=d_a),
-                MoveActivations(register_ref=ref_b, device=d_b),
-            ) if ref_a == ref_b and {d_a, d_b} == device_pair:
-                cancelled.add(i)
-                cancelled.add(i + 1)
+    def _is_round_trip(left: Instruction, right: Instruction) -> bool:
+        return (
+            isinstance(left, MoveModule)
+            and isinstance(right, MoveModule)
+            and left.module is right.module
+            and isinstance(left.device, torch.device)
+            and isinstance(right.device, torch.device)
+            and (left.device, right.device) == device_pair
+        )
 
-    return tuple(instr for i, instr in enumerate(instructions) if i not in cancelled)
+    result: list[Instruction] = []
+    i = 0
+    while i < len(instructions):
+        if i + 1 < len(instructions) and _is_round_trip(instructions[i], instructions[i + 1]):
+            i += 2
+        else:
+            result.append(instructions[i])
+            i += 1
+
+    return tuple(result)
+
+
+def _cancel_redundant_activation_moves(
+    instructions: Instructions, compute_device: torch.device
+) -> Instructions:
+    """Cancel redundant MoveActivations via buffer-and-flush.
+
+    MoveActivations instructions are buffered instead of emitted immediately.
+    Consecutive moves on the same ref overwrite each other in the buffer, so
+    round-trips collapse naturally. When a non-move instruction consumes a ref
+    (via ``uses()``), the pending move for that ref is flushed: emitted only if
+    the ref's tracked device differs from the move's target.
+
+    Device state is tracked for CallModule outputs:
+    - ``nn.Module`` calls produce on ``compute_device`` (MoveModule guarantees this).
+    - Non-Module callables (aten ops) inherit the device of their inputs when
+      all inputs agree; otherwise the output device is left unknown.
+    """
+    ref_device: dict[_BaseRef, torch.device] = {}
+    pending: dict[_BaseRef, MoveActivations] = {}
+    result: list[Instruction] = []
+
+    def _infer_output_device(instr: Instruction) -> None:
+        if not isinstance(instr, CallModule):
+            return
+        key = instr.target.unwrap_ref()
+        if isinstance(instr.module, torch.nn.Module):
+            ref_device[key] = compute_device
+            return
+        devs = {ref_device[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_device}
+        if len(devs) == 1:
+            ref_device[key] = devs.pop()
+
+    def _flush(ref: _BaseRef) -> None:
+        key = ref.unwrap_ref()
+        if (move := pending.pop(key, None)) is not None:
+            if ref_device.get(key) != move.device:
+                result.append(move)
+                ref_device[key] = move.device
+
+    def _is_redundant(move: MoveActivations) -> bool:
+        return ref_device.get(move.register_ref.unwrap_ref()) == move.device
+
+    for instr in instructions:
+        if isinstance(instr, MoveActivations):
+            pending[instr.register_ref.unwrap_ref()] = instr
+        else:
+            for ref in instr.uses():
+                _flush(ref)
+            result.append(instr)
+            _infer_output_device(instr)
+
+    for move in pending.values():
+        if not _is_redundant(move):
+            result.append(move)
+
+    return tuple(result)
 
 
 class InstructionScheduler:
