@@ -102,10 +102,11 @@ class Const(_BaseRef):
     """Literal argument for a node.
 
     Args:
-        value: Constant value that this node accepts
+        value: Any compile-time value we want to hold constant.
     """
 
-    value: Any
+    value: Any = dataclasses.field(compare=False, hash=False)
+    id: uuid.UUID = dataclasses.field(default_factory=uuid.uuid4, repr=False)
 
     def __repr__(self) -> str:
         return f"Const({self.value})"
@@ -714,10 +715,6 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
                 external_inputs.append(external_dependency)
                 seen.add(external_dependency)
 
-    if not external_inputs:
-        msg = f"Nodes for subgraph have no (external) inputs: {path_nodes}"
-        raise ValueError(msg)
-
     # Determine which nodes must be exposed as subgraph outputs.
     # These are either (1) nodes that are outside of the original graph or
     # (2) nodes required by external nodes outside of the subgraph.
@@ -857,6 +854,8 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
         node.name: ref for ref in graph._node_refs.values() for node in [graph._nodes[ref.id]]
     }
 
+    spec_partitions: set[GraphModule] = set(partitions[: len(specs)])
+
     partition_to_delegate = {
         partition: spec.delegate
         for partition, spec in zip(partitions[: len(specs)], specs)
@@ -924,25 +923,36 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
         processed.add(partition)
 
         partition_args = [get_composite_arg(name) for name in partition.input_names]
-        partition_ref = composite.add_node(f"partition_{partition_idx}", partition, partition_args)
 
-        if delegate := partition_to_delegate.get(partition):
-            node = composite._nodes[partition_ref.id]
-            composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate)
+        if partition in spec_partitions:
+            # Specced partitions will be an opaque node to run OptimizeModule's delegate.
+            partition_ref = composite.add_node(
+                f"partition_{partition_idx}", partition, partition_args
+            )
+            if delegate := partition_to_delegate.get(partition):
+                node = composite._nodes[partition_ref.id]
+                composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate)
 
-        # Map each partition output to a composite-level reference so downstream
-        # partitions (and graph outputs) can address them.
+            result_refs = [
+                partition_ref if len(partition._outputs) == 1 else partition_ref[i]
+                for i in range(len(partition._outputs))
+            ]
+        else:
+            # Non-specced partitions are just inlined as subgraphs.
+            result_refs = composite.add_subgraph(
+                f"partition_{partition_idx}", partition, partition_args
+            )
+
         for i, ref in enumerate(partition._outputs):
             base = ref.unwrap_ref()
             if not isinstance(base, NodeRef):
                 msg = f"Partition output unwrap did not return NodeRef: {type(base)}"
                 raise TypeError(msg)
 
-            base_ref = partition_ref if len(partition._outputs) == 1 else partition_ref[i]
-            produced_refs[base] = base_ref
+            produced_refs[base] = result_refs[i]
 
             if ref in graph._outputs:
-                rebased = ref.rebase(base_ref)
+                rebased = ref.rebase(produced_refs[base])
                 assert isinstance(rebased, (NodeRef, AttributeRef))
                 composite_outputs[ref] = rebased
 

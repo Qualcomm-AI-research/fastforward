@@ -723,9 +723,51 @@ def test_build_composite_graph_single_mid_spec_partition_count() -> None:
     # WHEN we build the composite graph
     composite = build_composite_graph(graph, specs)
 
-    # THEN the composite should have exactly 3 nodes (prefix, spec, suffix)
-    msg = f"Expected 3 composite nodes, got {len(composite._nodes)}. Node names: {[n.name for n in composite._nodes.values()]}"
-    assert len(composite._nodes) == 3, msg
+    # THEN non-spec nodes are inlined (4 prefix + 5 suffix = 9 individual nodes)
+    # plus 1 opaque spec node = 10 total composite nodes
+    msg = f"Expected 10 composite nodes, got {len(composite._nodes)}. Node names: {[n.name for n in composite._nodes.values()]}"
+    assert len(composite._nodes) == 10, msg
+
+
+def test_build_composite_graph_non_spec_nodes_are_inlined_not_wrapped() -> None:
+    # GIVEN a 5-node chain with a spec on node 2 (middle)
+    graph, layers = _make_linear_chain(5, dim=4)
+    specs = [SubgraphSpec(input=layers[2], output=layers[2])]
+
+    # WHEN we build the composite graph
+    composite = build_composite_graph(graph, specs)
+
+    # THEN non-spec nodes (0, 1, 3, 4) are inlined as individual nodes — their
+    # modules are the original nn.Linear instances, not partition GraphModules
+    non_spec_modules = [
+        n.module
+        for n in composite._nodes.values()
+        if not isinstance(n.module, GraphModule)
+    ]
+    assert len(non_spec_modules) == 4
+    for mod in non_spec_modules:
+        assert isinstance(mod, torch.nn.Linear)
+
+    # THEN the spec node is an opaque GraphModule (not inlined)
+    spec_modules = [
+        n.module for n in composite._nodes.values() if isinstance(n.module, GraphModule)
+    ]
+    assert len(spec_modules) == 1
+
+
+def test_build_composite_graph_inlined_non_spec_forward_matches_original() -> None:
+    # GIVEN an 8-node chain with a spec on node 3
+    graph, layers = _make_linear_chain(8, dim=4)
+    specs = [SubgraphSpec(input=layers[3], output=layers[3])]
+
+    # WHEN we build the composite and run a forward pass
+    composite = build_composite_graph(graph, specs)
+    x = torch.randn(1, 4)
+    composite_out = composite(x)
+    original_out = graph(x)
+
+    # THEN the composite output matches the original (inlining preserved wiring)
+    torch.testing.assert_close(composite_out, original_out)
 
 
 def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
