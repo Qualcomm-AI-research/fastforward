@@ -762,3 +762,49 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables() -> Non
         if isinstance(i, MoveActivations) and i.register_ref in (aten_a_out, aten_b_out)
     ]
     assert chain_moves == []
+
+
+def test_move_to_device_preserves_dict_subclass_type() -> None:
+    """_move_to_device on a dict subclass must return an instance of the same subclass.
+
+    HuggingFace ModelOutput (e.g. CausalLMOutputWithPast) inherits from OrderedDict.
+    When MoveActivations moves the graph output to storage_device, it calls
+    _move_to_device on this dict-like object. The `case dict()` branch used to
+    reconstruct via a plain `{k: v}` comprehension, losing the custom type. This
+    broke `out.logits` attribute access on the model output.
+    """
+    from collections import OrderedDict
+
+    from fastforward._orchestration.instruction_engine import _move_to_device
+
+    # GIVEN a dict subclass mimicking HuggingFace's ModelOutput pattern
+    class FakeModelOutput(OrderedDict[str, object]):
+        @property
+        def logits(self) -> object:
+            return self["logits"]
+
+    output = FakeModelOutput(logits=torch.randn(1, 4, 8), past_key_values=None)
+
+    # WHEN we move it to a device
+    moved = _move_to_device(output, torch.device("cpu"))
+
+    # THEN the type is preserved (not collapsed to plain dict)
+    assert type(moved) is FakeModelOutput, (
+        f"Expected FakeModelOutput, got {type(moved).__name__}. "
+        f"_move_to_device must preserve dict subclass types."
+    )
+    # AND attribute access works
+    assert hasattr(moved, "logits")
+    assert moved["logits"].shape == (1, 4, 8)  # type: ignore[attr-defined]
+
+
+def test_move_to_device_plain_dict_stays_plain_dict() -> None:
+    """_move_to_device on a plain dict returns a plain dict (no regression)."""
+    from fastforward._orchestration.instruction_engine import _move_to_device
+
+    value = {"a": torch.randn(2, 3), "b": torch.randn(4)}
+    moved = _move_to_device(value, torch.device("cpu"))
+
+    assert type(moved) is dict
+    assert moved["a"].shape == (2, 3)
+    assert moved["b"].shape == (4,)

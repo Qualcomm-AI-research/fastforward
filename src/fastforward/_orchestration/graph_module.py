@@ -241,17 +241,32 @@ class Delegate:
     contexts: Contexts
 
 
+class Op(enum.Enum):
+    """Operation type for node dispatching.
+
+    Each node has an optional module. this can be a function, a method, a torch module, or
+    something that gets an attribute from another Node.
+    """
+
+    torch_module = enum.auto()
+    call_function = enum.auto()
+    call_method = enum.auto()
+    get_attr = enum.auto()
+
+
 @dataclasses.dataclass(frozen=True)
 class Node:
-    """A node in a 'GraphModule', which wraps a PyTorch module.
+    """A node in a 'GraphModule'.
 
-    Represents a single operation in the 'GraphModule' as defined by a nn.Module.
-    The node maintains references to its inputs through _BaseRef types (NodeRef for other nodes,
+    Represents a single operation in the 'GraphModule'. The node maintains
+    references to its inputs through _BaseRef types (NodeRef for other nodes,
     InputRef for external inputs, or Const for literal values).
 
     Args:
-        name: Unique identifier within the graph
-        module: PyTorch module to execute
+        id: Unique identifier within the graph.
+        name: Human-readable name within the graph.
+        op: Discriminator for the kind of callable stored in `module`.
+        module: Callable to execute (nn.Module, function, method wrapper, etc.)
         args: Positional arguments (NodeRef/InputRef/Const)
         kwargs: Keyword arguments (NodeRef/InputRef/Const)
         delegate: Optional delegate configuration attached to this node.
@@ -259,8 +274,9 @@ class Node:
 
     id: uuid.UUID
     name: str
-    module: torch.nn.Module
+    module: torch.nn.Module | Callable[..., Any]
     args: Collection[_BaseRef]
+    op: Op = Op.torch_module
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
     delegate: Delegate | None = None
 
@@ -397,10 +413,11 @@ class GraphModule(torch.nn.Module):
     def add_node(
         self,
         name: str,
-        module: torch.nn.Module,
+        module: torch.nn.Module | Callable[..., Any],
         args: Collection[_BaseRef],
         kwargs: Mapping[str, _BaseRef] | None = None,
         *,
+        op: Op = Op.torch_module,
         node_id: uuid.UUID | None = None,
     ) -> NodeRef:
         """Add a node to this 'GraphModule'.
@@ -411,9 +428,10 @@ class GraphModule(torch.nn.Module):
 
         Args:
             name: Unique identifier of the node within its scope
-            module: PyTorch module to execute
+            module: Callable to execute (nn.Module, function, method wrapper, etc.)
             args: Positional arguments (NodeRef/InputRef/Const)
             kwargs: Keyword arguments (NodeRef/InputRef/Const)
+            op: Discriminator for the kind of callable. Defaults to Op.module.
             node_id: Optional node ID. If not provided, a new one will be generated.
 
         Returns:
@@ -429,19 +447,21 @@ class GraphModule(torch.nn.Module):
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
-        node = Node(node_id, name, module, args, kwargs or {})
+        node = Node(node_id, name, module, args, op=op, kwargs=kwargs or {})
         self._nodes[node_id] = node
         ref = NodeRef(node_id, name)
         self._node_refs[node_id] = ref
 
-        *module_path, leaf_name = name.split(".")
-        parent = self
-        for attr in module_path:
-            if not hasattr(parent, attr):
-                parent.add_module(attr, torch.nn.Module())
-            parent = getattr(parent, attr)
+        if isinstance(node.module, torch.nn.Module):
+            *module_path, leaf_name = name.split(".")
+            parent = self
+            for attr in module_path:
+                if not hasattr(parent, attr):
+                    parent.add_module(attr, torch.nn.Module())
+                parent = getattr(parent, attr)
 
-        parent.add_module(leaf_name, node.module)
+            parent.add_module(leaf_name, node.module)
+
         return ref
 
     def add_subgraph(
@@ -512,7 +532,9 @@ class GraphModule(torch.nn.Module):
                 key: remap_reference(old_reference=arg) for key, arg in node.kwargs.items()
             }
             node_name = f"{name}.{node.name}"
-            self.add_node(node_name, node.module, node_args, node_kwargs, node_id=node.id)
+            self.add_node(
+                node_name, node.module, node_args, node_kwargs, op=node.op, node_id=node.id
+            )
 
         # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
         new_output_refs = []
@@ -761,6 +783,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
             kwargs={
                 key: remap_reference(old_reference=arg) for key, arg in source_node.kwargs.items()
             },
+            op=source_node.op,
             node_id=source_node.id,
         )
 
@@ -939,8 +962,8 @@ def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> Grap
             ]
         else:
             # Non-specced partitions are just inlined as subgraphs.
-            result_refs = composite.add_subgraph(
-                f"partition_{partition_idx}", partition, partition_args
+            result_refs = list(
+                composite.add_subgraph(f"partition_{partition_idx}", partition, partition_args)
             )
 
         for i, ref in enumerate(partition._outputs):

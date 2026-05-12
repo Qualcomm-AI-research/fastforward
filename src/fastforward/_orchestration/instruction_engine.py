@@ -31,6 +31,7 @@ from fastforward._orchestration.graph_module import (
     GraphModule,
     InputRef,
     NodeRef,
+    Op,
     _BaseRef,
     topological_sort,
 )
@@ -226,7 +227,7 @@ class CallModule(Instruction):
     then calls the module on each batch with the provided kwargs.
     """
 
-    module: torch.nn.Module
+    module: torch.nn.Module | Callable[..., Any]
     args: Sequence[_BaseRef]
     kwargs: dict[str, _BaseRef]
     target: _BaseRef
@@ -419,6 +420,14 @@ def _move_to_device(value: Any, device: torch.device) -> Any:
             return tuple(_move_to_device(v, device) for v in value)
         case list():
             return [_move_to_device(v, device) for v in value]
+        case dict() if type(value) is not dict:
+            # Try to preserve true dict subclass types (e.g. HF outputs).
+            moved = {k: _move_to_device(v, device) for k, v in value.items()}
+            try:
+                return type(value)(moved)
+            except TypeError:
+                pass
+            return moved
         case dict():
             return {k: _move_to_device(v, device) for k, v in value.items()}
     return value
@@ -726,7 +735,13 @@ def _weight_offloading_pass(
     Returns:
         New instruction sequence with `MoveModule` instructions inserted.
     """
-    all_modules = list(dict.fromkeys(node.module for node in graph._nodes.values()))
+    all_modules = list(
+        dict.fromkeys(
+            node.module
+            for node in graph._nodes.values()
+            if node.op is Op.torch_module and isinstance(node.module, torch.nn.Module)
+        )
+    )
 
     # Ensure `post_restore` maps each parameter back to its individual original device.
     original_devices: dict[torch.nn.Module, dict[str, torch.device]] = {}
@@ -746,14 +761,12 @@ def _weight_offloading_pass(
 
     for instruction in instructions:
         match instruction:
-            case CallModule() | OptimizeModule():
-                new_instructions.append(
-                    MoveModule(device=compute_device, module=instruction.module)
-                )
+            case CallModule(module=module) | OptimizeModule(module=module) if isinstance(
+                module, torch.nn.Module
+            ):
+                new_instructions.append(MoveModule(device=compute_device, module=module))
                 new_instructions.append(instruction)
-                new_instructions.append(
-                    MoveModule(device=storage_device, module=instruction.module)
-                )
+                new_instructions.append(MoveModule(device=storage_device, module=module))
             case _:
                 new_instructions.append(instruction)
 
@@ -785,6 +798,8 @@ def _activation_offloading_pass(
     for instruction in instructions:
         if isinstance(instruction, (CallModule, OptimizeModule)):
             for ref in instruction.uses():
+                if isinstance(ref.unwrap_ref(), Const):
+                    continue
                 new_instructions.append(MoveActivations(device=compute_device, register_ref=ref))
 
             new_instructions.append(instruction)
@@ -844,7 +859,7 @@ def _cancel_module_round_trips(
             and left.module is right.module
             and isinstance(left.device, torch.device)
             and isinstance(right.device, torch.device)
-            and (left.device, right.device) == device_pair
+            and {left.device, right.device} == device_pair
         )
 
     result: list[Instruction] = []
@@ -1007,7 +1022,7 @@ class InstructionScheduler:
             kwargs[key] = ref_id
 
         # Inject optimization if specified
-        if node.delegate is not None:
+        if node.delegate is not None and isinstance(node.module, torch.nn.Module):
             instructions.append(
                 OptimizeModule(module=node.module, args=args, delegate=node.delegate)
             )

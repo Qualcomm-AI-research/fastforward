@@ -740,9 +740,7 @@ def test_build_composite_graph_non_spec_nodes_are_inlined_not_wrapped() -> None:
     # THEN non-spec nodes (0, 1, 3, 4) are inlined as individual nodes — their
     # modules are the original nn.Linear instances, not partition GraphModules
     non_spec_modules = [
-        n.module
-        for n in composite._nodes.values()
-        if not isinstance(n.module, GraphModule)
+        n.module for n in composite._nodes.values() if not isinstance(n.module, GraphModule)
     ]
     assert len(non_spec_modules) == 4
     for mod in non_spec_modules:
