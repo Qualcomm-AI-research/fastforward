@@ -66,8 +66,45 @@ def test_merge_with_mismatched_lengths_raises() -> None:
         ActivationDataset.merge([ds1, ds2, ds3])
 
 
-def test_call_module_raises_with_mismatched_dataset_lengths() -> None:
-    """Test that mismatched dataset lengths raise ValueError from strict zip."""
+def test_broadcast_repeats_single_batch_to_match_n_batches() -> None:
+    # GIVEN a 1-batch dataset and a 3-batch dataset
+    single = ActivationDataset([torch.tensor(10.0)])
+    multi = ActivationDataset([torch.tensor(1.0), torch.tensor(2.0), torch.tensor(3.0)])
+
+    # WHEN broadcast aligns them
+    result = ActivationDataset.broadcast([single, multi])
+
+    # THEN the 1-batch dataset is repeated to length 3, the 3-batch is unchanged
+    assert len(result[0]) == 3
+    assert len(result[1]) == 3
+    assert all(torch.equal(b, torch.tensor(10.0)) for b in result[0])
+
+
+def test_broadcast_raises_on_incompatible_lengths() -> None:
+    # GIVEN datasets with genuinely incompatible lengths (2 vs 3)
+    ds_a = ActivationDataset([1, 2])
+    ds_b = ActivationDataset([10, 20, 30])
+
+    # WHEN / THEN broadcasting raises
+    with pytest.raises(ValueError, match="Dataset length mismatch"):
+        ActivationDataset.broadcast([ds_a, ds_b])
+
+
+def test_broadcast_is_noop_when_all_lengths_match() -> None:
+    # GIVEN datasets that already have the same length
+    ds_a = ActivationDataset([1, 2, 3])
+    ds_b = ActivationDataset([4, 5, 6])
+
+    # WHEN broadcast is called
+    result = ActivationDataset.broadcast([ds_a, ds_b])
+
+    # THEN the original datasets are returned unchanged
+    assert result[0] is ds_a
+    assert result[1] is ds_b
+
+
+def test_call_module_broadcasts_single_batch_to_match_n_batches() -> None:
+    """Test that a 1-batch dataset is broadcast to N when paired with an N-batch dataset."""
     # GIVEN a graph with a module that takes two inputs
     graph = GraphModule()
 
@@ -80,13 +117,20 @@ def test_call_module_raises_with_mismatched_dataset_lengths() -> None:
     node = graph.add_node("add", AddTwo(), [input1, input2])
     graph.add_output(node)
 
-    # WHEN we pass datasets with mismatched lengths
+    # WHEN we pass a 3-batch dataset and a 1-batch dataset (batch-invariant value)
     dataset1 = [torch.tensor(1.0), torch.tensor(2.0), torch.tensor(3.0)]
     dataset2 = [torch.tensor(10.0)]
 
-    # THEN it should raise ValueError from zip(strict=True)
-    with pytest.raises(ValueError, match="Dataset length mismatch in CallModule"):
-        graph(dataset1, dataset2)
+    # THEN the 1-batch is broadcast to 3 and the graph runs successfully
+    result = graph(dataset1, dataset2)
+
+    # THEN there is only a single output (of length 3) in the dict
+    _, (out1, out2, out3) = result.popitem()
+    assert result == {}
+    # THEN the outputs are exactly as expected
+    assert out1.item() == 1.0 + 10.0
+    assert out2.item() == 2.0 + 10.0
+    assert out3.item() == 3.0 + 10.0
 
 
 def test_prepare_input_register_validates_inputs() -> None:

@@ -103,6 +103,36 @@ class ActivationDataset(Collection[Any]):
 
         return ActivationDataset(batches)
 
+    @staticmethod
+    def broadcast(datasets: Sequence["ActivationDataset"]) -> list["ActivationDataset"]:
+        """Broadcast datasets to a common length.
+
+        Datasets of length 1 are repeated to match N-length datasets.
+
+        Args:
+            datasets: Datasets to broadcast.
+
+        Returns:
+            List of datasets all at the same length.
+
+        Raises:
+            ValueError: If there are multiple non-1 lengths.
+        """
+        if not datasets:
+            return []
+        lengths = {len(ds) for ds in datasets}
+        if len(lengths) <= 1:
+            return list(datasets)
+        lengths.discard(1)
+        if len(lengths) != 1:
+            msg = (
+                "Dataset length mismatch: broadcasting supports 1->N but not "
+                f"arbitrary mismatches. Lengths: {[len(ds) for ds in datasets]}."
+            )
+            raise ValueError(msg)
+        target = lengths.pop()
+        return [ActivationDataset(ds.batches * target) if len(ds) == 1 else ds for ds in datasets]
+
 
 ActivationRegister: TypeAlias = dict[_BaseRef, dict[ContextManager[None], ActivationDataset | Any]]
 
@@ -216,31 +246,28 @@ class CallModule(Instruction):
     def _gather_datasets(
         self, register: ActivationRegister, context: ContextManager[None]
     ) -> tuple[list[ActivationDataset], dict[str, ActivationDataset]]:
-        """Extract and validate positional and keyword argument datasets given a context name.
+        """Extract and broadcast positional and keyword argument datasets for a context.
 
         Args:
             register: Register with contexts as keys and datasets as values.
             context: The context which has generated the required datasets.
 
         Returns:
-            Tuple of (arg_datasets, kwarg_datasets).
+            Tuple of (arg_datasets, kwarg_datasets), broadcast to a common length.
         """
-        # The batch size is the length of any data loader we catch that is not a Constant.
-        # If there is no data loader the batch size is 1 (run once).
-        batch_size = 1
-        for ref in itertools.chain(self.args, self.kwargs.values()):
-            if not isinstance(ref, Const):
-                batch_size = len(register[ref][context])
-                break
 
         def get_dataset(ref: _BaseRef) -> ActivationDataset:
-            # Repeat constant values for the entire batch.
             if isinstance(ref, Const):
-                return ActivationDataset([ref.value] * batch_size)
+                return ActivationDataset([ref.value])
             return register[ref][context]
 
         arg_datasets = [get_dataset(ref) for ref in self.args]
         kwarg_datasets = {key: get_dataset(ref) for key, ref in self.kwargs.items()}
+
+        broadcasted = ActivationDataset.broadcast([*arg_datasets, *kwarg_datasets.values()])
+        n_args = len(arg_datasets)
+        arg_datasets = broadcasted[:n_args]
+        kwarg_datasets = dict(zip(kwarg_datasets.keys(), broadcasted[n_args:]))
 
         return arg_datasets, kwarg_datasets
 
@@ -250,9 +277,8 @@ class CallModule(Instruction):
         """Forward pass arg and kwarg datasets through the module.
 
         Args:
-            arg_datasets: List of argument datasets.
+            arg_datasets: List of argument datasets, broadcast to common length.
             kwarg_datasets: Dictionary of keyword argument datasets.
-            context: Context manager to use during execution.
 
         Returns:
             List of module outputs for each batch.
@@ -264,21 +290,10 @@ class CallModule(Instruction):
         kwarg_keys = list(kwarg_datasets.keys())
         num_args = len(arg_datasets)
 
-        try:
-            for batch_data in zip(*arg_datasets, *kwarg_datasets.values(), strict=True):
-                batch_args = batch_data[:num_args]
-                batch_kwargs = dict(zip(kwarg_keys, batch_data[num_args:]))
-                outputs.append(self.module(*batch_args, **batch_kwargs))
-        except ValueError as e:
-            if "zip()" in str(e):
-                msg = (
-                    f"Dataset length mismatch in CallModule for {self.module.__class__.__name__}. "
-                    f"All inputs must have the same number of batches. "
-                    f"Please verify that all datasets passed to this module have matching lengths."
-                )
-                raise ValueError(msg) from e
-            else:
-                raise
+        for batch_data in zip(*arg_datasets, *kwarg_datasets.values(), strict=True):
+            batch_args = batch_data[:num_args]
+            batch_kwargs = dict(zip(kwarg_keys, batch_data[num_args:]))
+            outputs.append(self.module(*batch_args, **batch_kwargs))
 
         return outputs
 
