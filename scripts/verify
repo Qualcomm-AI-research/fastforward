@@ -48,7 +48,7 @@ function shell-check ()
 
 function markers-check()
 {
-  ! grep -riI --exclude=verify --exclude-dir=.cache --exclude-dir=.git --exclude-dir=.mypy_cache -e fixme -e xxx -e todo
+  ! grep -riI --exclude=verify --exclude='*.ambr' --exclude-dir=.cache --exclude-dir=.git --exclude-dir=.mypy_cache -e fixme -e xxx -e todo
 }
 
 function _help()
