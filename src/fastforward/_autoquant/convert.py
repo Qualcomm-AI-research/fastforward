@@ -117,16 +117,19 @@ def convert_function(
         func_ctx.method_type.name if func_ctx.method_type is not None else None,
     )
     src_cst = src.cst(NodeType=libcst.FunctionDef)
+    required_imports_extra: set[ImportSymbol] = set()
     dst_cst = autoquantize_funcdef(
         src_cst=src_cst,
         optable=optable,
         func_ctx=func_ctx,
         quantizer_refs=quantizer_refs,
+        required_imports_extra=required_imports_extra,
     )
 
     assert isinstance(dst_cst, libcst.FunctionDef)
     dst_cst = _rewrite_super_calls(dst_cst, src=src, func_ctx=func_ctx)
     required_imports = _infer_imports(src, dst_cst)
+    required_imports |= required_imports_extra
 
     return QuantizedFunctionBuilder(dst_cst, required_imports, origin=func_ctx)
 
@@ -136,19 +139,26 @@ def autoquantize_funcdef(
     optable: OperatorTable,
     func_ctx: FunctionContext,
     quantizer_refs: QuantizerReferenceCollection,
+    required_imports_extra: set[ImportSymbol] | None = None,
 ) -> libcst.FunctionDef:
     """Autoquantize a single `FuncDef` with given `optable`."""
+    counterpart_replacer = QuantizedCounterpartReplacer(
+        optable=optable,
+        func_ctx=func_ctx,
+        quantizer_refs=quantizer_refs,
+    )
     pm = PassManager(
         passes=[
-            QuantizedCounterpartReplacer(
-                optable=optable,
-                func_ctx=func_ctx,
-                quantizer_refs=quantizer_refs,
-            ),
+            counterpart_replacer,
             QuantizerFunctionTransformer(quantizer_refs=quantizer_refs),
         ]
     )
-    return pm(src_cst)
+    converted = pm(src_cst)
+
+    if required_imports_extra is not None:
+        required_imports_extra.update(counterpart_replacer.required_imports_extra)
+
+    return converted
 
 
 def _infer_imports(src: PySource, cst: libcst.FunctionDef) -> set[ImportSymbol]:

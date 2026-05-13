@@ -13,6 +13,7 @@ import libcst
 import libcst.helpers
 import libcst.matchers as m
 
+from libcst.metadata import ParentNodeProvider
 from libcst.metadata.scope_provider import Scope
 from typing_extensions import override
 
@@ -23,7 +24,7 @@ from fastforward._autoquant.cst.node_creation import (
 from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
-from fastforward._autoquant.pysource.scope import ScopeProvider
+from fastforward._autoquant.pysource.scope import ImportSymbol, ScopeProvider
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
@@ -593,6 +594,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
 
 
 class QuantizedCounterpartReplacer(libcst.CSTTransformer):
+    METADATA_DEPENDENCIES = (ParentNodeProvider,)
     """Replaces function calls with their quantized counterparts in the CST.
 
     This transformer identifies function calls, unary operations, and binary operations
@@ -628,6 +630,11 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         self._optable = optable
         self._func_ctx = func_ctx
         self._quantizer_refs = quantizer_refs
+        self._required_imports_extra: set[ImportSymbol] = set()
+
+    @property
+    def required_imports_extra(self) -> set[ImportSymbol]:
+        return set(self._required_imports_extra)
 
     def leave_ReplacementCandidate(
         self,
@@ -661,6 +668,47 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
             fn_name=original_func_name,
             func_ref=original_func,
             orig_args=original_args,
+        )
+
+    @override
+    def leave_Call(
+        self,
+        original_node: libcst.Call,
+        updated_node: libcst.Call,
+    ) -> libcst.BaseExpression:
+        """Second-chance conversion for unwrapped callsites.
+
+        This ensures callsite consistency when type-driven candidate marking skipped
+        a call that still targets a resolvable in-module Python callable.
+        """
+        # Calls already wrapped as ReplacementCandidate are handled by
+        # leave_ReplacementCandidate and should not be processed again.
+        parent = self.get_metadata(ParentNodeProvider, original_node, None)
+        if isinstance(parent, ReplacementCandidate):
+            return updated_node
+
+        if m.matches(updated_node.func, m.Name("super")):
+            return updated_node
+
+        fn_name = libcst.helpers.get_full_name_for_node(updated_node)
+        func_ref = _resolve_reference(fn_name, self._func_ctx)
+
+        if fn_name is None or func_ref is None:
+            return updated_node
+
+        # Restrict to inspectable Python callables only.
+        if inspect.isbuiltin(func_ref) or not inspect.isfunction(func_ref):
+            return updated_node
+
+        source_file = inspect.getsourcefile(func_ref)
+        if source_file is None or source_file.startswith("<frozen "):
+            return updated_node
+
+        return self._create_quantized_call(
+            node=ReplacementCandidate(updated_node),
+            fn_name=fn_name,
+            func_ref=func_ref,
+            orig_args=updated_node.args,
         )
 
     def _create_quantized_call(
@@ -699,6 +747,14 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         except KeyError:
             # We don't have a quantized replacement for this function, skip it.
             return None
+
+        # Resolved dispatch names can reference external roots (e.g.
+        # `my_quantized_ops.interpolate`) that are not present in source scope.
+        # Record these as extra imports so generated modules do not emit
+        # undefined root names.
+        root = _get_root(func)
+        if isinstance(root, libcst.Name):
+            self._required_imports_extra.add(ImportSymbol(name=root.value))
 
         extra_args: list[libcst.Arg] = []
 
