@@ -8,11 +8,13 @@ import logging
 import multiprocessing as mp
 import operator
 import pathlib
+import subprocess
 import sys
 import types
 
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Iterator, TypeAlias, cast
+from unittest import mock
 from unittest.mock import patch
 
 import fastforward
@@ -480,6 +482,80 @@ class ExampleModule19(torch.nn.Module):
 
 # --------------------------------------------------------------------------------
 
+# When a caller function invokes two DIFFERENT helpers that each perform the same
+# operation type (e.g. multiply), both helpers produce a quantizer with the same
+# base name. The caller must receive DISTINCT kw-only quantizer parameters — one
+# set per helper call — with no name collision. The naming convention prefixes each
+# propagated parameter with the callee's function name to guarantee uniqueness.
+#
+# Example: both _two_helper_mul_a and _two_helper_mul_b need "quantizer_mul".
+# The caller _two_helper_caller receives:
+#   quantizer__two_helper_mul_a_mul  (propagated from _two_helper_mul_a)
+#   quantizer__two_helper_mul_b_mul  (propagated from _two_helper_mul_b)
+
+
+def _two_helper_mul_a(x: torch.Tensor) -> torch.Tensor:
+    return x * 2
+
+
+def _two_helper_mul_b(x: torch.Tensor) -> torch.Tensor:
+    return x * 3
+
+
+def _two_helper_caller(x: torch.Tensor) -> torch.Tensor:
+    return _two_helper_mul_a(x) + _two_helper_mul_b(x)
+
+
+class ExampleModuleTwoHelpersSameQuantizerName(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return _two_helper_caller(x)
+
+
+# --------------------------------------------------------------------------------
+
+# When a helper passes itself as a Name reference to another function (the
+# "dispatch trampoline" pattern), autoquant must rename that reference after
+# the helper is renamed.  torch.nn.functional.group_norm exhibits this via
+# handle_torch_function(group_norm, ...).  We replicate the pattern here with
+# a synthetic helper to avoid depending on torch-internal source that varies
+# across versions.
+
+
+def _dispatch_trampoline(fn: Any, *args: Any) -> torch.Tensor:
+    return fn(*args)  # type: ignore[no-any-return]
+
+
+def _self_ref_op(x: torch.Tensor) -> torch.Tensor:
+    return _dispatch_trampoline(_self_ref_op, x + x)
+
+
+class ExampleModule20(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return _self_ref_op(x)
+
+
+# --------------------------------------------------------------------------------
+
+# When a helper calls itself recursively, _propagate_quantizers truncates the
+# cycle at first re-occurrence so the self-call requires exactly the function's
+# own local quantizer set — no extra parameters are added. The generated
+# recursive call therefore uses identity forwarding: quantizer_X=quantizer_X.
+# Without this forwarding, every recursive invocation would raise TypeError.
+
+
+def _recursive_mul(x: torch.Tensor, n: int) -> torch.Tensor:
+    if n <= 0:
+        return x * 2  # base case — local mul op → quantizer_mul
+    return _recursive_mul(x * 2, n - 1)  # recursive step, same op
+
+
+class ExampleModule21(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return _recursive_mul(x, 3)
+
+
+# --------------------------------------------------------------------------------
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -497,8 +573,10 @@ class ExampleModule19(torch.nn.Module):
         ExampleModule17(),
         ExampleModule18(),
         ExampleModule19(),
+        ExampleModule20(),
+        ExampleModule21(),
     ],
-    ids=[f"case-{i}" for i in range(8, 20)],
+    ids=[f"case-{i}" for i in range(8, 22)],
 )
 def test_autoquant_end_to_end(
     input_module: torch.nn.Module,
@@ -553,6 +631,32 @@ class ExampleModule1B(torch.nn.Module):
         return torch.nn.functional.linear(y, y)
 
 
+class _IssueAHelperRefModule(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attn = torch.nn.MultiheadAttention(embed_dim=8, num_heads=2, batch_first=True)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y, _ = self.attn(x, x, x)
+        return y  # type: ignore[no-any-return]
+
+
+def _issue_b_external_dispatch(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    return x + y
+
+
+def _issue_b_dispatch_op(
+    x: torch.Tensor, y: torch.Tensor, *, output_quantizer: fastforward.nn.Quantizer
+) -> torch.Tensor:
+    del output_quantizer
+    return x + y
+
+
+class _IssueBDispatchImportModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return _issue_b_external_dispatch(x, x)
+
+
 def test_pattern_based_replacement(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
     module = ExampleModule1B()
     rule = ff.autoquant.PatternRule.from_str(
@@ -582,6 +686,163 @@ def test_autoquant_prefers_attribute_name_for_module_alias_resolution(
     actual = autoquant_with_defaults(input_module, use_type_inference=False)
     actual = codeformat_with_defaults(actual)
     assert snapshot == actual
+
+
+def test_helper_public_api_refs_follow_renamed_helpers() -> None:
+    code = autoquant_with_defaults(_IssueAHelperRefModule(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    assert "quantized_handle_torch_function(\n            multi_head_attention_forward," not in code
+    assert "quantized_handle_torch_function(\n            relu," not in code
+    assert "quantized_handle_torch_function(\n            group_norm," not in code
+    assert (
+        "quantized_handle_torch_function(\n            quantized_multi_head_attention_forward,"
+        in code
+    )
+    assert "quantized_handle_torch_function(\n            quantized_softmax," in code
+
+
+def _extract_mha_quantizer_params(
+    code: str, function_name: str = "quantized_multi_head_attention_forward"
+) -> set[str]:
+    signature_anchor = f"def {function_name}("
+    start = code.index(signature_anchor)
+    end = code.index(") ->", start)
+    signature = code[start:end]
+
+    quantizers: set[str] = set()
+    for line in signature.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("quantizer_") and ": fastforward.nn.Quantizer" in stripped:
+            quantizers.add(stripped.split(":", maxsplit=1)[0])
+
+    return quantizers
+
+
+@pytest.mark.slow
+def test_autoquant_caller_has_distinct_quantizers_for_two_helpers_sharing_op_name() -> None:
+    # GIVEN a module where forward calls two different helpers that each perform
+    # the same operation type (multiply). Both helpers receive a quantizer with the
+    # same base name ("mul"). The caller that invokes both must receive DISTINCT
+    # kw-only quantizer parameters — one set per helper — with no name collision.
+    # Naming convention: each propagated param is prefixed with the callee's name.
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(
+        ExampleModuleTwoHelpersSameQuantizerName(), use_type_inference=False
+    )
+    code = codeformat_with_defaults(code)
+
+    # THEN each helper is quantized and has a quantizer param in its own signature
+    helper_a_quantizers = _extract_mha_quantizer_params(code, "quantized__two_helper_mul_a")
+    helper_b_quantizers = _extract_mha_quantizer_params(code, "quantized__two_helper_mul_b")
+    assert helper_a_quantizers, "quantized__two_helper_mul_a must have quantizer params"
+    assert helper_b_quantizers, "quantized__two_helper_mul_b must have quantizer params"
+
+    # THEN the caller that invokes both helpers has distinct quantizer params for each.
+    # If disambiguation failed, the two sets would collapse into one (name collision).
+    caller_quantizers = _extract_mha_quantizer_params(code, "quantized__two_helper_caller")
+    assert len(caller_quantizers) >= len(helper_a_quantizers) + len(helper_b_quantizers), (
+        f"quantized__two_helper_caller must have at least "
+        f"{len(helper_a_quantizers)} + {len(helper_b_quantizers)} distinct quantizer params "
+        f"(one set per helper call), got: {sorted(caller_quantizers)}"
+    )
+
+    # THEN each set is prefixed with its helper's function name, making them disjoint
+    a_params_in_caller = {q for q in caller_quantizers if "_two_helper_mul_a_" in q}
+    b_params_in_caller = {q for q in caller_quantizers if "_two_helper_mul_b_" in q}
+    assert a_params_in_caller, (
+        "caller quantizer params must include params prefixed with _two_helper_mul_a"
+    )
+    assert b_params_in_caller, (
+        "caller quantizer params must include params prefixed with _two_helper_mul_b"
+    )
+    assert a_params_in_caller.isdisjoint(b_params_in_caller), (
+        f"quantizer names for both helpers must be disjoint (no collision), "
+        f"but found overlap: {a_params_in_caller & b_params_in_caller}"
+    )
+
+
+def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
+    table = OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
+    table.add(
+        "issue_b_external_dispatch(x: Tensor, y: Tensor) -> Tensor",
+        _issue_b_external_dispatch,
+        dispatch_op=_issue_b_dispatch_op,
+    )
+
+    original_dispatch_qualified_name = type(
+        next(iter(table.get(_issue_b_external_dispatch)))
+    ).dispatch_qualified_name
+
+    def _patched_dispatch_qualified_name(self: Any) -> str | None:
+        if self.identifier == "issue_b_external_dispatch":
+            return "sam3_quantized.interpolate"
+        return original_dispatch_qualified_name(self)
+
+    with mock.patch(
+        "fastforward._quantops.operator.Operator.dispatch_qualified_name",
+        autospec=True,
+        side_effect=_patched_dispatch_qualified_name,
+    ):
+        code = autoquant_with_defaults(
+            _IssueBDispatchImportModule(),
+            operator_table=table,
+            use_type_inference=False,
+        )
+
+    code = codeformat_with_defaults(code)
+
+    assert "import sam3_quantized" in code
+    assert "sam3_quantized.interpolate" in code
+
+
+def test_autoquant_cross_file_dispatch_namespace_contract(tmp_path: pathlib.Path) -> None:
+    table = OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
+    table.add(
+        "issue_b_external_dispatch(x: Tensor, y: Tensor) -> Tensor",
+        _issue_b_external_dispatch,
+        dispatch_op=_issue_b_dispatch_op,
+    )
+
+    original_dispatch_qualified_name = type(
+        next(iter(table.get(_issue_b_external_dispatch)))
+    ).dispatch_qualified_name
+
+    def _patched_dispatch_qualified_name(self: Any) -> str | None:
+        if self.identifier == "issue_b_external_dispatch":
+            return "sam3_quantized.interpolate"
+        return original_dispatch_qualified_name(self)
+
+    with mock.patch(
+        "fastforward._quantops.operator.Operator.dispatch_qualified_name",
+        autospec=True,
+        side_effect=_patched_dispatch_qualified_name,
+    ):
+        code = autoquant_with_defaults(
+            _IssueBDispatchImportModule(),
+            operator_table=table,
+            use_type_inference=False,
+        )
+
+    code = codeformat_with_defaults(code)
+    generated = tmp_path / "generated_autoquant_issue_c.py"
+    generated.write_text(code, encoding="utf-8")
+
+    stubs = tmp_path / "sam3_quantized.py"
+    stubs.write_text(
+        "def interpolate(*args, **kwargs):\n    return args[0]\n",
+        encoding="utf-8",
+    )
+
+    proc = subprocess.run(
+        ["ruff", "check", str(generated), "--select", "F821"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
 def test_module_builder_imports_fallback_for_invalid_symbols(
