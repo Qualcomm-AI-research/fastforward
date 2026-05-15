@@ -98,12 +98,11 @@ def stage_capture_impl_ff(
     modules: tuple[ff.nn.QuantizedModule, ...],
     sample_inputs: _SampleInputsT,
     context: dict[str, Any],
-) -> torch.fx.GraphModule:
-    """Capture FastForward quantized module and convert to quantization-free graph.
+) -> torch.export.ExportedProgram:
+    """Capture FastForward quantized module with ``torch.export.export``.
 
-    Export a FastForward QuantizedModule using torch.export, then applies passes to
-    annotate and propagate quantization specifications while removing the actual
-    quantization operations from the graph.
+    Export a FastForward QuantizedModule and return the resulting
+    ``torch.export.ExportedProgram``.
 
     Args:
         modules: Tuple containing a single FastForward QuantizedModule to be captured
@@ -111,21 +110,36 @@ def stage_capture_impl_ff(
         context: Pipeline context dictionary (unused in this stage)
 
     Returns:
-        A quantization-free graph module with FF quantization specs annotated on nodes
-        but quantization operations removed
+        ExportedProgram captured via ``torch.export.export``
 
     Raises:
         ValueError: If sample_inputs is empty
     """
     (module,) = modules
+    del context
     if len(sample_inputs) == 0:
         raise ValueError("sample_inputs cannot be empty")
 
     sample_args, sample_kwargs = sample_inputs[0]
-    custom_translation_table = context.get("torch_export_decomp_table", {})
 
     with ff.export_mode(True), torch.no_grad(), ff.strict_quantization(False):
-        exported = torch.export.export(module, sample_args, sample_kwargs)
+        return torch.export.export(module, sample_args, sample_kwargs)
+
+
+def stage_convert_captured_impl_ff(
+    modules: tuple[torch.export.ExportedProgram, ...],
+    sample_inputs: _SampleInputsT,
+    context: dict[str, Any],
+) -> torch.fx.GraphModule:
+    """Convert captured ExportedProgram to quantization-free graph module.
+
+    This stage applies decomposition, materializes a graph module, then applies
+    FF quantization-spec annotation/propagation passes while removing concrete
+    quantization operations from the graph.
+    """
+    del sample_inputs
+    (exported,) = modules
+    custom_translation_table = context.get("torch_export_decomp_table", {})
 
     if version.parse(torch.__version__) < version.parse("2.6"):
         _decomp_table = dict(torch._decomp.core_aten_decompositions())

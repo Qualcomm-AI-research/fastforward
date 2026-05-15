@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from typing import cast
+
 import fastforward as ff
 import pytest
 import torch
@@ -10,6 +12,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     _SampleInputsT,
     stage_capture_impl_ff,
     stage_cleanup_ff_quantizer_artifacts,
+    stage_convert_captured_impl_ff,
     stage_fp_eval,
     stage_passthrough_ff_module,
     stage_quantized_eval,
@@ -91,6 +94,47 @@ class _LinearProbeQuantizedModule(ff.nn.QuantizedModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return F.linear(x, self.weight, self.bias)
+
+
+class _MockExportedProgram:
+    def __init__(self, graph_module: torch.fx.GraphModule) -> None:
+        self._graph_module = graph_module
+
+    def run_decompositions(
+        self, _decomp_table: dict[torch._ops.OperatorBase, object]
+    ) -> "_MockExportedProgram":
+        return self
+
+    def module(self) -> torch.fx.GraphModule:
+        return self._graph_module
+
+
+class _QuantParamHost(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.register_buffer("scale", torch.tensor([0.5], dtype=torch.float32))
+        self.register_buffer("offset", torch.tensor([10.0], dtype=torch.float32))
+
+
+def _build_mock_exported_program_with_quantize_nodes() -> _MockExportedProgram:
+    root = _QuantParamHost()
+    graph = torch.fx.Graph()
+
+    input_node = graph.placeholder("x")
+    scale_node = graph.get_attr("scale")
+    offset_node = graph.get_attr("offset")
+    quantize_node = graph.call_function(
+        torch.ops.fastforward.quantize_by_tile.default,
+        args=(input_node, scale_node, (1,), 8.0, torch.int8, offset_node),
+    )
+    dequantize_node = graph.call_function(
+        torch.ops.fastforward.dequantize_by_tile.default,
+        args=(quantize_node, scale_node, (1,), offset_node, torch.float32),
+    )
+    graph.output(dequantize_node)
+
+    module: torch.fx.GraphModule = torch.fx.GraphModule(root, graph)
+    return _MockExportedProgram(module)
 
 
 def _build_graph_module_with_unused_get_attr_quantizer_reference() -> tuple[
@@ -201,16 +245,46 @@ def test_stage_capture_impl_ff_raises_when_sample_inputs_is_empty() -> None:
         stage_capture_impl_ff((_IdentityQuantizedModule(),), [], context={})
 
 
-def test_stage_capture_impl_ff_returns_graph_module_with_valid_sample_inputs() -> None:
+def test_stage_capture_impl_ff_returns_exported_program_with_valid_sample_inputs() -> None:
     # GIVEN: A module with a valid sample input.
     module = _IdentityQuantizedModule()
     sample_inputs: _SampleInputsT = [((torch.randn(1, 4),), {})]
 
     # WHEN: Capturing the module for export.
-    captured_module = stage_capture_impl_ff((module,), sample_inputs, context={})
+    exported_program = stage_capture_impl_ff((module,), sample_inputs, context={})
 
-    # THEN: The stage should return a captured FX GraphModule.
+    # THEN: The stage should return an ExportedProgram containing the captured sample inputs.
+    assert isinstance(exported_program, torch.export.ExportedProgram)
+    captured_args, captured_kwargs = exported_program.example_inputs
+    expected_args, expected_kwargs = sample_inputs[0]
+    assert len(captured_args) == len(expected_args)
+    assert torch.equal(captured_args[0], expected_args[0])
+    assert captured_kwargs == expected_kwargs
+
+    # THEN: Replaying the exported program with captured inputs should match the module output.
+    with torch.no_grad():
+        expected_output = module(*expected_args, **expected_kwargs)
+        captured_output = exported_program.module()(*captured_args, **captured_kwargs)
+    assert torch.equal(captured_output, expected_output)
+
+
+def test_stage_convert_captured_impl_ff_returns_graph_module() -> None:
+    # GIVEN: A mocked exported program with FF quantize/dequantize nodes.
+    sample_inputs: _SampleInputsT = [((torch.randn(1, 4),), {})]
+    exported = _build_mock_exported_program_with_quantize_nodes()
+
+    # WHEN: Converting captured export to a quantization-free graph module.
+    captured_module = stage_convert_captured_impl_ff(
+        (cast(torch.export.ExportedProgram, exported),), sample_inputs, context={}
+    )
+    call_targets = [
+        node.target for node in captured_module.graph.nodes if node.op == "call_function"
+    ]
+
+    # THEN: The stage should return a captured FX GraphModule with FF quant nodes removed.
     assert isinstance(captured_module, torch.fx.GraphModule)
+    assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
+    assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
 
 
 def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:
@@ -220,14 +294,19 @@ def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:
     if version.parse(torch.__version__) < version.parse("2.6"):
         default_decomp_table = torch._decomp.core_aten_decompositions()
     else:
-        default_decomp_table = torch.export.default_decompositions()  # type: ignore[attr-defined]
+        default_decomp_table = torch.export.default_decompositions()  # type: ignore[attr-defined,unused-ignore]
     if torch.ops.aten.linear.default not in default_decomp_table:
         pytest.skip("aten.linear.default is not present in the default decomposition table")
 
-    # WHEN: Capturing once with full decompositions and once excluding linear decomposition.
-    captured_default = stage_capture_impl_ff((module,), sample_inputs, context={})
-    captured_linear_preserved = stage_capture_impl_ff(
-        (module,),
+    # WHEN: Capturing once and converting with full decompositions,
+    # and once excluding linear decomposition.
+    exported_default = stage_capture_impl_ff((module,), sample_inputs, context={})
+    exported_linear_preserved = stage_capture_impl_ff((module,), sample_inputs, context={})
+    captured_default = stage_convert_captured_impl_ff(
+        (exported_default,), sample_inputs, context={}
+    )
+    captured_linear_preserved = stage_convert_captured_impl_ff(
+        (exported_linear_preserved,),
         sample_inputs,
         context={"torch_export_decomp_table": {torch.ops.aten.linear.default: True}},
     )

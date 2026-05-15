@@ -7,6 +7,7 @@ from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
     stage_cleanup_ff_quantizer_artifacts,
+    stage_convert_captured_impl_ff,
     stage_passthrough_ff_module,
 )
 from fastforward.export.stages.onnx.onnx_export_stages import (
@@ -37,9 +38,12 @@ def qnn_onnx_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
         stage_passthrough_ff_module, "source_ff_module"
     )
     capture_ff_stage = onnx_pipeline.register_stage(stage_capture_impl_ff, "capture_ff")
+    convert_captured_ff_stage = onnx_pipeline.register_stage(
+        stage_convert_captured_impl_ff, "convert_captured_ff"
+    ).depends_on(capture_ff_stage)
     cleanup_ff_quantizer_artifacts_stage = onnx_pipeline.register_stage(
         stage_cleanup_ff_quantizer_artifacts, "cleanup_ff_quantizer_artifacts"
-    ).depends_on(capture_ff_stage, source_ff_module_stage)
+    ).depends_on(convert_captured_ff_stage, source_ff_module_stage)
     fx_to_onnx_program = onnx_pipeline.register_stage(
         stage_fx_to_onnx_program, "fx_to_onnx_program"
     ).depends_on(cleanup_ff_quantizer_artifacts_stage)
