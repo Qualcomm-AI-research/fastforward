@@ -15,15 +15,6 @@ def _fix_reshape_allowzero(model: onnxscript.ir.Model) -> None:
             del node.attributes["allowzero"]
 
 
-def _rename_nodes_and_update_encodings(
-    torch_onnx_model: onnxscript.ir.Model, quantization_logs: dict[str, Any], name_prefix: str
-) -> tuple[onnxscript.ir.Model, dict[str, Any]]:
-    """Rename ONNX nodes and update the encodings dictionary."""
-    torch_onnx_model, name_mapping = _fix_onnx_names(torch_onnx_model, name_prefix)
-    quantization_logs = _fix_encoding_names(quantization_logs, name_mapping)
-    return torch_onnx_model, quantization_logs
-
-
 def _fix_onnx_names(
     torch_onnx_model: onnxscript.ir.Model, new_name_prefix: str
 ) -> tuple[onnxscript.ir.Model, dict[str, str]]:

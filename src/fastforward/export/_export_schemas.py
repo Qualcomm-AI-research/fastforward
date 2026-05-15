@@ -11,7 +11,7 @@ import torch
 import fastforward as ff
 
 from fastforward.common import ensure_tensor
-from fastforward.export._export_helpers import _strict_cast_to_int
+from fastforward.exceptions import ExportError
 from fastforward.export._export_types import (
     ProcessedQuantParams,
     QNNDefaultConfig,
@@ -23,6 +23,14 @@ from fastforward.quantization.affine import integer_minimum, quantization_range
 from fastforward.quantization.granularity import granularity_from_sizes
 
 logger = logging.getLogger(__name__)
+
+
+def _strict_cast_to_int(value: float | int, value_name: str) -> int:
+    if not isinstance(value, int) and not value.is_integer():
+        msg = f"QNN requires the {value_name} value to be an integer (instead got {value})"
+        raise ExportError(msg)
+
+    return int(value)
 
 
 def _preprocess_quantization_params(

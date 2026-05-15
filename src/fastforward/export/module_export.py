@@ -15,7 +15,7 @@ import pickle
 
 from contextlib import ExitStack
 from types import TracebackType
-from typing import Any, overload
+from typing import Any, Callable, TypeAlias, overload
 
 import onnxruntime  # type: ignore[import-untyped]
 import optree
@@ -29,12 +29,15 @@ from fastforward.export._export_schemas import (
     V1SchemaHandler,
 )
 from fastforward.export._export_types import QuantParametersDict
+from fastforward.export.pipeline import ExportOrchestrator, PipelineRegistry
+from fastforward.export.pipeline.core import Pipeline
 from fastforward.mpath import MPathCollection
 from fastforward.overrides import disable_quantization
 from fastforward.quantization.affine.function import StaticAffineQuantParams
 from fastforward.quantized_tensor import QuantizedTensor
 
 logger = logging.getLogger(__name__)
+_PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Pipeline]
 
 
 class ModuleIORecorder:
@@ -118,11 +121,15 @@ def export_modules(
     model_name: str,
     output_path: pathlib.Path,
     kwargs: None | dict[str, Any] = None,
-    enable_encodings_propagation: bool = False,
     verbose: bool | None = None,
     encoding_schema_handler: EncodingSchemaHandler = V1SchemaHandler(),
     alter_node_names: bool = False,
     onnx_export_options: dict[str, Any] | None = None,
+    target: str = "qnn",
+    format: str = "onnx",
+    pipeline_factory: _PipelineFactoryT | None = None,
+    orchestrator: ExportOrchestrator | None = None,
+    registry: PipelineRegistry | None = None,
 ) -> dict[str, pathlib.Path]:
     """Export a collection of modules from a given model.
 
@@ -151,8 +158,6 @@ def export_modules(
         model_name: The name of the model, the output directory will be named after it.
         kwargs: The kwargs used at inference for the torch model
         output_path: Path to the exported artifacts.
-        enable_encodings_propagation: Option to propagate the quantization encodings through as many
-            view-type operations as possible for each exported graph.
         verbose: Whether to print verbose messages. If `None`, some messages will be printed.
         encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings
             file schema
@@ -164,6 +169,11 @@ def export_modules(
             the associated weight transposition will be removed from the graph and the weights permanently transposed.
             If this is combined with per channel quantization on the weights then your encodings will be pointing
             to the wrong dimension of the weights.
+        target: Export target used for pipeline resolution when `pipeline_factory` is not provided.
+        format: Export format used for pipeline resolution when `pipeline_factory` is not provided.
+        pipeline_factory: Optional direct pipeline factory override for module export requests.
+        orchestrator: Optional orchestrator instance used to run all module exports.
+        registry: Optional registry used when constructing orchestrator in `export(...)`.
 
     Returns:
         paths: A dictionary of module names to exported paths (location where the encodings
@@ -226,12 +236,16 @@ def export_modules(
             module_input_data,
             module_output_path,
             module_name,
+            target=target,
+            format=format,
             model_kwargs=module_input_kwargs,
-            enable_encodings_propagation=enable_encodings_propagation,
             verbose=verbose,
             encoding_schema_handler=encoding_schema_handler,
             alter_node_names=alter_node_names,
             onnx_export_options=onnx_options,
+            pipeline_factory=pipeline_factory,
+            orchestrator=orchestrator,
+            registry=registry,
         )
 
         module_input_quantizer_settings = module_io_recorder.input_quantizer_settings

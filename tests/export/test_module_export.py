@@ -173,14 +173,25 @@ def test_schema_handler_cleared_between_modules(
         with open(stored_encodings_file, "r") as f:
             stored_dictionary = json.load(f)
 
-        if not isinstance(schema_handler, V2SchemaHandler):
-            # Two parameter encodings (weight/bias)
-            assert len(stored_dictionary["param_encodings"]) == 2
-            # Two activation encodings (input/output)
-            assert len(stored_dictionary["activation_encodings"]) == 2
+        if isinstance(schema_handler, LegacySchemaHandler):
+            param_names = set(stored_dictionary["param_encodings"].keys())
+            assert "bias" in param_names
+            assert any(name in param_names for name in _WEIGHT_NAME_CANDIDATES)
+            # Always-on propagation may add at least 1 activation encoding.
+            assert len(stored_dictionary["activation_encodings"]) > 0
+        elif isinstance(schema_handler, V1SchemaHandler):
+            param_names = {enc["name"] for enc in stored_dictionary["param_encodings"]}
+            assert "bias" in param_names
+            assert any(name in param_names for name in _WEIGHT_NAME_CANDIDATES)
+            # Always-on propagation may add at least 1 activation encoding.
+            assert len(stored_dictionary["activation_encodings"]) > 0
         else:
-            # All the encodings are in a signel dictionary
-            assert len(stored_dictionary["encodings"]) == 4
+            # V2 stores params/activations together; ensure weight/bias are present and
+            all_names = {enc["name"] for enc in stored_dictionary["encodings"]}
+            assert "bias" in all_names
+            assert any(name in all_names for name in _WEIGHT_NAME_CANDIDATES)
+            # At least 2 because weight and bias should always be present + any activation encodings.
+            assert len(stored_dictionary["encodings"]) > 2
 
     cleared_dictionary = schema_handler.build_encodings_dictionary()
     if not isinstance(schema_handler, V2SchemaHandler):

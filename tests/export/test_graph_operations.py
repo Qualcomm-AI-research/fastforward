@@ -53,51 +53,35 @@ def test_encodings_propagation(
         )
         estimate_model_ranges(data)
 
-    # GIVEN the exported artifacts from that model and its original encodings file.
+    # WHEN exporting the model.
     export(
         quant_model,
         (data,),
         output_directory,
         model_name,
-        enable_encodings_propagation=False,
         encoding_schema_handler=schema_handler,
+        # Keep optimize=True for test parity and pin to an opset supported by
+        # the ONNXScript conversion path used in CI.
+        onnx_export_options={"optimize": True, "opset_version": 17},
     )
 
     with open(encodings_file_path, "r") as file:
-        org_encodings_dictionary = json.load(file)
+        encodings_dictionary = json.load(file)
 
-    # WHEN exporting the same model with encoding propagation.
-    export(
-        quant_model,
-        (data,),
-        output_directory,
-        model_name,
-        enable_encodings_propagation=True,
-        encoding_schema_handler=schema_handler,
-    )
-
-    with open(encodings_file_path, "r") as file:
-        new_encodings_dictionary = json.load(file)
-
-    # THEN all original encodings should be preserved, and new ones added.
-    org_names = get_names_from_encodings(org_encodings_dictionary, schema_handler)
-    new_names = get_names_from_encodings(new_encodings_dictionary, schema_handler)
-    assert org_names <= new_names
-
-    # THEN the encodings for new activations should be associated as displayed in the below dictionary.
+    # THEN propagated activation encodings should be associated as displayed in the below dictionary.
     # Case 1: these are derived from other activations
     activation_to_activation_association = {"view": "mm", "view_1": "mm"}
 
     for prop_encoding, org_encoding in activation_to_activation_association.items():
         org_encoding_value = get_encoding_values_from_name(
-            org_encodings_dictionary, org_encoding, schema_handler
+            encodings_dictionary, org_encoding, schema_handler
         )
         pror_encoding_value = get_encoding_values_from_name(
-            new_encodings_dictionary, prop_encoding, schema_handler
+            encodings_dictionary, prop_encoding, schema_handler
         )
         assert_encodings_are_the_same(org_encoding_value, pror_encoding_value, schema_handler)
 
-    # THEN the encodings for new activations should be associated as displayed in the below dictionary.
+    # THEN propagated activation encodings should be associated as displayed in the below dictionary.
     # Case 2: these are derived from parameters
     activation_to_parameter_association = {
         "permute": "fc1.weight",
@@ -107,53 +91,17 @@ def test_encodings_propagation(
 
     for prop_encoding, org_encoding in activation_to_parameter_association.items():
         org_encoding_value = get_encoding_values_from_name(
-            org_encodings_dictionary, org_encoding, schema_handler
+            encodings_dictionary, org_encoding, schema_handler
         )
         pror_encoding_value = get_encoding_values_from_name(
-            new_encodings_dictionary, prop_encoding, schema_handler
+            encodings_dictionary, prop_encoding, schema_handler
         )
         assert_encodings_are_the_same(org_encoding_value, pror_encoding_value, schema_handler)
 
     # THEN encodings should not have propagated to the following parameters as these are not quantized.
     non_existing_names = ["extra_weight", "_softmax", "mm_3"]
     for name in non_existing_names:
-        assert get_encoding_values_from_name(new_encodings_dictionary, name, schema_handler) is None
-
-
-def get_names_from_encodings(
-    encodings_dictionary: dict[str, Any], schema_handler: SchemaHandlerType
-) -> set[str]:
-    """Extract all encoding names from a dictionary based on schema type.
-
-    Different schema handlers store encodings in different structures:
-    - Legacy: separate activation_encodings and param_encodings dicts
-    - V1: separate lists with 'name' fields in each encoding
-    - V2: single list with 'name' fields in each encoding
-
-    Args:
-        encodings_dictionary: The encodings dictionary from export
-        schema_handler: Handler instance to determine extraction method
-
-    Returns:
-        Set of all encoding names found in the dictionary
-    """
-    if isinstance(schema_handler, LegacySchemaHandler):
-        activation_names = set(encodings_dictionary["activation_encodings"].keys())
-        parameter_names = set(encodings_dictionary["param_encodings"].keys())
-
-        return activation_names | parameter_names
-
-    elif isinstance(schema_handler, V1SchemaHandler):
-        activation_names = set([
-            enc["name"] for enc in encodings_dictionary["activation_encodings"]
-        ])
-        parameter_names = set([enc["name"] for enc in encodings_dictionary["param_encodings"]])
-
-        return activation_names | parameter_names
-    else:
-        names = set([enc["name"] for enc in encodings_dictionary["encodings"]])
-
-        return names
+        assert get_encoding_values_from_name(encodings_dictionary, name, schema_handler) is None
 
 
 def get_encoding_values_from_name(
