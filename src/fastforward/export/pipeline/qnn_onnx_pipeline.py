@@ -24,13 +24,95 @@ from fastforward.export.stages.onnx.onnx_export_stages import (
 
 
 def qnn_onnx_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
-    """Create ONNX/QNN pipeline starting from FastForward modules.
+    r"""Create the default FastForward -> ONNX -> QNN-encodings export pipeline.
+
+    This pipeline captures a quantized FastForward model, removes runtime-only
+    quantizer artifacts, emits an ONNX model, and writes a QNN-compatible
+    encodings file extracted from ONNX metadata.
+
+    High-level flow:
+
+    ```text
+    ff_model (pipeline input)
+        |
+        | +--> source_ff_module ---------------------+
+        |                                            |
+        | +--> capture_ff --> convert_captured_ff ---+
+                                                     |
+                                                     v
+                                         cleanup_ff_quantizer_artifacts
+                                                     |
+                                                     v
+                                                 fx_to_onnx_program
+                                                     |
+                                                     v
+                                             add_ff_quantization_metadata
+                                                     |
+                                                     v
+                                             alter_onnx_node_names
+                                                     |
+                                                     v
+                                             fix_onnx_reshape_allowzero
+                                                     |
+                                                     v
+                                         rename_onnx_input_output_names
+                                                 /               \
+                                                 v                 v
+                                 onnx_program_to_proto      (renamed ONNX IR)
+                                                 \               /
+                                                 v             v
+                                     copy_metadata_props_from_ir_to_proto
+                                                     |
+                                                     v
+                                                 save_onnx_proto
+                                                     |
+                                                     v
+                                             onnx_proto_to_encodings
+    ```
+
+    Why each stage exists:
+
+    - `source_ff_module`:
+      Keeps the original FF module available for multi-input stages that need both
+      the captured graph and source module context.
+    - `capture_ff`:
+      Exports to FX graph form, annotates FF quantization specs, and propagates
+      those specs through compatible view operations.
+    - `convert_captured_ff`:
+      Normalizes the captured representation to the concrete graph module format
+      expected by downstream cleanup/export stages.
+    - `cleanup_ff_quantizer_artifacts`:
+      Removes unused quantizer references/`get_attr` artifacts so the graph is
+      clean and backend-safe.
+    - `fx_to_onnx_program`:
+      Converts the cleaned FX graph to ONNX IR/program form.
+    - `add_ff_quantization_metadata`:
+      Transfers quantization specs from FX node metadata into ONNX metadata.
+      This is the source of truth for downstream encodings extraction.
+    - `alter_onnx_node_names`:
+      Applies deterministic node renaming to avoid backend name collisions.
+    - `fix_onnx_reshape_allowzero`:
+      Normalizes `Reshape` allowzero semantics for backend compatibility.
+    - `rename_onnx_input_output_names`:
+      Applies user-provided graph input/output names (or preserves defaults).
+    - `onnx_program_to_proto`:
+      Materializes a protobuf model for serialization and metadata copying.
+    - `copy_metadata_props_from_ir_to_proto`:
+      Ensures metadata written on ONNX IR objects is preserved in the protobuf
+      representation used for saving.
+    - `save_onnx_proto`:
+      Writes `<model_name>.onnx` to disk.
+    - `onnx_proto_to_encodings`:
+      Reads ONNX metadata and emits `<model_name>.encodings` in the configured
+      schema handler format.
 
     Args:
-        pipeline_kwargs: Dictionary of pipeline configuration parameters
+        pipeline_kwargs: Pipeline context/configuration consumed by the registered
+            stages (for example naming, export options, and schema handler).
 
     Returns:
-        ONNX/QNN pipeline for FF modules
+        A configured `Pipeline` instance that produces ONNX and encodings artifacts
+        for QNN ingestion.
     """
     onnx_pipeline = Pipeline(pipeline_kwargs)
 
