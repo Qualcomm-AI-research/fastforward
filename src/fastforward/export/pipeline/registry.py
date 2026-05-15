@@ -5,6 +5,7 @@ from typing import Any, Callable, TypeAlias
 
 from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.pipeline.qnn_onnx_pipeline import qnn_onnx_pipeline
+from fastforward.export.pipeline.qnn_onnx_qdq_pipeline import qnn_onnx_qdq_pipeline
 
 _PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Pipeline]
 
@@ -59,4 +60,5 @@ def build_default_registry() -> PipelineRegistry:
     """Build the default registry with built-in export pipelines."""
     registry = PipelineRegistry()
     registry.register("qnn", "onnx", qnn_onnx_pipeline)
+    registry.register("qnn", "onnx_qdq", qnn_onnx_qdq_pipeline)
     return registry

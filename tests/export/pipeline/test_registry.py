@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from fastforward.export.pipeline import Pipeline
-from fastforward.export.pipeline.registry import PipelineRegistry
+from fastforward.export.pipeline.registry import PipelineRegistry, build_default_registry
 
 
 def _dummy_factory(_context: dict[str, Any]) -> Pipeline:
@@ -53,3 +53,9 @@ def test_pipeline_registry_get_raises_when_missing() -> None:
     registry = PipelineRegistry()
     with pytest.raises(KeyError, match="No pipeline registered"):
         registry.get("qnn", "onnx")
+
+
+def test_build_default_registry_registers_qnn_onnx_qdq_pipeline() -> None:
+    registry = build_default_registry()
+    assert registry.has("qnn", "onnx")
+    assert registry.has("qnn", "onnx_qdq")

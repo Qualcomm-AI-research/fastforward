@@ -13,6 +13,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
     stage_cleanup_ff_quantizer_artifacts,
     stage_convert_captured_impl_ff,
+    stage_convert_captured_impl_ff_qdq,
     stage_fp_eval,
     stage_passthrough_ff_module,
     stage_quantized_eval,
@@ -285,6 +286,25 @@ def test_stage_convert_captured_impl_ff_returns_graph_module() -> None:
     assert isinstance(captured_module, torch.fx.GraphModule)
     assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
     assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
+
+
+def test_stage_convert_captured_impl_ff_qdq_preserves_ff_quant_nodes() -> None:
+    # GIVEN: A mocked exported program with FF quantize/dequantize nodes.
+    sample_inputs: _SampleInputsT = [((torch.randn(1, 4),), {})]
+    exported = _build_mock_exported_program_with_quantize_nodes()
+
+    # WHEN: Converting captured export to a qdq-oriented graph module.
+    captured_module = stage_convert_captured_impl_ff_qdq(
+        (cast(torch.export.ExportedProgram, exported),), sample_inputs, context={}
+    )
+    call_targets = [
+        node.target for node in captured_module.graph.nodes if node.op == "call_function"
+    ]
+
+    # THEN: FF custom quant ops should be preserved for ONNX custom lowering.
+    assert isinstance(captured_module, torch.fx.GraphModule)
+    assert torch.ops.fastforward.quantize_by_tile.default in call_targets
+    assert torch.ops.fastforward.dequantize_by_tile.default in call_targets
 
 
 def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:

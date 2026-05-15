@@ -26,7 +26,8 @@ def _ff_quantizer_spec(
 ) -> FFQuantizerSpec:
     """Get ff specific quantization spec for `node`."""
     if node.target is not torch.ops.fastforward.quantize_by_tile.default:  # type: ignore[misc,unused-ignore]
-        raise NotImplementedError("Unsupported target: %s" % node.target)
+        msg = f"Unsupported target: {node.target}"
+        raise NotImplementedError(msg)
 
     data, scale, tile_size, num_bits, _output_dtype, offset = node.args
 

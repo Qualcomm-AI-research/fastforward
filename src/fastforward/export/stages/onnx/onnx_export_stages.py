@@ -350,7 +350,8 @@ def stage_fx_to_onnx_program(
 
     # Get the first sample input for ONNX export
     if len(sample_inputs) == 0:
-        raise ValueError("sample_inputs cannot be empty for ONNX export")
+        msg = "sample_inputs cannot be empty for ONNX export"
+        raise ValueError(msg)
 
     sample_args, sample_kwargs = sample_inputs[0]
 
@@ -383,7 +384,8 @@ def stage_fx_to_onnx_program(
             **export_kwargs,
         )
     if onnx_program is None:
-        raise ExportError("torch.onnx.export returned None")
+        msg = "torch.onnx.export returned None"
+        raise ExportError(msg)
 
     return onnx_program
 

@@ -118,7 +118,8 @@ def stage_capture_impl_ff(
     (module,) = modules
     del context
     if len(sample_inputs) == 0:
-        raise ValueError("sample_inputs cannot be empty")
+        msg = "sample_inputs cannot be empty"
+        raise ValueError(msg)
 
     sample_args, sample_kwargs = sample_inputs[0]
 
@@ -161,6 +162,37 @@ def stage_convert_captured_impl_ff(
     quant_free_module.recompile()
 
     return quant_free_module
+
+
+def stage_convert_captured_impl_ff_qdq(
+    modules: tuple[torch.export.ExportedProgram, ...],
+    sample_inputs: _SampleInputsT,
+    context: dict[str, Any],
+) -> torch.fx.GraphModule:
+    """Convert captured ExportedProgram to FX GraphModule for QDQ-oriented flows.
+
+    This stage materializes an FX graph module from the captured program after
+    decomposition, but does not run FastForward quantization cleanup/annotation
+    passes. It is intended for pipelines that need to preserve quantized graph
+    structure for further rewriting.
+    """
+    del sample_inputs
+    (exported,) = modules
+    custom_translation_table = context.get("torch_export_decomp_table", {})
+
+    if version.parse(torch.__version__) < version.parse("2.6"):
+        _decomp_table = dict(torch._decomp.core_aten_decompositions())
+    else:
+        _decomp_table = dict(torch.export.default_decompositions())
+
+    for op, _ in custom_translation_table.items():
+        _decomp_table.pop(op, None)
+
+    exported = exported.run_decompositions(_decomp_table)
+    captured = exported.module()
+    captured.graph.eliminate_dead_code()
+    captured.recompile()
+    return cast(torch.fx.GraphModule, captured)
 
 
 def stage_passthrough_ff_module(

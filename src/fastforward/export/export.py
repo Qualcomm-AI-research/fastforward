@@ -56,7 +56,8 @@ def export(
 ) -> ExportArtifacts:
     """Export a model by constructing and executing a pipeline export request."""
     if orchestrator is not None and registry is not None:
-        raise ValueError("Pass either `orchestrator` or `registry`, not both.")
+        msg = "Pass either `orchestrator` or `registry`, not both."
+        raise ValueError(msg)
 
     qnn_options = QnnOnnxOptions(
         input_names=input_names,

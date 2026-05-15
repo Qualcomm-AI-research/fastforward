@@ -115,6 +115,104 @@ def test_ff_model_to_onnx_export(
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    ("weight_bits", "activation_bits", "rtol", "atol"),
+    [
+        (8, 8, 1e-2, 5e-3),
+        (4, 4, 1e-2, 5e-3),
+        (4, 8, 1e-2, 5e-3),
+    ],
+    ids=["w8a8", "w4a4", "w4a8"],
+)
+def test_ff_model_to_onnx_qdq_export_matches_torch(
+    tmp_path: pathlib.Path,
+    simple_model: QuantizedModelFixture,
+    _seed_prngs: int,
+    weight_bits: int,
+    activation_bits: int,
+    rtol: float,
+    atol: float,
+) -> None:
+    # GIVEN a simple quantized model configured for the requested W/A bitwidths.
+    data = torch.randn(32, 10)
+    quant_model, activation_quantizers, parameter_quantizers = simple_model
+
+    activation_quantizers.initialize(
+        ff.nn.LinearQuantizer,
+        num_bits=activation_bits,
+        granularity=ff.PerTensor(),
+        symmetric=False,
+    )
+    parameter_quantizers.initialize(
+        ff.nn.LinearQuantizer,
+        num_bits=weight_bits,
+        granularity=ff.PerChannel(0),
+        symmetric=True,
+    )
+    with ff.estimate_ranges(quant_model, ff.range_setting.smoothed_minmax):
+        quant_model(data)
+
+    with ff.strict_quantization(False), torch.no_grad():
+        ff_output = quant_model(data)
+
+    model_name = f"test_ff_qdq_export_matches_torch_w{weight_bits}a{activation_bits}"
+    output_directory = tmp_path / model_name
+    output_model_directory = output_directory / model_name
+    onnx_artifact_location = output_model_directory.with_suffix(".onnx")
+
+    # WHEN exporting using the qnn/onnx_qdq pipeline.
+    # No opset_version is set: the QDQ wrapper defaults to opset 21, the minimum
+    # required for INT4/INT16 storage in QuantizeLinear/DequantizeLinear.
+    export(
+        quant_model,
+        (data,),
+        output_directory,
+        model_name,
+        target="qnn",
+        format="onnx_qdq",
+    )
+
+    # THEN the ONNX artifact exists, is structurally valid, and contains the
+    # expected Q/DQ nodes — one pair per active FF quantizer.
+    assert onnx_artifact_location.is_file()
+    onnx_model = onnx.load(onnx_artifact_location)
+
+    # THEN The saved model must be structurally well-formed.
+    onnx.checker.check_model(onnx_model)
+
+    # THEN (Quantize|Dequantize)Linear nodes are included in the graph
+    node_types = {node.op_type for node in onnx_model.graph.node}
+    assert "QuantizeLinear" in node_types
+    assert "DequantizeLinear" in node_types
+
+    # THEN Each active FF quantizer should lower to exactly one Q + one DQ node.
+    # If a future change lowers only a subset of FF ops, the count mismatch
+    # surfaces here rather than as silent numerical drift in the parity check.
+    expected_quantizer_count = len(activation_quantizers) + len(parameter_quantizers)
+    q_count = sum(1 for n in onnx_model.graph.node if n.op_type == "QuantizeLinear")
+    dq_count = sum(1 for n in onnx_model.graph.node if n.op_type == "DequantizeLinear")
+    assert q_count == expected_quantizer_count, (
+        f"expected {expected_quantizer_count} QuantizeLinear nodes "
+        f"(one per active FF quantizer), got {q_count}"
+    )
+    assert dq_count == expected_quantizer_count, (
+        f"expected {expected_quantizer_count} DequantizeLinear nodes "
+        f"(one per active FF quantizer), got {dq_count}"
+    )
+
+    ort_session = onnxruntime.InferenceSession(
+        onnx_artifact_location, providers=["CPUExecutionProvider"]
+    )
+    ort_inputs = {ort_session.get_inputs()[0].name: data.detach().cpu().numpy()}
+    ort_outs = ort_session.run(None, ort_inputs)
+
+    # THEN ONNX output should match the FastForward quantized model output.
+    np.testing.assert_allclose(
+        ff_output.dequantize().detach().cpu().numpy(), ort_outs[0], rtol=rtol, atol=atol
+    )
+
+
+@pytest.mark.slow
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "names",
@@ -292,7 +390,9 @@ def test_export_model_with_ctx_manager(
     model_name = "model_with_ctx_manager"
     output_directory = tmp_path / model_name
     quant_model.eval()
-    # WHEN export should not fail
+
+    # WHEN exporting the model.
+    # THEN the export completes without raising an exception.
     export(
         quant_model,
         (data,),
