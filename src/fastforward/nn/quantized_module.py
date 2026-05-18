@@ -366,6 +366,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         tag: str = "main",
         name_or_path: str | Path | None = None,
         cache_dir: Path | None = None,
+        allow_lazy_params: bool = False,
     ) -> Path:
         """Save quantization state to disk for later restoration.
 
@@ -381,6 +382,11 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                 the save location and validate consistency during loading.
             cache_dir: Directory where quantization state should be cached. If None,
                 uses the default cache directory from get_assets_path().
+            allow_lazy_params:  If False, a ValueError will be raised when trying
+                to save uninitialized parameters in the quantization state.
+                If True, a warning will be raised instead and the uninitialized
+                parameters will be decorated as `lazy` in the quantization state
+                metadata.
 
         Returns:
             Path to the saved configuration file (config.yaml).
@@ -415,6 +421,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         quantizers = defaultdict(list)
         for name, quantizer in self.named_quantizers(remove_duplicate=False):
             quantizers[quantizer].append(name)
+
         # State dictionary containing quantizer parameters keyed by
         # "first_quantizer_name.param_name". For shared quantizers (same quantizer instance used
         # in multiple locations), parameters are stored only once using the lexicographically first
@@ -424,6 +431,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         #     "layer1.weight_quantizer.offset": tensor([0])
         # }
         state = {}
+
         # Metadata mapping each quantizer name to its parameter keys in the format
         # "param=tensor_key". This enables reconstruction of individual quantizer state_dicts during
         # loading by mapping parameter names to their corresponding tensor keys in the SafeTensors
@@ -434,15 +442,45 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         #     "layer2.weight_quantizer":
         #         "scale=layer1.weight_quantizer.scale,offset=layer1.weight_quantizer.offset",
         # }
+        #
+        # If lazy parameters are allowed, uninitialized parameters/buffers will be decorated
+        # with a `::lazy` tag after the name.
+        # Example: {
+        #     "layer1.weight_quantizer":
+        #         "scale=layer1.weight_quantizer.scale::lazy,offset=layer1.weight_quantizer.offset::lazy",
+        # }
         metadata = {}
+
         for quantizer, names in quantizers.items():
             first_name = min(names)
-            for key, value in quantizer.state_dict().items():
-                state[f"{first_name}.{key}"] = value
-            for name in names:
-                metadata[name] = ",".join(
-                    f"{key}={first_name}.{key}" for key in quantizer.state_dict().keys()
+            state_dict = quantizer.state_dict(keep_vars=True)
+            lazy_param = set()
+            for key, param in state_dict.items():
+                if torch.nn.parameter.is_lazy(param):
+                    lazy_param.add(key)
+                else:
+                    state[f"{first_name}.{key}"] = param.detach()
+
+            if len(lazy_param) > 0:
+                msg = (
+                    f"A quantizer having lazy parameters (UninitializedParameter "
+                    f"or UninitializedBuffer) was found. Parameters: {lazy_param}.\n"
+                    f"Tip: quantizers normally materialize the uninitialized "
+                    f"parameters during range estimation."
                 )
+                if allow_lazy_params:
+                    logger.warning(msg)
+                else:
+                    logger.error(msg)
+                    raise ValueError(msg)
+
+            for name in names:
+                params_metadata = [
+                    f"{param}={first_name}.{param}" + ("::lazy" if param in lazy_param else "")
+                    for param in state_dict.keys()
+                ]
+                metadata[name] = ",".join(params_metadata)
+
         config = {
             "version": "1.0",
             "name_or_path": str(name_or_path),
@@ -465,6 +503,7 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         name_or_path: str | Path | None = None,
         cache_dir: Path | None = None,
         overwrite_policy: _OverwriteOptions = "error",
+        allow_lazy_params: bool = False,
     ) -> None:
         """Load quantization state from saved files.
 
@@ -475,6 +514,10 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
                 default cache.
             overwrite_policy: The policy to use when a loader quantizer is already present
                 in the model. Options are 'skip', 'overwrite' and 'error'.
+            allow_lazy_params: If False, uninitialized parameters encountered in the
+                quantization state metadata will raise a ValueError.
+                if True, uninitialized parameters will just print a warning message instead.
+
 
         Raises:
             RuntimeError: If the model identifier cannot be determined.
@@ -531,12 +574,43 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         # keys.
         with safe_open(model_path, framework="pt") as f:
             metadata = f.metadata()
+
             for name, quantizer in quantizers.items():
-                missing_keys, unexpected_keys = quantizer.load_state_dict({
-                    state_key: f.get_tensor(tensor_key)
-                    for key in metadata[f"{name}"].split(",")
-                    for state_key, tensor_key in (key.split("="),)
-                })
+                state_tensor_keys = {}
+                lazy_params = []
+                for key in metadata[f"{name}"].split(","):
+                    state_key, tensor_key = key.split("=")
+
+                    if "::" in tensor_key:
+                        tensor_key, decorators = tensor_key.split("::")
+                    else:
+                        decorators = ""
+
+                    if "lazy" in decorators:
+                        lazy_params.append(state_key)
+                    else:
+                        state_tensor_keys[state_key] = tensor_key
+
+                missing_keys, unexpected_keys = quantizer.load_state_dict(
+                    {
+                        state_key: f.get_tensor(tensor_key)
+                        for state_key, tensor_key in state_tensor_keys.items()
+                    },
+                    strict=False,
+                )
+
+                if len(lazy_params) > 0:
+                    msg = (
+                        f"Lazy parameters were found in quantization state "
+                        f"and cannot be loaded. Parameters: {lazy_params}."
+                    )
+                    if allow_lazy_params:
+                        logger.warning(msg)
+                    else:
+                        logger.error(msg)
+                        raise ValueError(msg)
+
+                missing_keys = sorted(set(missing_keys) - set(lazy_params))
                 if missing_keys or unexpected_keys:
                     msg = (
                         f"There are some missing ({missing_keys}) or unexpected "

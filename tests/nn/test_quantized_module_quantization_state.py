@@ -373,3 +373,129 @@ def test_load_quantization_existing_quantizer(tmp_path: Path) -> None:
     # Then: Should raise QuantizationError
     with pytest.raises(ff.exceptions.QuantizationError):
         module.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+
+
+# Testing uninitialized parameters in quantization state
+
+
+def test_model_save_quantization_state_with_lazy_params_error(tmp_path: Path) -> None:
+    """Test shared quantizers survive save/load."""
+    # GIVEN: A Quantized module with a quantizer having uninitialized parameters
+    name_or_path = "test"
+    model = ff.nn.QuantizedModule()
+
+    q_lazy = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    model.register_quantizer("output_quantizer", q_lazy)
+
+    # WHEN: Saving quantization state with uninitialized parameters and allow_lazy_params=False
+    # THEN: a value error is raised during save
+    with pytest.raises(ValueError):
+        model.save_quantization_state(
+            name_or_path=name_or_path,
+            cache_dir=tmp_path,
+            allow_lazy_params=False,  # explicitly enable lazy params during save
+        )
+
+
+def test_model_save_quantization_state_with_lazy_params(tmp_path: Path) -> None:
+    """Test shared quantizers survive save/load."""
+    # GIVEN: A Quantized module with a quantizer having uninitialized parameters
+    name_or_path = "test"
+    model = ff.nn.QuantizedModule()
+
+    q_init = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    q_init.quantization_range = (-10, 10)
+
+    q_lazy = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    model.register_quantizer("input_quantizer", q_init)
+    model.register_quantizer("output_quantizer", q_lazy)
+
+    # WHEN: Saving and Loading quantization state allowing lazy parameters
+    config_path = model.save_quantization_state(
+        name_or_path=name_or_path,
+        cache_dir=tmp_path,
+        allow_lazy_params=True,  # explicitly enable lazy params during save
+    )
+
+    # THEN: no error is raised during save and file is saved correctly
+    assert_yaml_properties(config_path, name_or_path=name_or_path)
+
+
+def test_model_load_quantization_state_with_lazy_params_error(tmp_path: Path) -> None:
+    """Test shared quantizers survive save/load."""
+    # GIVEN: A Quantized module with a quantizer having uninitialized parameters
+    name_or_path = "test"
+    model = ff.nn.QuantizedModule()
+
+    q_lazy = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    model.register_quantizer("output_quantizer", q_lazy)
+
+    # GIVEN: A Quantized module with quantizer stubs
+    new_model = ff.nn.QuantizedModule()
+    new_model.register_quantizer("input_quantizer", ff.nn.QuantizerStub())
+    new_model.register_quantizer("output_quantizer", ff.nn.QuantizerStub())
+
+    # WHEN: Saving quantization state with lazy parameters and allow_lazy_params=True
+    model.save_quantization_state(
+        name_or_path=name_or_path,
+        cache_dir=tmp_path,
+        allow_lazy_params=True,  # explicitly enable lazy params during save
+    )
+
+    # THEN: Loading quantization state with lazy parameter and allow_lazy_params=False
+    #       will rise a value error
+    with pytest.raises(ValueError):
+        new_model.load_quantization_state(
+            name_or_path=name_or_path,
+            cache_dir=tmp_path,
+            allow_lazy_params=False,  # explicitly disable lazy params during load
+        )
+
+
+def test_model_load_quantization_state_with_lazy_params(tmp_path: Path) -> None:
+    """Test shared quantizers survive save/load."""
+    # GIVEN: A Quantized module with a quantizer having uninitialized parameters
+    name_or_path = "test"
+    model = ff.nn.QuantizedModule()
+
+    q_init = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    q_init.quantization_range = (-10, 10)
+
+    q_lazy = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)))
+    model.register_quantizer("input_quantizer", q_init)
+    model.register_quantizer("output_quantizer", q_lazy)
+
+    # GIVEN: A Quantized module with quantizer stubs
+    new_model = ff.nn.QuantizedModule()
+    new_model.register_quantizer("input_quantizer", ff.nn.QuantizerStub())
+    new_model.register_quantizer("output_quantizer", ff.nn.QuantizerStub())
+
+    # WHEN: Saving and Loading quantization state allowing lazy parameters
+    model.save_quantization_state(
+        name_or_path=name_or_path,
+        cache_dir=tmp_path,
+        allow_lazy_params=True,  # explicitly enable lazy params during save
+    )
+    new_model.load_quantization_state(
+        name_or_path=name_or_path,
+        cache_dir=tmp_path,
+        allow_lazy_params=True,  # explicitly enable lazy params during load
+    )
+
+    # THEN:
+    #   1. The uninitialized quantizers parameters are not loaded, but no error is raised.
+    #   2. The initialized quantizers parameters are correctly saved and loaded.
+    assert isinstance(new_model.input_quantizer, ff.nn.LinearQuantizer)
+    assert isinstance(model.input_quantizer, ff.nn.LinearQuantizer)
+    assert new_model.input_quantizer.scale == model.input_quantizer.scale
+    assert new_model.input_quantizer.offset == model.input_quantizer.offset
+
+    #   3. The uninitialized quantizers parameters are still lazy.
+    assert isinstance(new_model.output_quantizer, ff.nn.LinearQuantizer)
+    assert isinstance(model.output_quantizer, ff.nn.LinearQuantizer)
+    assert torch.nn.parameter.is_lazy(new_model.output_quantizer.scale)
+    if new_model.output_quantizer.offset is not None:
+        assert torch.nn.parameter.is_lazy(new_model.output_quantizer.offset)
+    #   4. The uninitialized quantizers parameters type has not changed.
+    assert isinstance(new_model.output_quantizer.scale, model.output_quantizer.scale.__class__)
+    assert isinstance(new_model.output_quantizer.offset, model.output_quantizer.offset.__class__)
