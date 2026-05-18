@@ -117,6 +117,8 @@ if torch.__version__ < "2.4":
         "Tensor data,"
         "int[] tile_size,"
         "int num_bits,"
+        "bool symmetric,"
+        "bool allow_one_sided,"
         "ScalarType output_dtype"
         ") -> (Tensor, Tensor, Tensor)",
     )
@@ -241,7 +243,12 @@ RT: TypeAlias = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 @quant_operator("fastforward::quantize_dynamic_by_tile")
 @conditional_compile
 def quantize_dynamic_by_tile_impl(
-    data: torch.Tensor, tile_size: SizeT, num_bits: float, output_dtype: torch.dtype | None
+    data: torch.Tensor,
+    tile_size: SizeT,
+    num_bits: float,
+    symmetric: bool,
+    allow_one_sided: bool,
+    output_dtype: torch.dtype | None,
 ) -> RT:
     tile_size = torch.Size(tile_size)
 
@@ -257,9 +264,14 @@ def quantize_dynamic_by_tile_impl(
         raise ff.exceptions.QuantizationError(msg) from e
 
     scale, offset = affine.parameters_for_range(
-        min_range, max_range, num_bits, symmetric=False, allow_one_sided=True
+        min_range,
+        max_range,
+        num_bits,
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
     )
-    assert offset is not None
+    if offset is None:
+        offset = torch.zeros_like(scale)
     offset = torch.round(offset)
 
     quantized = torch.round(row_representation / scale[:, None] - offset[:, None])
@@ -314,13 +326,13 @@ def quantize_by_tile_backward_meta(
 @register_fake("fastforward::quantize_dynamic_by_tile")  # type: ignore[misc]
 def quantize_dynamic_by_tile_meta(
     input: torch.Tensor,
-    scale: torch.Tensor,
     tile_size: SizeT,
     num_bits: float,
+    symmetric: bool,
+    allow_one_sided: bool,
     output_dtype: torch.dtype | None,
-    offset: torch.Tensor | None = None,
 ) -> RT:
-    del num_bits, output_dtype
+    del num_bits, symmetric, allow_one_sided, output_dtype
     num_params = int(input.numel() / torch.Size(tile_size).numel())
     scale = torch.empty(num_params)
     offset = torch.empty(num_params)

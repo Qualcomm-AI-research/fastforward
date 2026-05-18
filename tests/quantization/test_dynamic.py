@@ -40,3 +40,42 @@ def test_quantized_value_precision_loss() -> None:
     # THEN a RuntimeError is raised
     with pytest.raises(RuntimeError):
         dynamic.quantize_per_tensor(data, 16, output_dtype=torch.bfloat16)
+
+
+def test_dynamic_quantizer_symmetric_onesided_control(_seed_prngs: int) -> None:
+    x = torch.rand(32, 8)
+
+    out_allow = dynamic.quantize_per_channel(
+        x, -1, 4, symmetric=True, allow_one_sided=True
+    ).dequantize()
+    out_no_allow = dynamic.quantize_per_channel(
+        x, -1, 4, symmetric=True, allow_one_sided=False
+    ).dequantize()
+
+    assert not torch.equal(out_allow, out_no_allow)
+
+
+@pytest.mark.parametrize("allow_one_sided", [True, False])
+def test_dynamic_symmetric_matches_static_per_channel(
+    allow_one_sided: bool, _seed_prngs: int
+) -> None:
+    x = torch.rand(8, 4)
+
+    actual = dynamic.quantize_per_channel(
+        x,
+        -1,
+        4,
+        symmetric=True,
+        allow_one_sided=allow_one_sided,
+    ).dequantize()
+
+    quantizer = ff.nn.LinearQuantizer(
+        4,
+        symmetric=True,
+        allow_one_sided=allow_one_sided,
+        granularity=ff.PerChannel(-1),
+    )
+    quantizer.quantization_range = (x.min(0).values, x.max(0).values)
+    expected = quantizer(x).dequantize()
+
+    torch.testing.assert_close(actual, expected)

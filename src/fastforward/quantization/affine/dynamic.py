@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 def quantization_context(
     granularity: granularities.Granularity,
     num_bits: int,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     quantized_dtype: torch.dtype | None = None,
     dequantize_dtype: torch.dtype | None = None,
 ) -> QuantizationContext[DynamicAffineQuantParams]:
@@ -30,6 +32,9 @@ def quantization_context(
     Args:
         granularity: The granuliarty to use for quantization
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         quantized_dtype: The data type in which the quantized data is stored
         dequantize_dtype: The datatype used by the dequantized tensor. If none is provided
             the datatype of the input tensor is used
@@ -40,6 +45,8 @@ def quantization_context(
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=granularity,
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
         quantized_dtype=quantized_dtype,
         dequantize_dtype=dequantize_dtype,
     )
@@ -50,6 +57,8 @@ def quantize_per_granularity(
     input: torch.Tensor,
     granularity: granularities.Granularity,
     num_bits: int = 8,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
     """Dynamically quantize `input` following `granularity`.
@@ -58,6 +67,9 @@ def quantize_per_granularity(
         input: The data to be quantized
         granularity: The granularity to use for quantization
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         output_dtype: The data type in which the quantized data is stored
 
     Returns:
@@ -65,19 +77,41 @@ def quantize_per_granularity(
     """
     match granularity:
         case granularities.PerTensor():
-            return quantize_per_tensor(input, num_bits, output_dtype)
+            return quantize_per_tensor(
+                input,
+                num_bits=num_bits,
+                symmetric=symmetric,
+                allow_one_sided=allow_one_sided,
+                output_dtype=output_dtype,
+            )
         case granularities.PerChannel(axis):
-            return quantize_per_channel(input, axis, num_bits, output_dtype)
+            return quantize_per_channel(
+                input,
+                axis,
+                num_bits=num_bits,
+                symmetric=symmetric,
+                allow_one_sided=allow_one_sided,
+                output_dtype=output_dtype,
+            )
         case _:
             tile_size = granularity.tile_size(input.shape)
             assert not isinstance(tile_size, str)
-            return quantize_by_tile(input, tile_size, num_bits, output_dtype)
+            return quantize_by_tile(
+                input,
+                tile_size,
+                num_bits=num_bits,
+                symmetric=symmetric,
+                allow_one_sided=allow_one_sided,
+                output_dtype=output_dtype,
+            )
 
 
 def quantize_by_tile(
     input: torch.Tensor,
     tile_size: torch.Size,
     num_bits: int = 8,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
     """Dynamically quantize `input` by tile.
@@ -86,6 +120,9 @@ def quantize_by_tile(
         input: The data to be quantized
         tile_size: The size of 'sub-tensors' to which quantization is applied separately
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         output_dtype: The data type in which the quantized data is stored
 
     Returns:
@@ -94,6 +131,8 @@ def quantize_by_tile(
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerTile(tile_size),
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
         quantized_dtype=output_dtype,
     )
     return AffineQuantizationFunction.quantize(input, params)
@@ -102,6 +141,8 @@ def quantize_by_tile(
 def quantize_per_tensor(
     input: torch.Tensor,
     num_bits: int = 8,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
     """Dynamically quantize `input` per tensor.
@@ -109,6 +150,9 @@ def quantize_per_tensor(
     Args:
         input: The data to be quantized
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         output_dtype: The data type in which the quantized data is stored
 
     Returns:
@@ -117,6 +161,8 @@ def quantize_per_tensor(
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerTensor(),
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
         quantized_dtype=output_dtype,
     )
     return AffineQuantizationFunction.quantize(input, params)
@@ -126,6 +172,8 @@ def quantize_per_channel(
     input: torch.Tensor,
     axis: int | tuple[int, ...],
     num_bits: int = 8,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
     """Dynamically quantize `input` per channel.
@@ -134,6 +182,9 @@ def quantize_per_channel(
         input: The data to be quantized
         axis: The channel (or channels) to share parameters over
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         output_dtype: The data type in which the quantized data is stored
 
     Returns:
@@ -142,6 +193,8 @@ def quantize_per_channel(
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerChannel(axis),
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
         quantized_dtype=output_dtype,
     )
     return AffineQuantizationFunction.quantize(input, params)
@@ -153,6 +206,8 @@ def quantize_per_block(
     block_axis: int,
     block_size: int,
     num_bits: int = 8,
+    symmetric: bool = False,
+    allow_one_sided: bool = True,
     output_dtype: torch.dtype | None = None,
 ) -> "QuantizedTensor":
     """Dynamically quantize `input` per block.
@@ -163,6 +218,9 @@ def quantize_per_block(
         block_axis: The axis along which blocks are created
         block_size: The number of blocks in `block_axis`
         num_bits: Bitwidth for quantization
+        symmetric: Use symmetric quantization if `True`, asymmetric otherwise.
+        allow_one_sided: If `True`, symmetric quantization may fall back to
+            one-sided quantization when all tiles are non-negative.
         output_dtype: The data type in which the quantized data is stored
 
     Returns:
@@ -176,6 +234,8 @@ def quantize_per_block(
     params = DynamicAffineQuantParams(
         num_bits=num_bits,
         granularity=ff.PerTile(tile_size),
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
         quantized_dtype=output_dtype,
     )
     return AffineQuantizationFunction.quantize(input, params)

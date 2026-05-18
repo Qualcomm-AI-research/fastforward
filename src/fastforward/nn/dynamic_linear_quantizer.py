@@ -28,6 +28,11 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
 
     Args:
         num_bits: Bitwidth of quantization output granularity
+        symmetric: Use symmetric quantization if True, asymmetric otherwise.
+            (Default: False)
+        allow_one_sided: If symmetric and allow_one_sided, the quantizer may
+            fall back to a one-sided (unsigned) quantizer if all lower
+            quantization thresholds are above zero. (Default: True)
         granularity: Granularity object that specifies the
             quantization granularity
         quantized_dtype: datatype in which the quantized data is stored
@@ -42,6 +47,8 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         granularity: granularities.Granularity | None = None,
         quantized_dtype: torch.dtype | None = None,
         parameter_inference_fn: DynamicParamInferenceFn | None = None,
+        allow_one_sided: bool = True,
+        symmetric: bool = False,
     ):
         super().__init__(
             num_bits=num_bits, granularity=granularity, quantized_dtype=quantized_dtype
@@ -50,14 +57,8 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
         self.granularity = granularity or granularities.PerTensor()
         self.quantized_dtype = quantized_dtype
         self.parameter_inference_fn = parameter_inference_fn
-
-    @property
-    def symmetric(self) -> bool:
-        """True if symmetric quantization, False otherwise.
-
-        Part of fastforward.range_setting.SupportsRangeBasedOperator Protocol
-        """
-        return False
+        self.symmetric = symmetric
+        self.allow_one_sided = allow_one_sided
 
     @override
     def quantization_parameters(self) -> DynamicAffineQuantParams:
@@ -71,6 +72,8 @@ class DynamicLinearQuantizer(AbstractAffineQuantizer[DynamicAffineQuantParams]):
             num_bits=self.num_bits,
             quantized_dtype=self.quantized_dtype,
             parameter_inference_fn=self.parameter_inference_fn,
+            symmetric=self.symmetric,
+            allow_one_sided=self.allow_one_sided,
         )
 
     @property

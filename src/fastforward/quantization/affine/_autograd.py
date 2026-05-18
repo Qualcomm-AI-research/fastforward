@@ -56,9 +56,13 @@ def quantize_dynamic_affine(
     data: torch.Tensor,
     tile_size: torch.Size | Literal["data_shape"],
     num_bits: int,
+    symmetric: bool,
+    allow_one_sided: bool,
     quantized_dtype: torch.dtype | None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-    return QuantizeDynamicAffine.apply(data, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
+    return QuantizeDynamicAffine.apply(  # type: ignore[no-any-return]
+        data, tile_size, num_bits, symmetric, allow_one_sided, quantized_dtype
+    )
 
 
 class QuantizeStaticAffine(torch.autograd.Function):
@@ -108,12 +112,14 @@ class QuantizeDynamicAffine(torch.autograd.Function):
         data: torch.Tensor,
         tile_size: torch.Size | Literal["data_shape"],
         num_bits: int,
+        symmetric: bool,
+        allow_one_sided: bool,
         quantized_dtype: torch.dtype | None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         quant_dtype = quantized_dtype or data.dtype
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         return torch.ops.fastforward.quantize_dynamic_by_tile(  # type: ignore[no-any-return]
-            data, tile_size, num_bits, quant_dtype
+            data, tile_size, num_bits, symmetric, allow_one_sided, quant_dtype
         )
 
     @staticmethod
@@ -121,10 +127,10 @@ class QuantizeDynamicAffine(torch.autograd.Function):
     @torch.autograd.function.once_differentiable  # type: ignore[misc]
     def backward(
         ctx: Any, output_grad: torch.Tensor, scale_grad: torch.Tensor, offset_grad: torch.Tensor
-    ) -> tuple[torch.Tensor, None, None, None]:
+    ) -> tuple[torch.Tensor, None, None, None, None, None]:
         del scale_grad, offset_grad
         grad = output_grad
-        return (grad, None, None, None)
+        return (grad, None, None, None, None, None)
 
 
 class DequantizeAffine(torch.autograd.Function):

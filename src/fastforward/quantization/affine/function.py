@@ -53,6 +53,8 @@ class DynamicAffineQuantParams(QuantizationParameters):
 
     num_bits: int
     granularity: granularities.Granularity
+    symmetric: bool = False
+    allow_one_sided: bool = True
     quantized_dtype: torch.dtype | None = None
     dequantize_dtype: torch.dtype | None = None
     parameter_inference_fn: DynamicParamInferenceFn | None = None
@@ -160,7 +162,12 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         output_dtype = params.quantized_dtype or data.dtype
         quantized_data, scale, offset = quantize_dynamic_affine(
-            data, tile_size, params.num_bits, output_dtype
+            data,
+            tile_size,
+            params.num_bits,
+            params.symmetric,
+            params.allow_one_sided,
+            output_dtype,
         )
 
         static_params = _static_from_dynamic(

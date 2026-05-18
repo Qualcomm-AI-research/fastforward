@@ -48,3 +48,23 @@ def test_dynamic_linear_quantizer(
     actual = dynamic_quantizer(input_with_backwards).dequantize()
     (actual**2).sum().backward()
     torch.testing.assert_close(input_with_backwards.grad, expected_grad)
+
+
+def test_dynamic_linear_quantizer_symmetric_uses_symmetric_grid(_seed_prngs: int) -> None:
+    input = torch.randn((16, 16))
+
+    quantizer = ff.nn.DynamicLinearQuantizer(
+        num_bits=4, granularity=ff.PerTensor(), symmetric=True, allow_one_sided=False
+    )
+    actual = quantizer(input).dequantize()
+
+    static_quantizer = ff.nn.LinearQuantizer(
+        num_bits=4,
+        granularity=ff.PerTensor(),
+        symmetric=True,
+        allow_one_sided=False,
+    )
+    with ff.estimate_ranges(static_quantizer, ff.range_setting.running_minmax):
+        static_quantizer(input)
+    expected = static_quantizer(input).dequantize()
+    torch.testing.assert_close(actual, expected)
