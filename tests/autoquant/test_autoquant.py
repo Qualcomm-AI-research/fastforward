@@ -8,6 +8,7 @@ import logging
 import multiprocessing as mp
 import operator
 import pathlib
+import re
 import subprocess
 import sys
 import types
@@ -45,6 +46,8 @@ from fastforward.testing.metrics import sqnr as metric_sqnr
 from fastforward.testing.string import assert_strings_match_verbose
 from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
+
+from tests._core_package_version_utils import TORCH_VERSION
 
 Tensor: TypeAlias = torch.Tensor  # Required for tests, do not remove
 
@@ -230,6 +233,23 @@ class ExampleModulePublicApiAlias(torch.nn.Module):
         return cast(torch.Tensor, _THIS_MODULE.public_api(x))
 
 
+def _normalize_torch_injected_docstrings(code: str) -> str:
+    """Normalize a torch version >= 2.9 injected method docstring.
+
+    Torch >= 2.9 may inject a default docstring in generated Identity.forward:
+      \"\"\"Runs the forward pass.\"\"\"
+    Strip this exact block so snapshots stay stable across torch versions.
+    """
+    if TORCH_VERSION.release[:2] < (2, 9):
+        return code
+
+    return re.sub(
+        r"\n([ \t]+)\"\"\"\n\1Runs the forward pass\.\n\1\"\"\"\n",
+        "\n",
+        code,
+    )
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -272,6 +292,7 @@ def test_autoquant_introduces_quantization_method(
         module=input_module, source_context=source_context, operator_table=operator_table
     )
     actual_code = codeformat_with_defaults(code=autoquant_code)
+    actual_code = _normalize_torch_injected_docstrings(actual_code)
 
     # THEN the generated code matches an earlier snapshot
     assert snapshot == actual_code.strip()

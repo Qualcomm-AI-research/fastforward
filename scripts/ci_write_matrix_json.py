@@ -9,14 +9,12 @@ import os
 # Versions
 torch_cuda_python_versions = [
     ("2.4.1", "12.1", "3.10"),
-    ("2.5.1", "12.1", "3.10"),
     ("2.6.0", "12.4", "3.10"),
-    ("2.6.0", "12.4", "3.12"),
-    # ("2.7.1", "12.6", "3.10"),  # currently broken, cf. #453
-    # ("2.7.1", "12.6", "3.12"),  # currently broken, cf. #453
-    # ("2.9.0", "12.6", "3.10"),  # currently broken, cf. #453, #454
-    # ("2.9.0", "12.6", "3.12"),  # currently broken, cf. #453, #454
+    ("2.8.0", "12.6", "3.12"),
     # ("2.9.0", "12.6", "3.14"),  # currently broken, cf. #451
+    ("2.10.0", "12.6", "3.12"),
+    ("2.11.0", "12.6", "3.12"),
+    ("2.12.0", "13.0", "3.12"),
 ]
 docker_registry = os.environ["DOCKER_REGISTRY"]
 docker_image = os.environ["DOCKER_IMAGE"]

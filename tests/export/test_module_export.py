@@ -17,10 +17,11 @@ from fastforward.export.module_export import ModuleIORecorder, _deep_dequantize,
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.quantization.strict_quantization import strict_quantization_for_module
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+from tests._core_package_version_utils import OPSET_VERSION
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
-
 _WEIGHT_NAME_CANDIDATES = {"weight", "permute", "transpose", "t"}
+ONNX_EXPORT_OPTIONS = {"opset_version": OPSET_VERSION}
 
 
 def test_module_io_recorder(
@@ -57,6 +58,7 @@ def test_module_export(
         model, activation_quantizers, parameter_quantizers
     )
     estimate_model_ranges(data)
+    model.eval()
 
     # WHEN: exporting the individual modules AND the entire model.
     linear_modules = ff.mpath.search("**/[cls:torch.nn.Linear]", model)
@@ -65,10 +67,22 @@ def test_module_export(
     modules = linear_modules | relu_modules
     schema_handler = schema_handler_type()
     paths = export_modules(
-        model, (data,), modules, model_name, tmp_path, encoding_schema_handler=schema_handler
+        model,
+        (data,),
+        modules,
+        model_name,
+        tmp_path,
+        encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
     model_path = export_modules(
-        model, (data,), model, model_name, tmp_path, encoding_schema_handler=schema_handler
+        model,
+        (data,),
+        model,
+        model_name,
+        tmp_path,
+        encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )[model_name]
 
     # THEN: the number of exported modules paths should match the number
@@ -158,6 +172,7 @@ def test_schema_handler_cleared_between_modules(
         model, activation_quantizers, parameter_quantizers
     )
     estimate_ranges(data)
+    model.eval()
 
     linear_modules = ff.mpath.search("**/[cls:torch.nn.Linear]", model)
 
@@ -165,7 +180,13 @@ def test_schema_handler_cleared_between_modules(
 
     # WHEN exporting the module through the export_modules function with a schema handler
     export_modules(
-        model, (data,), linear_modules, "model", tmp_path, encoding_schema_handler=schema_handler
+        model,
+        (data,),
+        linear_modules,
+        "model",
+        tmp_path,
+        encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     # THEN the stored file should be filled with relevant encodings and the handler should be cleared.
@@ -231,6 +252,7 @@ def test_module_export_with_module_kwargs(
     estimate_model_ranges(data, **module_kwargs)
 
     model(data, **module_kwargs)
+    model.eval()
 
     # WHEN exporting the full model through the export_modules function with kwargs
     schema_handler = schema_handler_type()
@@ -243,6 +265,7 @@ def test_module_export_with_module_kwargs(
         tmp_path,
         kwargs=module_kwargs,
         encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     full_model_path = paths[model_name]
@@ -262,6 +285,7 @@ def test_module_export_with_module_kwargs(
         tmp_path,
         kwargs=module_kwargs,
         encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     # THEN the module files should be present,
@@ -283,6 +307,7 @@ def test_module_export_with_module_kwargs(
         tmp_path,
         kwargs=module_kwargs,
         encoding_schema_handler=schema_handler,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     # WHEN: exporting the custom mul layer

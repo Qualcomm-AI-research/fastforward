@@ -4,6 +4,7 @@
 import json
 import logging
 import pathlib
+import warnings
 
 from collections.abc import Mapping
 from typing import Any, TypeAlias, cast
@@ -369,12 +370,18 @@ def stage_fx_to_onnx_program(
     # Use the new torch.onnx.export API with dynamo=True.
     # NOTE: callers can pass opset/version workarounds through
     # `context["onnx_export_options"]` when needed.
-    onnx_program = torch.onnx.export(
-        module,
-        args=sample_args,
-        kwargs=sample_kwargs,  # type: ignore[call-arg,unused-ignore]
-        **export_kwargs,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"Exporting a model while it is in training mode\.",
+            category=UserWarning,
+        )
+        onnx_program = torch.onnx.export(
+            module,
+            args=sample_args,
+            kwargs=sample_kwargs,  # type: ignore[call-arg,unused-ignore]
+            **export_kwargs,
+        )
     if onnx_program is None:
         raise ExportError("torch.onnx.export returned None")
 

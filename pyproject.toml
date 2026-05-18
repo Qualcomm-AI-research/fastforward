@@ -89,6 +89,7 @@ markers = [
 filterwarnings = [
   "error",
   "ignore:ComplexHalf support is experimental:UserWarning",
+  'ignore:.*isinstance.*treespec, LeafSpec.*is deprecated, use .*treespec.*is_leaf.*instead.*:FutureWarning',
 ]
 
 [tool.mypy]

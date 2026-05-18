@@ -18,8 +18,10 @@ from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
 from packaging import version
+from tests._core_package_version_utils import OPSET_VERSION
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
+ONNX_EXPORT_OPTIONS = {"opset_version": OPSET_VERSION}
 
 
 @pytest.fixture(autouse=True)
@@ -81,6 +83,7 @@ def test_ff_model_to_onnx_export(
         quant_model, activation_quantizers, parameter_quantizers
     )
     estimate_model_ranges(data)
+    quant_model.eval()
 
     # WHEN using the export pipeline for the quantized model
     # and running inference on the ONNX artifact
@@ -91,6 +94,7 @@ def test_ff_model_to_onnx_export(
         model_name,
         input_names=["new_x"],
         output_names=["new_output"],
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     ort_session = onnxruntime.InferenceSession(
@@ -138,6 +142,7 @@ def test_graph_io_renaming_valid(
             quant_model, activation_quantizers, parameter_quantizers
         )
         estimate_model_ranges(data_x, data_y, subtract_from_x=subtract_from_x, add_to_y=add_to_y)
+    quant_model.eval()
 
     model_name = "test_model"
     output_directory = tmp_path / model_name
@@ -153,6 +158,7 @@ def test_graph_io_renaming_valid(
         model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
         input_names=input_names,
         output_names=output_names,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
     ort_session = onnxruntime.InferenceSession(
@@ -204,6 +210,7 @@ def test_graph_io_renaming_invalid(
             quant_model, activation_quantizers, parameter_quantizers
         )
         estimate_model_ranges(data_x, data_y, subtract_from_x=subtract_from_x, add_to_y=add_to_y)
+    quant_model.eval()
 
     # WHEN exporting the model overriding its input/output names with invalid ones.
     model_name = "test_model"
@@ -220,6 +227,7 @@ def test_graph_io_renaming_invalid(
             model_kwargs={"subtract_from_x": subtract_from_x, "add_to_y": add_to_y},
             input_names=input_names,
             output_names=output_names,
+            onnx_export_options=ONNX_EXPORT_OPTIONS,
         )
 
 
@@ -244,9 +252,16 @@ def test_export_function(
         quant_model, activation_quantizers, parameter_quantizers, granularity_parameters=granularity
     )
     estimate_model_ranges(data)
+    quant_model.eval()
 
     # WHEN exporting the quantized model
-    export(quant_model, (data,), output_directory, model_name)
+    export(
+        quant_model,
+        (data,),
+        output_directory,
+        model_name,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
+    )
 
     # THEN we expect that ONNX/encodings files are created and they are
     # not empty.
@@ -276,8 +291,15 @@ def test_export_model_with_ctx_manager(
     data = torch.randn(32, 10)
     model_name = "model_with_ctx_manager"
     output_directory = tmp_path / model_name
+    quant_model.eval()
     # WHEN export should not fail
-    export(quant_model, (data,), output_directory, model_name)
+    export(
+        quant_model,
+        (data,),
+        output_directory,
+        model_name,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
+    )
 
 
 @pytest.mark.slow
@@ -297,6 +319,7 @@ def test_export_with_optimization_options(
     )
 
     estimate_model_ranges(data)
+    quant_model.eval()
 
     # WHEN exporting without optimization AND with optimization
     unoptimized_dir = tmp_path / model_name / "unoptimized"
@@ -305,7 +328,11 @@ def test_export_with_optimization_options(
         (data,),
         unoptimized_dir,
         model_name,
-        onnx_export_options={"optimize": False, "do_constant_folding": False},
+        onnx_export_options={
+            "optimize": False,
+            "do_constant_folding": False,
+            "opset_version": ONNX_EXPORT_OPTIONS["opset_version"],
+        },
     )
 
     optimized_dir = tmp_path / model_name / "optimized"
@@ -314,7 +341,11 @@ def test_export_with_optimization_options(
         (data,),
         optimized_dir,
         model_name,
-        onnx_export_options={"optimize": True, "do_constant_folding": True},
+        onnx_export_options={
+            "optimize": True,
+            "do_constant_folding": True,
+            "opset_version": ONNX_EXPORT_OPTIONS["opset_version"],
+        },
     )
 
     # THEN both models should be created successfully and the optimized
