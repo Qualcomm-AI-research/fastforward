@@ -114,6 +114,14 @@ class ModuleIORecorder:
         self.detach()
 
 
+def _deep_detach_tensors(pytree: Any) -> Any:
+    """Detach all tensors in a pytree to avoid exporting non-leaf tensors."""
+    return optree.tree_map(
+        lambda value: value.detach() if isinstance(value, torch.Tensor) else value,
+        pytree,
+    )
+
+
 def export_modules(
     model: torch.nn.Module,
     args: None | tuple[torch.Tensor] | tuple[()],
@@ -226,8 +234,10 @@ def export_modules(
         module_name = module_io_recorder.module_name
         module_output_path = output_path / module_name
 
-        module_input_data = module_io_recorder.input
-        module_input_kwargs = module_io_recorder.kwargs
+        # Export with detached tensors to avoid torch.export failures caused by
+        # non-leaf inputs captured from prior module executions.
+        module_input_data = _deep_detach_tensors(module_io_recorder.input)
+        module_input_kwargs = _deep_detach_tensors(module_io_recorder.kwargs)
 
         onnx_options = onnx_export_options or {}
 
