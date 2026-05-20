@@ -25,7 +25,7 @@ from fastforward._autoquant import pybuilder, pysource
 from fastforward._autoquant.convert import convert_function
 from fastforward._autoquant.cst import node_creation, node_processing, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
-from fastforward._autoquant.cst.pattern import PatternRule, _PatternRuleTransformer
+from fastforward._autoquant.cst.pattern import PatternRule
 from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
@@ -373,12 +373,9 @@ def default_source_context(
     If no source context is provided, this context is used.
     """
     passes = default_preprocessing_passes(use_type_inference=use_type_inference)
-    patterns = tuple(replacement_patterns)
-    if len(patterns) > 0:
-        # Ensure that patterns are applied first, this way the patterns are matched
-        # against the actual input.
-        passes = (_PatternRuleTransformer(patterns),) + tuple(passes)
-    return pysource.SourceContext(preprocessing_passes=passes)
+    return pysource.SourceContext(
+        preprocessing_passes=passes, replacement_patterns=replacement_patterns
+    )
 
 
 def default_preprocessing_passes(

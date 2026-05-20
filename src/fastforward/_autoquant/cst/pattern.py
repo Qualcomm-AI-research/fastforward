@@ -4,12 +4,13 @@
 import dataclasses
 import string
 
-from typing import Any, Sequence, overload
+from typing import Any, Sequence, Union, overload
 
 import libcst
 import libcst.matchers as m
 
-from typing_extensions import Self
+from libcst import CSTNode, FlattenSentinel, RemovalSentinel
+from typing_extensions import Self, override
 
 PATTERN_PREFIX = "__FF__CAPTURE__PATTERN_"
 
@@ -21,24 +22,31 @@ class PatternRule:
     Attributes:
         pattern: A matcher node that defines the pattern to match.
         replacement: A CST node that will replace the matched pattern.
+        on: Optional dotted scope name restricting where the rule applies.
+            The scope name is matched as a contiguous segment of the current
+            fully-qualified scope, which (when running via the autoquant
+            preprocessing flow) includes the module name. This means `on` should
+            be an fully-qualified path (e.g. `my_package.my_module.MyClass.foo`)
+            used to disambiguate identically named symbols across modules.
+            The rule applies inside that scope and any of its nested scopes.
+            `None` means apply everywhere. NB: `on` is only honored when the rule runs
+            through `PatternRuleTransformer`, a direct `apply(cst)`
+            call has no scope context and therefore ignores `on`.
     """
 
     pattern: m.BaseMatcherNode
     replacement: libcst.CSTNode
+    on: str | None = None
 
-    def apply(self, cst: libcst.CSTNode, recursive: bool = False) -> libcst.CSTNode:
+    def apply(self, cst: libcst.CSTNode) -> libcst.CSTNode:
         """Apply the pattern rule to a CST node.
 
         Args:
             cst: The CST node to apply the rule to.
-            recursive: If `True`, apply pattern to every node in `cst`
 
         Returns:
             The transformed CST node if the pattern matches, otherwise the original node.
         """
-        if recursive:
-            return cst.visit(_PatternRuleTransformer([self]))  # type: ignore[return-value]
-
         captures = m.extract(cst, self.pattern)
         if captures is None and isinstance(cst, libcst.SimpleStatementLine) and len(cst.body) == 1:
             # Allow small-statement patterns (e.g., "a = 1") to match a full
@@ -78,12 +86,14 @@ class PatternRule:
         return replacement
 
     @classmethod
-    def from_str(cls, pattern: str, replacement: str) -> Self:
+    def from_str(cls, pattern: str, replacement: str, on: str | None = None) -> Self:
         """Create a PatternRule from string representations of pattern and replacement.
 
         Args:
             pattern: A string representation of the pattern to match.
             replacement: A string representation of the replacement to use.
+            on: Optional dotted scope name (e.g. `my_package.my_module.MyClass.foo`)
+                restricting where the rule applies. `None` to apply everywhere.
 
         Returns:
             A new PatternRule instance with the parsed pattern and replacement.
@@ -91,6 +101,7 @@ class PatternRule:
         return cls(
             pattern=_convert_to_matcher(_parse_pattern(pattern)),
             replacement=_parse_pattern(replacement),
+            on=on,
         )
 
 
@@ -103,13 +114,68 @@ def _to_code(node: libcst.CSTNode) -> str:
     return libcst.Module([]).code_for_node(node)
 
 
-class _PatternRuleTransformer(libcst.CSTTransformer):
-    def __init__(self, rules: Sequence[PatternRule]):
-        self._rules = tuple(rules)
+def _applicable_in_module(on: str | None, module_qualified_name: str) -> bool:
+    if on is None or not module_qualified_name:
+        return True
+    if "." not in on:
+        return True
+    return on.startswith(module_qualified_name) or module_qualified_name.startswith(on)
 
+
+class PatternRuleTransformer(libcst.CSTTransformer):
+    def __init__(
+        self,
+        rules: Sequence[PatternRule],
+        module_qualified_name: str = "",
+    ):
+        self._scope_stack: list[str] = []
+        self._rules = tuple(
+            rule for rule in rules if _applicable_in_module(rule.on, module_qualified_name)
+        )
+        self._module_qualified_name = module_qualified_name
+
+    @override
+    def visit_ClassDef(self, node: libcst.ClassDef) -> bool | None:
+        self._scope_stack.append(node.name.value)
+        return None
+
+    @override
+    def leave_ClassDef(
+        self, original_node: libcst.ClassDef, updated_node: libcst.ClassDef
+    ) -> libcst.ClassDef:
+        self._scope_stack.pop()
+        return updated_node
+
+    @override
+    def visit_FunctionDef(self, node: libcst.FunctionDef) -> bool | None:
+        self._scope_stack.append(node.name.value)
+        return None
+
+    @override
+    def leave_FunctionDef(
+        self, original_node: libcst.FunctionDef, updated_node: libcst.FunctionDef
+    ) -> libcst.FunctionDef:
+        self._scope_stack.pop()
+        return updated_node
+
+    def _current_scope_parts(self) -> list[str]:
+        parts: list[str] = []
+        if self._module_qualified_name:
+            parts.extend(self._module_qualified_name.split("."))
+        parts.extend(self._scope_stack)
+        return parts
+
+    def _scope_matches(self, on: str | None) -> bool:
+        if on is None:
+            return True
+        on_parts = on.split(".")
+        scope_parts = self._current_scope_parts()
+        return scope_parts[: len(on_parts)] == on_parts
+
+    @override
     def on_leave(  # type: ignore[override]
-        self, original_node: libcst.CSTNode, updated_node: libcst.CSTNode
-    ) -> libcst.CSTNode:
+        self, original_node: CSTNode, updated_node: CSTNode
+    ) -> Union[CSTNode, RemovalSentinel, FlattenSentinel[CSTNode]]:
         updated_node = super().on_leave(original_node, updated_node)  # type: ignore[assignment]
         return self._apply_rules(updated_node)
 
@@ -121,12 +187,16 @@ class _PatternRuleTransformer(libcst.CSTTransformer):
         except Exception:
             return f"{type(node).__name__}:{repr(node)}"
 
-    def _apply_rules(self, node: libcst.CSTNode) -> libcst.CSTNode:
+    def _apply_rules(self, node: CSTNode) -> CSTNode:
         idx = 0
         current_node = node
         seen_nodes = {self._node_key(current_node)}
         while idx < len(self._rules):
-            updated_node = self._rules[idx].apply(current_node)
+            rule = self._rules[idx]
+            if not self._scope_matches(rule.on):
+                idx += 1
+                continue
+            updated_node = rule.apply(current_node)
             if updated_node is current_node:
                 # continue loop early without extra checks
                 idx += 1

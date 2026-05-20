@@ -5,8 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import libcst
 import pytest
+import syrupy
 
-from fastforward._autoquant.cst.pattern import PatternRule, _PatternRuleTransformer
+from fastforward._autoquant.cst.pattern import PatternRule, PatternRuleTransformer
 
 
 def test_simple_replacement() -> None:
@@ -68,7 +69,7 @@ def test_statement_to_expression_wrapping() -> None:
     code = libcst.parse_statement("a + b")
 
     # WHEN: The rule is applied
-    result = rule.apply(code, recursive=True)
+    result = code.visit(PatternRuleTransformer([rule]))
 
     # THEN: The result should be wrapped as a statement
     assert isinstance(result, libcst.SimpleStatementLine)
@@ -110,7 +111,7 @@ def test_single_rule_transformation() -> None:
     """Test transformer with a single rule."""
     # GIVEN: A transformer with a rule that changes addition to subtraction
     rule = PatternRule.from_str("{x} + {y}", "{x} - {y}")
-    transformer = _PatternRuleTransformer([rule])
+    transformer = PatternRuleTransformer([rule])
     code = libcst.parse_module("a + b\nc + d\n")
 
     # WHEN: The transformer is applied to the module
@@ -125,7 +126,7 @@ def test_multiple_rules_transformation() -> None:
     # GIVEN: A transformer with two rules that chain transformations
     rule1 = PatternRule.from_str("{x} * {y}", "{y} * {x}")
     rule2 = PatternRule.from_str("{x} + {y}", "{x} * {y}")
-    transformer = _PatternRuleTransformer([rule1, rule2])
+    transformer = PatternRuleTransformer([rule1, rule2])
     code = libcst.parse_module("a + b\n")
 
     # WHEN: The transformer is applied
@@ -141,7 +142,7 @@ def test_multiple_rules_with_cycle() -> None:
     rule1 = PatternRule.from_str("{x} * {y}", "{y} + {x}")
     rule2 = PatternRule.from_str("{x} + {y}", "{x} - {y}")
     rule3 = PatternRule.from_str("{x} - {y}", "{x} * {y}")
-    transformer = _PatternRuleTransformer([rule1, rule2, rule3])
+    transformer = PatternRuleTransformer([rule1, rule2, rule3])
     code = libcst.parse_module("ant + bat\n")
 
     # WHEN: The transformer is applied
@@ -155,7 +156,7 @@ def test_no_match_leaves_code_unchanged() -> None:
     """Test that non-matching rules don't change the code."""
     # GIVEN: A transformer with a rule that doesn't match the code
     rule = PatternRule.from_str("func()", "other_func()")
-    transformer = _PatternRuleTransformer([rule])
+    transformer = PatternRuleTransformer([rule])
     code = libcst.parse_module("x + y\n")
 
     # WHEN: The transformer is applied
@@ -191,7 +192,7 @@ def test_pattern_rule_transformer_handles_semicolon_statements() -> None:
     rule = PatternRule.from_str("{a} = 1", "{a} = 100")
 
     # WHEN: The transformer traverses the module
-    transformed = module.visit(_PatternRuleTransformer([rule]))
+    transformed = module.visit(PatternRuleTransformer([rule]))
 
     # THEN: The rule is applied correctly inside the semicolon-joined line
     assert isinstance(transformed, libcst.Module)
@@ -207,7 +208,7 @@ def test_pattern_rule_transformer_fallback_key_on_codegen_error(_mock: MagicMock
     rule = PatternRule.from_str("{a}", "{a}")
 
     # WHEN: The transformer is applied with the broken serializer
-    transformed = module.visit(_PatternRuleTransformer([rule]))
+    transformed = module.visit(PatternRuleTransformer([rule]))
 
     # THEN: No exception is raised and the module is unchanged
     assert isinstance(transformed, libcst.Module)
@@ -224,7 +225,7 @@ def test_pattern_rule_transformer_replacement_with_multiple_statements_semicolon
     semicolon_rule = PatternRule.from_str("a = 1", "b = 2; c = 3")
 
     # WHEN: The transformer is applied with a semicolon-joined replacement
-    transformed = module.visit(_PatternRuleTransformer([semicolon_rule]))
+    transformed = module.visit(PatternRuleTransformer([semicolon_rule]))
 
     # THEN: The replacement is accepted and the semicolon is preserved in output
     assert isinstance(transformed, libcst.Module)
@@ -234,6 +235,293 @@ def test_pattern_rule_transformer_replacement_with_multiple_statements_semicolon
     # THEN: A ValueError is raised at rule construction time
     with pytest.raises(ValueError, match="Pattern must be a single statement or expression"):
         PatternRule.from_str("a = 1", "b = 2\nc = 3")
+
+
+def test_pattern_rule_type_annotation_whitespace_robust(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
+    """Rule matching is robust to whitespace variations in the source."""
+    # GIVEN: A module having different whitespaces around two similar assignments
+    module_source = """
+class Model:
+    self.property = 3
+
+    def __init__(self, property):
+        self.property=property
+
+    def double(self):
+        self.property =    self.property * 2
+    """
+
+    # WHEN: The PatternRule is applied to add typing for those assignments
+    module = libcst.parse_module(module_source)
+    rule = PatternRule.from_str("self.property = {value}", "self.property: int = {value}")
+    transformed = module.visit(PatternRuleTransformer([rule], module_qualified_name="module"))
+
+    # THEN: The rule is applied correctly everywhere and whitespaces are ignored
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == snapshot
+
+
+@pytest.mark.parametrize(
+    "on",
+    [
+        None,
+        "module",
+        "module.Model",
+        "module.Model.__init__",
+        "Module.__init__",
+        "__init__",
+        "Module",
+    ],
+)
+def test_pattern_rule_applied_on_fully_qualified_name(
+    on: str | None, snapshot: syrupy.assertion.SnapshotAssertion
+) -> None:
+    """Rule are applied only over correct match over fully-qualified name and children."""
+    # GIVEN: A module with a single assignment
+    module_source = """
+class Model:
+    self.property = 3
+
+    def __init__(self, property):
+        self.property=property
+
+    def double(self):
+        self.property =    self.property * 2
+    """
+
+    # WHEN: The PatternRule is applied to the source `on` specific qualifiers
+    module = libcst.parse_module(module_source)
+    type_annotation_rule = PatternRule.from_str(
+        pattern="self.property = {value}", replacement="self.property: int = {value}", on=on
+    )
+    transformed = module.visit(
+        PatternRuleTransformer(
+            [type_annotation_rule],
+            module_qualified_name="module",
+        )
+    )
+
+    # THEN: The rule is only applied to part of the source selected by the
+    #       fully-qualified name (and recursively to all children)
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == snapshot
+
+
+def test_pattern_rule_applied_on_fully_qualified_function_name() -> None:
+    source = """\
+def decode():
+    my_var = 1
+    return my_var
+
+def foo():
+    my_var = 1
+    return my_var
+"""
+    expected = """\
+def decode():
+    my_var: int = 1
+    return my_var
+
+def foo():
+    my_var = 1
+    return my_var
+"""
+
+    # GIVEN A rule scoped to `package.module_a.decode` only
+    rule = PatternRule.from_str(
+        pattern="my_var = {value}",
+        replacement="my_var: int = {value}",
+        on="package.module_a.decode",
+    )
+
+    # WHEN The module is transformed
+    transformed = libcst.parse_module(source).visit(
+        PatternRuleTransformer([rule], module_qualified_name="package.module_a")
+    )
+    print()
+    print(transformed.code)
+    # THEN Only `decode` is annotated; `foo` is left unchanged
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == expected
+
+
+def test_pattern_rule_robust_type_annotation_multiple_classes(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
+    """Rule with `on=` only applies inside the named scope correctly when scopes are nested."""
+    # GIVEN: A module with a single assignment
+    source = """
+class ModelInt:
+    def __init__(self, property):
+        self.property = property
+
+class ModelFloat:
+    def __init__(self, property):
+        self.property = property
+    
+    class SubModelFloat:
+        def __init__(self, property):
+            self.property = property
+
+class ModelDuck:
+    def __init__(self, property):
+        self.property = property
+    
+    class SubModelDuckInt:
+        def __init__(self, property):
+            self.property = property
+        
+        def foo(self, property):
+            self.property = property
+    """
+
+    # test should pass even if we specify to replace only inside the `Model` class
+    module = libcst.parse_module(source)
+    rule_int = PatternRule.from_str(
+        pattern="self.property = {value}",
+        replacement="self.property: int = {value}",
+        on="module.ModelInt",
+    )
+    rule_float = PatternRule.from_str(
+        pattern="self.property = {value}",
+        replacement="self.property: float = {value}",
+        on="module.ModelFloat",
+    )
+    rule_sub_duck = PatternRule.from_str(
+        pattern="self.property = {value}",
+        replacement="self.property: int = {value}",
+        on="module.ModelDuck.SubModelDuckInt.foo",
+    )
+
+    # WHEN: The transformer is applied
+    transformed = module.visit(
+        PatternRuleTransformer(
+            [rule_int, rule_float, rule_sub_duck], module_qualified_name="module"
+        )
+    )
+
+    # THEN: The replacement is accepted and the type annotation is appleid everywhere in the code
+    assert isinstance(transformed, libcst.Module)
+    assert transformed.code == snapshot
+
+
+class MyFooModule:
+    def __init__(self, qualified_name: str) -> None:
+        self.qualified_name: str = qualified_name
+
+    @property
+    def source(self) -> str:
+        return """\
+def foo():
+    my_var = 1
+    return my_var
+"""
+
+    @property
+    def target_source(self) -> str:
+        return """\
+def foo():
+    my_var: int = 1
+    return my_var
+"""
+
+
+def test_pattern_rule_on_disambiguates_same_name_across_modules() -> None:
+    """`on` targets a symbol in one module without touching an identically named one elsewhere.
+
+    Two modules `module_a` and `module_b` each define an identical `def foo()`.
+    A rule scoped to `package.module_a` should annotate only
+    `module_a.foo`'s `my_var` and leave `module_b.foo` untouched.
+    """
+    # GIVEN: Two separate modules that each define an identically named `foo`
+    module_a = MyFooModule(qualified_name="package.module_a")
+    module_b = MyFooModule(qualified_name="package.module_b")
+
+    # GIVEN: A rule intended to apply only to the `foo` function  defined in module_b
+    rule = PatternRule.from_str(
+        pattern="my_var = {value}",
+        replacement="my_var: int = {value}",
+        on="package.module_a.foo",
+    )
+
+    # WHEN: Each module is transformed using the same rule that should only transform `module_a`
+    transformed_foo_a = libcst.parse_module(module_a.source).visit(
+        PatternRuleTransformer([rule], module_qualified_name=module_a.qualified_name)
+    )
+    transformed_foo_b = libcst.parse_module(module_b.source).visit(
+        PatternRuleTransformer([rule], module_qualified_name=module_b.qualified_name)
+    )
+    assert isinstance(transformed_foo_a, libcst.Module)
+    assert isinstance(transformed_foo_b, libcst.Module)
+
+    # THEN: Only `module_a`'s function is annotated and `module_b` is left unchanged
+    assert transformed_foo_a.code == module_a.target_source
+    assert transformed_foo_b.code == module_b.source
+
+
+def test_pattern_rule_on_not_fully_qualified_name_is_not_applied() -> None:
+    # GIVEN: A module that define a function named `foo`
+    module = MyFooModule(qualified_name="package.module")
+
+    # GIVEN: A rule intended to apply to the `foo` function but
+    #        using the middle-part of the fully-qualified name
+    rule = PatternRule.from_str(
+        pattern="my_var = {value}",
+        replacement="my_var: int = {value}",
+        on="module.foo",
+    )
+
+    # WHEN: The module is transformed using the rule
+    module_transformed_source = libcst.parse_module(module.source).visit(
+        PatternRuleTransformer([rule], module_qualified_name=module.qualified_name)
+    )
+
+    # THEN: `foo` is left unchanged
+    assert module_transformed_source.code == module.source
+
+
+def test_pattern_rule_on_package_is_applied_to_children_modules() -> None:
+    # GIVEN: A module that define a function named `foo`
+    module = MyFooModule(qualified_name="project.package.sub_package.module")
+
+    # GIVEN: A rule intended to apply to the `foo` function but
+    #        using the middle-part of the fully-qualified name
+    rule = PatternRule.from_str(
+        pattern="my_var = {value}",
+        replacement="my_var: int = {value}",
+        on="project.package",
+    )
+
+    # WHEN: The module is transformed using the rule
+    module_transformed_source = libcst.parse_module(module.source).visit(
+        PatternRuleTransformer([rule], module_qualified_name=module.qualified_name)
+    )
+
+    # THEN: `foo` is left unchanged
+    assert module_transformed_source.code == module.target_source
+
+
+def test_pattern_rule_on_module_is_applied_to_functions() -> None:
+    # GIVEN: A module that define a function named `foo`
+    module = MyFooModule(qualified_name="project.package.sub_package.module")
+
+    # GIVEN: A rule intended to apply to the `foo` function but
+    #        using the middle-part of the fully-qualified name
+    rule = PatternRule.from_str(
+        pattern="my_var = {value}",
+        replacement="my_var: int = {value}",
+        on="project.package.sub_package.module",
+    )
+
+    # WHEN: The module is transformed using the rule
+    module_transformed_source = libcst.parse_module(module.source).visit(
+        PatternRuleTransformer([rule], module_qualified_name=module.qualified_name)
+    )
+
+    # THEN: `foo` is left unchanged
+    assert module_transformed_source.code == module.target_source
 
 
 def _as_expr_module(node: libcst.CSTNode) -> libcst.Module:

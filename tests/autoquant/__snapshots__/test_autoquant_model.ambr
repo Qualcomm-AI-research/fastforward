@@ -1,0 +1,66 @@
+# serializer version: 1
+# name: test_pattern_rule_robust_type_annotation_on_external_functions
+  '''
+  import fastforward
+  import torch
+  from my_package.model import Model
+  
+  
+  def quantized_foo(
+      x: torch.Tensor,
+      *,
+      quantizer_add: fastforward.nn.Quantizer,
+      quantizer_my_var: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ):
+      x = quantizer_x(x)
+      my_var: int = 1
+      my_var = quantizer_my_var(my_var)
+      return fastforward.nn.functional.add(x, my_var, output_quantizer=quantizer_add)
+  
+  
+  def quantized_foo_2(
+      x: torch.Tensor,
+      *,
+      quantizer_add: fastforward.nn.Quantizer,
+      quantizer_my_var: fastforward.nn.Quantizer,
+      quantizer_x: fastforward.nn.Quantizer,
+  ):
+      x = quantizer_x(x)
+      my_var = 1
+      my_var = quantizer_my_var(my_var)
+      return fastforward.nn.functional.add(x, my_var, output_quantizer=quantizer_add)
+  
+  
+  class QuantizedModel(fastforward.nn.QuantizedModule, Model):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_add: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_a: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_b: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_add_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_my_var_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_x_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_add_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_my_var_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_foo_x_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, x):
+          a = quantized_foo(
+              x,
+              quantizer_add=self.quantizer_foo_add_1,
+              quantizer_my_var=self.quantizer_foo_my_var_1,
+              quantizer_x=self.quantizer_foo_x_1,
+          )
+          a = self.quantizer_a(a)
+          b = quantized_foo_2(
+              x,
+              quantizer_add=self.quantizer_foo_add_2,
+              quantizer_my_var=self.quantizer_foo_my_var_2,
+              quantizer_x=self.quantizer_foo_x_2,
+          )
+          b = self.quantizer_b(b)
+          return fastforward.nn.functional.add(a, b, output_quantizer=self.quantizer_add)
+  
+  '''
+# ---

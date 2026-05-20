@@ -8,7 +8,7 @@ import operator as py_operator
 import textwrap
 import types
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from types import ModuleType
 from typing import Any, Callable, TypeAlias
 
@@ -18,6 +18,7 @@ import libcst.metadata
 
 from typing_extensions import override
 
+from fastforward._autoquant.cst.pattern import PatternRule, PatternRuleTransformer
 from fastforward._autoquant.cst.validation import ensure_type
 from fastforward._autoquant.pass_manager import PassManager
 from fastforward._autoquant.pysource.scope import infer_scopes
@@ -48,14 +49,21 @@ class SourceContext:
     Args:
         preprocessing_passes: Sequence of CST passes that are applied on every
             module CST that is loaded.
+        replacement_patterns: `PatternRule`s that are applied to every module
+            CST before any preprocessing passes. Patterns are applied through
+            a freshly constructed `PatternRuleTransformer` per module so that
+            scope filtering via `PatternRule.on` can match against
+            fully-qualified names that include the module path.
     """
 
     def __init__(
         self,
         *,
         preprocessing_passes: _PassesT = (),
+        replacement_patterns: Iterable[PatternRule] = (),
     ) -> None:
         self._preprocessing_passes = preprocessing_passes
+        self._replacement_patterns = tuple(replacement_patterns)
         self._modules: dict[ModuleType, _ModuleSource] = {}
 
     def get(self, qualified_name: str) -> "PySource":
@@ -112,7 +120,10 @@ class SourceContext:
         if module not in self._modules:
             logger.info("SourceContext: loading module source for %s", fully_qualified_name(module))
             self._modules[module] = _ModuleSource(
-                module, source_context=self, preprocessing_passes=self._preprocessing_passes
+                module,
+                source_context=self,
+                preprocessing_passes=self._preprocessing_passes,
+                replacement_patterns=self._replacement_patterns,
             )
         else:
             logger.info(
@@ -197,9 +208,11 @@ class _ModuleSource:
         *,
         source_context: SourceContext,
         preprocessing_passes: _PassesT = (),
+        replacement_patterns: Sequence[PatternRule] = (),
     ) -> None:
         self._source_context = source_context
         self._preprocessing_passes = tuple(preprocessing_passes)
+        self._replacement_patterns = tuple(replacement_patterns)
         self._py_module = module
         self._scopes: dict[libcst.CSTNode, libcst.metadata.Scope] = {}
 
@@ -257,7 +270,16 @@ class _ModuleSource:
 
         module_cst = libcst.parse_module(textwrap.dedent(src))
 
-        pm = PassManager(self._preprocessing_passes)
+        passes = self._preprocessing_passes
+        if self._replacement_patterns:
+            pattern_transformer = PatternRuleTransformer(
+                self._replacement_patterns,
+                module_qualified_name=fully_qualified_name(module),
+            )
+            # PatternRules are applied first to match against the original source
+            passes = (pattern_transformer,) + tuple(passes)
+
+        pm = PassManager(passes)
         module_cst = pm(module_cst)
         logger.info("SourceContext: finished preprocessing module %s", fully_qualified_name(module))
         return module_cst

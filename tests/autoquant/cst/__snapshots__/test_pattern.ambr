@@ -1,0 +1,141 @@
+# serializer version: 1
+# name: test_pattern_rule_applied_on_fully_qualified_name[Module.__init__]
+  '''
+  
+  class Model:
+      self.property = 3
+  
+      def __init__(self, property):
+          self.property=property
+  
+      def double(self):
+          self.property =    self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[Module]
+  '''
+  
+  class Model:
+      self.property = 3
+  
+      def __init__(self, property):
+          self.property=property
+  
+      def double(self):
+          self.property =    self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[None]
+  '''
+  
+  class Model:
+      self.property: int = 3
+  
+      def __init__(self, property):
+          self.property: int = property
+  
+      def double(self):
+          self.property: int = self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[__init__]
+  '''
+  
+  class Model:
+      self.property = 3
+  
+      def __init__(self, property):
+          self.property=property
+  
+      def double(self):
+          self.property =    self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[module.Model.__init__]
+  '''
+  
+  class Model:
+      self.property = 3
+  
+      def __init__(self, property):
+          self.property: int = property
+  
+      def double(self):
+          self.property =    self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[module.Model]
+  '''
+  
+  class Model:
+      self.property: int = 3
+  
+      def __init__(self, property):
+          self.property: int = property
+  
+      def double(self):
+          self.property: int = self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_applied_on_fully_qualified_name[module]
+  '''
+  
+  class Model:
+      self.property: int = 3
+  
+      def __init__(self, property):
+          self.property: int = property
+  
+      def double(self):
+          self.property: int = self.property * 2
+      
+  '''
+# ---
+# name: test_pattern_rule_robust_type_annotation_multiple_classes
+  '''
+  
+  class ModelInt:
+      def __init__(self, property):
+          self.property: int = property
+  
+  class ModelFloat:
+      def __init__(self, property):
+          self.property: float = property
+      
+      class SubModelFloat:
+          def __init__(self, property):
+              self.property: float = property
+  
+  class ModelDuck:
+      def __init__(self, property):
+          self.property = property
+      
+      class SubModelDuckInt:
+          def __init__(self, property):
+              self.property = property
+          
+          def foo(self, property):
+              self.property: int = property
+      
+  '''
+# ---
+# name: test_pattern_rule_type_annotation_whitespace_robust
+  '''
+  
+  class Model:
+      self.property: int = 3
+  
+      def __init__(self, property):
+          self.property: int = property
+  
+      def double(self):
+          self.property: int = self.property * 2
+      
+  '''
+# ---
