@@ -12,10 +12,13 @@ import torch
 import torch.nn as nn
 import torch.utils._pytree as pytree
 
+from packaging.version import Version
 from torch import fx
 from torch.export import unflatten as _unflatten_exported
 
 from fastforward._orchestration.graph_module import Const, GraphModule, NodeRef, Op, _BaseRef
+
+_MIN_TORCH_VERSION = Version("2.6.0")
 
 
 def _make_tuple(*items: Any) -> tuple[Any, ...]:
@@ -55,6 +58,26 @@ def _make_get_attr(root: nn.Module, attr_path: str) -> Callable[[], Any]:
 
     _get.__name__ = attr_path
     return _get
+
+
+def _strip_hardcoded_device_placements(module: nn.Module) -> None:
+    """Make the unflattened graph device-agnostic.
+
+    torch.export bakes the tracing device into dtype casts (e.g. ``.float()``
+    becomes ``aten.to.dtype_layout(dtype=float32, device='cpu')``). We strip the
+    device kwarg so the cast preserves whatever device the tensor is already on.
+    """
+    for submod in module.modules():
+        graph = getattr(submod, "graph", None)
+        if not isinstance(graph, fx.Graph):
+            continue
+        modified = False
+        for node in graph.nodes:
+            if node.op == "call_function" and "device" in node.kwargs and "dtype" in node.kwargs:
+                node.kwargs = {k: v for k, v in node.kwargs.items() if k != "device"}
+                modified = True
+        if modified and hasattr(submod, "recompile"):
+            submod.recompile()
 
 
 def _prepare_output(spec: pytree.TreeSpec) -> Callable[..., Any]:
@@ -388,6 +411,10 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
         modules as `Op.torch_module` nodes and intermediate modules as inlined
         subgraphs. Produces the same return structure as `module(*args, **kwargs)`.
     """
+    if Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION:
+        msg = f"fastforward._orchestration.trace requires PyTorch >= {_MIN_TORCH_VERSION}; got {torch.__version__}."
+        raise RuntimeError(msg)
+
     positional_names = [
         p.name
         for p in inspect.signature(module.forward).parameters.values()
@@ -396,6 +423,7 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
 
     exported_program = torch.export.export(module, args=args, kwargs=kwargs, strict=False)
     unflattened = _unflatten_exported(exported_program)
+    _strip_hardcoded_device_placements(unflattened)
     out_spec = _capture_out_spec(module, unflattened, args, kwargs)
 
     builder = _GraphBuilder(

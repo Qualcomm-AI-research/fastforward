@@ -17,8 +17,14 @@ from fastforward._orchestration.graph_module import (
     inference_mode,
     local_optimize,
 )
-from fastforward._orchestration.trace import trace
+from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
+from packaging.version import Version
 from torch import nn
+
+pytestmark = pytest.mark.skipif(
+    Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
+    reason=f"requires PyTorch >= {_MIN_TORCH_VERSION}",
+)
 
 # Transformers and torchvision are not in the project's test deps (only docs).
 skip_without_torchvision = pytest.mark.skipif(
@@ -719,3 +725,41 @@ def test_trace_qwen3_8b_forward_matches_eager() -> None:
     # THEN the graph returns the same output type and its logits match
     assert type(got) is type(expected)
     torch.testing.assert_close(got.logits, expected.logits, atol=0.05, rtol=0.01)
+
+
+def test_trace_keeps_dtype_layout_cast_device_agnostic() -> None:
+    """torch.export bakes x.device as a cpu literal; ff.trace strips it."""
+
+    # GIVEN a module whose forward follows x's runtime device via .float().to(x.device)
+    class _M(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.register_buffer("inv_freq", torch.ones(4))
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            assert isinstance(self.inv_freq, torch.Tensor)
+            return x * self.inv_freq.float().to(x.device)
+
+    model = _M().eval()
+    example = torch.randn(1, 4)
+
+    # WHEN torch.export captures the cast, x.device is resolved to a literal cpu kwarg
+    exported = torch.export.export(model, args=(example,), strict=False)
+    unflattened = torch.export.unflatten(exported)
+    [pre_cast] = [n for n in unflattened.graph.nodes if "dtype" in n.kwargs]
+    assert pre_cast.kwargs["dtype"] is torch.float32
+    assert pre_cast.kwargs["device"] == torch.device("cpu")
+
+    # THEN ff.trace strips the literal so the cast falls back to the input's runtime device
+    graph = trace(model, example)
+    matches = [n for n in graph._nodes.values() if "dtype" in n.kwargs]
+    assert len(matches) == 1
+    [post_cast] = matches
+    assert "device" not in post_cast.kwargs
+
+    # AND the forward pass through the GraphModule matches eager _M().forward()
+    with torch.no_grad():
+        expected = model(example)
+        got = graph(example)
+
+    torch.testing.assert_close(got, expected)
