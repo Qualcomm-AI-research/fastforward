@@ -47,12 +47,8 @@ import torch
 from fastforward._orchestration import graph_module
 from fastforward._orchestration.graph_module import inference_mode, local_optimize
 from fastforward._orchestration.instruction_engine import OffloadEverything
+from fastforward._orchestration.trace import trace
 from transformers import AutoTokenizer, LlamaForCausalLM
-
-from doc_helpers.llama_graph_module import to_graph_module
-from doc_helpers.quick_start.quantized_models import (
-    quantized_llama as quantized_llama,  # noqa: F401
-)
 
 model_name = os.environ.get("FF_GPTQ_MODEL", "huggyllama/llama-7b")
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -106,6 +102,20 @@ act_order = True
 # +
 model = LlamaForCausalLM.from_pretrained(model_name, torch_dtype="auto")
 assert isinstance(model, LlamaForCausalLM)
+# -
+
+# ## Trace & Autoquantize Model
+#
+# Trace the model into a `GraphModule` — this captures the computation graph suitable for orchestration.
+# Additionally, automatically quantize the model with FastForward autoquant.
+
+# +
+example_input = torch.randint(0, model.config.vocab_size, (1, 2048))
+graph = trace(model, example_input, use_cache=False)
+
+ff.autoquantize(model, output_path="llama_7b_autquant.py", auto_import=True, force_overwrite=True)
+
+# -
 
 ff.quantize_model(model)
 
@@ -115,7 +125,6 @@ w_quantizers.initialize(
     ff.nn.LinearQuantizer, num_bits=num_bits, granularity=granularity, symmetric=symmetric
 )
 
-graph = to_graph_module(model)
 # -
 
 # ## Load Calibration Dataset
@@ -180,7 +189,7 @@ projection_names = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_pro
 
 specs = []
 for proj_name in projection_names:
-    for match in ff.mpath.search(f"*/{proj_name}", graph):
+    for match in ff.mpath.search(f"**/{proj_name}", graph):
         specs.append(graph_module.SubgraphSpec(input=match.module, output=match.module, fn=gptq_fn))
 
 # We provide an offloading strategy that puts model weights and intermediate activations to cpu
@@ -224,7 +233,7 @@ def evaluate(model: graph_module.GraphModule, dataset: list[torch.Tensor]) -> fl
     total_tokens = 0
 
     for batch in dataset:
-        logits = model(batch)
+        logits = model(batch, use_cache=False).logits
         nll_sum += loss_fct(
             logits[:, :-1].reshape(-1, logits.size(-1)).to(device),
             batch[:, 1:].reshape(-1).to(device),
