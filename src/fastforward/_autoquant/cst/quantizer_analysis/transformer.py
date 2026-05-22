@@ -481,80 +481,183 @@ def _insert_dependency_aware_quantize_statements(
     node: libcst.IndentedBlock,
     statements: Iterable[tuple[libcst.SimpleStatementLine, libcst.BaseExpression]],
 ) -> libcst.IndentedBlock:
-    """Insert quantize statements after their local-name dependencies are available.
+    """Insert the quantize statements of tensor-expressions immediately before their use in the source-expression.
 
-    Each tuple contains the statement to insert and the source expression used
-    to derive dependencies. For every dependency name found in the source
-    expression, insertion is delayed until after the first assignment to that
-    name in the same block.
+    Each tuple contains the quantize statement to insert and the source
+    expression used to derive dependencies. This statement must be placed
+    after the last statement that could have a side effect on the tensor-expression
+    but before it's use in the source-expression.
+    Placing the hoisted `target = quantizer(source)` statement directly before
+    the use therefore inherits that guarantee without any dataflow analysis.
+
+    E.g.:
+
+    Original Code:
+    ```
+        def forward(a, b):
+            a = b.T
+            c = foo(a + b)
+    ```
+
+    Autoquant code should be:
+    ```
+        def forward(a, b):
+            a = b.T
+            a_b = quantize_add(a, b)
+            c = foo(a_b)
+    ```
+
+    And not:
+    ```
+        def forward(a, b):
+            a_b = quantize_add(a, b)
+            a = b.T
+            c = foo(a_b)
+    ```
     """
-    body = list(node.body)
+    orig_body = list(node.body)
+    if not orig_body:
+        return node
 
-    # Insert after docstring (if present) by default.
-    insert_base = 1 if _has_docstring(node) else 0
-    for statement, source_expr in statements:
-        deps = _collect_loaded_name_values(source_expr)
-        deps.discard("self")
+    docstring_offset = 1 if _has_docstring(node) else 0
 
-        insert_idx = insert_base
-        if deps:
-            first_assignments = _first_assignments_in_block(body)
-            dep_positions = [first_assignments[name] for name in deps if name in first_assignments]
-            if dep_positions:
-                insert_idx = max(insert_idx, max(dep_positions) + 1)
+    # 1. Find the new statements to insert with their position relative to
+    #    the original body
+    # --------------------------------------------------------------------------
+    new_statements: list[tuple[int, libcst.SimpleStatementLine]] = []
+    for statement, _source_expr in statements:
+        target_name = _quantize_statement_target_name(statement)
+        if target_name is None:
+            # Defensive: the helper that builds these statements always emits
+            # `Name = ...` targets, but if a future change breaks that, fall
+            # back to appending so we don't crash mid-rewrite.
+            insert_idx = len(orig_body)
+        else:
+            use_idx = _first_use_index_in_block(orig_body, target_name)
+            if use_idx is None:
+                insert_idx = len(orig_body)
+            else:
+                insert_idx = max(use_idx, docstring_offset)
+        new_statements.append((insert_idx, statement))
+    # --------------------------------------------------------------------------
 
-        body.insert(insert_idx, statement)
-        insert_base = insert_idx + 1
+    if not new_statements:
+        return node
 
-    return node.with_changes(body=tuple(body))
+    # 2. Merge the new statements in the original body
+    # --------------------------------------------------------------------------
+    new_body: list[libcst.BaseStatement] = []
+
+    # `sort` keeps original order among equal keys,
+    # the loop below preserves that order in the new body.
+    new_statements.sort(key=lambda idx_stmt: idx_stmt[0])
+    new_stmt_iter = iter(new_statements)
+
+    # Get the first "new-statement" to insert,
+    # then loop over the original-body's statements.
+    new_stmt: tuple[int, libcst.SimpleStatementLine] | None = next(new_stmt_iter, None)
+    for orig_idx, orig_stmt in enumerate(orig_body):
+        # Insert all the new-stmts that should come before the current orig_stmt
+        while new_stmt is not None and new_stmt[0] <= orig_idx:
+            new_body.append(new_stmt[1])
+            new_stmt = next(new_stmt_iter, None)
+
+        new_body.append(orig_stmt)
+
+    # Insert all the remaining new-stmts that should be appended to the body
+    while new_stmt is not None:
+        new_body.append(new_stmt[1])
+        new_stmt = next(new_stmt_iter, None)
+    # --------------------------------------------------------------------------
+
+    return node.with_changes(body=tuple(new_body))
 
 
-def _first_assignments_in_block(body: list[libcst.BaseStatement]) -> dict[str, int]:
-    """Return the first statement index assigning each simple local name."""
-    first_assignments: dict[str, int] = {}
+def _quantize_statement_target_name(stmt: libcst.SimpleStatementLine) -> str | None:
+    """Return the LHS name of a single ``target = ...`` quantize statement."""
+    if len(stmt.body) != 1:
+        return None
+    inner = stmt.body[0]
+    if not isinstance(inner, libcst.Assign) or len(inner.targets) != 1:
+        return None
+    target = inner.targets[0].target
+    if isinstance(target, libcst.Name):
+        return target.value
+    return None
+
+
+class _BlockScopeNameLoadFinder(libcst.CSTVisitor):
+    """Find Names loaded within a statement, without crossing function/class scopes.
+
+    Names appearing as assignment targets are excluded so writes don't count
+    as loads.
+    """
+
+    def __init__(self, target_name: str) -> None:
+        super().__init__()
+        self._target_name = target_name
+        self.found = False
+        self._exclude_ids: set[int] = set()
+
+    def _exclude_target(self, expr: libcst.BaseExpression) -> None:
+        if isinstance(expr, libcst.Name):
+            self._exclude_ids.add(id(expr))
+        elif isinstance(expr, (libcst.Tuple, libcst.List)):
+            for el in expr.elements:
+                if isinstance(el, libcst.Element):
+                    self._exclude_target(el.value)
+
+    @override
+    def visit_Assign(self, node: libcst.Assign) -> bool:
+        for tgt in node.targets:
+            self._exclude_target(tgt.target)
+        return True
+
+    @override
+    def visit_AugAssign(self, node: libcst.AugAssign) -> bool:
+        # Aug-assign reads the target before storing — keep it as a load.
+        return True
+
+    @override
+    def visit_AnnAssign(self, node: libcst.AnnAssign) -> bool:
+        self._exclude_target(node.target)
+        return True
+
+    def visit_GeneralAssignment(self, node: nodes.GeneralAssignment) -> bool:
+        for tgt in node.targets:
+            self._exclude_target(tgt)
+        return True
+
+    @override
+    def visit_FunctionDef(self, node: libcst.FunctionDef) -> bool:
+        del node
+        return False
+
+    @override
+    def visit_ClassDef(self, node: libcst.ClassDef) -> bool:
+        del node
+        return False
+
+    @override
+    def visit_Lambda(self, node: libcst.Lambda) -> bool:
+        del node
+        return False
+
+    @override
+    def visit_Name(self, node: libcst.Name) -> bool:
+        if node.value == self._target_name and id(node) not in self._exclude_ids:
+            self.found = True
+        return True
+
+
+def _first_use_index_in_block(body: list[libcst.BaseStatement], target_name: str) -> int | None:
+    """Return the first top-level statement index that loads `target_name`."""
     for idx, stmt in enumerate(body):
-        if not isinstance(stmt, libcst.SimpleStatementLine) or len(stmt.body) != 1:
-            continue
-
-        small_stmt = stmt.body[0]
-        if isinstance(small_stmt, libcst.Assign):
-            if len(small_stmt.targets) != 1:
-                continue
-            target = small_stmt.targets[0].target
-            if isinstance(target, libcst.Name):
-                first_assignments.setdefault(target.value, idx)
-            continue
-
-        if isinstance(small_stmt, nodes.GeneralAssignment):
-            if small_stmt.value is None:
-                continue
-            for target in small_stmt.targets:
-                if isinstance(target, libcst.Name):
-                    first_assignments.setdefault(target.value, idx)
-                elif isinstance(target, libcst.Tuple):
-                    # Tuple unpack: _B, _Nt, E = q.shape — register each Name element.
-                    for el in target.elements:
-                        if isinstance(el.value, libcst.Name):
-                            first_assignments.setdefault(el.value.value, idx)
-
-    return first_assignments
-
-
-def _collect_loaded_name_values(expr: libcst.CSTNode) -> set[str]:
-    """Collect ``Name`` values referenced inside an expression subtree."""
-
-    class _NameCollector(libcst.CSTVisitor):
-        def __init__(self) -> None:
-            super().__init__()
-            self.names: set[str] = set()
-
-        def visit_Name(self, node: libcst.Name) -> bool:
-            self.names.add(node.value)
-            return True
-
-    collector = _NameCollector()
-    expr.visit(collector)
-    return collector.names
+        finder = _BlockScopeNameLoadFinder(target_name)
+        stmt.visit(finder)
+        if finder.found:
+            return idx
+    return None
 
 
 class _QuantizerCallDedup(libcst.CSTTransformer):

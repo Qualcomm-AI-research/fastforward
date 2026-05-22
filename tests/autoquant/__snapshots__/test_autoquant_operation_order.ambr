@@ -1,0 +1,137 @@
+# serializer version: 1
+# name: test_quantize_statement_respects_reassignment
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant_operation_order import ReassignmentModel, _repeat
+  
+  
+  class QuantizedReassignmentModel(fastforward.nn.QuantizedModule, ReassignmentModel):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_matmul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_q: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_k_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+          q = self.q_proj(hidden_states)
+          q = self.quantizer_q(q)
+          k = self.k_proj(hidden_states)
+          k = _repeat(k)
+          k_T = self.quantizer_k_T(k.T)
+          return fastforward.nn.functional.matmul(q, k_T, output_quantizer=self.quantizer_matmul)
+  '''
+# ---
+# name: test_quantize_statement_respects_reassignment_accessing_object_property
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant_operation_order import (
+      ReassignmentModelWithObjectProperty,
+      TimeData,
+      _repeat,
+  )
+  
+  
+  class QuantizedReassignmentModelWithObjectProperty(
+      fastforward.nn.QuantizedModule, ReassignmentModelWithObjectProperty
+  ):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_matmul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_q: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_ts_T_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+          q = self.q_proj(hidden_states)
+          q = self.quantizer_q(q)
+          k = self.k_proj(hidden_states)
+          ts = TimeData(T=k)
+          ts.T = _repeat(ts.T)
+          ts_T_T = self.quantizer_ts_T_T(ts.T.T)
+          return fastforward.nn.functional.matmul(q, ts_T_T, output_quantizer=self.quantizer_matmul)
+  '''
+# ---
+# name: test_quantize_statement_respects_reassignment_complex_model
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant_operation_order import (
+      ComplexReassignmentModel,
+      _repeat,
+  )
+  
+  
+  class QuantizedComplexReassignmentModel(fastforward.nn.QuantizedModule, ComplexReassignmentModel):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_add_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_add_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_matmul_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_mul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_matmul_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_q: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_k_1: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_v: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_k_2: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_k_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_score_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+          q = self.q_proj(hidden_states)
+          q = self.quantizer_q(q)
+          k = self.k_proj(hidden_states)
+          k = self.quantizer_k_1(k)
+          v = self.v_proj(hidden_states)
+          v = self.quantizer_v(v)
+          v = fastforward.nn.functional.add(v, k, output_quantizer=self.quantizer_add_1)
+          k = fastforward.nn.functional.add(k, v, output_quantizer=self.quantizer_add_2)
+          k = _repeat(k)
+          k = self.quantizer_k_2(k)
+          k_T = self.quantizer_k_T(k.T)
+          score = fastforward.nn.functional.matmul(q, k_T, output_quantizer=self.quantizer_matmul_1)
+          _tmp_8 = fastforward.nn.functional.mul(v, k, output_quantizer=self.quantizer_mul)
+          score_T = self.quantizer_score_T(score.T)
+          prob = fastforward.nn.functional.matmul(
+              _tmp_8, score_T, output_quantizer=self.quantizer_matmul_2
+          )
+          return prob
+  '''
+# ---
+# name: test_quantize_statement_respects_reassignment_when_partially_clashing_name
+  '''
+  import fastforward
+  import torch
+  
+  from tests.autoquant.test_autoquant_operation_order import (
+      ReassignmentModelPartiallyClashingName,
+      _repeat,
+  )
+  
+  
+  class QuantizedReassignmentModelPartiallyClashingName(
+      fastforward.nn.QuantizedModule, ReassignmentModelPartiallyClashingName
+  ):
+      def __init_quantization__(self) -> None:
+          super().__init_quantization__()
+          self.quantizer_mul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_matmul: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_q: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+          self.quantizer_k_T: fastforward.nn.Quantizer = fastforward.nn.QuantizerStub()
+  
+      def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+          q = self.q_proj(hidden_states)
+          q = self.quantizer_q(q)
+          k = self.k_proj(hidden_states)
+          k = _repeat(k)
+          T = torch.tensor([10.0])
+          T = self.quantizer_T(T)
+          k_T = self.quantizer_k_T(k.T)
+          _tmp_3 = fastforward.nn.functional.mul(k_T, T, output_quantizer=self.quantizer_mul)
+          return fastforward.nn.functional.matmul(q, _tmp_3, output_quantizer=self.quantizer_matmul)
+  '''
+# ---
