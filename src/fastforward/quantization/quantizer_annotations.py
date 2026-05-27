@@ -96,7 +96,7 @@ def quantizer_override(
     return quantized
 
 
-def annotate_operator_metadata(model: torch.nn.Module, sample_input: torch.Tensor) -> None:
+def annotate_operator_metadata(model: "ff.nn.QuantizedModule", sample_input: torch.Tensor) -> None:
     """Trace model execution and annotate Quantizer metadata with preceding and succeeding operators.
 
     This function performs a lightweight tracing of the model's forward pass using a special

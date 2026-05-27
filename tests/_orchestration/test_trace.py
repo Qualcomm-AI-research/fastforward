@@ -136,7 +136,8 @@ class _MixedOps(nn.Module):
         # transpose twice keeps shapes valid while emitting two call_function nodes
         y = torch.transpose(z, -1, -2)
         out = torch.transpose(y, -1, -2)
-        return out * self.scale  # type: ignore[no-any-return]
+        assert isinstance(self.scale, torch.Tensor)
+        return out * self.scale
 
 
 # ---------------------------------------------------------------------------
@@ -272,14 +273,18 @@ def test_trace_recovers_module_list_children_by_numeric_dotted_path() -> None:
 
     # WHEN the module is traced
     graph = trace(model, x)
+    layer0 = model.layers[0]
+    layer1 = model.layers[1]
+    assert isinstance(layer0, _ToyDecoderLayer)
+    assert isinstance(layer1, _ToyDecoderLayer)
 
     # THEN leaf modules behind numeric indices are recoverable via dotted lookup
-    assert graph.get_submodule("layers.0.self_attn.q_proj") is model.layers[0].self_attn.q_proj
-    assert graph.get_submodule("layers.1.mlp.gate_proj") is model.layers[1].mlp.gate_proj
+    assert graph.get_submodule("layers.0.self_attn.q_proj") is layer0.self_attn.q_proj
+    assert graph.get_submodule("layers.1.mlp.gate_proj") is layer1.mlp.gate_proj
 
     # And the reverse lookup resolves numeric path segments correctly
-    assert graph.node_ref(model.layers[0].self_attn.q_proj).name == "layers.0.self_attn.q_proj"
-    assert graph.node_ref(model.layers[1].mlp.gate_proj).name == "layers.1.mlp.gate_proj"
+    assert graph.node_ref(layer0.self_attn.q_proj).name == "layers.0.self_attn.q_proj"
+    assert graph.node_ref(layer1.mlp.gate_proj).name == "layers.1.mlp.gate_proj"
 
 
 def test_trace_nested_model_forward_matches_eager() -> None:
@@ -478,10 +483,12 @@ def test_trace_buffer_access_emits_get_attr_op_with_closure_callable() -> None:
     # closure, and calling it returns the original buffer tensor
     assert len(get_attr_nodes) == 1
     [node] = get_attr_nodes
-    assert callable(node.module)
-    assert not isinstance(node.module, nn.Module)
-    resolved = node.module()
+    module = node.module
+    assert callable(module)
+    assert not isinstance(module, nn.Module)
+    resolved = module()
     assert isinstance(resolved, torch.Tensor)
+    assert isinstance(model.scale, torch.Tensor)
     assert resolved.data_ptr() == model.scale.data_ptr()
 
 

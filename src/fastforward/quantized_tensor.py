@@ -476,19 +476,19 @@ class QuantizedTensor(torch.Tensor):
     # As such, a += b is the same as a = a + b and any dequantization will
     # occur. This is required because the result of an operator generally does
     # not adhere to a quantization grid.
-    def __iadd__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __isub__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __imul__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __imatmul__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __itruediv__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __ifloordiv__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __imod__(self, other: Any) -> torch.Tensor: return NotImplemented
-    def __ilshift__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __irshift__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __iand__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __ixor__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __ior__(self, other: Any) -> torch.Tensor: return NotImplemented # type: ignore[misc]
-    def __ipow__(self, other: Any, modulo: int | None=None) -> torch.Tensor: # type: ignore[misc]
+    def __iadd__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __isub__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __imul__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __imatmul__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __itruediv__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __ifloordiv__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __imod__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __ilshift__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __irshift__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __iand__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __ixor__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __ior__(self, other: Any) -> torch.Tensor: return NotImplemented  # type: ignore[misc]
+    def __ipow__(self, other: Any, modulo: int | None=None) -> torch.Tensor:  # type: ignore[misc]
         return NotImplemented
     # fmt: on
 

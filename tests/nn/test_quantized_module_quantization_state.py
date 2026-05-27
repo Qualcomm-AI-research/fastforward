@@ -298,6 +298,8 @@ def test_load_quantization_state_integration_with_save(
     duplicated_model = copy.deepcopy(model)
     ff.quantize_model(model)
     ff.quantize_model(duplicated_model)
+    assert isinstance(model, ff.nn.QuantizedModule)
+    assert isinstance(duplicated_model, ff.nn.QuantizedModule)
 
     q1 = ff.nn.LinearQuantizer(8, granularity=ff.PerTile((1, 2)), quantized_dtype=torch.float32)
     q1.quantization_range = (-10, 10)
@@ -312,16 +314,20 @@ def test_load_quantization_state_integration_with_save(
     duplicated_model.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
 
     # THEN: deserialized quantizers have the same settings
-    assert duplicated_model.input_quantizer.quantization_range == q1.quantization_range
-    assert duplicated_model.input_quantizer.granularity == q1.granularity
-    assert duplicated_model.input_quantizer.quantized_dtype == q1.quantized_dtype
-    torch.testing.assert_close(duplicated_model.input_quantizer.scale, q1.scale)
-    torch.testing.assert_close(duplicated_model.input_quantizer.offset, q1.offset)
-    assert duplicated_model.output_quantizer.quantization_range == q2.quantization_range
-    assert duplicated_model.output_quantizer.granularity == q2.granularity
-    torch.testing.assert_close(duplicated_model.output_quantizer.scale, q2.scale)
-    torch.testing.assert_close(duplicated_model.output_quantizer.offset, q2.offset)
-    assert duplicated_model.output_quantizer.scale.device == q2.scale.device
+    input_quantizer = duplicated_model.input_quantizer
+    output_quantizer = duplicated_model.output_quantizer
+    assert isinstance(input_quantizer, ff.nn.LinearQuantizer)
+    assert isinstance(output_quantizer, ff.nn.LinearQuantizer)
+    assert input_quantizer.quantization_range == q1.quantization_range
+    assert input_quantizer.granularity == q1.granularity
+    assert input_quantizer.quantized_dtype == q1.quantized_dtype
+    torch.testing.assert_close(input_quantizer.scale, q1.scale)
+    torch.testing.assert_close(input_quantizer.offset, q1.offset)
+    assert output_quantizer.quantization_range == q2.quantization_range
+    assert output_quantizer.granularity == q2.granularity
+    torch.testing.assert_close(output_quantizer.scale, q2.scale)
+    torch.testing.assert_close(output_quantizer.offset, q2.offset)
+    assert output_quantizer.scale.device == q2.scale.device
 
     with ff.strict_quantization(False):
         # WHEN: Feed to both models the same input

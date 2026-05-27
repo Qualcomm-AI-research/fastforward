@@ -23,7 +23,7 @@ class TinyModel(torch.nn.Module):
         self.linear3 = QuantizedLinear(40, 10)
 
     @staticmethod
-    def quantize_linear_layer(layer: torch.nn.Module, num_bits: int) -> None:
+    def quantize_linear_layer(layer: QuantizedLinear, num_bits: int) -> None:
         # quant_metadata = layer.weight_quantizer.quant_metadata
         layer.weight_quantizer = LinearQuantizer(num_bits=num_bits)
         # layer.weight_quantizer.quant_metadata = quant_metadata

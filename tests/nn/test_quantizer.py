@@ -155,7 +155,9 @@ def test_quantizer_setstate_with_custom_attributes() -> None:
     assert quantizer.string_attr == "test_string"
     assert quantizer.int_attr == 123
     assert quantizer.float_attr == 3.14
-    assert torch.equal(quantizer.tensor_attr, test_tensor)
+    tensor_attr = quantizer.tensor_attr
+    assert isinstance(tensor_attr, torch.Tensor)
+    assert torch.equal(tensor_attr, test_tensor)
     assert quantizer.list_attr == [1, 2, 3]
     assert quantizer.dict_attr == {"key": "value"}
 

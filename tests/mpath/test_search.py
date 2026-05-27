@@ -10,6 +10,18 @@ import torch
 from fastforward import mpath
 
 
+def _layer(model: torch.nn.ModuleDict, key: str) -> torch.nn.ModuleList:
+    val = model[key]
+    assert isinstance(val, torch.nn.ModuleList)
+    return val
+
+
+def _item(layer: torch.nn.ModuleList, index: int) -> torch.nn.Module:
+    val = layer[index]
+    assert isinstance(val, torch.nn.Module)
+    return val
+
+
 @pytest.fixture()
 def model() -> torch.nn.ModuleDict:
     module = torch.nn.ModuleDict(
@@ -19,7 +31,7 @@ def model() -> torch.nn.ModuleDict:
             layer3=torch.nn.ModuleList([torch.nn.Conv2d(30, 30, 3), torch.nn.Conv2d(40, 40, 3)]),
         )
     )
-    module.custom_aliases = {"alias": mpath.query("layer1/0")}  # type: ignore[assignment]
+    setattr(module, "custom_aliases", {"alias": mpath.query("layer1/0")})
     return module
 
 
@@ -43,110 +55,125 @@ def _assert_search_result(
         assert expected_module in module_results
 
 
-def test_search_class_fragment(model: torch.nn.Module) -> None:
+def test_search_class_fragment(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
     _assert_search_result(
         model,
         "**/[class:torch.nn.Linear]",
         [
-            ("layer1.0", model.layer1[0]),
-            ("layer1.1", model.layer1[1]),
-            ("layer2.0", model.layer2[0]),
-            ("layer2.1", model.layer2[1]),
+            ("layer1.0", _item(layer1, 0)),
+            ("layer1.1", _item(layer1, 1)),
+            ("layer2.0", _item(layer2, 0)),
+            ("layer2.1", _item(layer2, 1)),
         ],
     )
 
 
-def test_search_wildcard(model: torch.nn.Module) -> None:
+def test_search_wildcard(model: torch.nn.ModuleDict) -> None:
     _assert_search_result(
         model,
         "*",
         [
-            ("layer1", model.layer1),
-            ("layer2", model.layer2),
-            ("layer3", model.layer3),
+            ("layer1", _layer(model, "layer1")),
+            ("layer2", _layer(model, "layer2")),
+            ("layer3", _layer(model, "layer3")),
         ],
     )
 
 
-def test_search_double_wildcard(model: torch.nn.Module) -> None:
+def test_search_double_wildcard(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
+    layer3 = _layer(model, "layer3")
     _assert_search_result(
         model,
         "**",
         [
-            ("layer1", model.layer1),
-            ("layer2", model.layer2),
-            ("layer3", model.layer3),
-            ("layer1.0", model.layer1[0]),
-            ("layer1.1", model.layer1[1]),
-            ("layer2.0", model.layer2[0]),
-            ("layer2.1", model.layer2[1]),
-            ("layer3.0", model.layer3[0]),
-            ("layer3.1", model.layer3[1]),
+            ("layer1", layer1),
+            ("layer2", layer2),
+            ("layer3", layer3),
+            ("layer1.0", _item(layer1, 0)),
+            ("layer1.1", _item(layer1, 1)),
+            ("layer2.0", _item(layer2, 0)),
+            ("layer2.1", _item(layer2, 1)),
+            ("layer3.0", _item(layer3, 0)),
+            ("layer3.1", _item(layer3, 1)),
         ],
     )
 
 
-def test_search_negation(model: torch.nn.Module) -> None:
+def test_search_negation(model: torch.nn.ModuleDict) -> None:
+    layer3 = _layer(model, "layer3")
     _assert_search_result(
         model,
         "*/~[cls:torch.nn.Linear]",
         [
-            ("layer3.0", model.layer3[0]),
-            ("layer3.1", model.layer3[1]),
+            ("layer3.0", _item(layer3, 0)),
+            ("layer3.1", _item(layer3, 1)),
         ],
     )
 
 
-def test_search_module_list(model: torch.nn.Module) -> None:
+def test_search_module_list(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
+    layer3 = _layer(model, "layer3")
     _assert_search_result(
         model,
         "**/1",
         [
-            ("layer1.1", model.layer1[1]),
-            ("layer2.1", model.layer2[1]),
-            ("layer3.1", model.layer3[1]),
+            ("layer1.1", _item(layer1, 1)),
+            ("layer2.1", _item(layer2, 1)),
+            ("layer3.1", _item(layer3, 1)),
         ],
     )
     _assert_search_result(
         model,
         "**/layer1/0",
         [
-            ("layer1.0", model.layer1[0]),
+            ("layer1.0", _item(layer1, 0)),
         ],
     )
 
 
-def test_search_multi_selector(model: torch.nn.Module) -> None:
+def test_search_multi_selector(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
     _assert_search_result(
         model,
         "**/{layer1, layer2}/0",
         [
-            ("layer1.0", model.layer1[0]),
-            ("layer2.0", model.layer2[0]),
+            ("layer1.0", _item(layer1, 0)),
+            ("layer2.0", _item(layer2, 0)),
         ],
     )
     _assert_search_result(
         model,
         "**/{layer1/0, layer2/1}",
         [
-            ("layer1.0", model.layer1[0]),
-            ("layer2.1", model.layer2[1]),
+            ("layer1.0", _item(layer1, 0)),
+            ("layer2.1", _item(layer2, 1)),
         ],
     )
 
 
-def test_regex_extension(model: torch.nn.Module) -> None:
+def test_regex_extension(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
     _assert_search_result(
         model,
         r"[re:layer[12\]]/1",
         [
-            ("layer1.1", model.layer1[1]),
-            ("layer2.1", model.layer2[1]),
+            ("layer1.1", _item(layer1, 1)),
+            ("layer2.1", _item(layer2, 1)),
         ],
     )
 
 
-def test_root_aliases(model: torch.nn.Module) -> None:
+def test_root_aliases(model: torch.nn.ModuleDict) -> None:
+    layer1 = _layer(model, "layer1")
+    layer2 = _layer(model, "layer2")
     # GIVEN a torch module with an aliases attribute
     # WHEN searching for submodules using mpath using an aliases attribute
     # THEN the aliases dictionary stored on `model` must be used.
@@ -154,7 +181,7 @@ def test_root_aliases(model: torch.nn.Module) -> None:
         model,
         r"&alias",
         [
-            ("layer1.0", model.layer1[0]),
+            ("layer1.0", _item(layer1, 0)),
         ],
         aliases="custom_aliases",
     )
@@ -165,13 +192,13 @@ def test_root_aliases(model: torch.nn.Module) -> None:
         model,
         r"&alias",
         [
-            ("layer2.1", model.layer2[1]),
+            ("layer2.1", _item(layer2, 1)),
         ],
         aliases={"alias": mpath.query("layer2/1")},
     )
 
 
-def test_mpath_collection_set_operations(model: torch.nn.Module) -> None:
+def test_mpath_collection_set_operations(model: torch.nn.ModuleDict) -> None:
     results1 = mpath.search("layer1/**", model)
     results2 = mpath.search((mpath.query("layer1") | mpath.query("layer2")) / "**", model)
     results3 = mpath.search("layer3/**", model)

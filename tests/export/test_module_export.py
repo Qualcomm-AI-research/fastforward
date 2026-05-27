@@ -280,7 +280,7 @@ def test_module_export_with_module_kwargs(
     linear_module_path = export_modules(
         model,
         (data,),
-        model.fc1,
+        model.get_submodule("fc1"),
         model_name,
         tmp_path,
         kwargs=module_kwargs,
@@ -302,7 +302,7 @@ def test_module_export_with_module_kwargs(
     custom_mul_module_path = export_modules(
         model,
         (data,),
-        model.mul_module,
+        model.get_submodule("mul_module"),
         model_name,
         tmp_path,
         kwargs=module_kwargs,

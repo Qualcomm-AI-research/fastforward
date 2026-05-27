@@ -231,10 +231,11 @@ def test_create_subgraph_functional_equivalence() -> None:
     graph = model.to_graph_module()
 
     # GIVEN the minimal node set lying in the GraphModule
+    sigmoid = graph.get_submodule("sigmoid")
     path_nodes = find_nodes_on_path(
         graph,
-        graph.node_ref(graph.residual_1.linear),
-        graph.node_ref(graph.sigmoid),
+        graph.node_ref(model.residual_1.linear),
+        graph.node_ref(sigmoid),
     )
 
     # WHEN we materialise that path as a standalone GraphModule
@@ -250,45 +251,48 @@ def test_create_subgraph_functional_equivalence() -> None:
 
 def test_find_reachable_nodes_happy_path() -> None:
     # GIVEN a GraphModule and its plan
-    graph = Model().to_graph_module()
+    model = Model()
+    graph = model.to_graph_module()
 
     # WHEN we collect nodes reachable forward from residual_1.linear
+    sigmoid = graph.get_submodule("sigmoid")
+    relu_1 = graph.get_submodule("residual_1.relu")
     fwd = find_reachable_nodes(
         graph,
-        graph.node_ref(graph.residual_1.linear),
+        graph.node_ref(model.residual_1.linear),
         direction=Direction.FORWARD,
     )
 
     # THEN some expected downstream nodes are present
     assert {
-        graph.node_ref(graph.residual_1.relu),
-        graph.node_ref(graph.residual_2.linear),
-        graph.node_ref(graph.sigmoid),
+        graph.node_ref(relu_1),
+        graph.node_ref(model.residual_2.linear),
+        graph.node_ref(sigmoid),
     } <= fwd
 
     # WHEN we collect nodes reachable backward from sigmoid
     bwd = find_reachable_nodes(
         graph,
-        graph.node_ref(graph.sigmoid),
+        graph.node_ref(sigmoid),
         direction=Direction.BACKWARD,
     )
 
     # THEN an early upstream node is included
-    assert graph.node_ref(graph.residual_1.linear) in bwd
+    assert graph.node_ref(model.residual_1.linear) in bwd
 
     # GIVEN a allowlist that omits intermediate nodes
-    allowlist = {graph.node_ref(graph.residual_2.linear), graph.node_ref(graph.sigmoid)}
+    allowlist = {graph.node_ref(model.residual_2.linear), graph.node_ref(sigmoid)}
 
     # WHEN we traverse with the allowlist
     restricted = find_reachable_nodes(
         graph,
-        graph.node_ref(graph.residual_2.linear),
+        graph.node_ref(model.residual_2.linear),
         direction=Direction.FORWARD,
         allowlist=allowlist,
     )
 
     # THEN traversal stops at the start node
-    assert restricted == {graph.node_ref(graph.residual_2.linear)}
+    assert restricted == {graph.node_ref(model.residual_2.linear)}
 
 
 def test_node_ref_identity_across_graphs() -> None:
@@ -457,14 +461,16 @@ def test_local_optimization_overlapping_specs_raises() -> None:
     # GIVEN two SubgraphSpecs that overlap
     model = Model()
     graph = model.to_graph_module()
+    residual_1_linear = graph.get_submodule("residual_1.linear")
+    residual_1_relu = graph.get_submodule("residual_1.relu")
     specs = [
         SubgraphSpec(
-            input=graph.residual_1.linear,
-            output=graph.residual_1.relu,
+            input=residual_1_linear,
+            output=residual_1_relu,
         ),
         SubgraphSpec(
-            input=graph.residual_1.linear,
-            output=graph.residual_1.relu,
+            input=residual_1_linear,
+            output=residual_1_relu,
         ),
     ]
 
@@ -530,10 +536,12 @@ def test_local_optimization_with_attribute_refs() -> None:
             optim.step()
 
     # GIVEN a spec targeting the first output path
+    linear1 = graph.get_submodule("linear1")
+    relu = graph.get_submodule("relu")
     specs = [
         SubgraphSpec(
-            input=graph.linear1,
-            output=graph.relu,
+            input=linear1,
+            output=relu,
             fn=optimize_first_output,
         )
     ]
@@ -572,15 +580,17 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
             optim.step()
 
     # GIVEN two non-overlapping specs
+    residual_1_linear = graph.get_submodule("residual_1.linear")
+    residual_2_linear = graph.get_submodule("residual_2.linear")
     specs = [
         SubgraphSpec(
-            input=graph.residual_1.linear,
-            output=graph.residual_1.linear,
+            input=residual_1_linear,
+            output=residual_1_linear,
             fn=simple_opt,
         ),
         SubgraphSpec(
-            input=graph.residual_2.linear,
-            output=graph.residual_2.linear,
+            input=residual_2_linear,
+            output=residual_2_linear,
             fn=simple_opt,
         ),
     ]
@@ -618,10 +628,12 @@ def test_local_optimization_entire_graph() -> None:
             optim.step()
 
     # GIVEN a spec covering the entire graph
+    residual_1_linear = graph.get_submodule("residual_1.linear")
+    sigmoid = graph.get_submodule("sigmoid")
     specs = [
         SubgraphSpec(
-            input=graph.residual_1.linear,
-            output=graph.sigmoid,
+            input=residual_1_linear,
+            output=sigmoid,
             fn=full_opt,
         )
     ]

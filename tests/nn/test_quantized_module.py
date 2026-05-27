@@ -77,6 +77,7 @@ def test_quantized_module_summarize_quantizers() -> None:
     model = Model()
     extra_conversion = ff.nn.quantized_module.surrogate_quantized_modules(model)
     ff.quantize_model(model, extra_conversion=extra_conversion)
+    assert isinstance(model, ff.nn.QuantizedModule)
 
     ff.find_quantizers(model, "**/output_quantizer").initialize(ff.nn.LinearQuantizer, num_bits=4)
     ff.find_quantizers(model, "*/0/weight_quantizer").initialize(ff.nn.LinearQuantizer, num_bits=2)

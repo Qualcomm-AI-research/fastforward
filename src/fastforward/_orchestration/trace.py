@@ -76,7 +76,7 @@ def _strip_hardcoded_device_placements(module: nn.Module) -> None:
             if node.op == "call_function" and "device" in node.kwargs and "dtype" in node.kwargs:
                 node.kwargs = {k: v for k, v in node.kwargs.items() if k != "device"}
                 modified = True
-        if modified and hasattr(submod, "recompile"):
+        if modified and isinstance(submod, fx.GraphModule):
             submod.recompile()
 
 

@@ -89,7 +89,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
 
     @staticmethod
     @override
-    @torch.autograd.function.once_differentiable  # type: ignore[misc]
+    @torch.autograd.function.once_differentiable
     def backward(
         ctx: Any, output_grad: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, None, None, None]:
@@ -124,7 +124,7 @@ class QuantizeDynamicAffine(torch.autograd.Function):
 
     @staticmethod
     @override
-    @torch.autograd.function.once_differentiable  # type: ignore[misc]
+    @torch.autograd.function.once_differentiable
     def backward(
         ctx: Any, output_grad: torch.Tensor, scale_grad: torch.Tensor, offset_grad: torch.Tensor
     ) -> tuple[torch.Tensor, None, None, None, None, None]:
@@ -149,7 +149,7 @@ class DequantizeAffine(torch.autograd.Function):
 
     @staticmethod
     @override
-    @torch.autograd.function.once_differentiable  # type: ignore[misc]
+    @torch.autograd.function.once_differentiable
     def backward(
         ctx: Any, output_grad: torch.Tensor
     ) -> tuple[torch.Tensor, None, None, None, None]:

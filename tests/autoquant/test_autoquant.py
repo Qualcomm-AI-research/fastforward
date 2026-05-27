@@ -303,6 +303,8 @@ def test_autoquant_introduces_quantization_method(
 
 # Example with literal integer
 class ExampleModule8(torch.nn.Module):
+    num_features: int = 3
+
     def forward(self, x: Tensor) -> Tensor:
         h = x.reshape((-1 + 2 // 3, self.num_features))
         h = h.reshape((999 - 12, self.num_features))

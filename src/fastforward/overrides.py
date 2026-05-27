@@ -138,7 +138,7 @@ class DisableQuantizationOverride:
                 assert isinstance(quantizer, ff.nn.Quantizer)
                 self.attach_to(quantizer)
         else:
-            for quantizer in quantizers:  # type: ignore[union-attr]
+            for quantizer in quantizers:
                 self.attach_to(quantizer)
 
     def detach(self) -> None:

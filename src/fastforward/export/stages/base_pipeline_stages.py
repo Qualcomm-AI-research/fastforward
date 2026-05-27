@@ -144,7 +144,7 @@ def stage_convert_captured_impl_ff(
     if version.parse(torch.__version__) < version.parse("2.6"):
         _decomp_table = dict(torch._decomp.core_aten_decompositions())
     else:
-        _decomp_table = dict(torch.export.default_decompositions())  # type: ignore[attr-defined]
+        _decomp_table = dict(torch.export.default_decompositions())
 
     for op, _ in custom_translation_table.items():
         _decomp_table.pop(op, None)

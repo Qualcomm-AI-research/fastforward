@@ -7,20 +7,29 @@ import torch
 from fastforward.quantization.freeze import freeze_parameters
 
 
+def _quantized_layers(model: ff.nn.QuantizedSequential) -> list[ff.nn.QuantizedLinear]:
+    layers: list[ff.nn.QuantizedLinear] = []
+    for layer in model:
+        assert isinstance(layer, ff.nn.QuantizedLinear)
+        layers.append(layer)
+    return layers
+
+
 def test_freeze_parameters_quantizes_weights_in_place() -> None:
     """Test that freeze_parameters quantizes model weights in-place during forward pass."""
     # GIVEN: A quantized model with initialized weight quantizers
     model = _quantized_model()
+    layers = _quantized_layers(model)
 
     # Store original weights for comparison
-    original_weights = [layer.weight.clone() for layer in model]
+    original_weights = [layer.weight.clone() for layer in layers]
 
     # WHEN: freeze_parameters is used during a forward pass
     with freeze_parameters(model):
         model(torch.randn(2, 2))
 
     # THEN: The weights should be quantized (different from original)
-    for i, layer in enumerate(model):
+    for i, layer in enumerate(layers):
         assert not torch.equal(layer.weight, original_weights[i]), (
             f"Layer {i} weight was not quantized"
         )
@@ -109,10 +118,11 @@ def test_freeze_parameters_with_disabled_quantizer() -> None:
     """Test that disabled quantizers are not removed and parameters are not updated."""
     # GIVEN A quantized model with initialized weight quantizers
     model = _quantized_model()
+    layers = _quantized_layers(model)
 
     # Store original weights and quantizer types
-    original_weights = [layer.weight.clone() for layer in model]
-    original_quantizer_types = [type(layer.weight_quantizer) for layer in model]
+    original_weights = [layer.weight.clone() for layer in layers]
+    original_quantizer_types = [type(layer.weight_quantizer) for layer in layers]
 
     # Ensure that initial quantizers are not stubs.
     assert [quant_type == ff.nn.QuantizerStub for quant_type in original_quantizer_types]
@@ -123,11 +133,11 @@ def test_freeze_parameters_with_disabled_quantizer() -> None:
             model(torch.randn(2, 2))
 
     # THEN The weights should NOT be quantized (should remain unchanged)
-    for i, layer in enumerate(model):
+    for i, layer in enumerate(layers):
         assert torch.equal(layer.weight, original_weights[i])
 
     # THEN The quantizers should NOT be replaced with stubs (should remain original type)
-    assert original_quantizer_types == [type(layer.weight_quantizer) for layer in model]
+    assert original_quantizer_types == [type(layer.weight_quantizer) for layer in layers]
 
 
 def _quantized_model() -> ff.nn.QuantizedSequential:
