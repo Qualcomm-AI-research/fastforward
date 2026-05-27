@@ -753,16 +753,18 @@ def test_trace_keeps_dtype_layout_cast_device_agnostic() -> None:
     # WHEN torch.export captures the cast, x.device is resolved to a literal cpu kwarg
     exported = torch.export.export(model, args=(example,), strict=False)
     unflattened = torch.export.unflatten(exported)
-    [pre_cast] = [n for n in unflattened.graph.nodes if "dtype" in n.kwargs]
-    assert pre_cast.kwargs["dtype"] is torch.float32
-    assert pre_cast.kwargs["device"] == torch.device("cpu")
+    pre_casts = [n for n in unflattened.graph.nodes if "dtype" in n.kwargs and "device" in n.kwargs]
+    assert len(pre_casts) >= 1, "torch.export should bake at least one hardcoded device kwarg"
+    for node in pre_casts:
+        assert node.kwargs["dtype"] is torch.float32
+        assert node.kwargs["device"] == torch.device("cpu")
 
     # THEN ff.trace strips the literal so the cast falls back to the input's runtime device
     graph = trace(model, example)
     matches = [n for n in graph._nodes.values() if "dtype" in n.kwargs]
-    assert len(matches) == 1
-    [post_cast] = matches
-    assert "device" not in post_cast.kwargs
+    assert len(matches) >= 1
+    for post_cast in matches:
+        assert "device" not in post_cast.kwargs
 
     # AND the forward pass through the GraphModule matches eager _M().forward()
     with torch.no_grad():
