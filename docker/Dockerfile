@@ -51,9 +51,9 @@ sudo /usr/sbin/sshd "$@"\n\
 RUN curl -L "https://github.com/neovim/neovim/releases/download/v0.10.4/nvim-linux-x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/ --strip-components=1 -x -z -f - \
     && curl -L "https://github.com/jesseduffield/lazygit/releases/download/v0.47.2/lazygit_0.47.2_Linux_x86_64.tar.gz" | tar --preserve-permissions --directory /usr/local/bin -x -z -f - lazygit
 
-ARG VER_PYTHON=3.10 \
-    VER_TORCH=2.4.0 \
-    VER_CUDA=11.8.0
+ARG VER_PYTHON=3.12 \
+    VER_TORCH=2.12.0 \
+    VER_CUDA=13.0.0
 
 RUN ${CONDA_PREFIX}/bin/conda create --quiet --name ${CONDA_DEFAULT_ENV} -y --strict-channel-priority \
         python=${VER_PYTHON} \
@@ -63,6 +63,7 @@ RUN ${CONDA_PREFIX}/bin/conda create --quiet --name ${CONDA_DEFAULT_ENV} -y --st
         cuda-nvcc \
         cuda-nvtx \
         cuda-libraries-dev \
+        -c conda-forge \
         -c nvidia/label/cuda-${VER_CUDA} \
     # Install torch via pip to not depend on mkl
     && export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \

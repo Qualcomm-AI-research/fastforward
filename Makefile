@@ -9,7 +9,7 @@ SHELL = /bin/bash
 
 DOCKER_REGISTRY ?=
 
-VER_PYTHON ?= 3.10
+VER_PYTHON ?= 3.12
 IMAGE_NAME ?= $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/users/$(USER)/)fastforward-py$(VER_PYTHON)
 IMAGE_TAG ?= latest
 

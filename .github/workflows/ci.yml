@@ -105,7 +105,7 @@ jobs:
     name: Build wheels
     runs-on: ubuntu-latest
     container:
-      image: python:3.10
+      image: python:3.12
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -136,7 +136,7 @@ jobs:
       VER_CUDA: ${{ matrix.VER_CUDA }}
     steps:
       - name: check if tests can be skipped
-        run: echo "RUN_TESTS=${{ github.ref_name == github.event.repository.default_branch || matrix.VER_PYTHON == '3.10' }}" >> $GITHUB_ENV
+        run: echo "RUN_TESTS=${{ github.ref_name == github.event.repository.default_branch || matrix.VER_PYTHON == '3.12' }}" >> $GITHUB_ENV
       - if: env.RUN_TESTS == 'true'
         uses: actions/checkout@v4
         with:
