@@ -34,6 +34,10 @@ from fastforward._orchestration.instruction_engine import (
 )
 
 
+def _noop(*_args: Any, **_kwargs: Any) -> None:
+    pass
+
+
 class Add(torch.nn.Module):
     """Placeholder due to lack of torch.nn.Add()."""
 
@@ -467,10 +471,12 @@ def test_local_optimization_overlapping_specs_raises() -> None:
         SubgraphSpec(
             input=residual_1_linear,
             output=residual_1_relu,
+            fn=_noop,
         ),
         SubgraphSpec(
             input=residual_1_linear,
             output=residual_1_relu,
+            fn=_noop,
         ),
     ]
 
@@ -730,7 +736,7 @@ def _make_linear_chain(n: int, dim: int = 8) -> tuple[GraphModule, list[torch.nn
 def test_build_composite_graph_single_mid_spec_partition_count() -> None:
     # GIVEN a 10-node linear chain with a spec on node 4
     graph, layers = _make_linear_chain(10)
-    specs = [SubgraphSpec(input=layers[4], output=layers[4])]
+    specs = [SubgraphSpec(input=layers[4], output=layers[4], fn=_noop)]
 
     # WHEN we build the composite graph
     composite = build_composite_graph(graph, specs)
@@ -744,7 +750,7 @@ def test_build_composite_graph_single_mid_spec_partition_count() -> None:
 def test_build_composite_graph_non_spec_nodes_are_inlined_not_wrapped() -> None:
     # GIVEN a 5-node chain with a spec on node 2 (middle)
     graph, layers = _make_linear_chain(5, dim=4)
-    specs = [SubgraphSpec(input=layers[2], output=layers[2])]
+    specs = [SubgraphSpec(input=layers[2], output=layers[2], fn=_noop)]
 
     # WHEN we build the composite graph
     composite = build_composite_graph(graph, specs)
@@ -768,7 +774,7 @@ def test_build_composite_graph_non_spec_nodes_are_inlined_not_wrapped() -> None:
 def test_build_composite_graph_inlined_non_spec_forward_matches_original() -> None:
     # GIVEN an 8-node chain with a spec on node 3
     graph, layers = _make_linear_chain(8, dim=4)
-    specs = [SubgraphSpec(input=layers[3], output=layers[3])]
+    specs = [SubgraphSpec(input=layers[3], output=layers[3], fn=_noop)]
 
     # WHEN we build the composite and run a forward pass
     composite = build_composite_graph(graph, specs)
@@ -784,8 +790,8 @@ def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
     # GIVEN an 8-node chain with specs on nodes 1 and 5
     graph, layers = _make_linear_chain(8, dim=4)
     specs = [
-        SubgraphSpec(input=layers[1], output=layers[1]),
-        SubgraphSpec(input=layers[5], output=layers[5]),
+        SubgraphSpec(input=layers[1], output=layers[1], fn=_noop),
+        SubgraphSpec(input=layers[5], output=layers[5], fn=_noop),
     ]
 
     # WHEN we build the composite graph and run a forward pass
@@ -815,7 +821,7 @@ def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
     # P0: {inp -> shared -> down} that returns both shared and down
     # {P0[shared] -> up}
     # {P0[down], P1 -> add}
-    specs = [SubgraphSpec(input=up_module, output=up_module)]
+    specs = [SubgraphSpec(input=up_module, output=up_module, fn=_noop)]
 
     # WHEN we build the composite graph and run a forward pass
     composite = build_composite_graph(graph, specs=specs)
@@ -841,7 +847,7 @@ def test_build_composite_graph_multi_output_partition_as_graph_outputs() -> None
     # P0: {inp -> shared -> down} that returns both shared and down
     # P1: {P0[shared] -> up}
     # Outputs: up (from P1), down (from P0[down])
-    specs = [SubgraphSpec(input=up_module, output=up_module)]
+    specs = [SubgraphSpec(input=up_module, output=up_module, fn=_noop)]
 
     # WHEN we build the composite graph and run a forward pass
     composite = build_composite_graph(graph, specs=specs)

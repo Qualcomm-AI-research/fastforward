@@ -831,7 +831,7 @@ DEFAULT_CONTEXT = nullcontext()
 
 @dataclasses.dataclass
 class SubgraphSpec:
-    """A specification for extracting and optionally optimizing a subgraph.
+    """A specification for targeting a subgraph with a function.
 
     When the `input` and `output` modules of a GraphModule are selected, we can create a
     subgraph that includes all layers on the path (inclusive).
@@ -839,7 +839,7 @@ class SubgraphSpec:
     Args:
         input: The start module of the subgraph.
         output: The end module of the subgraph.
-        fn: Optional optimization function to execute on the subgraph.
+        fn: Function to execute on the subgraph.
         contexts: Sequence of ContextManagers that generate input activations. If
             not specified, inputs are computed in a single default execution context.
     """
@@ -847,15 +847,12 @@ class SubgraphSpec:
     input: torch.nn.Module
     output: torch.nn.Module
 
-    fn: dataclasses.InitVar[Callable[..., None] | None] = None
+    fn: dataclasses.InitVar[Callable[..., None]]
     contexts: dataclasses.InitVar[Contexts | None] = None
-    delegate: Delegate | None = dataclasses.field(default=None, init=False)
+    delegate: Delegate = dataclasses.field(init=False)
 
-    def __post_init__(
-        self, fn: Callable[..., None] | None = None, contexts: Contexts | None = None
-    ) -> None:
-        if fn is not None:
-            self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
+    def __post_init__(self, fn: Callable[..., None], contexts: Contexts | None = None) -> None:
+        self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
 
 
 def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
