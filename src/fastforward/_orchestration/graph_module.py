@@ -45,10 +45,6 @@ class _BaseRef:
         """Extract the base NodeRef or InputRef."""
         return self
 
-    def rebase(self, new_base: _BaseRef) -> _BaseRef:
-        """Preserve attribute access when a reference's base is replaced during graph rewriting."""
-        return new_base
-
 
 @dataclasses.dataclass(frozen=True)
 class NamedRef(_BaseRef):
@@ -118,41 +114,6 @@ class AttributeRef(_BaseRef):
         if isinstance(self.reference, AttributeRef):
             return self.reference.unwrap_ref()
         return self.reference
-
-    def rebase(self, new_base: _BaseRef) -> AttributeRef:
-        """Preserve attribute access when a reference's base is replaced during graph rewriting."""
-        return (
-            new_base[self.attribute]
-            if isinstance(self.attribute, int)
-            else getattr(new_base, self.attribute)
-        )
-
-
-def resolve_reference(reference: _BaseRef, context: dict[uuid.UUID, Any]) -> Any:
-    """Resolve a `_BaseRef` object to its actual value provided in `context`.
-
-    Args:
-        reference: Reference to resolve.
-        context: Execution context mapping reference IDs to actual/computed values.
-
-    Returns:
-        The actual value referenced by `reference`.
-    """
-    match reference:
-        case AttributeRef(reference=ref, attribute=attr):
-            base_value = resolve_reference(ref, context)
-            match attr:
-                case int():
-                    return base_value[attr]
-                case str():
-                    return getattr(base_value, attr)
-        case NodeRef(id=ref_id, name=name) | InputRef(id=ref_id, name=name):
-            if ref_id not in context:
-                msg = f"Missing input with id {ref_id!r}  in context {context} ({name=})"
-                raise KeyError(msg)
-            return context[ref_id]
-        case Const(value=v):
-            return v
 
 
 def remap_subgraph_reference(
