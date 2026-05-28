@@ -30,7 +30,11 @@ All commit messages **must** follow the [Conventional Commits](https://www.conve
 specification. Every commit message must have the form:
 
 ```
-<type>(<scope>): <subject>
+<type>(<optional scope>): <description>
+
+<optional body>
+
+<optional footer(s)>
 ```
 
 ## Rules
