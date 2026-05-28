@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import inspect
 import re
+import warnings
 
 from typing import Any, Callable, cast
 
@@ -155,6 +156,22 @@ def _is_non_leaf_graph_module(mod: nn.Module) -> bool:
     return any(node.op == "call_module" for node in graph.nodes)
 
 
+def _fold_needs_preservation(mod: nn.Module) -> bool:
+    """True if the fold's call site has multiple positional inputs that need signature recovery.
+
+    Without `preserve_module_call_signature`, torch.export.unflatten collapses all
+    module call kwargs into positional args. Folds with a single positional input
+    don't need this (order is unambiguous). Folds with multiple inputs (e.g. a
+    decoder layer receiving hidden_states + attention_mask + position_embeddings)
+    need preservation to recover the correct args/kwargs split.
+    """
+    graph = getattr(mod, "graph", None)
+    if not isinstance(graph, fx.Graph):
+        return False
+    n_placeholders = sum(1 for n in graph.nodes if n.op == "placeholder")
+    return n_placeholders > 1
+
+
 def _can_call_original(original: nn.Module, submod: nn.Module, fx_node: fx.Node) -> bool:
     """Check if calling original.forward matches the captured FX call.
 
@@ -218,6 +235,15 @@ class _GraphBuilder:
 
     def _absolute_path(self, target: str) -> str:
         return f"{self._path_prefix}.{target}" if self._path_prefix else target
+
+    def _has_attr_on_original(self, absolute_path: str) -> bool:
+        """Check if the attribute path exists on the original module."""
+        obj = self._original_root
+        for part in absolute_path.split("."):
+            if not hasattr(obj, part):
+                return False
+            obj = getattr(obj, part)
+        return True
 
     def _convert_arg(self, x: Any, name: str) -> _BaseRef:
         """Convert an FX argument into a `_BaseRef`, creating container nodes where needed."""
@@ -286,7 +312,10 @@ class _GraphBuilder:
             sub_builder = _GraphBuilder(self._original_root, absolute_path)
             sub_ff = sub_builder.build(submod)
             args, kwargs = self._convert_args(fx_node)
-            output_refs = self._graph.add_subgraph(target, sub_ff, args, kwargs)
+            original = self._original_root.get_submodule(absolute_path)
+            output_refs = self._graph.add_subgraph(
+                target, sub_ff, args, kwargs, original_module=original
+            )
             if len(output_refs) == 1:
                 self._fx_to_ff[fx_node] = output_refs[0]
             else:
@@ -347,13 +376,18 @@ class _GraphBuilder:
                 case "get_attr":
                     assert isinstance(fx_node.target, str)
                     absolute_path = self._absolute_path(fx_node.target)
-                    self._fx_to_ff[fx_node] = self._graph.add_node(
-                        fx_node.name + "_get_attr",
-                        _make_get_attr(self._original_root, absolute_path),
-                        args=(),
-                        kwargs={},
-                        op=Op.get_attr,
-                    )
+                    if hasattr(fx_gm, fx_node.target) and not self._has_attr_on_original(
+                        absolute_path
+                    ):
+                        self._fx_to_ff[fx_node] = Const(getattr(fx_gm, fx_node.target))
+                    else:
+                        self._fx_to_ff[fx_node] = self._graph.add_node(
+                            fx_node.name + "_get_attr",
+                            _make_get_attr(self._original_root, absolute_path),
+                            args=(),
+                            kwargs={},
+                            op=Op.get_attr,
+                        )
 
                 case "call_module":
                     self._handle_call_module(fx_node, fx_gm)
@@ -423,6 +457,27 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
 
     exported_program = torch.export.export(module, args=args, kwargs=kwargs, strict=False)
     unflattened = _unflatten_exported(exported_program)
+
+    fold_fqns = tuple(
+        name
+        for name, mod in unflattened.named_modules()
+        if _is_non_leaf_graph_module(mod) and name and _fold_needs_preservation(mod)
+    )
+    if fold_fqns:
+        exported_program = torch.export.export(
+            module,
+            args=args,
+            kwargs=kwargs,
+            strict=False,
+            preserve_module_call_signature=fold_fqns,
+        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Attempted to insert a get_attr Node with no underlying reference",
+                category=UserWarning,
+            )
+            unflattened = _unflatten_exported(exported_program)
     _strip_hardcoded_device_placements(unflattened)
     out_spec = _capture_out_spec(module, unflattened, args, kwargs)
 

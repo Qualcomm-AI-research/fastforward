@@ -12,19 +12,16 @@ import torch
 
 from fastforward._orchestration.graph_module import (
     DEFAULT_CONTEXT,
-    AttributeRef,
     Const,
-    Direction,
     GraphModule,
     InputRef,
     NodeRef,
     SubgraphSpec,
-    build_composite_graph,
     create_subgraph,
     find_nodes_on_path,
-    find_reachable_nodes,
     inference_mode,
     local_optimize,
+    reduce_resolution,
     remap_subgraph_reference,
 )
 from fastforward._orchestration.instruction_engine import (
@@ -251,52 +248,6 @@ def test_create_subgraph_functional_equivalence() -> None:
     # THEN executing the subgraph produces the same result as the parent graph
     x = torch.randn(1, 5)
     torch.testing.assert_close(graph(x), subgraph(x))
-
-
-def test_find_reachable_nodes_happy_path() -> None:
-    # GIVEN a GraphModule and its plan
-    model = Model()
-    graph = model.to_graph_module()
-
-    # WHEN we collect nodes reachable forward from residual_1.linear
-    sigmoid = graph.get_submodule("sigmoid")
-    relu_1 = graph.get_submodule("residual_1.relu")
-    fwd = find_reachable_nodes(
-        graph,
-        graph.node_ref(model.residual_1.linear),
-        direction=Direction.FORWARD,
-    )
-
-    # THEN some expected downstream nodes are present
-    assert {
-        graph.node_ref(relu_1),
-        graph.node_ref(model.residual_2.linear),
-        graph.node_ref(sigmoid),
-    } <= fwd
-
-    # WHEN we collect nodes reachable backward from sigmoid
-    bwd = find_reachable_nodes(
-        graph,
-        graph.node_ref(sigmoid),
-        direction=Direction.BACKWARD,
-    )
-
-    # THEN an early upstream node is included
-    assert graph.node_ref(model.residual_1.linear) in bwd
-
-    # GIVEN a allowlist that omits intermediate nodes
-    allowlist = {graph.node_ref(model.residual_2.linear), graph.node_ref(sigmoid)}
-
-    # WHEN we traverse with the allowlist
-    restricted = find_reachable_nodes(
-        graph,
-        graph.node_ref(model.residual_2.linear),
-        direction=Direction.FORWARD,
-        allowlist=allowlist,
-    )
-
-    # THEN traversal stops at the start node
-    assert restricted == {graph.node_ref(model.residual_2.linear)}
 
 
 def test_node_ref_identity_across_graphs() -> None:
@@ -722,173 +673,320 @@ def test_local_optimization_no_specs() -> None:
     assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
-def _make_linear_chain(n: int, dim: int = 8) -> tuple[GraphModule, list[torch.nn.Module]]:
-    """Build a sequential chain of `n` Linear layers and return (graph, modules)."""
-    layers: list[torch.nn.Module] = [torch.nn.Linear(dim, dim) for _ in range(n)]
-    graph = GraphModule()
-    prev: Any = graph.add_input("x")
-    for i, layer in enumerate(layers):
-        prev = graph.add_node(f"linear_{i}", layer, [prev])
-    graph.add_output(prev)
-    return graph, layers
+class _SmallAttn(torch.nn.Module):
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.q_proj = torch.nn.Linear(dim, dim, bias=False)
+        self.k_proj = torch.nn.Linear(dim, dim, bias=False)
+        self.v_proj = torch.nn.Linear(dim, dim, bias=False)
+        self.out_proj = torch.nn.Linear(dim, dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> Any:
+        q = self.q_proj(x)
+        k = self.k_proj(x)
+        v = self.v_proj(x)
+        attn = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+        return self.out_proj(attn)
+
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        q = graph.add_node("q_proj", self.q_proj, [inp])
+        k = graph.add_node("k_proj", self.k_proj, [inp])
+        v = graph.add_node("v_proj", self.v_proj, [inp])
+        attn = graph.add_node("sdpa", torch.nn.functional.scaled_dot_product_attention, [q, k, v])
+        out = graph.add_node("out_proj", self.out_proj, [attn])
+        graph.add_output(out)
+        return graph
 
 
-def test_build_composite_graph_single_mid_spec_partition_count() -> None:
-    # GIVEN a 10-node linear chain with a spec on node 4
-    graph, layers = _make_linear_chain(10)
-    specs = [SubgraphSpec(input=layers[4], output=layers[4], fn=_noop)]
+class _SmallMLP(torch.nn.Module):
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.up = torch.nn.Linear(dim, dim, bias=False)
+        self.down = torch.nn.Linear(dim, dim, bias=False)
 
-    # WHEN we build the composite graph
-    composite = build_composite_graph(graph, specs)
+    def forward(self, x: torch.Tensor) -> Any:
+        return self.down(torch.nn.functional.relu(self.up(x)))
 
-    # THEN non-spec nodes are inlined (4 prefix + 5 suffix = 9 individual nodes)
-    # plus 1 opaque spec node = 10 total composite nodes
-    msg = f"Expected 10 composite nodes, got {len(composite._nodes)}. Node names: {[n.name for n in composite._nodes.values()]}"
-    assert len(composite._nodes) == 10, msg
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        up = graph.add_node("up", self.up, [inp])
+        act = graph.add_node("act", torch.nn.functional.relu, [up])
+        down = graph.add_node("down", self.down, [act])
+        graph.add_output(down)
+        return graph
 
 
-def test_build_composite_graph_non_spec_nodes_are_inlined_not_wrapped() -> None:
-    # GIVEN a 5-node chain with a spec on node 2 (middle)
-    graph, layers = _make_linear_chain(5, dim=4)
-    specs = [SubgraphSpec(input=layers[2], output=layers[2], fn=_noop)]
+class _DecoderLayer(torch.nn.Module):
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.attn = _SmallAttn(dim)
+        self.mlp = _SmallMLP(dim)
 
-    # WHEN we build the composite graph
-    composite = build_composite_graph(graph, specs)
+    def forward(self, x: torch.Tensor) -> Any:
+        return self.mlp(self.attn(x))
 
-    # THEN non-spec nodes (0, 1, 3, 4) are inlined as individual nodes — their
-    # modules are the original nn.Linear instances, not partition GraphModules
-    non_spec_modules = [
-        n.module for n in composite._nodes.values() if not isinstance(n.module, GraphModule)
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        (attn_out,) = graph.add_subgraph(
+            "attn", self.attn.to_graph_module(), [inp], original_module=self.attn
+        )
+        (mlp_out,) = graph.add_subgraph(
+            "mlp", self.mlp.to_graph_module(), [attn_out], original_module=self.mlp
+        )
+        graph.add_output(mlp_out)
+        return graph
+
+
+class _TwoLayerModel(torch.nn.Module):
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.layer_0 = _DecoderLayer(dim)
+        self.layer_1 = _DecoderLayer(dim)
+
+    def forward(self, x: torch.Tensor) -> Any:
+        return self.layer_1(self.layer_0(x))
+
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        (layer_0_out,) = graph.add_subgraph(
+            "layer_0", self.layer_0.to_graph_module(), [inp], original_module=self.layer_0
+        )
+        (layer_1_out,) = graph.add_subgraph(
+            "layer_1",
+            self.layer_1.to_graph_module(),
+            [layer_0_out],
+            original_module=self.layer_1,
+        )
+        graph.add_output(layer_1_out)
+        return graph
+
+
+class _DualOutLayer(torch.nn.Module):
+    """Layer with two output leaves consumed independently downstream."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.left = torch.nn.Linear(dim, dim, bias=False)
+        self.right = torch.nn.Linear(dim, dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.left(x), self.right(x)
+
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        left = graph.add_node("left", self.left, [inp])
+        right = graph.add_node("right", self.right, [inp])
+        graph.add_output(left, right)
+        return graph
+
+
+class _DualOutModel(torch.nn.Module):
+    """Wraps a multi-output fold so we can test coarse rewiring of tuple outputs."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.layer = _DualOutLayer(dim)
+        self.combine = torch.nn.Linear(dim, dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> Any:
+        a, b = self.layer(x)
+        return self.combine(a + b)
+
+    def to_graph_module(self) -> GraphModule:
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        a, b = graph.add_subgraph(
+            "layer", self.layer.to_graph_module(), [inp], original_module=self.layer
+        )
+        merged = graph.add_node("merge", torch.add, [a, b])
+        out = graph.add_node("combine", self.combine, [merged])
+        graph.add_output(out)
+        return graph
+
+
+def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int]]:
+    return [
+        ("no specs", [], 2),
+        (
+            "fold target (layer_0)",
+            [SubgraphSpec(model.layer_0, model.layer_0, fn=_noop)],
+            2,
+        ),
+        (
+            "both top-level folds",
+            [
+                SubgraphSpec(model.layer_0, model.layer_0, fn=_noop),
+                SubgraphSpec(model.layer_1, model.layer_1, fn=_noop),
+            ],
+            2,
+        ),
+        (
+            "leaf target (q_proj_0)",
+            [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop)],
+            7,
+        ),
+        (
+            "two leaves same fold (q_proj_0 + k_proj_0)",
+            [
+                SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop),
+                SubgraphSpec(model.layer_0.attn.k_proj, model.layer_0.attn.k_proj, fn=_noop),
+            ],
+            7,
+        ),
+        (
+            "symmetric leaves across layers",
+            [
+                SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop),
+                SubgraphSpec(model.layer_1.attn.q_proj, model.layer_1.attn.q_proj, fn=_noop),
+            ],
+            12,
+        ),
+        (
+            "mixed fold + leaf (attn_0 fold, q_proj_1 leaf)",
+            [
+                SubgraphSpec(model.layer_0.attn, model.layer_0.attn, fn=_noop),
+                SubgraphSpec(model.layer_1.attn.q_proj, model.layer_1.attn.q_proj, fn=_noop),
+            ],
+            8,
+        ),
+        (
+            "path within single fold (q_proj_0 -> out_proj_0)",
+            [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.out_proj, fn=_noop)],
+            5,
+        ),
+        (
+            "path across layers (mlp_0.down -> q_proj_1)",
+            [SubgraphSpec(model.layer_0.mlp.down, model.layer_1.attn.q_proj, fn=_noop)],
+            9,
+        ),
     ]
-    assert len(non_spec_modules) == 4
-    for mod in non_spec_modules:
-        assert isinstance(mod, torch.nn.Linear)
-
-    # THEN the spec node is an opaque GraphModule (not inlined)
-    spec_modules = [
-        n.module for n in composite._nodes.values() if isinstance(n.module, GraphModule)
-    ]
-    assert len(spec_modules) == 1
 
 
-def test_build_composite_graph_inlined_non_spec_forward_matches_original() -> None:
-    # GIVEN an 8-node chain with a spec on node 3
-    graph, layers = _make_linear_chain(8, dim=4)
-    specs = [SubgraphSpec(input=layers[3], output=layers[3], fn=_noop)]
+def test_reduce_resolution_forward_pass_correctness() -> None:
+    # GIVEN a 2-layer transformer-shaped model with nested folds
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+    x = torch.randn(1, 8)
+    expected = model(x)
 
-    # WHEN we build the composite and run a forward pass
-    composite = build_composite_graph(graph, specs)
-    x = torch.randn(1, 4)
-    composite_out = composite(x)
-    original_out = graph(x)
+    # WHEN each spec configuration is reduced and executed
+    for desc, specs, expected_node_count in _spec_cases(model):
+        reduced = reduce_resolution(graph, specs)
 
-    # THEN the composite output matches the original (inlining preserved wiring)
-    torch.testing.assert_close(composite_out, original_out)
+        # THEN forward output matches the original model at every resolution
+        torch.testing.assert_close(reduced(x), expected, msg=f"forward mismatch for case: {desc}")
 
-
-def test_build_composite_graph_two_specs_forward_pass_correctness() -> None:
-    # GIVEN an 8-node chain with specs on nodes 1 and 5
-    graph, layers = _make_linear_chain(8, dim=4)
-    specs = [
-        SubgraphSpec(input=layers[1], output=layers[1], fn=_noop),
-        SubgraphSpec(input=layers[5], output=layers[5], fn=_noop),
-    ]
-
-    # WHEN we build the composite graph and run a forward pass
-    composite = build_composite_graph(graph, specs)
-    x = torch.randn(1, 4)
-    composite_out = composite(x)
-    original_out = graph(x)
-
-    # THEN the outputs should be numerically identical
-    torch.testing.assert_close(composite_out, original_out)
+        # THEN the reduced graph has the expected number of nodes
+        assert len(reduced._nodes) == expected_node_count, (
+            f"[{desc}] expected {expected_node_count} nodes, got {len(reduced._nodes)}"
+        )
 
 
-def test_build_composite_graph_multi_output_partition_forward_pass() -> None:
-    # GIVEN a graph with a shared layer
-    #   inp -> shared -> up   ->
-    #                 -> down -> add -> output
+def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse() -> None:
+    # GIVEN a 2-layer model with no specs (fully coarse target)
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+
+    # WHEN we reduce with no specs
+    reduced = reduce_resolution(graph, [])
+    modules = [n.module for n in reduced._nodes.values()]
+
+    # THEN only the top-level folds appear, not their internals
+    assert len(modules) == 2
+    assert model.layer_0 in modules
+    assert model.layer_1 in modules
+    assert model.layer_0.attn not in modules
+    assert model.layer_0.mlp not in modules
+
+
+def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse() -> None:
+    # GIVEN a 2-layer model with a leaf target inside layer_0.attn
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+    specs = [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop)]
+
+    # WHEN we reduce with that spec
+    reduced = reduce_resolution(graph, specs)
+    modules = [n.module for n in reduced._nodes.values()]
+
+    # THEN the target's siblings inside layer_0.attn are exposed as leaves
+    assert model.layer_0.attn.q_proj in modules
+    assert model.layer_0.attn.k_proj in modules
+    assert model.layer_0.attn.v_proj in modules
+    assert model.layer_0.attn.out_proj in modules
+
+    # THEN layer_0.mlp and layer_1 stay coarse (no exposed descendants)
+    assert model.layer_0.mlp in modules
+    assert model.layer_0.mlp.up not in modules
+    assert model.layer_0.mlp.down not in modules
+    assert model.layer_1 in modules
+    assert model.layer_1.attn not in modules
+    assert model.layer_1.mlp not in modules
+
+    # THEN opened folds (layer_0 and layer_0.attn) do NOT appear themselves
+    assert model.layer_0 not in modules
+    assert model.layer_0.attn not in modules
+
+
+def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
+    # GIVEN a 2-layer model with a path spec spanning two layers
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+    specs = [SubgraphSpec(model.layer_0.mlp.down, model.layer_1.attn.q_proj, fn=_noop)]
+
+    # WHEN we reduce with that path spec
+    reduced = reduce_resolution(graph, specs)
+    modules = [n.module for n in reduced._nodes.values()]
+
+    # THEN a synthesized GraphModule replaces the path leaves
+    assert any(isinstance(m, GraphModule) for m in modules)
+
+    # THEN the path's individual leaves do not appear (they're inside the subgraph)
+    assert model.layer_0.mlp.down not in modules
+    assert model.layer_1.attn.q_proj not in modules
+
+    # THEN untouched siblings stay at the coarsest possible level
+    assert model.layer_0.attn in modules
+    assert model.layer_1.mlp in modules
+
+
+def test_reduce_resolution_multi_output_fold_unwraps_first_output() -> None:
+    # GIVEN a model whose inner fold returns TWO outputs consumed independently
+    model = _DualOutModel()
+    graph = model.to_graph_module()
+    x = torch.randn(1, 8)
+    expected = model(x)
+
+    # WHEN we reduce with no specs, leaving the multi-output fold coarse
+    reduced = reduce_resolution(graph, [])
+
+    # THEN forward execution must unwrap output 0 (not pass the whole tuple downstream)
+    torch.testing.assert_close(reduced(x), expected)
+
+
+def test_reduce_resolution_repeated_input_binding_to_fold() -> None:
+    # GIVEN a 2-input fold whose positional inputs are BOTH bound to the same external ref
+    add_module = Add()
     graph = GraphModule()
-    inp = graph.add_input("inp")
-    shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
-    up_module = torch.nn.Linear(4, 4)
-    up = graph.add_node("up", up_module, [shared])
-    down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
-    add = graph.add_node("add", Add(), [up, down])
-    graph.add_output(add)
+    inp = graph.add_input("x")
+    (out,) = graph.add_subgraph(
+        "add", add_module.to_graph_module(), [inp, inp], original_module=add_module
+    )
+    graph.add_output(out)
+    x = torch.randn(1, 5)
+    expected = add_module(x, x)
 
-    # GIVEN a spec that splits the graph into partitions:
-    # P0: {inp -> shared -> down} that returns both shared and down
-    # {P0[shared] -> up}
-    # {P0[down], P1 -> add}
-    specs = [SubgraphSpec(input=up_module, output=up_module, fn=_noop)]
+    # WHEN we reduce with no specs (fold stays coarse, must be called as add(x, x))
+    reduced = reduce_resolution(graph, [])
 
-    # WHEN we build the composite graph and run a forward pass
-    composite = build_composite_graph(graph, specs=specs)
-    x = torch.randn(1, 4)
-
-    # THEN the composite output should match the original graph
-    torch.testing.assert_close(composite(x), graph(x))
-
-
-def test_build_composite_graph_multi_output_partition_as_graph_outputs() -> None:
-    # GIVEN a graph with a shared layer where both branches are graph outputs
-    #   inp -> shared -> up   -> output[0]
-    #                 -> down -> output[1]
-    graph = GraphModule()
-    inp = graph.add_input("inp")
-    shared = graph.add_node("shared", torch.nn.Linear(4, 4), [inp])
-    up_module = torch.nn.Linear(4, 4)
-    up = graph.add_node("up", up_module, [shared])
-    down = graph.add_node("down", torch.nn.Linear(4, 4), [shared])
-    graph.add_output(up, down)
-
-    # GIVEN a spec that splits the graph into partitions:
-    # P0: {inp -> shared -> down} that returns both shared and down
-    # P1: {P0[shared] -> up}
-    # Outputs: up (from P1), down (from P0[down])
-    specs = [SubgraphSpec(input=up_module, output=up_module, fn=_noop)]
-
-    # WHEN we build the composite graph and run a forward pass
-    composite = build_composite_graph(graph, specs=specs)
-    x = torch.randn(1, 4)
-
-    # THEN the composite output should match the original graph
-    composite_out = composite(x)
-    graph_out = graph(x)
-    torch.testing.assert_close(composite_out[0], graph_out[0])
-    torch.testing.assert_close(composite_out[1], graph_out[1])
-
-
-def test_rebase_maps_partition_output_ref_to_composite_ref() -> None:
-    # GIVEN an "encoder" node that produces some object with .hidden_states attribute
-    encoder = NodeRef(uuid.uuid4(), "encoder")
-    encoder_attribute = encoder.hidden_states
-
-    # GIVEN a partition, that the encoder is part of.
-    partition_ref = NodeRef(uuid.uuid4(), "partition_0")
-
-    # GIVEN the assumption that partition_0 has two outputs:
-    # [0]: 'encoder.hidden_states' used downstream somewhere directly
-    # [1]: 'encoder' used downstream somewhere, perhaps another value accessed.
-    base_attribute = partition_ref[0]
-    base_encoder = partition_ref[1]
-
-    # WHEN the partition wraps the encoder, all refs to encoder's outputs must be
-    # redirected to the partition's outputs instead. rebase() does this while
-    # preserving any attribute access that was on the original ref.
-    composite_attribute = encoder_attribute.rebase(base_attribute)
-    composite_encoder = encoder.rebase(base_encoder)
-
-    # THEN the plain ref is simply replaced by its new base
-    # (trivial case - the ref has no attribute access, so rebasing just swaps the pointer)
-    assert composite_encoder == base_encoder
-
-    # THEN the attribute access is preserved on the new base
-    # (complex case - the ref carries .hidden_states, which is re-attached to the new base)
-    assert isinstance(composite_attribute, AttributeRef)
-    assert composite_attribute.reference == base_attribute
-    assert composite_attribute.attribute == "hidden_states"
+    # THEN forward must preserve the duplicate binding rather than deduping to add(x)
+    torch.testing.assert_close(reduced(x), expected)
 
 
 def test_local_optimization_with_kwargs() -> None:

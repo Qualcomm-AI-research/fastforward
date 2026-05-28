@@ -324,6 +324,7 @@ class OptimizeModule(Instruction):
         for context in self.delegate.contexts:
             # For each context, gather all arguments the module expects into an ActivationDataset.
             context_args = [register[arg][context] for arg in self.args]
+            context_args = ActivationDataset.broadcast(context_args)
             delegate_args.append(ActivationDataset.merge(context_args))
 
         # Run the delegate function with per-context arguments required for the module.

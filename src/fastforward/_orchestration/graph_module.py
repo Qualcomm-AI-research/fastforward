@@ -1,20 +1,5 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
-"""A lightweight utility for building and executing static call graphs composed of torch.nn.Module objects.
-
-The main components are:
-- Node: Wraps a PyTorch module with typed input references
-- GraphModule: Container for nodes with dependency tracking
-- ExecutionEngine: Executes graphs following topological order
-
-Example:
-    >>> graph = GraphModule()
-    >>> input = graph.add_input("input")
-    >>> linear_ref = graph.add_node("linear", nn.Linear(10, 5), [input])
-    >>> graph.add_output(linear_ref)
-    >>> result = graph(torch.randn(1, 10))
-"""
-
 from __future__ import annotations
 
 import collections
@@ -256,20 +241,39 @@ class Op(enum.Enum):
 
 @dataclasses.dataclass(frozen=True)
 class Node:
-    """A node in a 'GraphModule'.
+    """Single operation in a static call graph.
 
-    Represents a single operation in the 'GraphModule'. The node maintains
-    references to its inputs through _BaseRef types (NodeRef for other nodes,
-    InputRef for external inputs, or Const for literal values).
+    A Node declares its dependencies through symbolic references
+    (`args`/`kwargs`) and its behavior through `op`:
+
+    - `torch_module`: calls an nn.Module
+    - `call_function`: calls a standalone function (e.g. F.scaled_dot_product_attention)
+    - `call_method`: calls a method on a tensor
+    - `get_attr`: retrieves a module attribute (e.g. a buffer)
+
+    Nodes form a hierarchy via `parent`. A **leaf node** is an executable
+    operation with no nested structure. A **fold** marks an enclosing region
+    (e.g. an entire attention block) — its `module` is the original nn.Module,
+    callable as a shortcut for the whole subtree. Leaves point to their
+    enclosing fold via `parent`; folds themselves have no data-flow edges.
+    A coarser resolution is obtained by leaving folds intact; a finer
+    resolution is obtained by unfolding them into their children.
+
+    A node may optionally carry a `delegate`: an optimization function with
+    context managers that supply calibration data during quantization.
 
     Args:
         id: Unique identifier within the graph.
-        name: Human-readable name within the graph.
-        op: Discriminator for the kind of callable stored in `module`.
-        module: Callable to execute (nn.Module, function, method wrapper, etc.)
-        args: Positional arguments (NodeRef/InputRef/Const)
-        kwargs: Keyword arguments (NodeRef/InputRef/Const)
-        delegate: Optional delegate configuration attached to this node.
+        name: Human-readable name within the graph (e.g. `"layer_0.attn.q_proj"`).
+        module: The thing this node calls or accesses — an nn.Module, function,
+            method, or attribute owner, depending on `op`.
+        args: Positional dependencies as symbolic references (NodeRef, InputRef,
+            or Const), resolved to actual values at execution time.
+        op: Selects how `module` is invoked (see above).
+        kwargs: Keyword dependencies, same reference types as `args`.
+        delegate: Optional optimization function with calibration contexts,
+            invoked instead of `module` during local optimization.
+        parent: Enclosing fold, or None for top-level nodes.
     """
 
     id: uuid.UUID
@@ -279,15 +283,55 @@ class Node:
     op: Op = Op.torch_module
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
     delegate: Delegate | None = None
+    parent: NodeRef | None = None
 
 
 class GraphModule(torch.nn.Module):
-    """Static call-graph representation of a PyTorch model.
+    """Multi-resolution static call graph over PyTorch modules.
 
-    'GraphModule' stores 'Node' objects whose output may feed to other nodes,
-    giving an explicit graph. This allows for explicit dependency management,
-    custom execution orders, subgraph composition and reuse, and clear separation
-    between graph structure and execution.
+    A GraphModule represents a model as an explicit DAG of Nodes at multiple
+    resolutions. Folds represent coarser regions (e.g. a full transformer
+    layer) that can be unfolded into their children (e.g. individual linear
+    projections) for finer-grained execution.
+
+    Take as an example a simplified transformer decoder layer with three
+    resolutions::
+
+        (1)  ┌──────────────── decoder_layer ────────────────┐
+        (2)   ┌──── attn ──────────┐       ┌───── mlp ──────┐
+        (3)    q → k → v → sdpa → o → norm → gate → up → down
+
+    The first resolution is the coarsest: calling the decoder layer directly
+    (`decoder_layer(x)`). The second traverses the direct children of
+    decoder_layer: `mlp(norm(attn(x)))`. The third traverses every leaf node
+    in the graph. These are all valid execution strategies for the same model.
+
+    Resolutions can also be mixed — for instance, unfolding attn into its
+    leaves while keeping mlp folded::
+
+        (mix) q → k → v → sdpa → o → norm → mlp
+
+    Runtime behavior (how a forward pass is actually executed) depends on how
+    the user schedules instructions for the InstructionEngine. By default,
+    no unfolding takes place, and the coarsest resolution is used (`decoder_layer(x)`).
+
+    Example::
+
+        graph = GraphModule()
+        x = graph.add_input("x")
+
+        # Leaf-level construction (resolution 3):
+        q = graph.add_node("attn.q", nn.Linear(64, 64), [x])
+        k = graph.add_node("attn.k", nn.Linear(64, 64), [x])
+        v = graph.add_node("attn.v", nn.Linear(64, 64), [x])
+        sdpa = graph.add_node("attn.sdpa", F.scaled_dot_product_attention, [q, k, v])
+        graph.add_output(sdpa)
+
+        # Or compose pre-built subgraphs (resolution 2):
+        attn_out, = graph.add_subgraph("attn", attn_graph, [x], original_module=attn)
+
+        # Executes like a normal nn.Module:
+        assert torch.allclose(graph(input_tensor), attn(input_tensor))
     """
 
     def __init__(self) -> None:
@@ -296,6 +340,10 @@ class GraphModule(torch.nn.Module):
         self._node_refs: dict[uuid.UUID, NodeRef] = {}
         self._inputs: dict[str, InputRef] = dict()
         self._outputs: list[NodeRef | AttributeRef] = []
+        self._fold_ids: set[uuid.UUID] = set()
+
+        # Binding represents fold "args", in the order its forward() expects them.
+        self._fold_bindings: dict[uuid.UUID, tuple[_BaseRef, ...]] = {}
 
         self._program: Any = None
         self._engine: InstructionEngine | None = None
@@ -364,6 +412,42 @@ class GraphModule(torch.nn.Module):
         msg = f"Module {module} not found in Graphmodule."
         raise ValueError(msg)
 
+    def leaf_nodes(self, fold_ref: NodeRef) -> set[NodeRef]:
+        """Return leaf (non-fold) nodes under a fold."""
+        result: set[NodeRef] = set()
+        stack = [
+            self._node_refs[nid] for nid, node in self._nodes.items() if node.parent == fold_ref
+        ]
+
+        while stack:
+            if (child := stack.pop()) in result:
+                continue
+
+            result.add(child)
+            stack.extend(
+                self._node_refs[nid] for nid, node in self._nodes.items() if node.parent == child
+            )
+        return {r for r in result if r.id not in self._fold_ids}
+
+    def fold_outputs(self, fold_ref: NodeRef) -> list[NodeRef]:
+        """Return leaf nodes inside the fold whose output is used externally or as graph output."""
+        fold_leaf_ids = {n.id for n in self.leaf_nodes(fold_ref)}
+        internal = fold_leaf_ids | self._fold_ids
+        output_ids = {
+            r.unwrap_ref().id for r in self._outputs if isinstance(r.unwrap_ref(), NodeRef)
+        }
+
+        outputs: list[NodeRef] = []
+        for nid in self._nodes:
+            if nid not in fold_leaf_ids:
+                continue
+            leaf_ref = self._node_refs[nid]
+            feeds_external = any(c.id not in internal for c in self.node_outputs(leaf_ref))
+            is_graph_output = nid in output_ids
+            if feeds_external or is_graph_output:
+                outputs.append(leaf_ref)
+        return outputs
+
     def node(self, node_ref: NodeRef) -> Node:
         """Return the Node for the given NodeRef.
 
@@ -419,6 +503,7 @@ class GraphModule(torch.nn.Module):
         *,
         op: Op = Op.torch_module,
         node_id: uuid.UUID | None = None,
+        parent: NodeRef | None = None,
     ) -> NodeRef:
         """Add a node to this 'GraphModule'.
 
@@ -427,12 +512,13 @@ class GraphModule(torch.nn.Module):
         its arguments.
 
         Args:
-            name: Unique identifier of the node within its scope
+            name: Unique identifier of the node within its fold
             module: Callable to execute (nn.Module, function, method wrapper, etc.)
             args: Positional arguments (NodeRef/InputRef/Const)
             kwargs: Keyword arguments (NodeRef/InputRef/Const)
             op: Discriminator for the kind of callable. Defaults to Op.module.
             node_id: Optional node ID. If not provided, a new one will be generated.
+            parent: Optional fold that this node belongs to in the hierarchy.
 
         Returns:
             NodeRef: Reference to the created node
@@ -447,20 +533,26 @@ class GraphModule(torch.nn.Module):
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
-        node = Node(node_id, name, module, args, op=op, kwargs=kwargs or {})
+        node = Node(node_id, name, module, args, op=op, kwargs=kwargs or {}, parent=parent)
         self._nodes[node_id] = node
         ref = NodeRef(node_id, name)
         self._node_refs[node_id] = ref
 
         if isinstance(node.module, torch.nn.Module):
             *module_path, leaf_name = name.split(".")
-            parent = self
+            parent_module: torch.nn.Module = self
             for attr in module_path:
-                if not hasattr(parent, attr):
-                    parent.add_module(attr, torch.nn.Module())
-                parent = getattr(parent, attr)
+                if not hasattr(parent_module, attr):
+                    parent_module.add_module(attr, torch.nn.Module())
+                parent_module = getattr(parent_module, attr)
 
-            parent.add_module(leaf_name, node.module)
+            # Don't overwrite children of original modules registered as folds —
+            # those belong to the user's model and must not be mutated.
+            is_fold_original = any(
+                parent_module is self._nodes[fid].module for fid in self._fold_ids
+            )
+            if not is_fold_original:
+                parent_module.add_module(leaf_name, node.module)
 
         return ref
 
@@ -470,15 +562,25 @@ class GraphModule(torch.nn.Module):
         subgraph: GraphModule,
         args: Collection[_BaseRef],
         kwargs: Mapping[str, _BaseRef] | None = None,
+        *,
+        original_module: torch.nn.Module | None = None,
     ) -> tuple[NodeRef | AttributeRef, ...]:
-        """Inline a subgraph into this 'GraphModule' as a scoped collection of nodes.
+        """Inline a subgraph into this 'GraphModule' as a folded collection of nodes.
+
+        When `original_module` is provided, a fold (parent) node is created that
+        represents the original module in the hierarchy. Inlined leaves get their
+        `parent` field set to this fold. The fold has no data-flow edges — it is
+        a hierarchy marker only. Coarse execution of the fold is handled as a
+        scheduler transform.
 
         Args:
-            name: Scope name for the inlined subgraph
+            name: Fold name for the inlined subgraph
             subgraph: GraphModule to inline into this graph
             args: Positional arguments (NodeRef/InputRef/Const)
             kwargs: Keyword arguments (NodeRef/InputRef/Const). Kwargs are allowed but are
                     expected to be inputs to the subgraph.
+            original_module: When provided, creates a fold holding the original
+                nn.Module for coarse execution.
 
         Returns:
             A tuple of node references (NodeRef) to the output node(s) of the inlined sub-graph
@@ -517,6 +619,22 @@ class GraphModule(torch.nn.Module):
                 raise ValueError(msg)
             input_binding[key] = value
 
+        # Create the fold (parent) node — a hierarchy marker whose args/kwargs
+        # mirror the original module's call convention for coarse execution.
+        fold_ref: NodeRef | None = None
+        if original_module is not None:
+            fold_id = uuid.uuid4()
+            fold_kwargs = {k: input_binding[k] for k in (kwargs or {})}
+            fold_args = tuple(
+                input_binding[n] for n in subgraph.input_names if n not in fold_kwargs
+            )
+            fold_node = Node(fold_id, name, original_module, args=fold_args, kwargs=fold_kwargs)
+            self._nodes[fold_id] = fold_node
+            fold_ref = NodeRef(fold_id, name)
+            self._node_refs[fold_id] = fold_ref
+            self._fold_ids.add(fold_id)
+            self._fold_bindings[fold_id] = tuple(input_binding[n] for n in subgraph.input_names)
+
         remap_reference = functools.partial(
             remap_subgraph_reference,
             new_context=input_binding,
@@ -526,20 +644,48 @@ class GraphModule(torch.nn.Module):
             scope_name=name,
         )
 
-        for node in subgraph._nodes.values():
+        # Build a mapping from old subgraph fold refs to newly created (folded) refs.
+        old_to_new_fold: dict[uuid.UUID, NodeRef] = {}
+
+        # Process folds first so leaf nodes can reference them via parent.
+        sorted_nodes = sorted(
+            subgraph._nodes.values(),
+            key=lambda n: 0 if n.id in subgraph._fold_ids else 1,
+        )
+
+        for node in sorted_nodes:
             node_args = [remap_reference(old_reference=arg) for arg in node.args]
             node_kwargs = {
                 key: remap_reference(old_reference=arg) for key, arg in node.kwargs.items()
             }
             node_name = f"{name}.{node.name}"
-            self.add_node(
-                node_name, node.module, node_args, node_kwargs, op=node.op, node_id=node.id
+
+            node_parent = (
+                old_to_new_fold.get(node.parent.id, node.parent) if node.parent else fold_ref
             )
+
+            ref = self.add_node(
+                node_name,
+                node.module,
+                node_args,
+                node_kwargs,
+                op=node.op,
+                node_id=node.id,
+                parent=node_parent,
+            )
+            if node.id in subgraph._fold_ids:
+                self._fold_ids.add(node.id)
+                old_to_new_fold[node.id] = ref
+                # The binding lives on the parent graph, so we have to copy it across manually.
+                if (inner_binding := subgraph._fold_bindings.get(node.id)) is not None:
+                    self._fold_bindings[node.id] = tuple(
+                        remap_reference(old_reference=b) for b in inner_binding
+                    )
 
         # Return the in-lined subgraph outputs in stored order to preserve positional semantics.
         new_output_refs = []
-        for ref in subgraph._outputs:
-            remapped = remap_reference(old_reference=ref)
+        for out_ref in subgraph._outputs:
+            remapped = remap_reference(old_reference=out_ref)
             assert isinstance(remapped, (NodeRef, AttributeRef))
             new_output_refs.append(remapped)
 
@@ -587,59 +733,6 @@ class GraphModule(torch.nn.Module):
 
         # Otherwise, return the dictionary itself.
         return outputs
-
-
-class Direction(enum.Enum):
-    """Direction for traversal of a graph."""
-
-    FORWARD = enum.auto()
-    BACKWARD = enum.auto()
-    BIDIRECTIONAL = enum.auto()
-
-
-def find_reachable_nodes(
-    graph: GraphModule,
-    start: NodeRef,
-    direction: Direction = Direction.FORWARD,
-    allowlist: Collection[NodeRef] | None = None,
-) -> set[NodeRef]:
-    """Return all nodes reachable from start under the specified traversal direction and allow-list.
-
-    Args:
-        graph: GraphModule object to traverse.
-        start: The node from which the search starts.
-        direction: Direction to traverse edges.
-        allowlist: Optional allowlist. If supplied, only nodes contained in this
-                collection will be visited/returned.
-
-    Returns:
-        set[NodeRef]: All nodes that are reachable from `start` while respecting the
-                  `allowlist` filter (if provided).  The returned set always contains
-                  `start` itself.
-    """
-    # If no allowlist is provided, *all* nodes are allowlisted.
-    if allowlist is None:
-        allowlist = set(graph._node_refs.values())
-
-    # A simple DFS algorithm.
-    seen, stack = {start}, [start]
-    while stack:
-        node = stack.pop()
-
-        match direction:
-            case Direction.FORWARD:
-                neighbors = graph.node_outputs(node)
-            case Direction.BACKWARD:
-                neighbors = graph.node_inputs(node)
-            case Direction.BIDIRECTIONAL:
-                neighbors = itertools.chain(graph.node_outputs(node), graph.node_inputs(node))
-
-        for neighbor in neighbors:
-            if neighbor in allowlist and neighbor not in seen:
-                seen.add(neighbor)
-                stack.append(neighbor)
-
-    return seen
 
 
 def find_nodes_on_path(graph: GraphModule, start: NodeRef, end: NodeRef) -> set[NodeRef]:
@@ -798,14 +891,16 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
 
 
 def topological_sort(graph: GraphModule) -> list[NodeRef]:
-    """Return nodes from a GraphModule in topological order.
+    """Return leaf (non-fold) nodes from a GraphModule in topological order.
 
     Raises:
-        ValueError: If graph contains circular dependencies.
+        ValueError: If graph contains circular dependencies among leaf nodes.
     """
+    leaf_refs = {nid: ref for nid, ref in graph._node_refs.items() if nid not in graph._fold_ids}
+
     order = []
     in_degree = {
-        node_ref: len(list(graph.node_inputs(node_ref))) for node_ref in graph._node_refs.values()
+        node_ref: len(list(graph.node_inputs(node_ref))) for node_ref in leaf_refs.values()
     }
 
     queue = collections.deque([name for name, degree in in_degree.items() if degree == 0])
@@ -815,11 +910,12 @@ def topological_sort(graph: GraphModule) -> list[NodeRef]:
         order.append(current)
 
         for dependent in graph.node_outputs(current):
-            in_degree[dependent] -= 1
-            if in_degree[dependent] == 0:
-                queue.append(dependent)
+            if dependent.id in leaf_refs:
+                in_degree[dependent] -= 1
+                if in_degree[dependent] == 0:
+                    queue.append(dependent)
 
-    if len(order) != len(graph._nodes):
+    if len(order) != len(leaf_refs):
         msg = "Circular dependency detected in graph!"
         raise ValueError(msg)
 
@@ -855,277 +951,176 @@ class SubgraphSpec:
         self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
 
 
-def build_composite_graph(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
-    """Build a composite GraphModule where partitions become nodes with delegates attached.
+OutputNode = NodeRef | GraphModule
 
-    Partitions the input graph according to specs, then builds a new GraphModule where each
-    partition is represented as a single node with delegates from specs attached accordingly.
 
-    Args:
-        graph: Original GraphModule to partition.
-        specs: List of SubgraphSpec defining partitions with optional delegate functions.
+def node_order(graph: GraphModule, nodes: list[OutputNode]) -> list[OutputNode]:
+    """Sort nodes into a topologically-valid sequence relative to `graph`."""
+    topo = {ref: i for i, ref in enumerate(topological_sort(graph))}
 
-    Returns:
-        Composite GraphModule with partitions as nodes.
+    def _sort_key(node: OutputNode) -> int:
+        match node:
+            case NodeRef() if node.id in graph._fold_ids:
+                leaves = graph.fold_outputs(node)
+                return max(topo[leaf] for leaf in leaves) if leaves else 0
+            case NodeRef():
+                return topo[node]
+            case GraphModule() as subgraph:
+                bases = [ref.unwrap_ref() for ref in subgraph._outputs]
+                return max(
+                    topo[graph._node_refs[base.id]] for base in bases if isinstance(base, NodeRef)
+                )
+
+    return sorted(nodes, key=_sort_key)
+
+
+def _coarse_complement(graph: GraphModule, targets: set[NodeRef]) -> list[NodeRef]:
+    """Return the maximally-coarse set of nodes that fills in everything not in `targets`."""
+    target_ids = {ref.id for ref in targets}
+
+    def has_target_descendant(fold_id: uuid.UUID) -> bool:
+        for nid, node in graph._nodes.items():
+            if nid in target_ids:
+                ancestor = node.parent
+                while ancestor is not None:
+                    if ancestor.id == fold_id:
+                        return True
+                    ancestor = graph._nodes[ancestor.id].parent
+        return False
+
+    complement: list[NodeRef] = []
+
+    def collect(fold_id: uuid.UUID | None = None) -> None:
+        children = [
+            nid
+            for nid, node in graph._nodes.items()
+            if (node.parent.id if node.parent is not None else None) == fold_id
+        ]
+        for child_id in children:
+            if child_id in target_ids:
+                continue
+            if child_id in graph._fold_ids and has_target_descendant(child_id):
+                collect(child_id)
+            else:
+                complement.append(graph._node_refs[child_id])
+
+    collect()
+    return complement
+
+
+def _resolve_subgraph_input(name: str, context: dict[str, _BaseRef]) -> _BaseRef:
+    """Look up a subgraph input name (possibly ``'name[attr]'``) in the context."""
+    base, sep, rest = name.partition("[")
+    if not sep or not rest.endswith("]"):
+        return context[name]
+    inner = rest[:-1]
+    base_ref = context[base]
+    try:
+        return base_ref[int(inner)]
+    except ValueError:
+        attr_ref: _BaseRef = getattr(base_ref, inner)
+        return attr_ref
+
+
+def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
+    """Reduce the multi-resolution `graph` to the minimal resolution required by `specs`.
+
+    Specs define functions to run on subgraphs. These subgraphs in turn define the most
+    granular resolution we need to traverse through the multi-resolution graph. Here we
+    extract this resolution, and return a new GraphModule specifically created to run the most
+    efficient path through the graph given the subgraph specs.
     """
-    partitions = _partition_graph(graph, specs)
+    targets: set[NodeRef] = set()
+    subgraphs: list[tuple[set[NodeRef], GraphModule]] = []
+    seen_targets: set[NodeRef] = set()
 
-    name_to_node_ref = {
-        node.name: ref for ref in graph._node_refs.values() for node in [graph._nodes[ref.id]]
-    }
-
-    spec_partitions: set[GraphModule] = set(partitions[: len(specs)])
-
-    partition_to_delegate = {
-        partition: spec.delegate
-        for partition, spec in zip(partitions[: len(specs)], specs)
-        if spec.delegate is not None
-    }
-
-    node_to_partition = {
-        node_ref: partition
-        for partition in partitions
-        for node_ref in partition._node_refs.values()
-    }
-
-    def _parse_base_and_attr(sig: str) -> tuple[str, Any | None]:
-        """Parse 'name' or 'name[attr]' into (name, attr or None)."""
-        base, sep, rest = sig.partition("[")
-        if not sep or not rest.endswith("]"):
-            return sig, None
-        attr: str | int
-        try:
-            attr = int(rest[:-1])
-        except ValueError:
-            attr = rest[:-1]
-        return base, attr
-
-    root_inputs = set()
-    for partition in partitions:
-        for input_name in partition.input_names:
-            base_name, _ = _parse_base_and_attr(input_name)
-            if base_name in graph._inputs:
-                root_inputs.add(base_name)
-
-    composite = GraphModule()
-    composite_inputs: dict[str, InputRef] = {
-        name: composite.add_input(name) for name in graph.input_names if name in root_inputs
-    }
-    composite_outputs: dict[NodeRef | AttributeRef, NodeRef | AttributeRef] = {}
-
-    produced_refs: dict[NodeRef, NodeRef | AttributeRef] = {}
-
-    def get_composite_arg(input_name: str) -> _BaseRef:
-        """Get or create a composite-graph reference for a partition input.
-
-        Args:
-            input_name: Partition input 'name' or 'name[attr]'.
-
-        Returns:
-            A composite-graph reference to the base InputRef/NodeRef or AttributeRef.
-        """
-        base_name, attr = _parse_base_and_attr(input_name)
-        if base_name in graph._inputs:
-            base_ref: _BaseRef = composite_inputs[base_name]
-        else:
-            base_ref = produced_refs[name_to_node_ref[base_name]]
-
-        if attr is None:
-            return base_ref
-        return base_ref[attr] if isinstance(attr, int) else getattr(base_ref, attr)
-
-    # We have to add the partitions in topological order for correct dependency handling.
-    processed: set[GraphModule] = set()
-    for partition_idx, node_ref in enumerate(topological_sort(graph)):
-        partition = node_to_partition[node_ref]
-        if partition in processed:
-            continue
-        processed.add(partition)
-
-        partition_args = [get_composite_arg(name) for name in partition.input_names]
-
-        if partition in spec_partitions:
-            # Specced partitions will be an opaque node to run OptimizeModule's delegate.
-            partition_ref = composite.add_node(
-                f"partition_{partition_idx}", partition, partition_args
-            )
-            if delegate := partition_to_delegate.get(partition):
-                node = composite._nodes[partition_ref.id]
-                composite._nodes[partition_ref.id] = dataclasses.replace(node, delegate=delegate)
-
-            result_refs = [
-                partition_ref if len(partition._outputs) == 1 else partition_ref[i]
-                for i in range(len(partition._outputs))
-            ]
-        else:
-            # Non-specced partitions are just inlined as subgraphs.
-            result_refs = list(
-                composite.add_subgraph(f"partition_{partition_idx}", partition, partition_args)
-            )
-
-        for i, ref in enumerate(partition._outputs):
-            base = ref.unwrap_ref()
-            if not isinstance(base, NodeRef):
-                msg = f"Partition output unwrap did not return NodeRef: {type(base)}"
-                raise TypeError(msg)
-
-            produced_refs[base] = result_refs[i]
-
-            if ref in graph._outputs:
-                rebased = ref.rebase(produced_refs[base])
-                assert isinstance(rebased, (NodeRef, AttributeRef))
-                composite_outputs[ref] = rebased
-
-    for ref in graph._outputs:
-        composite.add_output(composite_outputs[ref])
-
-    return composite
-
-
-def _partition_graph(graph: GraphModule, subgraph_specs: list[SubgraphSpec]) -> list[GraphModule]:
-    """Partition a GraphModule into multiple subgraphs based on specifications.
-
-    Creates subgraphs for each SubgraphSpec, then groups remaining unpartitioned
-    nodes into connected components. Each resulting partition is a standalone
-    GraphModule that can be executed independently.
-
-    Args:
-        graph: GraphModule to partition.
-        subgraph_specs: List of SubgraphSpec defining explicit partitions.
-
-    Returns:
-        List of GraphModule partitions, including both explicit specs and
-        remaining connected components.
-    """
-    explicit_node_sets = _extract_node_sets_from_specs(graph, subgraph_specs)
-
-    explicit_nodes = set().union(*explicit_node_sets)
-    remaining_nodes = set(graph._node_refs.values()) - explicit_nodes
-    remaining_node_sets = _group_remaining_nodes_by_layer(graph, remaining_nodes, explicit_nodes)
-    partitions: list[GraphModule] = []
-    for node_set in (*explicit_node_sets, *remaining_node_sets):
-        partitions.append(create_subgraph(graph, node_set))
-
-    return partitions
-
-
-def _group_remaining_nodes_by_layer(
-    graph: GraphModule,
-    remaining_nodes: set[NodeRef],
-    explicit_nodes: set[NodeRef],
-) -> list[set[NodeRef]]:
-    """Group remaining nodes into layers based on explicit partition boundaries.
-
-    Nodes are grouped such that all nodes in a group:
-    1. Are reachable from each other without crossing explicit partition boundaries
-    2. Have the same set of explicit partitions as dependencies
-
-    Args:
-        graph: GraphModule containing all nodes.
-        remaining_nodes: Nodes not in explicit partitions.
-        explicit_nodes: Nodes that are in explicit partitions.
-
-    Returns:
-        List of node groups, each forming a partition.
-    """
-    if not remaining_nodes:
-        return []
-
-    # For each remaining node, find which explicit nodes form its upstream boundary.
-    # We traverse backward through remaining nodes freely, but stop (and collect) when
-    # we reach an explicit node — we do not traverse past explicit boundaries.
-    node_dependencies: dict[NodeRef, set[NodeRef]] = {}
-
-    for node in remaining_nodes:
-        boundary: set[NodeRef] = set()
-        seen: set[NodeRef] = {node}
-        stack: list[NodeRef] = [node]
-        while stack:
-            current = stack.pop()
-            for predecessor in graph.node_inputs(current):
-                if predecessor in seen:
-                    continue
-                seen.add(predecessor)
-                if predecessor in explicit_nodes:
-                    boundary.add(predecessor)
-                else:
-                    stack.append(predecessor)
-        node_dependencies[node] = boundary
-
-    # Group nodes with the same dependency signature
-    # Use tuple of sorted node ids as key since sets aren't hashable
-    groups: dict[tuple[uuid.UUID, ...], set[NodeRef]] = {}
-    for node, deps in node_dependencies.items():
-        deps_key = tuple(sorted(ref.id for ref in deps))
-        if deps_key not in groups:
-            groups[deps_key] = set()
-        groups[deps_key].add(node)
-
-    # Within each group, find connected components using bidirectional traversal.
-    result: list[set[NodeRef]] = []
-    for group_nodes in groups.values():
-        components = _find_connected_components(graph, group_nodes)
-        result.extend(components)
-
-    return result
-
-
-def _extract_node_sets_from_specs(
-    graph: GraphModule, specs: list[SubgraphSpec]
-) -> list[set[NodeRef]]:
-    """Extract node sets from explicit SubgraphSpecs.
-
-    Args:
-        graph: GraphModule containing nodes in `specs`.
-        specs: List of SubgraphSpec to convert.
-
-    Returns:
-        List of NodeRef sets, one per SubgraphSpec.
-
-    Raises:
-        ValueError: If any specs have overlapping nodes.
-    """
-    used: set[NodeRef] = set()
-    node_sets: list[set[NodeRef]] = []
-
+    # Create "targets": the most granular collection of nodes we need to have, given the specs.
     for spec in specs:
-        input_ref = graph.node_ref(spec.input)
-        output_ref = graph.node_ref(spec.output)
-        nodes = find_nodes_on_path(graph, input_ref, output_ref)
+        in_ref, out_ref = graph.node_ref(spec.input), graph.node_ref(spec.output)
 
-        if overlap := nodes & used:
-            msg = f"Overlapping nodes in subgraph specs: {overlap}"
-            raise ValueError(msg)
+        if spec.input is not spec.output:
+            path_nodes = find_nodes_on_path(graph, in_ref, out_ref)
+            if overlap := path_nodes & seen_targets:
+                msg = f"Overlapping nodes in subgraph specs: {overlap}"
+                raise ValueError(msg)
+            seen_targets |= path_nodes
+            targets |= path_nodes
+            subgraphs.append((path_nodes, create_subgraph(graph, path_nodes)))
+        else:
+            if in_ref in seen_targets:
+                msg = f"Overlapping nodes in subgraph specs: {{{in_ref}}}"
+                raise ValueError(msg)
+            seen_targets.add(in_ref)
+            targets.add(in_ref)
 
-        node_sets.append(nodes)
-        used |= nodes
+    # Now create the coarse complement. whatever we dont see as targets, try and get the
+    # coarsest level (try not to unfold into leaves if not needed).
+    complement = _coarse_complement(graph, targets)
 
-    return node_sets
+    for path_nodes, _ in subgraphs:
+        targets -= path_nodes
 
+    new_graph = GraphModule()
+    context: dict[str, _BaseRef] = {name: new_graph.add_input(name) for name in graph.input_names}
+    subgraph_idx = 0
 
-def _find_connected_components(graph: GraphModule, nodes: set[NodeRef]) -> list[set[NodeRef]]:
-    """Finds the connected components within a given set of nodes.
+    # Rewire the new graph's path in a dependency-based (topo) order.
+    for node in node_order(graph, [*targets, *complement, *[gm for _, gm in subgraphs]]):
+        match node:
+            case GraphModule() as subgraph:
+                args = [_resolve_subgraph_input(name, context) for name in subgraph.input_names]
+                # Path-specific subgraphs have _no_ kwargs, that wiring is done by input name only.
+                ref = new_graph.add_node(f"subgraph_{subgraph_idx}", subgraph, args, kwargs={})
+                subgraph_idx += 1
 
-    Args:
-        graph: GraphModule containing `nodes`.
-        nodes: The set of nodes to analyze.
+                for i, out in enumerate(subgraph._outputs):
+                    if isinstance(base := out.unwrap_ref(), NodeRef):
+                        context[base.name] = ref if len(subgraph._outputs) == 1 else ref[i]
 
-    Returns:
-        A list of node sets, where each set represents a connected component.
-    """
-    nodes_to_visit = nodes.copy()
+            case NodeRef(id=node_id, name=node_name) if node_id in graph._fold_ids:
+                original_node = graph._nodes[node_id]
+                args = [remap_subgraph_reference(arg, context, {}) for arg in original_node.args]
+                kwargs = {
+                    key: remap_subgraph_reference(value, context, {})
+                    for key, value in original_node.kwargs.items()
+                }
+                ref = new_graph.add_node(
+                    node_name, original_node.module, args, kwargs=kwargs, op=original_node.op
+                )
+                context[node_name] = ref
 
-    components: list[set[NodeRef]] = []
-    while nodes_to_visit:
-        root = next(iter(nodes_to_visit))
+                fold_outputs = graph.fold_outputs(node)
+                for i, leaf in enumerate(fold_outputs):
+                    context[leaf.name] = ref if len(fold_outputs) == 1 else ref[i]
 
-        component = find_reachable_nodes(
-            graph, root, direction=Direction.BIDIRECTIONAL, allowlist=nodes_to_visit
+            case NodeRef(id=node_id, name=node_name):
+                original_node = graph._nodes[node_id]
+                args = [remap_subgraph_reference(arg, context, {}) for arg in original_node.args]
+                kwargs = {
+                    key: remap_subgraph_reference(value, context, {})
+                    for key, value in original_node.kwargs.items()
+                }
+                node_ref = new_graph.add_node(
+                    node_name, original_node.module, args, kwargs, op=original_node.op
+                )
+                context[node_name] = node_ref
+
+    for graph_output in graph._outputs:
+        rewritten = remap_subgraph_reference(graph_output, context, {})
+        assert isinstance(rewritten, (NodeRef, AttributeRef))
+        new_graph.add_output(rewritten)
+
+    # Finally, add the delegate to whatever node in the new graph had it designated. For subgraphs
+    # we specifically use the spec.output as ref, for other specs spec.output is spec.input.
+    for spec in specs:
+        target_ref = context[graph.node_ref(spec.output).name]
+        base_ref = target_ref if isinstance(target_ref, NodeRef) else target_ref.unwrap_ref()
+        assert isinstance(base_ref, NodeRef)
+        new_graph._nodes[base_ref.id] = dataclasses.replace(
+            new_graph._nodes[base_ref.id], delegate=spec.delegate
         )
-        components.append(component)
-        nodes_to_visit -= component
 
-    return components
+    return new_graph
 
 
 class _GraphExecutionContext:
@@ -1231,6 +1226,6 @@ def local_optimize(
     if offloading_strategy is not None:
         passes.append(offloading_strategy.create_instruction_pass(graph))
 
-    composite = build_composite_graph(graph, specs)
-    program = InstructionScheduler(passes=passes).schedule(composite)
+    single_resolution_graph = reduce_resolution(graph, specs)
+    program = InstructionScheduler(passes=passes).schedule(single_resolution_graph)
     return _GraphExecutionContext(graph, program, InstructionEngine())
