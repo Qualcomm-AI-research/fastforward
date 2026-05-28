@@ -131,7 +131,7 @@ attention_mask = generate_attention_mask(SEQUENCE_LENGTH)
 batch["attention_mask"] = attention_mask.cpu()
 # -
 
-# Now we can use the `export` function from FastForward. For a more detailed overview of the `export` function we invite users to read through the docstring of `export`. In addition, we also set the `enable_encodings_propagation` to `True`, which can provide a more complete mapping of quantization settings to operations (which is relevant for QNN). We again invite users to read through the docstring for the `propagate_encodings` function.
+# Now we can use the `export` function from FastForward. For a more detailed overview of the `export` function we invite users to read through the docstring of `export`.
 
 export(
     model=model,
@@ -139,7 +139,6 @@ export(
     output_directory=output_directory,
     model_name=model_name,
     model_kwargs=batch,
-    enable_encodings_propagation=True,
     verbose=False,
 )
 
@@ -191,7 +190,6 @@ paths = export_modules(
     None,
     module_collection,
     model_name=modules_folder_name,
-    enable_encodings_propagation=True,
     kwargs=batch,
     output_path=modules_output_path,
     verbose=False,
@@ -217,7 +215,6 @@ full_llama = export_modules(
     None,
     model,
     model_name=full_llama_name,
-    enable_encodings_propagation=True,
     kwargs=batch,
     output_path=full_llama_output_path,
     verbose=False,
