@@ -12,6 +12,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
+    DEFAULT_CONTEXT,
     Delegate,
     GraphModule,
     NodeRef,
@@ -410,7 +411,7 @@ def test_local_error_multiple_contexts() -> None:
     # but the order in which they are defined does not matter.
     call_node_1 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_1)
     for context in call_node_1.contexts:
-        assert context in {quant_context, null_context}
+        assert context in {quant_context, null_context, DEFAULT_CONTEXT}
 
     # THEN OptimizeModule(node_2) should have both contexts in its delegate
     # and order DOES matter.
@@ -421,14 +422,13 @@ def test_local_error_multiple_contexts() -> None:
     )
     assert opt_node_2_instr.delegate.contexts == [null_context, quant_context]
 
-    # THEN CallModule(node_2) should run in only default context, as there is no need for both after
-    # OptimizeModule(node_2)
+    # THEN CallModule(node_2) should run in default context (forward pass always produces output).
     call_node_2 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_2)
-    assert call_node_2.contexts == []
+    assert call_node_2.contexts == [DEFAULT_CONTEXT]
 
-    # THEN node_3 should run in only default context since it was not part of any optimize dependency
+    # THEN node_3 should run in default context since it was not part of any optimize dependency
     call_node_3 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_3)
-    assert call_node_3.contexts == []
+    assert call_node_3.contexts == [DEFAULT_CONTEXT]
 
 
 def test_graph_execution_with_const_argument() -> None:

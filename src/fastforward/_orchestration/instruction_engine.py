@@ -488,11 +488,8 @@ def _propagate_contexts(graph: GraphModule, order: list[NodeRef]) -> Mapping[_Ba
     """
     node_contexts: dict[_BaseRef, set[ContextManager[None]]] = defaultdict(set)
 
-    # If no delegates exist, we want to ensure the model still functions as expected (e.g. out = model(in)).
-    # We do this here by adding the default context to the outputs, and this will propagate to it's
-    # parents below.
-    graph_has_delegates = any(graph.node(ref).delegate is not None for ref in order)
-    if not graph_has_delegates and graph._outputs:
+    # Seed outputs with the default context so the forward pass always produces results.
+    if graph._outputs:
         for out in graph._outputs:
             node_contexts[out.unwrap_ref()] |= {DEFAULT_CONTEXT}
 
