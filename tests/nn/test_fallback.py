@@ -92,7 +92,14 @@ def create_per_tensor_linear_quantizer(
             (-1, 1),
             {},
         ),
-        # ("unfold", [(4, 32, 4, 4)], [(-1, 1)], (-1, 1), dict(kernel_size=2)),
+        (
+            "unfold",
+            "torch.nn.functional.unfold",
+            [(4, 32, 4, 4)],
+            [(-1, 1)],
+            (-1, 1),
+            dict(kernel_size=2),
+        ),
         # (
         #     "fold",
         #     [(1, 3 * 2 * 2, 12)],
@@ -127,7 +134,14 @@ def create_per_tensor_linear_quantizer(
             dict(kernel_size=3, stride=2),
         ),
         # ("max_pool1d", [(1, 1, 7)], [(-1, 1)], (-1, 1), dict(kernel_size=3, stride=2)),
-        # ("max_pool2d", [(1, 1, 7, 7)], [(-1, 1)], (-1, 1), dict(kernel_size=3, stride=2)),
+        (
+            "max_pool2d",
+            "torch.nn.functional.max_pool2d",
+            [(1, 1, 7, 7)],
+            [(-1, 1)],
+            (-1, 1),
+            dict(kernel_size=3, stride=2),
+        ),
         # ("max_pool3d", [(1, 1, 7, 7, 7)], [(-1, 1)], (-1, 1), dict(kernel_size=3, stride=2)),
         # (
         #     "lp_pool1d",
@@ -280,7 +294,14 @@ def create_per_tensor_linear_quantizer(
         #     dict(downscale_factor=2),
         # ),
         # ("pad", [(10, 10)], [(-1, 1)], (-1, 1), dict(pad=(2, 2, 2, 2), value=0)),
-        # ("interpolate", [(1, 4, 3, 10, 10)], [(-1, 1)], (-1, 1), dict(scale_factor=2)),
+        (
+            "interpolate",
+            "torch.nn.functional.interpolate",
+            [(1, 4, 3, 10, 10)],
+            [(-1, 1)],
+            (-1, 1),
+            dict(scale_factor=2),
+        ),
         # # ("upsample", [(4, 3, 10, 10)], [(-1, 1)], (-1, 1), dict(scale_factor=2)),  # Deprecated
         # # ("upsample_nearest", [(4, 3, 10, 10)], [(-1, 1)], (-1, 1), dict(scale_factor=2)),  # Deprecated
         # # ("upsample_bilinear", [(4, 3, 10, 10)], [(-1, 1)], (-1, 1), dict(scale_factor=2)),  # Deprecated

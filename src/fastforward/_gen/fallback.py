@@ -60,6 +60,9 @@ __all__ = [
     "index_add",
     "cumsum",
     "pad",
+    "max_pool2d",
+    "interpolate",
+    "unfold",
 ]
 
 
@@ -1610,6 +1613,113 @@ def pad(
         input = input.dequantize()
 
     output = torch.nn.functional.pad(input=input, pad=pad, mode=mode, value=value)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:134
+def max_pool2d(
+    input: torch.Tensor,
+    kernel_size: Union[Size, int],
+    stride: Union[None, Size, int] = None,
+    padding: Union[Size, int] = 0,
+    dilation: Union[Size, int] = 1,
+    ceil_mode: bool = False,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.nn.functional.max_pool2d(
+        input=input,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        ceil_mode=ceil_mode,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:137
+def interpolate(
+    input: torch.Tensor,
+    size: Union[None, Size, int] = None,
+    scale_factor: Union[None, Sequence[float], float] = None,
+    mode: str = "nearest",
+    align_corners: bool | None = None,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.nn.functional.interpolate(
+        input=input,
+        size=size,
+        scale_factor=scale_factor,
+        mode=mode,
+        align_corners=align_corners,
+        recompute_scale_factor=recompute_scale_factor,
+        antialias=antialias,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:140
+def unfold(
+    input: torch.Tensor,
+    kernel_size: Union[int, tuple[int, ...]],
+    dilation: Union[int, tuple[int, ...]] = 1,
+    padding: Union[int, tuple[int, ...]] = 0,
+    stride: Union[int, tuple[int, ...]] = 1,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.nn.functional.unfold(
+        input=input, kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
+    )
     if output_quantizer is not None:
         output = output_quantizer(output)
     return output

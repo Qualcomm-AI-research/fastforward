@@ -126,3 +126,16 @@
 
 - op: "pad(input: Quantized, pad: Sequence[int], mode: str = ..., value: Optional[float] = None) -> Quantized"
   fallback: torch.nn.functional.pad
+
+# NOTE: return_indices is intentionally omitted from this spec. torch's max_pool2d
+# overloads on Literal[False]/Literal[True] for return_indices and returns a
+# (Tensor, Tensor) tuple in the True case, which the codegen cannot express
+# (no Literal type, single-tensor output_quantizer assumption).
+- op: "max_pool2d(input: Quantized, kernel_size: int | Size, stride: Optional[int | Size] = None, padding: int | Size = 0, dilation: int | Size = 1, ceil_mode: Bool = False) -> Quantized"
+  fallback: torch.nn.functional.max_pool2d
+
+- op: "interpolate(input: Quantized, size: Optional[int | Size] = None, scale_factor: Optional[float | Sequence[float]] = None, mode: str = 'nearest', align_corners: Optional[Bool] = None, recompute_scale_factor: Optional[Bool] = None, antialias: Bool = False) -> Quantized"
+  fallback: torch.nn.functional.interpolate
+
+- op: "unfold(input: Quantized, kernel_size: int | tuple[int, ...], dilation: int | tuple[int, ...] = 1, padding: int | tuple[int, ...] = 0, stride: int | tuple[int, ...] = 1) -> Quantized"
+  fallback: torch.nn.functional.unfold

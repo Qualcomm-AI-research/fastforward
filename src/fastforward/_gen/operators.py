@@ -62,6 +62,9 @@ __all__ = [
     "index_add",
     "cumsum",
     "pad",
+    "max_pool2d",
+    "interpolate",
+    "unfold",
 ]
 
 
@@ -1441,6 +1444,126 @@ def pad(
         pad=pad,
         mode=mode,
         value=value,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:134
+def max_pool2d(
+    input: torch.Tensor,
+    kernel_size: Union[Size, int],
+    stride: Union[None, Size, int] = None,
+    padding: Union[Size, int] = 0,
+    dilation: Union[Size, int] = 1,
+    ceil_mode: bool = False,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "max_pool2d",
+        input=input,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        ceil_mode=ceil_mode,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.max_pool2d
+    return selected_op(
+        input=input,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        ceil_mode=ceil_mode,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:137
+def interpolate(
+    input: torch.Tensor,
+    size: Union[None, Size, int] = None,
+    scale_factor: Union[None, Sequence[float], float] = None,
+    mode: str = "nearest",
+    align_corners: bool | None = None,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "interpolate",
+        input=input,
+        size=size,
+        scale_factor=scale_factor,
+        mode=mode,
+        align_corners=align_corners,
+        recompute_scale_factor=recompute_scale_factor,
+        antialias=antialias,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.interpolate
+    return selected_op(
+        input=input,
+        size=size,
+        scale_factor=scale_factor,
+        mode=mode,
+        align_corners=align_corners,
+        recompute_scale_factor=recompute_scale_factor,
+        antialias=antialias,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:140
+def unfold(
+    input: torch.Tensor,
+    kernel_size: Union[int, tuple[int, ...]],
+    dilation: Union[int, tuple[int, ...]] = 1,
+    padding: Union[int, tuple[int, ...]] = 0,
+    stride: Union[int, tuple[int, ...]] = 1,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "unfold",
+        input=input,
+        kernel_size=kernel_size,
+        dilation=dilation,
+        padding=padding,
+        stride=stride,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.unfold
+    return selected_op(
+        input=input,
+        kernel_size=kernel_size,
+        dilation=dilation,
+        padding=padding,
+        stride=stride,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )
