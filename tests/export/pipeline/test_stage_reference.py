@@ -73,3 +73,15 @@ def test_duplicate_dependencies() -> None:
     assert stage1.stage_fn == stage3.stage_fn
     assert len(stage2._dependencies) == 2
     assert stage3 in stage2._dependencies
+
+
+def test_dependencies_property_is_read_only_view() -> None:
+    # GIVEN three stages where stage3 depends on stage1 and stage2 in insertion order
+    stage1 = StageReference(dummy_stage_fn, "stage1")
+    stage2 = StageReference(another_dummy_stage_fn, "stage2")
+    stage3 = StageReference(dummy_stage_fn, "stage3").depends_on(stage1, stage2)
+
+    # WHEN accessing the `dependencies` property
+    # THEN it exposes dependencies as a tuple in insertion order without leaking the underlying dict
+    assert stage3.dependencies == (stage1, stage2)
+    assert isinstance(stage3.dependencies, tuple)

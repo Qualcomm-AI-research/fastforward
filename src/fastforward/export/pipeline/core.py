@@ -11,7 +11,7 @@ evaluation.
 import dataclasses
 import itertools
 
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable, Iterable, TypeAlias
 
 import torch
 
@@ -34,6 +34,20 @@ class StageReference:
             if dep not in self._dependencies:
                 self._dependencies[dep] = dep.name
         return self
+
+    @property
+    def dependencies(self) -> tuple["StageReference", ...]:
+        """Stages this stage depends on, in insertion order."""
+        return tuple(self._dependencies)
+
+    def _set_dependencies(self, deps: Iterable["StageReference"]) -> None:
+        self._dependencies = {dep: dep.name for dep in deps}
+
+    def _remove_dependency(self, dep: "StageReference") -> None:
+        if dep not in self._dependencies:
+            msg = f"Stage '{self.name}' does not depend on '{dep.name}'"
+            raise KeyError(msg)
+        del self._dependencies[dep]
 
     def __repr__(self) -> str:
         return f"StageReference(stage_fn={self.stage_fn}, name={self.name})"
@@ -119,6 +133,224 @@ class Pipeline:
         stage_reference = self.register_stage(stage_fn, name, capture_stage_output)
         self._evaluation_stages[stage_reference] = stage_reference.name
         return stage_reference
+
+    def get_stage(self, name: str) -> StageReference:
+        """Return the registered stage with the given name.
+
+        Args:
+            name: Name of the registered stage to look up.
+
+        Returns:
+            The :class:`StageReference` registered under ``name``.
+
+        Raises:
+            KeyError: if no stage with that name has been registered.
+        """
+        for stage in self._stages:
+            if stage.name == name:
+                return stage
+        msg = f"No stage named '{name}'"
+        raise KeyError(msg)
+
+    def insert_stage_before(
+        self,
+        target: str,
+        stage_fn: Callable[..., Any],
+        name: str,
+        *,
+        depends_on: Iterable[str] | None = None,
+        capture_stage_output: bool = False,
+    ) -> StageReference:
+        """Insert a new stage so that it executes immediately before ``target``.
+
+        By default the new stage inherits ``target``'s current dependencies and
+        ``target`` is rewired to depend on the new stage instead, splicing it into
+        the chain. Pass ``depends_on`` to set the new stage's dependencies
+        explicitly; in that case ``target``'s dependencies are left untouched and
+        the new stage is wired in only via the names you provide.
+
+        Args:
+            target: Name of the stage the new stage should run immediately before.
+            stage_fn: Callable implementing the new stage.
+            name: Unique name to register the new stage under.
+            depends_on: Optional explicit dependency names. When ``None`` (default),
+                the new stage inherits ``target``'s dependencies and ``target`` is
+                rewired to depend on the new stage.
+            capture_stage_output: Whether the new stage's output should be captured
+                in the pipeline results.
+
+        Returns:
+            The :class:`StageReference` for the newly registered stage.
+
+        Raises:
+            KeyError: if ``target`` (or any name in ``depends_on``) is unknown.
+            ValueError: if ``name`` is already registered.
+        """
+        target_ref = self.get_stage(target)
+
+        if depends_on is None:
+            inherited = list(target_ref._dependencies)
+            new_stage = self.register_stage(stage_fn, name, capture_stage_output)
+            new_stage.depends_on(*inherited)
+            target_ref._set_dependencies([new_stage])
+        else:
+            explicit = [self.get_stage(dep_name) for dep_name in depends_on]
+            new_stage = self.register_stage(stage_fn, name, capture_stage_output)
+            new_stage.depends_on(*explicit)
+        return new_stage
+
+    def insert_stage_after(
+        self,
+        target: str,
+        stage_fn: Callable[..., Any],
+        name: str,
+        *,
+        capture_stage_output: bool = False,
+    ) -> StageReference:
+        """Insert a new stage so that it executes immediately after ``target``.
+
+        The new stage depends on ``target``. Every existing stage that previously
+        depended on ``target`` is rewired to depend on the new stage instead, so
+        downstream stages observe the new stage's output rather than ``target``'s.
+
+        For a side-branch stage that depends on ``target`` without displacing
+        ``target``'s existing dependents, use ``register_stage`` followed by
+        ``add_dependency`` instead.
+
+        Args:
+            target: Name of the stage the new stage should run immediately after.
+            stage_fn: Callable implementing the new stage.
+            name: Unique name to register the new stage under.
+            capture_stage_output: Whether the new stage's output should be captured
+                in the pipeline results.
+
+        Returns:
+            The :class:`StageReference` for the newly registered stage.
+
+        Raises:
+            KeyError: if ``target`` is unknown.
+            ValueError: if ``name`` is already registered.
+        """
+        target_ref = self.get_stage(target)
+        existing_dependents = self._dependents_of(target_ref)
+        new_stage = self.register_stage(stage_fn, name, capture_stage_output)
+        new_stage.depends_on(target_ref)
+        for dependent in existing_dependents:
+            dependent._remove_dependency(target_ref)
+            dependent.depends_on(new_stage)
+        return new_stage
+
+    def replace_stage(
+        self,
+        target: str,
+        stage_fn: Callable[..., Any],
+        name: str | None = None,
+        *,
+        capture_stage_output: bool | None = None,
+    ) -> StageReference:
+        """Replace an existing stage in place, preserving its position in the graph.
+
+        The replacement inherits ``target``'s dependencies, and every existing
+        stage that depended on ``target`` is rewired to depend on the replacement.
+        If ``target`` was a result-capture stage or an evaluation stage, the
+        replacement takes its place in those collections too.
+
+        Args:
+            target: Name of the stage to replace.
+            stage_fn: New stage callable.
+            name: Optional new name. Defaults to ``target``'s name (drop-in swap).
+            capture_stage_output: Whether the replacement should capture its
+                output. ``None`` (default) inherits the target's setting.
+
+        Returns:
+            The :class:`StageReference` for the replacement stage.
+
+        Raises:
+            KeyError: if ``target`` is unknown.
+            ValueError: if ``name`` is provided and already in use by another stage.
+        """
+        target_ref = self.get_stage(target)
+        new_name = name if name is not None else target_ref.name
+
+        if new_name != target_ref.name and new_name in self._stages.values():
+            msg = f"Stage name '{new_name}' is already registered"
+            raise ValueError(msg)
+
+        was_eval = target_ref in self._evaluation_stages
+        was_captured = target_ref in self._result_stages
+        capture = capture_stage_output if capture_stage_output is not None else was_captured
+
+        inherited = list(target_ref._dependencies)
+        dependents = self._dependents_of(target_ref)
+
+        del self._stages[target_ref]
+        self._result_stages.pop(target_ref, None)
+        self._evaluation_stages.pop(target_ref, None)
+
+        if was_eval:
+            new_stage = self.register_eval_stage(stage_fn, new_name, capture)
+        else:
+            new_stage = self.register_stage(stage_fn, new_name, capture)
+        new_stage.depends_on(*inherited)
+
+        for dependent in dependents:
+            dependent._remove_dependency(target_ref)
+            dependent.depends_on(new_stage)
+
+        return new_stage
+
+    def add_dependency(self, stage: str, dependency: str) -> None:
+        """Add ``dependency`` as a prerequisite of ``stage``.
+
+        Idempotent: adding an existing edge is a no-op. Raises if the edge would
+        introduce a cycle so the failure surfaces at the call site rather than at
+        build time.
+
+        Args:
+            stage: Name of the stage that will depend on ``dependency``.
+            dependency: Name of the stage to add as a prerequisite.
+
+        Raises:
+            KeyError: if either stage name is unknown.
+            ValueError: if the new edge would introduce a cycle.
+        """
+        target = self.get_stage(stage)
+        dep = self.get_stage(dependency)
+        if self._reaches(dep, target):
+            msg = f"Adding dependency '{dependency}' to stage '{stage}' would introduce a cycle"
+            raise ValueError(msg)
+        target.depends_on(dep)
+
+    def remove_dependency(self, stage: str, dependency: str) -> None:
+        """Remove the ``stage`` -> ``dependency`` edge.
+
+        Args:
+            stage: Name of the stage whose dependency should be removed.
+            dependency: Name of the dependency to detach from ``stage``.
+
+        Raises:
+            KeyError: if either stage name is unknown, or if the edge does not exist.
+        """
+        target = self.get_stage(stage)
+        dep = self.get_stage(dependency)
+        target._remove_dependency(dep)
+
+    def _dependents_of(self, target: StageReference) -> list[StageReference]:
+        return [stage for stage in self._stages if target in stage._dependencies]
+
+    def _reaches(self, src: StageReference, dst: StageReference) -> bool:
+        """Whether ``dst`` is reachable from ``src`` along dependency edges."""
+        stack: list[StageReference] = [src]
+        seen: set[StageReference] = set()
+        while stack:
+            current = stack.pop()
+            if current is dst:
+                return True
+            if current in seen:
+                continue
+            seen.add(current)
+            stack.extend(current._dependencies)
+        return False
 
     def _build_pipeline(self, target_stage: StageReference | None = None) -> list[StageReference]:
         """Build the pipeline by resolving dependencies and ordering the stages."""
