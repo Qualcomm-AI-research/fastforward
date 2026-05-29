@@ -11,13 +11,23 @@
   fallback: torch.nn.functional.conv3d
 
 - op: "softmax(input: Quantized, dim: int, dtype: Optional[DType] = None) -> Quantized"
-  fallback: torch.softmax
+  fallback: torch.nn.functional.softmax
+  # `aliases` registers extra qualified names that resolve to the same operator
+  # entry as `fallback`. Use it when torch exposes the same op via multiple
+  # callables (e.g. `torch.softmax` and `torch.nn.functional.softmax` are
+  # distinct Python objects but the same op).
+  aliases:
+    - torch.softmax
 
 - op: "relu(input: Quantized) -> Quantized"
-  fallback: torch.relu
+  fallback: torch.nn.functional.relu
+  aliases:
+    - torch.relu
 
 - op: "sigmoid(input: Quantized) -> Quantized"
-  fallback: torch.sigmoid
+  fallback: torch.nn.functional.sigmoid
+  aliases:
+    - torch.sigmoid
 
 - op: "conv_transpose1d(input: Quantized, weight: Quantized, bias: Optional[MaybeQuantized] = None, stride: int | Size = 1, padding: int | Size = 0, output_padding: int | Size = 0, groups: int = 1, dilation: int | Size = 1) -> Quantized"
   fallback: torch.nn.functional.conv_transpose1d

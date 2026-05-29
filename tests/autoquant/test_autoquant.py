@@ -706,23 +706,39 @@ def test_autoquant_prefers_attribute_name_for_module_alias_resolution(
     input_module: torch.nn.Module,
     snapshot: syrupy.assertion.SnapshotAssertion,
 ) -> None:
+    # GIVEN a module that calls a helper via an attribute alias (secondary, primary,
+    # or public_api — provided via parametrize)
+
+    # WHEN autoquant processes the module
     actual = autoquant_with_defaults(input_module, use_type_inference=False)
     actual = codeformat_with_defaults(actual)
+
+    # THEN the generated code matches the snapshot for that alias variant
     assert snapshot == actual
 
 
 def test_helper_public_api_refs_follow_renamed_helpers() -> None:
+    # GIVEN a module that uses torch.nn.MultiheadAttention, whose implementation
+    # calls helpers such as multi_head_attention_forward via handle_torch_function
+
+    # WHEN autoquant processes the module
     code = autoquant_with_defaults(_IssueAHelperRefModule(), use_type_inference=False)
     code = codeformat_with_defaults(code)
 
+    # THEN unquantized helper names do not appear as dispatch targets inside the
+    # generated handle_torch_function calls
     assert "quantized_handle_torch_function(\n            multi_head_attention_forward," not in code
     assert "quantized_handle_torch_function(\n            relu," not in code
     assert "quantized_handle_torch_function(\n            group_norm," not in code
+
+    # THEN the renamed helper is used as the dispatch target
     assert (
         "quantized_handle_torch_function(\n            quantized_multi_head_attention_forward,"
         in code
     )
-    assert "quantized_handle_torch_function(\n            quantized_softmax," in code
+
+    # THEN softmax is dispatched directly as a leaf op via the alias-aware optable
+    assert "fastforward.nn.functional.softmax(" in code
 
 
 def _extract_mha_quantizer_params(
@@ -787,6 +803,8 @@ def test_autoquant_caller_has_distinct_quantizers_for_two_helpers_sharing_op_nam
 
 
 def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
+    # GIVEN an optable where a dispatch op resolves to a qualified name whose root
+    # module ("sam3_quantized") is not imported in the module under quantization
     table = OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
     table.add(
         "issue_b_external_dispatch(x: Tensor, y: Tensor) -> Tensor",
@@ -803,6 +821,7 @@ def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
             return "sam3_quantized.interpolate"
         return original_dispatch_qualified_name(self)
 
+    # WHEN autoquant processes the module with the patched dispatch name
     with mock.patch(
         "fastforward._quantops.operator.Operator.dispatch_qualified_name",
         autospec=True,
@@ -816,11 +835,15 @@ def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
 
     code = codeformat_with_defaults(code)
 
+    # THEN the generated file includes an import for the injected external root
     assert "import sam3_quantized" in code
+    # THEN the dispatch call references the external fully qualified name
     assert "sam3_quantized.interpolate" in code
 
 
 def test_autoquant_cross_file_dispatch_namespace_contract(tmp_path: pathlib.Path) -> None:
+    # GIVEN an optable whose dispatch op resolves to an external module root
+    # ("sam3_quantized") not present in the module under quantization
     table = OperatorTable.from_yaml(alias_extensions=optable.STR_ALIASES_EXTENSIONS)
     table.add(
         "issue_b_external_dispatch(x: Tensor, y: Tensor) -> Tensor",
@@ -837,6 +860,8 @@ def test_autoquant_cross_file_dispatch_namespace_contract(tmp_path: pathlib.Path
             return "sam3_quantized.interpolate"
         return original_dispatch_qualified_name(self)
 
+    # WHEN autoquant generates code and it is written to a file alongside a stub
+    # for the external module
     with mock.patch(
         "fastforward._quantops.operator.Operator.dispatch_qualified_name",
         autospec=True,
@@ -865,12 +890,16 @@ def test_autoquant_cross_file_dispatch_namespace_contract(tmp_path: pathlib.Path
         text=True,
         check=False,
     )
+
+    # THEN ruff reports no undefined-name errors (F821) in the generated file
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
 def test_module_builder_imports_fallback_for_invalid_symbols(
     snapshot: syrupy.assertion.SnapshotAssertion,
 ) -> None:
+    # GIVEN a ModuleBuilder with required imports that include both valid symbols
+    # and a symbol whose name is not a legal Python identifier (e.g. "invalid-attr")
     class _StubStatementBuilder:
         """Minimal statement-builder test double for ModuleBuilder.
 
@@ -912,10 +941,14 @@ def test_module_builder_imports_fallback_for_invalid_symbols(
     )
 
     cst_module = libcst.Module([])
+
+    # WHEN import_statements() is called
     rendered_imports = "\n".join(
         cst_module.code_for_node(stmt) for stmt in module_builder.import_statements()
     )
 
+    # THEN the generated import block matches the snapshot, with invalid-identifier
+    # symbols falling back to an importable form
     assert snapshot == rendered_imports
 
 
@@ -1185,8 +1218,13 @@ class ExampleModuleMultiline(torch.nn.Module):
 
 @pytest.mark.slow
 def test_autoquant_multiline_call(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
+    # GIVEN a module whose forward pass chains method calls across multiple lines
+
+    # WHEN autoquant processes the module
     quantized = autoquant_with_defaults(ExampleModuleMultiline(), use_type_inference=False)
     formatted = codeformat_with_defaults(quantized)
+
+    # THEN the generated code matches the snapshot
     assert snapshot == formatted
 
 
@@ -1199,11 +1237,11 @@ class ExampleModuleBuiltinCallableAttr(torch.nn.Module):
 
 @pytest.mark.slow
 def test_autoquant_attribute_call_on_builtin_callable_does_not_crash() -> None:
-    """Regression for alias scan on objects without ``__dict__``.
+    # GIVEN a module that stores a builtin callable in a variable and accesses it
+    # via getattr before calling (op = operator.add; call = getattr(op, "__call__"))
 
-    The dependency scanner should not call ``vars(...)`` on builtin callable
-    objects reached via attribute calls (e.g. ``op.__call__(...)``).
-    """
+    # WHEN autoquant processes the module
+    # THEN no exception is raised — the alias scan must not call vars() on builtins
     _ = autoquant_with_defaults(ExampleModuleBuiltinCallableAttr(), use_type_inference=False)
 
 
@@ -1318,11 +1356,15 @@ def _worker_propagate_cyclic_specs() -> None:
 
 @pytest.mark.slow
 def test_propagate_quantizers_converges_on_cyclic_trace_growth() -> None:
-    """Propagation should converge even when call graph contains cycles."""
+    # GIVEN a set of function specs whose call graph contains cycles
+    # (e.g. f0→f1, f0→f0, f1→f2, f1→f1, f2→f1)
+
+    # WHEN _propagate_quantizers runs inside a subprocess with a hard timeout
     process = mp.Process(target=_worker_propagate_cyclic_specs, daemon=True)
     process.start()
     process.join(timeout=2.0)
 
+    # THEN the process exits cleanly before the timeout — propagation converges
     try:
         assert not process.is_alive(), "Propagation did not converge within timeout"
         assert process.exitcode == 0
@@ -1330,3 +1372,40 @@ def test_propagate_quantizers_converges_on_cyclic_trace_growth() -> None:
         if process.is_alive():
             process.terminate()
             process.join(timeout=5.0)
+
+
+class _AliasModuleTorch(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.relu(x)
+
+
+class _AliasModuleFunctional(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.nn.functional.relu(x)
+
+
+@pytest.mark.slow
+def test_autoquant_rewrites_torch_and_functional_relu_to_same_dispatch() -> None:
+    # GIVEN one module that calls torch.relu and one that calls torch.nn.functional.relu
+    # GIVEN the alias-aware default optable (torch.relu ↔ torch.nn.functional.relu)
+    operator_table = optable.OperatorTable.from_yaml(
+        alias_extensions=optable.STR_ALIASES_EXTENSIONS
+    )
+    source_context = default_source_context(use_type_inference=False)
+
+    # WHEN autoquant rewrites both modules
+    rewritten_torch = autoquant(
+        module=_AliasModuleTorch(),
+        source_context=source_context,
+        operator_table=operator_table,
+    )
+    rewritten_functional = autoquant(
+        module=_AliasModuleFunctional(),
+        source_context=source_context,
+        operator_table=operator_table,
+    )
+
+    # THEN both callsites are rewritten to the same canonical dispatch op
+    expected_call = "fastforward.nn.functional.relu("
+    assert expected_call in rewritten_torch
+    assert expected_call in rewritten_functional

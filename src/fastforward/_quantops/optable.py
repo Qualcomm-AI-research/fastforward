@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import logging
 import pathlib
 
 from collections.abc import Sequence
@@ -15,6 +16,8 @@ from typing_extensions import Self
 
 from fastforward._import import QualifiedNameReference, fully_qualified_name
 from fastforward._quantops.operator import Operator
+
+logger = logging.getLogger(__name__)
 
 _PyOp: TypeAlias = Callable[..., Any]
 
@@ -44,23 +47,7 @@ def _fallback_alias(op: Operator) -> str | None:
     return None
 
 
-def _functional_alias(op: Operator) -> str | None:
-    if not (metadata := op.metadata):
-        return None
-    if not (dispatch_op := metadata.dispatch_op):
-        return None
-
-    if func := getattr(torch.nn.functional, op.identifier, None):
-        try:
-            fallback = QualifiedNameReference(metadata.fallback).import_()
-        except ImportError:
-            return None
-        if func is fallback:
-            return f"F.{dispatch_op.__name__}"
-    return None
-
-
-STR_ALIASES_EXTENSIONS = (_fallback_alias, _functional_alias)
+STR_ALIASES_EXTENSIONS = (_fallback_alias,)
 
 
 class OperatorTable:
@@ -114,7 +101,7 @@ class OperatorTable:
 
         self._alias_extensions = list(alias_extensions)
 
-    def append_operator(self, operator: Operator) -> None:
+    def append_operator(self, operator: Operator, aliases: Sequence[str] = ()) -> None:
         """Add a new operator to the table.
 
         If an operator with the same fallback already exists, this creates an
@@ -131,10 +118,18 @@ class OperatorTable:
 
         Args:
             operator: `Operator` to add to table. Must have metadata populated.
+            aliases: Qualified names of callables that are semantically
+                equivalent to the canonical fallback (e.g.
+                `["torch.nn.functional.relu"]` for an op whose fallback is
+                `torch.relu`). Each alias is registered as an additional lookup
+                key pointing to the same operator entry. Aliases that fail to
+                import are skipped with a warning. Aliases that resolve to a
+                callable already registered against a different operator raise
+                `ValueError`.
 
         Raises:
-            ValueError: If operator has no metadata or if dispatch_op cannot be
-                resolved.
+            ValueError: If operator has no metadata, if dispatch_op cannot be
+                resolved, or if an alias collides with a different operator.
         """
         if not (metadata := operator.metadata):
             raise ValueError("Cannot add operator without metadata")
@@ -158,12 +153,56 @@ class OperatorTable:
                 if alias := alias_ext(operator):
                     self.add_alias(alias, py_op)
 
+        for alias_qualname in aliases:
+            self._register_callable_alias(alias_qualname, spec_idx)
+
+    def _register_callable_alias(self, qualified_name: str, spec_idx: int) -> None:
+        """Register a qualified-name alias against an existing operator entry.
+
+        Resolves `qualified_name` to a Python callable and adds it to
+        `_py_op_index` pointing to `spec_idx`. Also registers the qualified
+        name as a string alias.
+
+        Import failures are logged and skipped — the rest of the table remains
+        usable (e.g. when running against a torch version that lacks the alias).
+
+        Raises:
+            ValueError: If the alias resolves to a callable already registered
+                against a different operator.
+        """
+        try:
+            alias_op = QualifiedNameReference(qualified_name).import_()
+        except (ImportError, AttributeError):
+            logger.debug(
+                "Skipping alias '%s' — failed to import. The canonical operator "
+                "is still registered.",
+                qualified_name,
+            )
+            return
+
+        if alias_op in self._py_op_index:
+            existing_idx = self._py_op_index[alias_op]
+            if existing_idx != spec_idx:
+                canonical = self._operator_specs[spec_idx][0].metadata
+                other = self._operator_specs[existing_idx][0].metadata
+                assert canonical is not None and other is not None
+                msg = (
+                    f"Alias '{qualified_name}' for '{canonical.fallback}' is already "
+                    f"registered as the canonical or alias of '{other.fallback}'."
+                )
+                raise ValueError(msg)
+        else:
+            self._py_op_index[alias_op] = spec_idx
+
+        self._py_op_aliases[qualified_name] = alias_op
+
     def add(
         self,
         spec: str,
         fallback_op: str | _PyOp,
         dispatch_op: str | _PyOp | None = None,
         intermediate_quantizers: tuple[str, ...] = (),
+        aliases: Sequence[str] = (),
         **kwargs: Any,
     ) -> None:
         """Add an operator specification to the table.
@@ -182,6 +221,8 @@ class OperatorTable:
                 `fastforward.nn.functional`.
             intermediate_quantizers: Tuple of quantizer names for intermediate
                 values.
+            aliases: Qualified names of callables that are semantically
+                equivalent to `fallback_op`. See `append_operator` for details.
             **kwargs: Additional metadata fields to attach to the operator.
 
         Raises:
@@ -201,7 +242,7 @@ class OperatorTable:
             intermediate_quantizers=intermediate_quantizers,
             **kwargs,
         )
-        self.append_operator(operator)
+        self.append_operator(operator, aliases=aliases)
 
     def _dispatch_op(self, name: str) -> _PyOp:
         qualified_name = f"fastforward.nn.functional.{name}"
@@ -210,11 +251,6 @@ class OperatorTable:
         except (ImportError, AttributeError):
             msg = f"No dispatch op was specified for '{name}' and '{qualified_name}' does not exist"
             raise ValueError(msg)
-
-    def _clear_aliases(self, py_op: _PyOp) -> None:
-        for alias, target in self._py_op_aliases.items():
-            if py_op is target:
-                del self._py_op_aliases[alias]
 
     @classmethod
     def from_yaml(
@@ -252,6 +288,7 @@ class OperatorTable:
                     line_number=op_info["__line__"],
                     fallback_op=op_info["fallback"],
                     cast_output=op_info.get("cast_output", None),
+                    aliases=tuple(op_info.get("aliases", []) or ()),
                 )
             except ValueError as e:
                 errors.append((
