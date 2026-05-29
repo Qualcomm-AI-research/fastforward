@@ -35,12 +35,6 @@
 # ```
 
 # +
-import os
-
-os.environ["HF_DATASETS_CACHE"] = "/prj/corp/llm/lasvegas/llm-systems-scratch/cache/datasets/"
-os.environ["HF_HUB_CACHE"] = "/prj/corp/llm/lasvegas/llm-systems-scratch/cache/models"
-os.environ["HF_HUB_OFFLINE"] = "1"
-
 import logging
 import pickle
 import warnings
