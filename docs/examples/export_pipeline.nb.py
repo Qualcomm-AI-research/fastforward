@@ -24,6 +24,16 @@
 # `qnn_onnx_pipeline` is one such graph that captures a quantized FastForward module, runs cleanup passes,
 # converts to ONNX, and emits a QNN-compatible encodings file.
 #
+# The pipeline framework itself is target-agnostic: it is just stages-with-dependencies plus a registry
+# keyed by `(target, format)`. Nothing about it is QNN-specific. FastForward already ships a second built-in
+# pipeline, `qnn_onnx_qdq_pipeline`, which is a plain ONNX export with the quantizers embedded as standard
+# `QuantizeLinear`/`DequantizeLinear` (QDQ) nodes — no QNN-specific encodings file at all. The same
+# machinery could host an export to any other backend or format.
+#
+# > 💡 We export to QNN by default because QNN (the Qualcomm AI Engine Direct SDK) is Qualcomm's primary
+# > runtime for on-device AI inference, so QNN-formatted artifacts are what most FastForward users need
+# > to deploy to Qualcomm hardware.
+#
 # This tutorial focuses on the pipeline layer underneath `export`. By the end you will know:
 #
 # 1. How to build a pipeline from scratch by registering stages and wiring up dependencies.
@@ -39,6 +49,7 @@
 # ## Setup
 
 # %%
+import json
 import logging
 import warnings
 
@@ -57,13 +68,11 @@ from fastforward.export import (
     export_with_pipeline,
 )
 from fastforward.export.pipeline import (
-    ExportOrchestrator,
     Pipeline,
-    PipelineRegistry,
-    StageReference,
     build_default_registry,
 )
 from fastforward.export.pipeline.qnn_onnx_pipeline import qnn_onnx_pipeline
+from fastforward.export.stages.onnx.onnx_export_stages import stage_save_onnx_proto
 
 warnings.filterwarnings("ignore")
 logging.getLogger("torch.onnx._internal._registration").setLevel(logging.ERROR)
@@ -76,9 +85,10 @@ torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703
 #
 # We define a 4-layer ConvNet using FastForward's quantized building blocks (`QuantizedConv2d`,
 # `QuantizedRelu`, `QuantizedLinear`). Then we use `ff.QuantizationConfig` to attach `LinearQuantizer`s
-# to all weight and output positions, and run a single forward pass under `estimate_ranges` to
+# to all weight, input and output positions, and run a single forward pass under `estimate_ranges` to
 # calibrate the quantization ranges. This is the same pattern used in the
 # [Quantizing Networks](quantizing_networks.nb.py) tutorial, just on a smaller model.
+
 
 # %%
 class SimpleConvNet(torch.nn.Module):
@@ -133,8 +143,9 @@ calibration_data = torch.randn(2, 3, 32, 32)
 # tensor level. We disable strict_quantization here so that any non-quantized ops in the
 # model (such as `flatten`) do not raise. The `export(...)` entry point wraps its
 # internals in the same flag automatically.
-with ff.strict_quantization(False), ff.range_setting.estimate_ranges(
-    model, ff.range_setting.smoothed_minmax
+with (
+    ff.strict_quantization(False),
+    ff.range_setting.estimate_ranges(model, ff.range_setting.smoothed_minmax),
 ):
     model(calibration_data)
 
@@ -163,6 +174,7 @@ sample_input = torch.randn(1, 3, 32, 32)
 # Stages registered with `capture_stage_output=True` show up in the pipeline's return value.
 #
 # Let's build a minimal pipeline with three toy stages over our quantized ConvNet.
+
 
 # %%
 def stage_passthrough(
@@ -202,9 +214,9 @@ def stage_summarize(
 toy_pipeline = Pipeline(pipeline_kwargs={"model_name": "simple_convnet"})
 src = toy_pipeline.register_stage(stage_passthrough, "src")
 counts = toy_pipeline.register_stage(stage_count_params, "count_params").depends_on(src)
-toy_pipeline.register_stage(
-    stage_summarize, "summary", capture_stage_output=True
-).depends_on(src, counts)
+toy_pipeline.register_stage(stage_summarize, "summary", capture_stage_output=True).depends_on(
+    src, counts
+)
 
 # Note: pipelines expect a *list* of (args, kwargs) sample inputs.
 toy_results, _ = toy_pipeline(model, [((sample_input,), {})])
@@ -303,6 +315,39 @@ list_artifacts(out_dir_low)
 #   stage by name is `pipeline.get_stage("name")`.
 
 # %% [markdown]
+# ### 2.1 A second built-in pipeline: ONNX QDQ
+#
+# To make the point that the framework is not QNN-specific, the default registry actually holds *two*
+# pipelines under the `qnn` target:
+#
+# - `("qnn", "onnx")` → `qnn_onnx_pipeline` — ONNX graph plus a side-channel `.encodings` file (what we ran
+#   above).
+# - `("qnn", "onnx_qdq")` → `qnn_onnx_qdq_pipeline` — a plain ONNX export where each FastForward
+#   quantize/dequantize op is lowered to a standard ONNX `QuantizeLinear`/`DequantizeLinear` pair. The
+#   quantization parameters live in the graph topology itself, so **no encodings file is produced**.
+#
+# Selecting it is just a matter of the `format` argument. Note the QDQ flow requires ONNX opset 21+
+# (where INT4/INT16 storage in Q/DQ nodes was introduced); the pipeline defaults to opset 21 for you.
+
+# %%
+out_dir_qdq = work_root / "qdq"
+export(
+    model=model,
+    data=(sample_input,),
+    output_directory=out_dir_qdq,
+    model_name="convnet_qdq",
+    target="qnn",
+    format="onnx_qdq",
+    verbose=False,
+)
+list_artifacts(out_dir_qdq)
+
+# %% [markdown]
+# ✅ Compare the artifact list with the QNN/ONNX runs above: there is a `convnet_qdq.onnx` but no
+# `.encodings` file, because the quantization information is baked into the ONNX graph as Q/DQ nodes. Same
+# pipeline framework, different export format — and nothing forces a pipeline to target QNN or even ONNX.
+
+# %% [markdown]
 # ## 3. Manipulating the built-in pipeline
 #
 # `Pipeline` exposes four primitives for mutating an already-built DAG:
@@ -324,6 +369,7 @@ list_artifacts(out_dir_low)
 # is *before* the `save_onnx_proto` stage. The default behavior of `insert_stage_before` is to inherit the
 # target's current dependencies and rewire the target to depend on the new stage — i.e. it splices into
 # the chain.
+
 
 # %%
 def stage_log_proto_size(
@@ -362,6 +408,7 @@ with ff.export_mode(True):
 # `insert_stage_after` is the mirror image: every stage that previously depended on `target` is rewired
 # to depend on the new stage. This is the right primitive when you want every downstream consumer to see
 # your modified output.
+
 
 # %%
 def stage_strip_metadata(
@@ -411,12 +458,8 @@ for name in ("onnx_program_to_proto", "copy_metadata_props_from_ir_to_proto"):
 # Here we replace `save_onnx_proto` with a variant that also writes a small JSON sidecar describing the
 # saved model.
 
+
 # %%
-import json
-
-from fastforward.export.stages.onnx.onnx_export_stages import stage_save_onnx_proto
-
-
 def stage_save_onnx_proto_with_sidecar(
     modules: tuple[Any, ...],
     sample_inputs: list[tuple[tuple[Any, ...], dict[str, Any]]],
@@ -489,19 +532,19 @@ print("cleanup_ff_quantizer_artifacts deps after removal:", remaining)
 # ## 4. Custom pipeline factories and the registry
 #
 # The `ExportOrchestrator` resolves which pipeline to build by looking up the `(target, format)` pair on
-# a `PipelineRegistry`. The default registry has one entry: `("qnn", "onnx") -> qnn_onnx_pipeline`. You
-# can register additional factories or replace the default entirely, and `export(...)` will pick them up
+# a `PipelineRegistry`. The default registry holds the two built-in entries we saw earlier —
+# `("qnn", "onnx") -> qnn_onnx_pipeline` and `("qnn", "onnx_qdq") -> qnn_onnx_qdq_pipeline`. You can register
+# additional factories under new keys, or replace an existing entry, and `export(...)` will pick them up
 # via the `registry=` keyword.
 #
 # Below we wrap the built-in pipeline in a thin custom factory that adds a logging stage, register it
 # under a new key, and run `export` against that key.
 
+
 # %%
 def my_logging_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     pipeline = qnn_onnx_pipeline(pipeline_kwargs)
-    pipeline.insert_stage_before(
-        "save_onnx_proto", stage_log_proto_size, name="log_proto_size"
-    )
+    pipeline.insert_stage_before("save_onnx_proto", stage_log_proto_size, name="log_proto_size")
     return pipeline
 
 

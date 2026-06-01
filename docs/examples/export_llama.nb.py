@@ -16,11 +16,13 @@
 #
 # > ⚠️ **WARNING**: Export is an experimental feature and is currently under active development. Please expect API changes. We encourage you to file bug reports if you run into any problems.
 #
-# `fastforward` provides an export feature for deploying models on devices. This feature is designed to take a quantized model and generate the necessary artifacts for executing model inference on a device. Currently, export supports only QNN as the deployment framework, so the artifacts it produces are formatted for QNN.
+# `fastforward` provides an export feature for deploying models on devices. This feature is designed to take a quantized model and generate the necessary artifacts for executing model inference on a device. Currently, export targets QNN (the Qualcomm AI Engine Direct SDK), Qualcomm's primary runtime for on-device AI inference, so the artifacts it produces are formatted for QNN.
 #
 # In this tutorial, we will demonstrate how to take an already quantized LLaMA module (using the tinyLLaMA weights) and produce the relevant artifacts. Additionally, we will explore some extra functionalities that export offers to help troubleshoot issues with model conversion or performance.
 #
 # This tutorial assumes that readers are familiar with fastforward's method for [quantizing networks](quantizing_networks.nb.py). If not, we recommend reading the quantizing_networks tutorial and the quick start guide for LLMs.
+#
+# Under the hood, `export` is a thin wrapper around a pipeline of stages (capture → cleanup → ONNX conversion → encodings extraction). For most users the convenience entry point used in this tutorial is enough; if you need to inspect, mutate, or replace the pipeline, see the [Building and customizing export pipelines](export_pipeline.nb.py) tutorial.
 #
 
 # ## Python requirements
@@ -43,7 +45,7 @@ import datasets
 import fastforward as ff
 import torch
 
-from fastforward.export.export import export
+from fastforward.export import export
 from fastforward.export.module_export import export_modules
 
 # Helper function for generating the attention mask
@@ -126,6 +128,8 @@ batch["attention_mask"] = attention_mask.cpu()
 # -
 
 # Now we can use the `export` function from FastForward. For a more detailed overview of the `export` function we invite users to read through the docstring of `export`.
+#
+# > 💡 **Note**: Quantization-spec propagation is now performed automatically by the export pipeline (the `PropagateFFQuantSpecs` pass runs as part of `stage_convert_captured_impl_ff`). The old `enable_encodings_propagation` keyword has been removed; you no longer need to opt in.
 
 export(
     model=model,
@@ -219,6 +223,8 @@ full_llama = export_modules(
 #
 # In this tutorial we have presented the functionality that FastForward provides for exporting a LLaMA-type module. The resulting artifacts can then be used for
 # deployment through QNN. Instructions on how to proceed with on-device deployment can be found on the [QNN documentation](https://docs.qualcomm.com/bundle/publicresource/topics/80-63442-50/general_introduction.html).
+#
+# If you want to customize what `export` does — adding logging stages, replacing how artifacts are saved, or registering an entirely new pipeline — see the [Building and customizing export pipelines](export_pipeline.nb.py) tutorial, which walks through the same machinery on a small ConvNet.
 
 # + [markdown] magic_args="[markdown]"
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
