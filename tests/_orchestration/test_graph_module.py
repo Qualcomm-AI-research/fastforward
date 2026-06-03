@@ -895,7 +895,7 @@ def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse() -> None:
 
     # WHEN we reduce with no specs
     reduced = reduce_resolution(graph, [])
-    modules = [n.module for n in reduced._nodes.values()]
+    modules = [n.target for n in reduced._nodes.values()]
 
     # THEN only the top-level folds appear, not their internals
     assert len(modules) == 2
@@ -913,7 +913,7 @@ def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse()
 
     # WHEN we reduce with that spec
     reduced = reduce_resolution(graph, specs)
-    modules = [n.module for n in reduced._nodes.values()]
+    modules = [n.target for n in reduced._nodes.values()]
 
     # THEN the target's siblings inside layer_0.attn are exposed as leaves
     assert model.layer_0.attn.q_proj in modules
@@ -942,7 +942,7 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
 
     # WHEN we reduce with that path spec
     reduced = reduce_resolution(graph, specs)
-    modules = [n.module for n in reduced._nodes.values()]
+    modules = [n.target for n in reduced._nodes.values()]
 
     # THEN a synthesized GraphModule replaces the path leaves
     assert any(isinstance(m, GraphModule) for m in modules)

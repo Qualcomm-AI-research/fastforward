@@ -735,9 +735,9 @@ def _weight_offloading_pass(
     """
     all_modules = list(
         dict.fromkeys(
-            node.module
+            node.target
             for node in graph._nodes.values()
-            if node.op is Op.torch_module and isinstance(node.module, torch.nn.Module)
+            if node.op is Op.torch_module and isinstance(node.target, torch.nn.Module)
         )
     )
 
@@ -1020,15 +1020,15 @@ class InstructionScheduler:
             kwargs[key] = ref_id
 
         # Inject optimization if specified
-        if node.delegate is not None and isinstance(node.module, torch.nn.Module):
+        if node.delegate is not None and isinstance(node.target, torch.nn.Module):
             instructions.append(
-                OptimizeModule(module=node.module, args=args, delegate=node.delegate)
+                OptimizeModule(module=node.target, args=args, delegate=node.delegate)
             )
 
         # Always execute the module to cache activations
         instructions.append(
             CallModule(
-                module=node.module,
+                module=node.target,
                 args=args,
                 kwargs=kwargs,
                 target=node_ref,

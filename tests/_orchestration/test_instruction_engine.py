@@ -297,7 +297,7 @@ def test_instruction_generator_with_optimization_spec() -> None:
     assert len(engine.instructions) == 4
 
     assert isinstance(engine.instructions[0], OptimizeModule)
-    assert engine.instructions[0].module is graph._nodes[node_1.id].module
+    assert engine.instructions[0].module is graph._nodes[node_1.id].target
     assert engine.instructions[0].delegate.fn is dummy_optimize
 
     assert isinstance(engine.instructions[1], CallModule)
@@ -336,13 +336,13 @@ def test_optimization_only_pass() -> None:
     # ReturnOutputs is also removed.
     assert len(instructions) == 4
     assert isinstance(instructions[0], OptimizeModule)
-    assert instructions[0].module is graph._nodes[node_1.id].module
+    assert instructions[0].module is graph._nodes[node_1.id].target
     assert isinstance(instructions[1], CallModule)
-    assert instructions[1].module is graph._nodes[node_1.id].module
+    assert instructions[1].module is graph._nodes[node_1.id].target
     assert isinstance(instructions[2], CallModule)
-    assert instructions[2].module is graph._nodes[node_2.id].module
+    assert instructions[2].module is graph._nodes[node_2.id].target
     assert isinstance(instructions[3], OptimizeModule)
-    assert instructions[3].module is graph._nodes[node_3.id].module
+    assert instructions[3].module is graph._nodes[node_3.id].target
 
 
 def test_lifetime_management_pass() -> None:
@@ -418,7 +418,7 @@ def test_local_error_multiple_contexts() -> None:
     opt_node_2_instr = next(
         i
         for i in instructions
-        if isinstance(i, OptimizeModule) and i.module is graph._nodes[node_2.id].module
+        if isinstance(i, OptimizeModule) and i.module is graph._nodes[node_2.id].target
     )
     assert opt_node_2_instr.delegate.contexts == [null_context, quant_context]
 

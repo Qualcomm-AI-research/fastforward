@@ -441,11 +441,11 @@ def test_trace_module_calls_emit_torch_module_op_with_module_callable() -> None:
     # set of those instances is exactly the user's leaf modules — not aten ops
     assert len(torch_module_nodes) == 2  # fc + act
     for node in torch_module_nodes:
-        assert isinstance(node.module, nn.Module), (
+        assert isinstance(node.target, nn.Module), (
             f"Op.torch_module node {node.name!r} has non-Module callable "
-            f"{type(node.module).__name__}"
+            f"{type(node.target).__name__}"
         )
-    assert {id(n.module) for n in torch_module_nodes} == {id(model.fc), id(model.act)}
+    assert {id(n.target) for n in torch_module_nodes} == {id(model.fc), id(model.act)}
 
 
 def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable() -> None:
@@ -463,10 +463,10 @@ def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable() -> No
     # THEN there is at least one call_function node and none of them are nn.Modules
     assert len(call_function_nodes) >= 3  # 2x transpose + mul (transpose may decompose further)
     for node in call_function_nodes:
-        assert callable(node.module), f"call_function node {node.name!r} not callable"
-        assert not isinstance(node.module, nn.Module), (
+        assert callable(node.target), f"call_function node {node.name!r} not callable"
+        assert not isinstance(node.target, nn.Module), (
             f"call_function node {node.name!r} should not wrap an nn.Module "
-            f"(got {type(node.module).__name__})"
+            f"(got {type(node.target).__name__})"
         )
 
 
@@ -483,7 +483,7 @@ def test_trace_buffer_access_emits_get_attr_op_with_closure_callable() -> None:
     # closure, and calling it returns the original buffer tensor
     assert len(get_attr_nodes) == 1
     [node] = get_attr_nodes
-    module = node.module
+    module = node.target
     assert callable(module)
     assert not isinstance(module, nn.Module)
     resolved = module()
@@ -506,14 +506,14 @@ def test_trace_node_op_invariants_hold_for_every_node() -> None:
         # THEN each node satisfies the contract for its op kind
         match node.op:
             case Op.torch_module:
-                assert isinstance(node.module, nn.Module), (
-                    f"{node.name!r} has Op.torch_module but module is {type(node.module).__name__}"
+                assert isinstance(node.target, nn.Module), (
+                    f"{node.name!r} has Op.torch_module but module is {type(node.target).__name__}"
                 )
             case Op.call_function | Op.call_method | Op.get_attr:
-                assert callable(node.module), f"{node.name!r} module is not callable"
-                assert not isinstance(node.module, nn.Module), (
+                assert callable(node.target), f"{node.name!r} module is not callable"
+                assert not isinstance(node.target, nn.Module), (
                     f"{node.name!r} has {node.op} but module is an nn.Module "
-                    f"({type(node.module).__name__}); only Op.torch_module should "
+                    f"({type(node.target).__name__}); only Op.torch_module should "
                     f"carry an nn.Module"
                 )
 
@@ -547,15 +547,15 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
         op_kinds.add(node.op)
         match node.op:
             case Op.torch_module:
-                assert isinstance(node.module, nn.Module), (
+                assert isinstance(node.target, nn.Module), (
                     f"{node.name!r} has Op.torch_module after inlining but module "
-                    f"is {type(node.module).__name__} (likely an aten op leaked from "
+                    f"is {type(node.target).__name__} (likely an aten op leaked from "
                     f"the subgraph; add_subgraph must preserve node.op)"
                 )
             case Op.call_function | Op.call_method | Op.get_attr:
-                assert not isinstance(node.module, nn.Module), (
+                assert not isinstance(node.target, nn.Module), (
                     f"{node.name!r} has {node.op} but module is an nn.Module "
-                    f"({type(node.module).__name__})"
+                    f"({type(node.target).__name__})"
                 )
 
     # THEN the inlined graph still exposes call_function nodes (e.g. transpose,

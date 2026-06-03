@@ -214,7 +214,7 @@ class Node:
 
     Nodes form a hierarchy via `parent`. A **leaf node** is an executable
     operation with no nested structure. A **fold** marks an enclosing region
-    (e.g. an entire attention block) — its `module` is the original nn.Module,
+    (e.g. an entire attention block) — its `target` is the original nn.Module,
     callable as a shortcut for the whole subtree. Leaves point to their
     enclosing fold via `parent`; folds themselves have no data-flow edges.
     A coarser resolution is obtained by leaving folds intact; a finer
@@ -226,20 +226,20 @@ class Node:
     Args:
         id: Unique identifier within the graph.
         name: Human-readable name within the graph (e.g. `"layer_0.attn.q_proj"`).
-        module: The thing this node calls or accesses — an nn.Module, function,
+        target: The thing this node calls or accesses — an nn.Module, function,
             method, or attribute owner, depending on `op`.
         args: Positional dependencies as symbolic references (NodeRef, InputRef,
             or Const), resolved to actual values at execution time.
-        op: Selects how `module` is invoked (see above).
+        op: Selects how `target` is invoked (see above).
         kwargs: Keyword dependencies, same reference types as `args`.
         delegate: Optional optimization function with calibration contexts,
-            invoked instead of `module` during local optimization.
+            invoked instead of `target` during local optimization.
         parent: Enclosing fold, or None for top-level nodes.
     """
 
     id: uuid.UUID
     name: str
-    module: torch.nn.Module | Callable[..., Any]
+    target: torch.nn.Module | Callable[..., Any]
     args: Collection[_BaseRef]
     op: Op = Op.torch_module
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
@@ -367,7 +367,7 @@ class GraphModule(torch.nn.Module):
             this method will only return the first matching NodeRef.
         """
         for id, node in self._nodes.items():
-            if node.module is module:
+            if node.target is module:
                 return NodeRef(id=id, name=node.name)
 
         msg = f"Module {module} not found in Graphmodule."
@@ -458,7 +458,7 @@ class GraphModule(torch.nn.Module):
     def add_node(
         self,
         name: str,
-        module: torch.nn.Module | Callable[..., Any],
+        target: torch.nn.Module | Callable[..., Any],
         args: Collection[_BaseRef],
         kwargs: Mapping[str, _BaseRef] | None = None,
         *,
@@ -468,16 +468,16 @@ class GraphModule(torch.nn.Module):
     ) -> NodeRef:
         """Add a node to this 'GraphModule'.
 
-        Creates a new Node wrapping the given module and adds it to the graph. The node
+        Creates a new Node wrapping the given target and adds it to the graph. The node
         can reference other nodes' outputs, external inputs, or constant values through
         its arguments.
 
         Args:
             name: Unique identifier of the node within its fold
-            module: Callable to execute (nn.Module, function, method wrapper, etc.)
+            target: Callable to execute (nn.Module, function, method wrapper, etc.)
             args: Positional arguments (NodeRef/InputRef/Const)
             kwargs: Keyword arguments (NodeRef/InputRef/Const)
-            op: Discriminator for the kind of callable. Defaults to Op.module.
+            op: Discriminator for the kind of callable. Defaults to Op.torch_module.
             node_id: Optional node ID. If not provided, a new one will be generated.
             parent: Optional fold that this node belongs to in the hierarchy.
 
@@ -494,12 +494,12 @@ class GraphModule(torch.nn.Module):
 
         # Reset execution engine if it existed since the graph will be altered.
         self._engine = None
-        node = Node(node_id, name, module, args, op=op, kwargs=kwargs or {}, parent=parent)
+        node = Node(node_id, name, target, args, op=op, kwargs=kwargs or {}, parent=parent)
         self._nodes[node_id] = node
         ref = NodeRef(node_id, name)
         self._node_refs[node_id] = ref
 
-        if isinstance(node.module, torch.nn.Module):
+        if isinstance(node.target, torch.nn.Module):
             *module_path, leaf_name = name.split(".")
             parent_module: torch.nn.Module = self
             for attr in module_path:
@@ -510,10 +510,10 @@ class GraphModule(torch.nn.Module):
             # Don't overwrite children of original modules registered as folds —
             # those belong to the user's model and must not be mutated.
             is_fold_original = any(
-                parent_module is self._nodes[fid].module for fid in self._fold_ids
+                parent_module is self._nodes[fid].target for fid in self._fold_ids
             )
             if not is_fold_original:
-                parent_module.add_module(leaf_name, node.module)
+                parent_module.add_module(leaf_name, node.target)
 
         return ref
 
@@ -627,7 +627,7 @@ class GraphModule(torch.nn.Module):
 
             ref = self.add_node(
                 node_name,
-                node.module,
+                node.target,
                 node_args,
                 node_kwargs,
                 op=node.op,
@@ -832,7 +832,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
         source_node = graph._nodes[node_id]
         subgraph.add_node(
             name=source_node.name,
-            module=source_node.module,
+            target=source_node.target,
             args=[remap_reference(old_reference=arg) for arg in source_node.args],
             kwargs={
                 key: remap_reference(old_reference=arg) for key, arg in source_node.kwargs.items()
@@ -1046,7 +1046,7 @@ def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphMod
                     for key, value in original_node.kwargs.items()
                 }
                 ref = new_graph.add_node(
-                    node_name, original_node.module, args, kwargs=kwargs, op=original_node.op
+                    node_name, original_node.target, args, kwargs=kwargs, op=original_node.op
                 )
                 context[node_name] = ref
 
@@ -1062,7 +1062,7 @@ def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphMod
                     for key, value in original_node.kwargs.items()
                 }
                 node_ref = new_graph.add_node(
-                    node_name, original_node.module, args, kwargs, op=original_node.op
+                    node_name, original_node.target, args, kwargs, op=original_node.op
                 )
                 context[node_name] = node_ref
 
