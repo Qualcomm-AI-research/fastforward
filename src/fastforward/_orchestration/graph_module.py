@@ -247,6 +247,59 @@ class Node:
     parent: NodeRef | None = None
 
 
+def _sanitize_inputs(
+    input_names: Sequence[str],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    """Project user-supplied inputs onto a graph's named-input contract.
+
+    The engine binds values to inputs either positionally (in `input_names` order) or
+    by keyword. Users often have data in a more natural shape — a single iterable
+    yielding `dict`, `tuple`, or dataclass-like batches. This helper recognizes those
+    shapes and rewrites them to per-input lists the engine already accepts. All other
+    shapes (a tensor, parallel kwarg lists, declared-arity positional args) pass
+    through unchanged.
+
+    Recognized shape (single positional iterable, no kwargs):
+      - element is a `Mapping` containing `input_names` as keys
+      - element is a tuple/list of length `len(input_names)`
+      - element exposes `input_names` as attributes (dataclass, namedtuple, ...)
+    """
+    if len(args) != 1 or kwargs:
+        return args, kwargs
+
+    (single,) = args
+    if isinstance(single, torch.Tensor):
+        return args, kwargs
+
+    try:
+        iterator = iter(single)
+    except TypeError:
+        return args, kwargs
+
+    try:
+        first = next(iterator)
+    except StopIteration:
+        return args, kwargs
+
+    batches = [first, *iterator]
+    names = tuple(input_names)
+
+    if isinstance(first, Mapping) and all(name in first for name in names):
+        return (), {name: [b[name] for b in batches] for name in names}
+
+    if isinstance(first, (list, tuple)) and len(first) == len(names):
+        return (), {name: [b[i] for b in batches] for i, name in enumerate(names)}
+
+    if not isinstance(first, torch.Tensor) and all(hasattr(first, name) for name in names):
+        return (), {name: [getattr(b, name) for b in batches] for name in names}
+
+    # Iterable of values that don't match any known per-batch shape — leave as a
+    # single positional arg so the engine treats it as N batches of one input.
+    return (batches,), {}
+
+
 class GraphModule(torch.nn.Module):
     """Multi-resolution static call graph over PyTorch modules.
 
@@ -667,6 +720,8 @@ class GraphModule(torch.nn.Module):
         Returns:
             Output tensor(s) from the graph's output nodes
         """
+        args, kwargs = _sanitize_inputs(self.input_names, args, kwargs)
+
         if self._engine is None:
             from fastforward._orchestration.instruction_engine import (
                 InstructionEngine,

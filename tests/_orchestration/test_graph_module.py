@@ -1192,3 +1192,116 @@ def test_inference_mode_enables_torch_inference_mode() -> None:
 
     # THEN torch inference mode should have been active during forward
     assert probe.is_on_inference_mode
+
+
+def _add_two_input_graph() -> GraphModule:
+    """Two-input graph computing x + y, batch-by-batch."""
+    graph = GraphModule()
+    x = graph.add_input("x")
+    y = graph.add_input("y")
+    out = graph.add_node("add", Add(), [x, y])
+    graph.add_output(out)
+    return graph
+
+
+def test_graph_accepts_named_kwargs() -> None:
+    # GIVEN two-input graph and one batch of named tensors
+    graph = _add_two_input_graph()
+    x = torch.tensor([1.0])
+    y = torch.tensor([2.0])
+
+    # WHEN we call with kwargs matching input_names
+    result = graph(x=x, y=y)
+
+    # THEN it returns the expected sum
+    assert torch.allclose(result, torch.tensor([3.0]))
+
+
+def test_graph_accepts_positional_tensors() -> None:
+    # GIVEN two-input graph and two positional tensors in declared order
+    graph = _add_two_input_graph()
+
+    # WHEN we call positionally
+    result = graph(torch.tensor([1.0]), torch.tensor([2.0]))
+
+    # THEN positional binding follows input_names order
+    assert torch.allclose(result, torch.tensor([3.0]))
+
+
+def test_graph_accepts_per_input_lists_of_batches() -> None:
+    # GIVEN a two-input graph and N batches per input as parallel lists
+    graph = _add_two_input_graph()
+    xs = [torch.tensor([float(i)]) for i in range(3)]
+    ys = [torch.tensor([float(10 * i)]) for i in range(3)]
+
+    # WHEN we pass parallel lists per named input
+    results = graph(x=xs, y=ys)
+
+    # THEN each batch is summed independently
+    expected = [x + y for x, y in zip(xs, ys)]
+    flat = next(iter(results.values()))  # single context
+    for got, exp in zip(flat, expected):
+        assert torch.allclose(got, exp)
+
+
+def test_graph_accepts_iterable_of_dict_batches() -> None:
+    # GIVEN a two-input graph and an iterable yielding dicts whose keys match input_names
+    #   (the natural shape produced by HF DataLoaders)
+    graph = _add_two_input_graph()
+    batches = [
+        {"x": torch.tensor([1.0]), "y": torch.tensor([10.0])},
+        {"x": torch.tensor([2.0]), "y": torch.tensor([20.0])},
+        {"x": torch.tensor([3.0]), "y": torch.tensor([30.0])},
+    ]
+
+    # WHEN we hand the iterable over as a single positional argument
+    results = graph(batches)
+
+    # THEN each dict is splatted onto the named inputs
+    expected = [b["x"] + b["y"] for b in batches]
+    flat = next(iter(results.values()))
+    for got, exp in zip(flat, expected):
+        assert torch.allclose(got, exp)
+
+
+def test_graph_accepts_iterable_of_tuple_batches() -> None:
+    # GIVEN a two-input graph and an iterable yielding (x, y) tuples
+    graph = _add_two_input_graph()
+    batches = [
+        (torch.tensor([1.0]), torch.tensor([10.0])),
+        (torch.tensor([2.0]), torch.tensor([20.0])),
+    ]
+
+    # WHEN we pass the iterable as a single positional argument
+    results = graph(batches)
+
+    # THEN tuple positions bind to declared input order
+    expected = [x + y for x, y in batches]
+    flat = next(iter(results.values()))
+    for got, exp in zip(flat, expected):
+        assert torch.allclose(got, exp)
+
+
+def test_graph_accepts_iterable_of_dataclass_batches() -> None:
+    import dataclasses
+
+    @dataclasses.dataclass
+    class Batch:
+        x: torch.Tensor
+        y: torch.Tensor
+
+    # GIVEN a two-input graph and an iterable of dataclass batches with matching field names
+    graph = _add_two_input_graph()
+    batches = [
+        Batch(x=torch.tensor([1.0]), y=torch.tensor([10.0])),
+        Batch(x=torch.tensor([2.0]), y=torch.tensor([20.0])),
+    ]
+
+    # WHEN we pass the iterable as a single positional argument
+    results = graph(batches)
+
+    # THEN dataclass fields bind to inputs by name
+    expected = [b.x + b.y for b in batches]
+    flat = next(iter(results.values()))
+    for got, exp in zip(flat, expected):
+        assert torch.allclose(got, exp)
