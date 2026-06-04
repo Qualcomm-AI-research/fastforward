@@ -5,8 +5,6 @@
 import functools
 import importlib.util
 
-from collections.abc import Iterable
-
 import pytest
 import torch
 
@@ -17,6 +15,7 @@ from fastforward._orchestration.graph_module import (
     inference_mode,
     local_optimize,
 )
+from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 from torch import nn
@@ -563,12 +562,12 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
     assert {Op.torch_module, Op.call_function, Op.get_attr}.issubset(op_kinds)
 
 
-def _sgd_step(module: nn.Module, dataset: Iterable[torch.Tensor], lr: float) -> None:
+def _sgd_step(module: nn.Module, bundle: ActivationBundle, lr: float) -> None:
     """Minimal optimization fn: one SGD step per calibration batch through `module`."""
     optim = torch.optim.SGD(params=module.parameters(), lr=lr)
-    for batch in dataset:
+    for args, kwargs in bundle:
         optim.zero_grad()
-        loss = (module(batch) ** 2).mean()
+        loss = (module(*args, **kwargs) ** 2).mean()
         loss.backward()
         optim.step()
 
@@ -605,10 +604,10 @@ def test_trace_then_local_optimize_fn_receives_original_module_and_dataset() -> 
     calibration = [torch.randn(1, 8) for _ in range(3)]
     received: dict[str, object] = {}
 
-    def spy(module: nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def spy(module: nn.Module, bundle: ActivationBundle) -> None:
         # Identity by id() because Tensors don't compare with `in` (uses __eq__)
         received["param_ids"] = {id(p) for p in module.parameters()}
-        received["batches"] = list(dataset)
+        received["batches"] = list(bundle)
 
     # WHEN we run local_optimize with the spy fn
     specs = [SubgraphSpec(model.fc1, model.fc1, fn=spy)]
@@ -647,8 +646,8 @@ def test_trace_then_local_optimize_multiple_specs_each_targets_its_module() -> N
     graph = trace(model, x)
     call_log: list[str] = []
 
-    def record(name: str, _module: nn.Module, dataset: Iterable[torch.Tensor]) -> None:
-        del dataset
+    def record(name: str, _module: nn.Module, bundle: ActivationBundle) -> None:
+        del bundle
         call_log.append(name)
 
     specs = [

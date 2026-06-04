@@ -139,6 +139,89 @@ ActivationRegister: TypeAlias = dict[_BaseRef, dict[ContextManager[None], Activa
 
 
 @dataclasses.dataclass(frozen=True)
+class ActivationBundle:
+    """Per-context view of all activations needed to reproduce one call.
+
+    An `ActivationBundle` packages the positional and keyword `ActivationDataset`s
+    that together describe a single node's input under one execution context.
+    Iteration yields `(args_tuple, kwargs_dict)` per batch — the exact shape needed
+    to invoke the underlying callable as `module(*args, **kwargs)`.
+
+    Constructed via `gather`, which resolves a node's `_BaseRef` args and kwargs
+    against the register, broadcasts singletons against N-length streams, and
+    bundles them. `Const` refs are wrapped on the fly.
+    """
+
+    args: tuple[ActivationDataset, ...]
+    kwargs: Mapping[str, ActivationDataset]
+
+    @classmethod
+    def gather(
+        cls,
+        register: ActivationRegister,
+        context: ContextManager[None],
+        args: Sequence[_BaseRef],
+        kwargs: Mapping[str, _BaseRef],
+    ) -> "ActivationBundle":
+        """Resolve refs from the register under one context, broadcast, and bundle.
+
+        Args:
+            register: The activation register mapping refs to per-context datasets.
+            context: The execution context under which to resolve each ref.
+            args: Positional input refs in declaration order.
+            kwargs: Keyword input refs keyed by parameter name.
+
+        Returns:
+            An `ActivationBundle` whose positional and keyword streams are broadcast
+            to a common batch length and ready for iteration as `(args, kwargs)` pairs.
+        """
+
+        def get_dataset(ref: _BaseRef) -> ActivationDataset:
+            if isinstance(ref, Const):
+                return ActivationDataset([ref.value])
+            return register[ref][context]
+
+        arg_datasets = [get_dataset(ref) for ref in args]
+        kwarg_datasets = {key: get_dataset(ref) for key, ref in kwargs.items()}
+
+        broadcasted = ActivationDataset.broadcast([*arg_datasets, *kwarg_datasets.values()])
+        n_args = len(arg_datasets)
+        return cls(
+            args=tuple(broadcasted[:n_args]),
+            kwargs=dict(zip(kwarg_datasets.keys(), broadcasted[n_args:])),
+        )
+
+    def __len__(self) -> int:
+        """Return the number of batches in this bundle.
+
+        Returns:
+            The length of the first positional or keyword stream, or 0 if empty.
+        """
+        for ds in self.args:
+            return len(ds)
+        for ds in self.kwargs.values():
+            return len(ds)
+        return 0
+
+    def __iter__(self) -> Iterator[tuple[tuple[Any, ...], dict[str, Any]]]:
+        """Iterate over batches, yielding one `(args, kwargs)` pair per batch.
+
+        Each yielded tuple contains the positional activations as a tuple and
+        the keyword activations as a dict, aligned at the same batch index across
+        all streams. The result can be passed directly to a module as
+        ``module(*args, **kwargs)``.
+
+        Yields:
+            Tuples of ``(args_tuple, kwargs_dict)`` for each batch index.
+        """
+        length = len(self)
+        for i in range(length):
+            args = tuple(ds.batches[i] for ds in self.args)
+            kwargs = {name: ds.batches[i] for name, ds in self.kwargs.items()}
+            yield args, kwargs
+
+
+@dataclasses.dataclass(frozen=True)
 class Instruction(abc.ABC):
     """Base class for all instructions in the execution engine.
 
@@ -237,66 +320,17 @@ class CallModule(Instruction):
         results: dict[ContextManager[None], ActivationDataset] = {}
 
         for context in self.contexts:
-            args_datasets, kwargs_datasets = self._gather_datasets(register, context)
+            bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
             with context:
-                outputs = self._forward_batches(args_datasets, kwargs_datasets)
+                if not self.args and not self.kwargs:
+                    # A node with no inputs (e.g. a buffer/constant producer) is
+                    # called exactly once with no arguments.
+                    outputs = [self.module()]
+                else:
+                    outputs = [self.module(*args, **kwargs) for args, kwargs in bundle]
             results[context] = ActivationDataset(outputs)
 
         register[self.target] = results
-
-    def _gather_datasets(
-        self, register: ActivationRegister, context: ContextManager[None]
-    ) -> tuple[list[ActivationDataset], dict[str, ActivationDataset]]:
-        """Extract and broadcast positional and keyword argument datasets for a context.
-
-        Args:
-            register: Register with contexts as keys and datasets as values.
-            context: The context which has generated the required datasets.
-
-        Returns:
-            Tuple of (arg_datasets, kwarg_datasets), broadcast to a common length.
-        """
-
-        def get_dataset(ref: _BaseRef) -> ActivationDataset:
-            if isinstance(ref, Const):
-                return ActivationDataset([ref.value])
-            return register[ref][context]
-
-        arg_datasets = [get_dataset(ref) for ref in self.args]
-        kwarg_datasets = {key: get_dataset(ref) for key, ref in self.kwargs.items()}
-
-        broadcasted = ActivationDataset.broadcast([*arg_datasets, *kwarg_datasets.values()])
-        n_args = len(arg_datasets)
-        arg_datasets = broadcasted[:n_args]
-        kwarg_datasets = dict(zip(kwarg_datasets.keys(), broadcasted[n_args:]))
-
-        return arg_datasets, kwarg_datasets
-
-    def _forward_batches(
-        self, arg_datasets: list[ActivationDataset], kwarg_datasets: dict[str, ActivationDataset]
-    ) -> list[Any]:
-        """Forward pass arg and kwarg datasets through the module.
-
-        Args:
-            arg_datasets: List of argument datasets, broadcast to common length.
-            kwarg_datasets: Dictionary of keyword argument datasets.
-
-        Returns:
-            List of module outputs for each batch.
-        """
-        if not arg_datasets and not kwarg_datasets:
-            return [self.module()]
-
-        outputs = []
-        kwarg_keys = list(kwarg_datasets.keys())
-        num_args = len(arg_datasets)
-
-        for batch_data in zip(*arg_datasets, *kwarg_datasets.values(), strict=True):
-            batch_args = batch_data[:num_args]
-            batch_kwargs = dict(zip(kwarg_keys, batch_data[num_args:]))
-            outputs.append(self.module(*batch_args, **batch_kwargs))
-
-        return outputs
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -310,28 +344,27 @@ class CallModule(Instruction):
 class OptimizeModule(Instruction):
     """Optimize a module in-place using batched data from the register.
 
-    Execute a user-defined optimization function (delegate) on the module using context
-    specific activations per arg.
+    Builds one `ActivationBundle` per context from the register and the node's
+    positional/keyword inputs, then invokes the user-supplied delegate as
+    `fn(module, *bundles_per_context)`. Inside the delegate, iterating each bundle
+    yields `(args, kwargs)` per batch — typically called as `module(*args, **kwargs)`.
     """
 
     module: torch.nn.Module
     args: Sequence[_BaseRef]
+    kwargs: Mapping[str, _BaseRef]
     delegate: Delegate
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        delegate_args = []
-
-        for context in self.delegate.contexts:
-            # For each context, gather all arguments the module expects into an ActivationDataset.
-            context_args = [register[arg][context] for arg in self.args]
-            context_args = ActivationDataset.broadcast(context_args)
-            delegate_args.append(ActivationDataset.merge(context_args))
-
-        # Run the delegate function with per-context arguments required for the module.
-        self.delegate.fn(self.module, *delegate_args)
+        bundles = [
+            ActivationBundle.gather(register, context, self.args, self.kwargs)
+            for context in self.delegate.contexts
+        ]
+        self.delegate.fn(self.module, *bundles)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
-        return iter(self.args)
+        yield from self.args
+        yield from self.kwargs.values()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1022,7 +1055,7 @@ class InstructionScheduler:
         # Inject optimization if specified
         if node.delegate is not None and isinstance(node.target, torch.nn.Module):
             instructions.append(
-                OptimizeModule(module=node.target, args=args, delegate=node.delegate)
+                OptimizeModule(module=node.target, args=args, kwargs=kwargs, delegate=node.delegate)
             )
 
         # Always execute the module to cache activations

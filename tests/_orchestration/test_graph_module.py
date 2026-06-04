@@ -5,7 +5,7 @@
 import functools
 import uuid
 
-from typing import Any, Iterable
+from typing import Any
 
 import pytest
 import torch
@@ -25,6 +25,7 @@ from fastforward._orchestration.graph_module import (
     remap_subgraph_reference,
 )
 from fastforward._orchestration.instruction_engine import (
+    ActivationBundle,
     ActivationDataset,
     ActivationRegister,
     CallModule,
@@ -381,13 +382,13 @@ def test_local_error_opt() -> None:
     calibration_data = [torch.randn(1, 5) for _ in range(10)]
 
     # GIVEN a dummy optimization function
-    def dummy(module: torch.nn.Module, dataset: Iterable[torch.Tensor], lr: float) -> None:
+    def dummy(module: torch.nn.Module, bundle: ActivationBundle, lr: float) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=lr)
 
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
 
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
 
@@ -483,11 +484,11 @@ def test_local_optimization_with_attribute_refs() -> None:
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
     # GIVEN an optimization function
-    def optimize_first_output(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def optimize_first_output(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -527,11 +528,11 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
     # GIVEN a simple optimization function
-    def simple_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def simple_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -575,11 +576,11 @@ def test_local_optimization_entire_graph() -> None:
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
     # GIVEN an optimization function
-    def full_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def full_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -622,11 +623,11 @@ def test_local_optimization_with_const_inputs() -> None:
     calibration_data = [None for _ in range(5)]
 
     # GIVEN an optimization function
-    def opt_with_const(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def opt_with_const(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -1012,11 +1013,11 @@ def test_local_optimization_with_kwargs() -> None:
     calibration_data = [None for _ in range(5)]
 
     # GIVEN an optimization function
-    def opt_kwargs(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def opt_kwargs(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -1058,11 +1059,11 @@ def test_local_optimization_with_multiple_inputs() -> None:
     calibration_data_input2 = [torch.randn(1, 5) for _ in range(5)]
 
     # GIVEN an optimization function
-    def multi_input_opt(module: torch.nn.Module, dataset: Iterable[torch.Tensor]) -> None:
+    def multi_input_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            output = module(batch)
+            output = module(*args, **kwargs)
             loss = (output**2).mean()
             loss.backward()
             optim.step()
@@ -1225,6 +1226,17 @@ def test_graph_accepts_positional_tensors() -> None:
     result = graph(torch.tensor([1.0]), torch.tensor([2.0]))
 
     # THEN positional binding follows input_names order
+    assert torch.allclose(result, torch.tensor([3.0]))
+
+
+def test_graph_accepts_mixed_positional_and_keyword_tensors() -> None:
+    # GIVEN a two-input graph with one tensor given positionally and one by name
+    graph = _add_two_input_graph()
+
+    # WHEN we call with a positional arg bound to the first input and a kwarg for the second
+    result = graph(torch.tensor([1.0]), y=torch.tensor([2.0]))
+
+    # THEN the positional arg binds to x (declared first) and the kwarg binds to y
     assert torch.allclose(result, torch.tensor([3.0]))
 
 

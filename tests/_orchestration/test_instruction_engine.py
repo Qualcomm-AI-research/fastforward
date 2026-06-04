@@ -6,13 +6,14 @@ import functools
 import uuid
 
 from contextlib import nullcontext
-from typing import Any, Collection, Iterable
+from typing import Any, Collection
 
 import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
     DEFAULT_CONTEXT,
+    Const,
     Delegate,
     GraphModule,
     NodeRef,
@@ -21,6 +22,7 @@ from fastforward._orchestration.graph_module import (
     local_optimize,
 )
 from fastforward._orchestration.instruction_engine import (
+    ActivationBundle,
     ActivationDataset,
     ActivationRegister,
     CallModule,
@@ -134,6 +136,28 @@ def test_call_module_broadcasts_single_batch_to_match_n_batches() -> None:
     assert out1.item() == 1.0 + 10.0
     assert out2.item() == 2.0 + 10.0
     assert out3.item() == 3.0 + 10.0
+
+
+def test_call_module_with_no_inputs_calls_module_once() -> None:
+    # GIVEN a CallModule with no positional and no keyword refs
+    context = nullcontext()
+    target = NodeRef(id=uuid.uuid4(), name="const_producer")
+
+    sentinel = torch.tensor([42.0])
+
+    def produce() -> torch.Tensor:
+        return sentinel
+
+    instr = CallModule(module=produce, args=[], kwargs={}, target=target, contexts=[context])
+    register: ActivationRegister = {}
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN the module is called exactly once and its single output is stored
+    stored = register[target][context]
+    assert isinstance(stored, ActivationDataset)
+    assert list(stored) == [sentinel]
 
 
 def test_prepare_input_register_validates_inputs() -> None:
@@ -385,8 +409,8 @@ def test_local_error_multiple_contexts() -> None:
     # GIVEN node_2 requires two contexts for execution
     def opt_node_2(
         module: torch.nn.Module,
-        default_dataset: Collection[Any],
-        quantized_dataset: Collection[Any],
+        default_bundle: ActivationBundle,
+        quantized_bundle: ActivationBundle,
     ) -> None:
         pass
 
@@ -548,11 +572,11 @@ class _Model(torch.nn.Module):
 
 
 def _make_optimizer_specs(model: _Model) -> list[SubgraphSpec]:
-    def dummy(module: torch.nn.Module, dataset: Iterable[torch.Tensor], lr: float) -> None:
+    def dummy(module: torch.nn.Module, bundle: ActivationBundle, lr: float) -> None:
         optim = torch.optim.SGD(params=module.parameters(), lr=lr)
-        for batch in dataset:
+        for args, kwargs in bundle:
             optim.zero_grad()
-            loss = (module(batch) ** 2).mean()
+            loss = (module(*args, **kwargs) ** 2).mean()
             loss.backward()
             optim.step()
 
@@ -808,3 +832,225 @@ def test_move_to_device_plain_dict_stays_plain_dict() -> None:
     assert type(moved) is dict
     assert moved["a"].shape == (2, 3)
     assert moved["b"].shape == (4,)
+
+
+##########
+# ActivationBundle
+#
+# `ActivationBundle` is the per-context call-construction view handed to a delegate.
+# It carries positional and keyword `ActivationDataset`s and yields `(args, kwargs)`
+# per batch.
+##########
+
+
+def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> None:
+    # GIVEN a register populated with two positional refs under one context
+    context = nullcontext()
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    ref_b = NodeRef(id=uuid.uuid4(), name="b")
+    register: ActivationRegister = {
+        ref_a: {context: ActivationDataset([1, 2, 3])},
+        ref_b: {context: ActivationDataset([10, 20, 30])},
+    }
+
+    # WHEN we gather a bundle with two positional refs and no kwargs
+    bundle = ActivationBundle.gather(register, context, args=[ref_a, ref_b], kwargs={})
+
+    # THEN iteration yields `((args...,), {})` per batch, aligned across refs
+    assert list(bundle) == [((1, 10), {}), ((2, 20), {}), ((3, 30), {})]
+
+
+def test_activation_bundle_kwargs_only_yields_empty_args_and_kwargs_dict() -> None:
+    # GIVEN refs populated under one context, surfaced only as kwargs on the bundle
+    context = nullcontext()
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    ref_y = NodeRef(id=uuid.uuid4(), name="y")
+    register: ActivationRegister = {
+        ref_x: {context: ActivationDataset(["a", "b"])},
+        ref_y: {context: ActivationDataset([100, 200])},
+    }
+
+    # WHEN we gather a bundle with no positional and two named kwargs
+    bundle = ActivationBundle.gather(
+        register, context, args=[], kwargs={"first": ref_x, "second": ref_y}
+    )
+
+    # THEN iteration yields `((), {name: value, ...})` per batch
+    assert list(bundle) == [
+        ((), {"first": "a", "second": 100}),
+        ((), {"first": "b", "second": 200}),
+    ]
+
+
+def test_activation_bundle_mixed_args_and_kwargs_align_per_batch() -> None:
+    # GIVEN a register with one positional ref and one kwarg ref
+    context = nullcontext()
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
+    register: ActivationRegister = {
+        ref_x: {context: ActivationDataset([1, 2])},
+        ref_mask: {context: ActivationDataset([True, False])},
+    }
+
+    # WHEN we bundle with mixed positional and keyword
+    bundle = ActivationBundle.gather(register, context, args=[ref_x], kwargs={"mask": ref_mask})
+
+    # THEN each batch packages args and kwargs as a single call snapshot
+    assert list(bundle) == [((1,), {"mask": True}), ((2,), {"mask": False})]
+
+
+def test_activation_bundle_const_refs_are_wrapped_inline() -> None:
+    # GIVEN one register-backed positional ref alongside a Const used as kwarg
+    context = nullcontext()
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    register: ActivationRegister = {ref_x: {context: ActivationDataset([1, 2])}}
+
+    # WHEN we gather with a Const ref (which is not a register entry)
+    bundle = ActivationBundle.gather(
+        register, context, args=[ref_x], kwargs={"k": Const("constant")}
+    )
+
+    # THEN the Const is broadcast to match the positional length
+    assert list(bundle) == [((1,), {"k": "constant"}), ((2,), {"k": "constant"})]
+
+
+def test_activation_bundle_broadcasts_singletons_against_n_length_streams() -> None:
+    # GIVEN one stream of length 1 and one of length 3 in the register
+    context = nullcontext()
+    ref_single = NodeRef(id=uuid.uuid4(), name="single")
+    ref_multi = NodeRef(id=uuid.uuid4(), name="multi")
+    register: ActivationRegister = {
+        ref_single: {context: ActivationDataset(["S"])},
+        ref_multi: {context: ActivationDataset([1, 2, 3])},
+    }
+
+    # WHEN we bundle them together
+    bundle = ActivationBundle.gather(register, context, args=[ref_single, ref_multi], kwargs={})
+
+    # THEN the singleton repeats across batches
+    assert list(bundle) == [(("S", 1), {}), (("S", 2), {}), (("S", 3), {})]
+
+
+def test_activation_bundle_length_mismatch_raises() -> None:
+    # GIVEN two refs with incompatible lengths (no singleton to broadcast)
+    context = nullcontext()
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    ref_b = NodeRef(id=uuid.uuid4(), name="b")
+    register: ActivationRegister = {
+        ref_a: {context: ActivationDataset([1, 2])},
+        ref_b: {context: ActivationDataset([10, 20, 30])},
+    }
+
+    # WHEN/THEN gathering raises because broadcast cannot reconcile 2 != 3
+    with pytest.raises(ValueError):
+        ActivationBundle.gather(register, context, args=[ref_a, ref_b], kwargs={})
+
+
+def test_activation_bundle_empty_inputs_has_zero_length() -> None:
+    # GIVEN an empty register and no refs
+    bundle = ActivationBundle.gather({}, nullcontext(), args=[], kwargs={})
+
+    # THEN the bundle is empty and iterates to nothing
+    assert list(bundle) == []
+
+
+def test_optimize_module_passes_kwargs_to_delegate() -> None:
+    # GIVEN a register holding one positional and two keyword activations under one context
+    context = nullcontext()
+    ref_hidden = NodeRef(id=uuid.uuid4(), name="hidden")
+    ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
+    ref_pos = NodeRef(id=uuid.uuid4(), name="pos")
+    register: ActivationRegister = {
+        ref_hidden: {context: ActivationDataset([torch.tensor([1.0]), torch.tensor([2.0])])},
+        ref_mask: {context: ActivationDataset([torch.tensor([True]), torch.tensor([False])])},
+        ref_pos: {context: ActivationDataset([torch.tensor([0.1]), torch.tensor([0.2])])},
+    }
+
+    seen: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+
+    def delegate(_module: torch.nn.Module, bundle: ActivationBundle) -> None:
+        seen.extend(list(bundle))
+
+    instr = OptimizeModule(
+        module=torch.nn.Identity(),
+        args=[ref_hidden],
+        kwargs={"attention_mask": ref_mask, "position_embeddings": ref_pos},
+        delegate=Delegate(fn=delegate, contexts=[context]),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN the delegate sees both args and kwargs aligned per batch
+    assert len(seen) == 2
+    args0, kwargs0 = seen[0]
+    args1, kwargs1 = seen[1]
+    assert torch.equal(args0[0], torch.tensor([1.0]))
+    assert torch.equal(args1[0], torch.tensor([2.0]))
+    assert set(kwargs0.keys()) == {"attention_mask", "position_embeddings"}
+    assert torch.equal(kwargs0["attention_mask"], torch.tensor([True]))
+    assert torch.equal(kwargs1["position_embeddings"], torch.tensor([0.2]))
+
+
+def test_optimize_module_uses_yields_kwarg_refs() -> None:
+    # GIVEN an OptimizeModule with both positional and keyword refs
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    ref_b = NodeRef(id=uuid.uuid4(), name="b")
+    ref_c = NodeRef(id=uuid.uuid4(), name="c")
+    instr = OptimizeModule(
+        module=torch.nn.Identity(),
+        args=[ref_a],
+        kwargs={"b": ref_b, "c": ref_c},
+        delegate=Delegate(fn=lambda *_a, **_k: None, contexts=[nullcontext()]),
+    )
+
+    # WHEN we enumerate refs `uses()` reports
+    used = list(instr.uses())
+
+    # THEN every positional and keyword ref appears (offloading depends on this)
+    assert ref_a in used
+    assert ref_b in used
+    assert ref_c in used
+
+
+def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
+    # GIVEN two contexts and one ref produced under each
+    ctx_a = nullcontext()
+
+    class _Ctx:
+        def __enter__(self) -> None:
+            return
+
+        def __exit__(self, *args: Any) -> None:
+            return
+
+    ctx_b = _Ctx()
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    register: ActivationRegister = {
+        ref_x: {
+            ctx_a: ActivationDataset([1, 2]),
+            ctx_b: ActivationDataset([10, 20]),
+        },
+    }
+
+    received: list[ActivationBundle] = []
+
+    def delegate(
+        _module: torch.nn.Module, bundle_a: ActivationBundle, bundle_b: ActivationBundle
+    ) -> None:
+        received.extend([bundle_a, bundle_b])
+
+    instr = OptimizeModule(
+        module=torch.nn.Identity(),
+        args=[ref_x],
+        kwargs={},
+        delegate=Delegate(fn=delegate, contexts=[ctx_a, ctx_b]),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN the delegate receives one bundle per context, in declared order
+    assert len(received) == 2
+    assert list(received[0]) == [((1,), {}), ((2,), {})]
+    assert list(received[1]) == [((10,), {}), ((20,), {})]
