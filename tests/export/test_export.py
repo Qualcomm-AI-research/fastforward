@@ -115,6 +115,14 @@ def test_ff_model_to_onnx_export(
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(
+    version.parse(torch.__version__).release[:2] <= (2, 6),
+    reason=(
+        "torch <= 2.6 does not re-infer the QuantizeLinear output type after the "
+        "FF quantize_by_tile lowering, leaving a stale float value_info that ONNX "
+        "Runtime rejects at load time."
+    ),
+)
 @pytest.mark.parametrize(
     ("weight_bits", "activation_bits", "rtol", "atol"),
     [
