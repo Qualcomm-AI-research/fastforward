@@ -17,8 +17,7 @@ from fastforward.export.export import export
 from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
-from packaging import version
-from tests._core_package_version_utils import OPSET_VERSION
+from tests._core_package_version_utils import OPSET_VERSION, is_torch_version_at_least
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
 ONNX_EXPORT_OPTIONS = {"opset_version": OPSET_VERSION}
@@ -116,7 +115,7 @@ def test_ff_model_to_onnx_export(
 
 @pytest.mark.slow
 @pytest.mark.skipif(
-    version.parse(torch.__version__).release[:2] <= (2, 6),
+    not is_torch_version_at_least("2.7"),
     reason=(
         "torch <= 2.6 does not re-infer the QuantizeLinear output type after the "
         "FF quantize_by_tile lowering, leaving a stale float value_info that ONNX "
@@ -411,9 +410,7 @@ def test_export_model_with_ctx_manager(
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(
-    version.parse(torch.__version__) < version.parse("2.6.0"), reason="requires PyTorch > 2.5.0"
-)
+@pytest.mark.skipif(not is_torch_version_at_least("2.6.0"), reason="requires PyTorch > 2.5.0")
 def test_export_with_optimization_options(
     tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
 ) -> None:

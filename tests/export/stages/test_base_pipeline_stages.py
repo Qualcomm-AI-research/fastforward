@@ -18,7 +18,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     stage_passthrough_ff_module,
     stage_quantized_eval,
 )
-from packaging import version
+from tests._core_package_version_utils import is_torch_version_at_least
 
 
 class _QuantizerModule(ff.nn.Quantizer):
@@ -311,7 +311,7 @@ def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:
     # GIVEN: A module with a linear op that is decomposed by default.
     module = _LinearProbeQuantizedModule()
     sample_inputs: _SampleInputsT = [((torch.randn(1, 4),), {})]
-    if version.parse(torch.__version__) < version.parse("2.6"):
+    if not is_torch_version_at_least("2.6"):
         default_decomp_table = torch._decomp.core_aten_decompositions()
     else:
         default_decomp_table = torch.export.default_decompositions()  # type: ignore[attr-defined,unused-ignore]
