@@ -79,7 +79,12 @@ def test_override_handle() -> None:
     mock_override1 = unittest.mock.Mock(override1, wraps=override1)
 
     override_map: MutableMapping[int, override.OverrideFn[int]] = collections.OrderedDict()
-    handle = override.OverrideHandle(override_map=override_map)
+    mock_quantizer = unittest.mock.MagicMock()
+    mock_quantizer._quantizer_overrides = override_map
+    mock_quantizer.remove_override.side_effect = lambda override_id: override_map.pop(
+        override_id, None
+    )
+    handle = override.OverrideHandle(quantizer=mock_quantizer)
     override_map[handle.handle_id] = mock_override1
     context_object = {"c": 5}
 

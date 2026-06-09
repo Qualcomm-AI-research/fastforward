@@ -387,9 +387,23 @@ class Quantizer(torch.nn.Module):
             (override.OverrideHandle) a handle that can be used to remove the
             pushed override.
         """
-        handle = override.OverrideHandle(self._quantizer_overrides)
+        handle = override.OverrideHandle(self)
         self._quantizer_overrides[handle.handle_id] = override_fn
         return handle
+
+    def remove_override(self, override_id: int) -> override.OverrideFn[torch.Tensor] | None:
+        """Remove the override registered under `override_id`.
+
+        Args:
+            override_id: The id of the override to remove. This corresponds to
+                the `handle_id` of the `OverrideHandle` returned by
+                `register_override`.
+
+        Returns:
+            (override.OverrideFn | None) the removed override function, or None
+            if no override was registered under `override_id`.
+        """
+        return self._quantizer_overrides.pop(override_id, None)
 
     @property
     def overrides(self) -> Iterator[override.OverrideFn[torch.Tensor]]:

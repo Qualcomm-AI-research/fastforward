@@ -10,6 +10,7 @@ from fastforward.overrides import (
     disable_quantization,
     enable_quantization,
 )
+from packaging import version
 
 
 @ff.flags.context(ff.strict_quantization, False)
@@ -242,3 +243,30 @@ def multi_output_model() -> _MultiOutputModel:
         _init_quant
     )
     return model
+
+
+@pytest.mark.skipif(
+    version.parse(torch.__version__) < version.parse("2.6.0"), reason="requires PyTorch > 2.5.0"
+)
+def test_disable_quantization_cleans_up_after_export() -> None:
+    """disable_quantization must not leak overrides when combined with trace."""
+    # GIVEN a quantized linear with initialized weight quantizer
+    linear = ff.nn.QuantizedLinear(4, 4, bias=False)
+    linear.weight_quantizer = ff.nn.LinearQuantizer(num_bits=8, granularity=ff.PerChannel())
+    ff.set_strict_quantization(False)
+    with torch.no_grad(), ff.estimate_ranges(linear, ff.range_setting.running_minmax):
+        linear(torch.randn(1, 4))
+
+    # WHEN we export the module under disable_quantization
+    with disable_quantization(linear):
+        torch.export.export(linear, args=(torch.randn(1, 4),), kwargs={}, strict=False)
+
+    # THEN no overrides remain after the context exits
+    assert len(linear.weight_quantizer._quantizer_overrides) == 0
+
+    # THEN quantization is active again
+    with torch.no_grad():
+        out_quantized = linear(torch.randn(1, 4))
+    with torch.no_grad(), disable_quantization(linear):
+        out_fp = linear(torch.randn(1, 4))
+    assert not torch.allclose(out_quantized, out_fp)

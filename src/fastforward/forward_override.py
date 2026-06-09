@@ -3,7 +3,10 @@
 
 import weakref
 
-from typing import Any, Callable, Generic, Mapping, MutableMapping, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Mapping, Protocol, TypeVar
+
+if TYPE_CHECKING:
+    from fastforward.nn.quantizer import Quantizer
 
 from typing_extensions import Self
 
@@ -42,15 +45,14 @@ class OverrideHandle:
     """Handle object which that can be used to remove a function override.
 
     Args:
-        override_map: Mapping that stores
-            overrides indexed by override id.
+        quantizer: The quantizer that owns the override.
     """
 
     handle_id: int
     global_handles: int = 0
 
-    def __init__(self, override_map: MutableMapping[int, OverrideFn[Any]]) -> None:
-        self.override_map = weakref.ref(override_map)
+    def __init__(self, quantizer: "Quantizer") -> None:
+        self._quantizer = weakref.ref(quantizer)
         self.handle_id = OverrideHandle.global_handles
         OverrideHandle.global_handles += 1
 
@@ -60,10 +62,9 @@ class OverrideHandle:
         Returns:
             (Callable) the override function associated with this handle
         """
-        override_map = self.override_map()
-        if override_map is not None and self.handle_id in override_map:
-            return override_map.pop(self.handle_id)
-        return None
+        if (quantizer := self._quantizer()) is None:
+            return None
+        return quantizer.remove_override(self.handle_id)
 
     def __enter__(self) -> Self:
         return self
