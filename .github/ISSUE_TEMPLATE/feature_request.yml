@@ -31,15 +31,13 @@ body:
     attributes:
       label: How would you prioritize this feature?
       options:
-        - Must Have - Now
-        - Must Have - Soon
-        - Should Have - Now
-        - Should Have - Soon
-        - Nice To Have - Now
-        - Nice To Have - Soon
-      description: Help us understand the importance and urgency of this feature.
+        - Not sure / let maintainers decide
+        - Nice To Have
+        - Should Have
+        - Must Have
+      description: Help us understand the importance of this feature.
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: related_issues_list
