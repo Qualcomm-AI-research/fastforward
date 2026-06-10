@@ -55,7 +55,6 @@ __all__ = [
     "remainder",
     "silu",
     "gelu",
-    "scaled_dot_product_attention",
     "dropout",
     "permute",
     "cat",
@@ -1218,49 +1217,6 @@ def gelu(
 
 
 # Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:109
-def scaled_dot_product_attention(
-    query: torch.Tensor,
-    key: torch.Tensor,
-    value: torch.Tensor,
-    attn_mask: torch.Tensor | None = None,
-    dropout_p: float = 0.0,
-    is_causal: bool = False,
-    scale: float | None = None,
-    *,
-    output_quantizer: Optional["Quantizer"] = None,
-    strict_quantization: bool | None = None,
-) -> torch.Tensor:
-
-    if strict_quantization is None:
-        strict_quantization = fastforward.get_strict_quantization()
-
-    dispatch_op = dispatch(
-        "scaled_dot_product_attention",
-        query=query,
-        key=key,
-        value=value,
-        attn_mask=attn_mask,
-        dropout_p=dropout_p,
-        is_causal=is_causal,
-        scale=scale,
-        output_quantizer=output_quantizer,
-        strict_quantization=strict_quantization,
-    )
-    selected_op = dispatch_op or fallback.scaled_dot_product_attention
-    return selected_op(
-        query=query,
-        key=key,
-        value=value,
-        attn_mask=attn_mask,
-        dropout_p=dropout_p,
-        is_causal=is_causal,
-        scale=scale,
-        output_quantizer=output_quantizer,
-        strict_quantization=strict_quantization,
-    )
-
-
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:112
 def dropout(
     input: torch.Tensor,
     p: float = 0.5,
@@ -1294,7 +1250,7 @@ def dropout(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:115
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:112
 def permute(
     input: torch.Tensor,
     dims: tuple[int, ...],
@@ -1322,7 +1278,7 @@ def permute(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:118
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:115
 def cat(
     tensors: Sequence[torch.Tensor],
     dim: int = 0,
@@ -1350,7 +1306,7 @@ def cat(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:121
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:118
 def index_add(
     input: torch.Tensor,
     dim: int,
@@ -1387,7 +1343,7 @@ def index_add(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:124
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:121
 def cumsum(
     input: torch.Tensor,
     dim: int,
@@ -1415,7 +1371,7 @@ def cumsum(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:127
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:124
 def pad(
     input: torch.Tensor,
     pad: Sequence[int],
@@ -1449,7 +1405,7 @@ def pad(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:134
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:131
 def max_pool2d(
     input: torch.Tensor,
     kernel_size: Union[Size, int],
@@ -1489,7 +1445,7 @@ def max_pool2d(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:137
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:134
 def interpolate(
     input: torch.Tensor,
     size: Union[None, Size, int] = None,
@@ -1532,7 +1488,7 @@ def interpolate(
     )
 
 
-# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:140
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:137
 def unfold(
     input: torch.Tensor,
     kernel_size: Union[int, tuple[int, ...]],
