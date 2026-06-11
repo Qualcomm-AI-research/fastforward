@@ -59,3 +59,18 @@ For more tutorials and the API reference, visit the [general documentation](http
 ```bash
 pip install git+https://github.com/Qualcomm-AI-research/fastforward@main
 ```
+
+## Citation
+
+If you use FastForward in your research, please cite it as:
+
+```bibtex
+@software{fastforward,
+    title        = {FastForward: A PyTorch-based Library for Neural Network Quantization},
+    author       = {Peters, Jorn and Behrends, S{\"o}nke and Del Chiaro, Riccardo and
+                    Mironov, Evgeny and van Rozendaal, Ties and Stasis, Spyridon and
+                    Weitkamp, Laurens and Nagel, Markus},
+    year         = {2024},
+    url          = {https://github.com/Qualcomm-AI-research/fastforward}
+}
+```
