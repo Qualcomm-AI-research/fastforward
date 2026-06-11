@@ -3,8 +3,6 @@
 
 from .attention import (
     QuantizedLlamaAttention,
-    QuantizedLlamaFlashAttention2,
-    QuantizedLlamaSdpaAttention,
 )
 from .decoder import QuantizedLlamaDecoderLayer
 from .llama import QuantizedLlamaForCausalLM, QuantizedLlamaModel
@@ -14,13 +12,10 @@ from .rotary_embedding import QuantizedLlamaRotaryEmbedding
 
 __all__ = [
     "QuantizedLlamaAttention",
-    "QuantizedLlamaFlashAttention2",
-    "QuantizedLlamaSdpaAttention",
     "QuantizedLlamaDecoderLayer",
     "QuantizedLlamaForCausalLM",
     "QuantizedLlamaModel",
     "QuantizedLlamaMLP",
     "QuantizedLlamaRMSNorm",
-    "QuantizedLlamaRotaryEmbedding",
     "QuantizedLlamaRotaryEmbedding",
 ]

@@ -1,7 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
-# Code adapted from https://github.com/huggingface/transformers
+# Code adapted from https://github.com/huggingface/transformers/blob/v5.9.0/examples/pytorch/language-modeling/run_clm.py
 # Copyright 2018- The Hugging Face team. All rights reserved. Licensed under the Apache License, Version 2.0
 # License is provided for attribution purposes only, Not a Contribution
 

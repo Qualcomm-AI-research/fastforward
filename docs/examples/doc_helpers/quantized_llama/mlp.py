@@ -6,9 +6,14 @@ import logging
 import fastforward.nn.functional as FFF
 
 from fastforward.nn import QuantizedModule, QuantizerMetadata
+from transformers.activations import SiLUActivation
 from transformers.models.llama.modeling_llama import LlamaMLP
 
 logger = logging.getLogger(__name__)
+
+
+class QuantizedSiLUActivation(SiLUActivation, QuantizedModule):
+    """No-op quantized wrapper — SiLUActivation has no learnable parameters."""
 
 
 class QuantizedLlamaMLP(LlamaMLP, QuantizedModule):

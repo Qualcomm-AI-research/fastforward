@@ -383,7 +383,9 @@ quantized_model(data)
 # %% [markdown]
 # # 4.3 Quantizing Custom Modules: Manual Quantization
 #
-# Your model might not only consist of `torch.nn.Modules`, but also contain 3rd party or custom modules. Because FastForward does not have fully automated quantization yet, trying to convert these modules using `quantize_model` does not work. Let us build such a custom module:
+# Your model might not only consist of standard torch modules defined in `torch.nn.*`, but also contain 3rd party or custom modules. `quantize_model` only knows how to convert modules registered in its module map, so it cannot handle a custom layer out of the box. Let us build such a custom module:
+#
+# > 💡 **Tip:** You can also try [`ff.autoquantize`](autoquant.md) (experimental) for this step.
 
 
 # %%
