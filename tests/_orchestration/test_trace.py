@@ -35,7 +35,7 @@ skip_without_torchvision = pytest.mark.skipif(
 def _has_transformers_min_version(min_version: str) -> bool:
     if importlib.util.find_spec("transformers") is None:
         return False
-    import transformers  # type: ignore[import-untyped]
+    import transformers
 
     from packaging.version import Version
 
@@ -688,7 +688,7 @@ def test_trace_resnet18_forward_matches_eager() -> None:
 @skip_without_transformers
 def test_trace_llama_7b_forward_matches_eager() -> None:
     from transformers import AutoConfig
-    from transformers.models.llama.modeling_llama import (  # type: ignore[import-untyped]
+    from transformers.models.llama.modeling_llama import (
         LlamaForCausalLM,
     )
 

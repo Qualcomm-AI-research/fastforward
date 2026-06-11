@@ -49,7 +49,7 @@ docs = [
   "mkdocs-section-index",
   "mkdocstrings-python",
   "sentencepiece",
-  "transformers==4.46.3",
+  "transformers==5.9.0",
   "tqdm",
 ]
 

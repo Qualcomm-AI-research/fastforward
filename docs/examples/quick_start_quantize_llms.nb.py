@@ -21,7 +21,7 @@
 # ### Step 1: Install Dependencies
 # First, make sure you have all the necessary dependencies installed. You can do this by running the following command:
 # ```
-# pip install transformers==4.46.3 sentencepiece==0.2.0 ipywidgets==8.1.5 datasets==3.1.0
+# pip install transformers==5.9.0 sentencepiece==0.2.1 datasets==4.8.5
 # ```
 # For instructions on installing `fastforward`, please refer to the project's documentation and/or readme.
 #
