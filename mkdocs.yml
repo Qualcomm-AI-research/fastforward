@@ -36,6 +36,7 @@ exclude_docs: |
 
 not_in_nav: |
   examples/**/*.nb.py
+  examples/autoquant.md
 
 # Customization
 extra:
@@ -71,7 +72,7 @@ plugins:
             show_if_no_docstring: True
             merge_init_into_class: true
             allow_inspection: true
-            show-root-full-path: true
+            show_root_full_path: true
             show_root_members_full_path: true
             show_symbol_type_heading: true
             show_root_toc_entry: false
@@ -87,6 +88,9 @@ hooks:
 markdown_extensions:
   - admonition
   - pymdownx.details
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.superfences
   - pymdownx.magiclink
   - pymdownx.snippets:
       base_path: [!relative $config_dir]

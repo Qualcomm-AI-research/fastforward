@@ -22,7 +22,7 @@ def autoquantize_str(
     """Autoquantizes Python function string and returns the quantized code as a string.
 
     Args:
-        src : The input Python function as a string.
+        src: The input Python function as a string.
         as_module: If True, returns the quantized code as a module. Defaults to False.
         as_cst: If True, return a CST instead of a string.
         use_type_inference: If True, use type inference to reduce false
