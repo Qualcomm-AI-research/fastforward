@@ -67,8 +67,8 @@ tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, legacy=False, use_
 # Load Dataset
 _valid_split = "validation" if valid_percent is None else f"validation[:{valid_percent}%]"
 _train_split = "train" if train_percent is None else f"train[:{train_percent}%]"
-validset = load_dataset("wikitext", "wikitext-2-raw-v1", split=_valid_split)
-trainset = load_dataset("wikitext", "wikitext-2-raw-v1", split=_train_split)
+validset = load_dataset("wikitext", "wikitext-2-v1", split=_valid_split)
+trainset = load_dataset("wikitext", "wikitext-2-v1", split=_train_split)
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(validset, tokenizer, sequence_length)
@@ -133,6 +133,8 @@ print(
 # First, we need to convert our model into a _quantization-ready_ one. This type of model, called a `QuantizedModule`, allows us to fully or partially quantize the model easily. These modules work like standard `PyTorch` modules but have extra features for seamless interaction with `FastForward` APIs.
 #
 # Currently, converting a model into a quantized module is semi-automatic and requires a custom implementation of all the PyTorch modules involved. If you want to create a custom QuantizedModule, check out [the tutorial on manually quantizing custom modules](examples/quantizing_networks.nb/#43-quantizing-custom-modules-manual-quantization). However, for this tutorial, we will use pre-provided modules to quantize the Llama model.
+#
+# > 💡 **Tip:** We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore for this step.
 
 # +
 
@@ -282,7 +284,7 @@ print(f" - W+A Quantized model:  {wa_quant_perplexity:.4f}  (W{w_bits}A{a_bits})
 
 # In this tutorial, we demonstrated how to use FastForward to apply weight-only and weight-activation quantization to a large language model. We also evaluated the performance differences compared to the original model.
 #
-# FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules.
+# FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules. We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore.
 #
 # For more information on how to quantize a model from scratch, check out the tutorial:[Getting Started: Quantizing a LLM from scratch](examples/quantizing_networks.nb/).
 #

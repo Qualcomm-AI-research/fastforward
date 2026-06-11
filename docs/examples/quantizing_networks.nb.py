@@ -254,7 +254,7 @@ print(f"{quantized_output.dequantize()=}")
 #   2. Replace the desired QuantizerStubs with the desired Quantizers
 #   3. Estimate the quantizer ranges by passing data trough the model.
 #
-# Performing step 1. and 2. were quite laborious in our above example. Since we have to repeat these steps for every layer in the model, we have created helper tools to automate these tasks. In the next section we will show how to use `autoquant` tool to automatically replace all layers with their Quantized counterparts (step 1.) and how to use the `QuantizationConfig` to automatically insert quantizers into the model (step 2.).
+# Performing step 1. and 2. were quite laborious in our above example. Since we have to repeat these steps for every layer in the model, we have created helper tools to automate these tasks. In the next section we will show how to use the `QuantizationConfig` to automatically insert quantizers into the model (step 2.).
 
 # %% [markdown]
 # ⏩ We start by making a simple unquantized MLP model.
@@ -493,7 +493,7 @@ class MyQuantizedSelfAttentionLayer(MySelfAttentionLayer, ff.nn.quantized_module
 # %% [markdown]
 # ⏩ Notice that we made two changes to the model:
 #   1. We have re-implemented the forward pass, replacing all operations from torch.nn.functional with their FastForward quantized equivalent.
-#      1. ❌ Until autoquant is implemented in FastForward, this means we manually need to duplicate the code from the forward pass.
+#      1. ❌ Doing this by hand means duplicating the forward-pass code.
 #      2. ⚠️ NOTE: Some of the functionals might be hidden inside a function that is called in your forward pass, make sure to also rewrite those cases.
 #      3. ⚠️ If you are adopting a 3rd party class, you will need to copy-paste the code from the forward pass. Make sure to also freeze the dependency so that your rewritten module will not diverge once the package is updated!
 #      4. In order to use the quantized functionals, we have added Quantizers to the model:
