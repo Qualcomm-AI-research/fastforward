@@ -29,7 +29,7 @@ jobs:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed'
     runs-on: k8s-gpu
     container:
-      image: python:3.12  # should match VER_PYTHON in docker/Dockerfile.ci
+      image: python:3.12  # should match VER_PYTHON from `scripts/versions.py default --field python`
     steps:
       - name: Checkout the "$PAGES_BRANCH" branch
         uses: actions/checkout@v4
@@ -40,10 +40,10 @@ jobs:
 
       - run: |
           apt update -qq && apt install -y jq
-      - name: Install torch matching Dockerfile.ci defaults
+      - name: Install torch matching default versions
         run: |
-          VER_TORCH=$(grep 'VER_TORCH=' docker/Dockerfile.ci | grep -o '[0-9][0-9.]*' | head -1)
-          VER_CUDA=$(grep 'VER_CUDA=' docker/Dockerfile.ci | grep -o '[0-9][0-9.]*' | tail -1 | tr -d '.')
+          VER_TORCH=$(python3 scripts/versions.py default --field torch)
+          VER_CUDA=$(python3 scripts/versions.py default --field cuda | tr -d '.')
           python3 -m pip install torch==${VER_TORCH} --extra-index-url https://download.pytorch.org/whl/cu${VER_CUDA}
           python3 -m pip install ".[docs]"
       - name: Generate docs

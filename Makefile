@@ -9,7 +9,9 @@ SHELL = /bin/bash
 
 DOCKER_REGISTRY ?=
 
-VER_PYTHON ?= 3.12
+VER_PYTHON ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field python)
+VER_TORCH ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field torch)
+VER_CUDA ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field cuda)
 IMAGE_NAME ?= $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/users/$(USER)/)fastforward-py$(VER_PYTHON)
 IMAGE_TAG ?= latest
 
@@ -35,7 +37,7 @@ BOOT_DEPENDENCIES = stop
 .PHONY: build run sshd test stop
 
 build:
-	docker build --build-arg VER_PYTHON="$(VER_PYTHON)" --progress=plain --pull --file docker/Dockerfile --tag $(IMAGE_NAME):$(IMAGE_TAG) $(CURDIR)
+	docker build --build-arg VER_PYTHON="$(VER_PYTHON)" --build-arg VER_TORCH="$(VER_TORCH)" --build-arg VER_CUDA="$(VER_CUDA)" --progress=plain --pull --file docker/Dockerfile --tag $(IMAGE_NAME):$(IMAGE_TAG) $(CURDIR)
 	@echo "Successfully built the docker image $(IMAGE_NAME):$(IMAGE_TAG)"
 	docker images --format "table {{.Size}}\t{{.Repository}}\t{{.Tag}}" "$(IMAGE_NAME):$(IMAGE_TAG)"
 

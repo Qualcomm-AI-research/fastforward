@@ -30,7 +30,7 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
           DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE }}
-        run: python3 scripts/ci_write_matrix_json.py
+        run: python3 scripts/versions.py matrix
 
   docker:
     if: github.server_url != 'https://github.com'
