@@ -17,6 +17,7 @@ from fastforward.export.export import export
 from fastforward.quantization.granularity import Granularity
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+
 from tests._core_package_version_utils import OPSET_VERSION, is_torch_version_at_least
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]

@@ -47,6 +47,7 @@ import torch
 from fastforward._orchestration import graph_module
 from fastforward._orchestration.graph_module import inference_mode, local_optimize
 from fastforward._orchestration.instruction_engine import OffloadEverything
+from fastforward._orchestration.registry import register, resolve
 from fastforward._orchestration.trace import trace
 from transformers import AutoTokenizer, LlamaForCausalLM
 
@@ -185,12 +186,9 @@ gptq_fn = functools.partial(
     ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
 )
 
-projection_names = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-
-specs = []
-for proj_name in projection_names:
-    for match in ff.mpath.search(f"**/{proj_name}", graph):
-        specs.append(graph_module.SubgraphSpec(input=match.module, output=match.module, fn=gptq_fn))
+register(ff.quantization.gptq, "**/layers/**/[cls:ff.nn.QuantizedLinear]")
+modules = resolve(model, ff.quantization.gptq)
+specs = [graph_module.SubgraphSpec(input=module, output=module, fn=gptq_fn) for module in modules]
 
 # We provide an offloading strategy that puts model weights and intermediate activations to cpu
 # if not directly needed.
@@ -198,7 +196,7 @@ offloading = OffloadEverything(compute_device=device, storage_device=torch.devic
 
 with torch.inference_mode(), ff.strict_quantization(False):
     with local_optimize(graph, specs, offloading_strategy=offloading):
-        graph(calibration_set)
+        graph(calibration_set, use_cache=False)
 # -
 
 # ## Evaluate on WikiText-2

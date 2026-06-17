@@ -17,6 +17,7 @@ from fastforward.export.module_export import ModuleIORecorder, _deep_dequantize,
 from fastforward.quantization.quant_init import QuantizerCollection
 from fastforward.quantization.strict_quantization import strict_quantization_for_module
 from fastforward.testing.initialization import initialize_quantizers_to_linear_quantizer
+
 from tests._core_package_version_utils import OPSET_VERSION
 
 QuantizedModelFixture: TypeAlias = tuple[torch.nn.Module, QuantizerCollection, QuantizerCollection]
