@@ -176,3 +176,7 @@ torch.testing.assert_close(
     model.layers[0][0].weight_quantizer.scale,
     new_model.layers[0][0].weight_quantizer.scale,
 )
+
+# + [md]
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear

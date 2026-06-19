@@ -46,6 +46,18 @@ function shell-check ()
   grep -Elr '^#!(.*/|.*env +)(sh|bash|ksh)' ${DIRS_TO_CHECK} | xargs shellcheck
 }
 
+function notebook-copyright()
+{
+  local failed=0
+  for nb in docs/examples/*.nb.py; do
+    if ! tail -3 "$nb" | grep -q 'SPDX-License-Identifier'; then
+      echo "Missing copyright footer: $nb"
+      failed=1
+    fi
+  done
+  return "$failed"
+}
+
 function markers-check()
 {
   ! grep -riI --exclude=verify --exclude='*.ambr' --exclude-dir=.cache --exclude-dir=.git --exclude-dir=.mypy_cache -e fixme -e xxx -e todo

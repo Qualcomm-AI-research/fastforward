@@ -46,6 +46,9 @@ jobs:
           VER_CUDA=$(python3 scripts/versions.py default --field cuda | tr -d '.')
           python3 -m pip install torch==${VER_TORCH} --extra-index-url https://download.pytorch.org/whl/cu${VER_CUDA}
           python3 -m pip install ".[docs]"
+      - name: Check notebook copyright footers
+        run: ./scripts/verify --notebook-copyright
+
       - name: Generate docs
         run: |
           export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
