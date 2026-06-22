@@ -21,7 +21,7 @@
 # ### Step 1: Install Dependencies
 # First, make sure you have all the necessary dependencies installed. You can do this by running the following command:
 # ```
-# pip install transformers==4.46.3 sentencepiece==0.2.0 ipywidgets==8.1.5 datasets==3.1.0
+# pip install transformers==5.9.0 sentencepiece==0.2.1 datasets==4.8.5
 # ```
 # For instructions on installing `fastforward`, please refer to the project's documentation and/or readme.
 #
@@ -40,7 +40,7 @@ from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
 
-from doc_helpers.quick_start.quick_start_utils import tokenize_dataset
+from doc_helpers.quick_start_utils import tokenize_dataset
 
 datasets.utils.logging.get_logger("datasets.packaged_modules.cache").setLevel("ERROR")
 
@@ -67,8 +67,8 @@ tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, legacy=False, use_
 # Load Dataset
 _valid_split = "validation" if valid_percent is None else f"validation[:{valid_percent}%]"
 _train_split = "train" if train_percent is None else f"train[:{train_percent}%]"
-validset = load_dataset("wikitext", "wikitext-2-raw-v1", split=_valid_split)
-trainset = load_dataset("wikitext", "wikitext-2-raw-v1", split=_train_split)
+validset = load_dataset("wikitext", "wikitext-2-v1", split=_valid_split)
+trainset = load_dataset("wikitext", "wikitext-2-v1", split=_train_split)
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(validset, tokenizer, sequence_length)
@@ -133,12 +133,14 @@ print(
 # First, we need to convert our model into a _quantization-ready_ one. This type of model, called a `QuantizedModule`, allows us to fully or partially quantize the model easily. These modules work like standard `PyTorch` modules but have extra features for seamless interaction with `FastForward` APIs.
 #
 # Currently, converting a model into a quantized module is semi-automatic and requires a custom implementation of all the PyTorch modules involved. If you want to create a custom QuantizedModule, check out [the tutorial on manually quantizing custom modules](examples/quantizing_networks.nb/#43-quantizing-custom-modules-manual-quantization). However, for this tutorial, we will use pre-provided modules to quantize the Llama model.
+#
+# > 💡 **Tip:** We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore for this step.
 
 # +
 
 # Import all the custom QuantizedModules required to quantize our llama model.
 # We just need to import those modules so that `ff.quantize_model` will be able to find them.
-from doc_helpers.quick_start.quantized_models import quantized_llama as quantized_llama  # noqa: E402, I001
+from doc_helpers import quantized_llama as quantized_llama  # noqa: E402, I001
 
 # Convert the model into a QuantizedModel  (inplace operation)
 ff.quantize_model(model)
@@ -282,7 +284,7 @@ print(f" - W+A Quantized model:  {wa_quant_perplexity:.4f}  (W{w_bits}A{a_bits})
 
 # In this tutorial, we demonstrated how to use FastForward to apply weight-only and weight-activation quantization to a large language model. We also evaluated the performance differences compared to the original model.
 #
-# FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules.
+# FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules. We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore.
 #
 # For more information on how to quantize a model from scratch, check out the tutorial:[Getting Started: Quantizing a LLM from scratch](examples/quantizing_networks.nb/).
 #

@@ -24,26 +24,44 @@ import pygments
 import torch
 
 from IPython.display import HTML, display
-from transformers import AutoModelForCausalLM
-
-from doc_helpers.quick_start.quantized_models import quantized_llama as quantized_llama
 
 # + [md]
 # # Overview
 #
-# This notebook shows how to save and load the model quantization state. We need a model to play with:
+# This notebook shows how to save and load the model quantization state. We need a model to play
+# with, so we build a small multi-layer perceptron from standard `torch.nn` modules.
 
 # +
-model_name = "meta-llama/Llama-3.2-1B-Instruct"
-model = AutoModelForCausalLM.from_pretrained(model_name)
+NUM_LAYERS = 3
+HIDDEN_SIZE = 32
+
+
+def make_model() -> torch.nn.Sequential:
+    """Build a small MLP whose blocks live under a `layers` attribute."""
+    layers = [
+        torch.nn.Sequential(
+            torch.nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
+            torch.nn.ReLU(),
+            torch.nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
+        )
+        for _ in range(NUM_LAYERS)
+    ]
+    model = torch.nn.Sequential()
+    model.add_module("layers", torch.nn.Sequential(*layers))
+    return model
+
+
+model_name = "tiny-mlp-demo"
+model = make_model()
 
 # + [md]
-# Let's quantize it and initialize a few quantizers.
+# Let's quantize it and initialize a few quantizers. We select the weight quantizers of the first
+# linear layer in each block.
 
 # +
 ff.quantize_model(model)
 
-ff.find_quantizers(model, "**/**/layers/*/self_attn/*/[quantizer:parameter/weight]").initialize(
+ff.find_quantizers(model, "**/layers/*/0/[quantizer:parameter/weight]").initialize(
     ff.nn.LinearQuantizer, num_bits=4, granularity=ff.PerChannel(), quantized_dtype=torch.float32
 )
 
@@ -56,18 +74,17 @@ with (
     ff.estimate_ranges(model, ff.range_setting.running_minmax),
     ff.set_strict_quantization(False),
 ):
-    model(input_ids=torch.randint(0, 100, size=(1, 128)))
+    model(torch.randn(1, HIDDEN_SIZE))
 
-print(
-    "Scale of the first quantizer: ", model.model.layers[0].self_attn.q_proj.weight_quantizer.scale
-)
+print("Scale of the first quantizer: ", model.layers[0][0].weight_quantizer.scale)
 
 # + [md]
-# Now we can save the quantization state.
+# 💾 Now we can save the quantization state. We pass a `name_or_path` to identify the saved state
+# (see the note on the `name_or_path` argument below).
 
 # +
 tmpdir = Path(TemporaryDirectory().name)
-model.save_quantization_state(cache_dir=tmpdir)
+model.save_quantization_state(cache_dir=tmpdir, name_or_path=model_name)
 for p in tmpdir.glob("**/*"):
     print(str(p))
 
@@ -130,13 +147,19 @@ display(HTML(f"<details><summary>config.yaml</summary>{config}</details>"))
 # for yaml ant its syntax.
 
 # + [md]
-# To load the quantization state you should use the [`load_quantization_state`](../../reference/fastforward/nn/quantized_module/#fastforward.nn.quantized_module.QuantizedModule.load_quantization_state) function:
+# To load the quantization state you should use the [`load_quantization_state`](../../reference/fastforward/nn/quantized_module/#fastforward.nn.quantized_module.QuantizedModule.load_quantization_state) function. We start from a fresh, quantized model and load the saved state into it:
 
 # +
-new_model = AutoModelForCausalLM.from_pretrained(model_name)
+new_model = make_model()
 ff.quantize_model(new_model)
 new_model_str = str(new_model)
-new_model.load_quantization_state(cache_dir=tmpdir)
+new_model.load_quantization_state(cache_dir=tmpdir, name_or_path=model_name)
+
+# + [md]
+# 🔍 To see what loading changed, we diff the model's structure before and after the load. The
+# green lines show where the `QuantizerStub` placeholders were replaced by the real quantizers:
+
+# +
 diff = pygments.highlight(
     "\n".join(difflib.unified_diff(new_model_str.splitlines(), str(new_model).splitlines())),
     pygments.lexers.DiffLexer(),
@@ -145,11 +168,15 @@ diff = pygments.highlight(
 display(HTML(diff))
 
 # + [md]
-# As you can see, the quantizer stubs were replaced by the real quantizers. And the quantizer
-# parameters are the same as well:
+# ✅ The stubs were replaced by the real quantizers. The quantizer parameters match the original
+# model too - here we check that the loaded weight quantizer has the same scale:
 
 # +
 torch.testing.assert_close(
-    model.model.layers[0].self_attn.q_proj.weight_quantizer.scale,
-    new_model.model.layers[0].self_attn.q_proj.weight_quantizer.scale,
+    model.layers[0][0].weight_quantizer.scale,
+    new_model.layers[0][0].weight_quantizer.scale,
 )
+
+# + [md]
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear

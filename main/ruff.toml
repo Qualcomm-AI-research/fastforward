@@ -1,4 +1,9 @@
 extend = "../pyproject.toml"
 
 [lint]
-ignore = ["D100", "D101", "D102", "D103", "D104", "CPY001"]
+ignore = ["D100", "D101", "D102", "D103", "D104"]
+
+[lint.per-file-ignores]
+# Notebooks (.nb.py) carry the copyright notice in a footer cell, not a header,
+# so the header check (CPY001) does not apply; it is enforced by scripts/verify.
+"*.nb.py" = ["CPY001"]

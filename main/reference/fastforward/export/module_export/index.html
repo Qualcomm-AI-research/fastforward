@@ -13,14 +13,17 @@
         <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/module_export/">
       
       
-        <link rel="prev" href="../graph_operations/">
+        <link rel="prev" href="../export/">
       
       
-        <link rel="next" href="../../flags/">
+        <link rel="next" href="../pipeline/">
+      
+      
+        
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
@@ -28,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -60,7 +63,6 @@
 
     
     
-    
   </head>
   
   
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.export.module_export.ModuleIORecorder" class="md-skip">
+        <a href="#fastforward.export.module_export.logger" class="md-skip">
           Skip to content
         </a>
       
@@ -173,7 +175,7 @@
         <a href="https://github.com/Qualcomm-AI-research/fastforward" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     Github
@@ -293,7 +295,7 @@
       <a href="https://github.com/Qualcomm-AI-research/fastforward" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     Github
@@ -329,9 +331,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Home
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -340,7 +347,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
-            Home
+            
+  
+    Home
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -356,9 +367,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Overview
+  
+
     
   </span>
+  
   
 
       </a>
@@ -386,9 +402,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Tutorials
+  
+
     
   </span>
+  
   
 
       </a>
@@ -427,9 +448,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     API reference
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -438,7 +464,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
-            API reference
+            
+  
+    API reference
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -471,9 +501,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     fastforward
+  
+
     
   </span>
+  
   
 
             </a>
@@ -488,7 +523,11 @@
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
-            fastforward
+            
+  
+    fastforward
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -504,9 +543,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     autoquant
+  
+
     
   </span>
+  
   
 
       </a>
@@ -527,9 +571,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     cache
+  
+
     
   </span>
+  
   
 
       </a>
@@ -550,9 +599,42 @@
   
   
   <span class="md-ellipsis">
+    
+  
     common
+  
+
     
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dataclasses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    dataclasses
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -573,9 +655,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     dispatcher
+  
+
     
   </span>
+  
   
 
       </a>
@@ -596,9 +683,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     exceptions
+  
+
     
   </span>
+  
   
 
       </a>
@@ -627,7 +719,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -636,24 +728,33 @@
   
   
   <span class="md-ellipsis">
+    
+  
     export
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_6" id="__nav_3_1_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_7" id="__nav_3_1_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_1_6">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_1_7">
             <span class="md-nav__icon md-icon"></span>
-            export
+            
+  
+    export
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -669,32 +770,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     export
+  
+
     
   </span>
   
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../graph_operations/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    graph_operations
-    
-  </span>
   
 
       </a>
@@ -722,9 +805,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     module_export
+  
+
     
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -735,9 +823,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     module_export
+  
+
     
   </span>
+  
   
 
       </a>
@@ -756,9 +849,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#fastforward.export.module_export.logger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        logger
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder" class="md-nav__link">
     <span class="md-ellipsis">
-      ModuleIORecorder
+      
+        ModuleIORecorder
+      
     </span>
   </a>
   
@@ -768,7 +874,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.handle" class="md-nav__link">
     <span class="md-ellipsis">
-      handle
+      
+        handle
+      
     </span>
   </a>
   
@@ -777,7 +885,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.input" class="md-nav__link">
     <span class="md-ellipsis">
-      input
+      
+        input
+      
     </span>
   </a>
   
@@ -786,7 +896,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.input_quantizer_settings" class="md-nav__link">
     <span class="md-ellipsis">
-      input_quantizer_settings
+      
+        input_quantizer_settings
+      
     </span>
   </a>
   
@@ -795,7 +907,20 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.kwargs" class="md-nav__link">
     <span class="md-ellipsis">
-      kwargs
+      
+        kwargs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.module_export.ModuleIORecorder.kwargs_quantizer_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kwargs_quantizer_settings
+      
     </span>
   </a>
   
@@ -804,7 +929,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.module" class="md-nav__link">
     <span class="md-ellipsis">
-      module
+      
+        module
+      
     </span>
   </a>
   
@@ -813,7 +940,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.module_name" class="md-nav__link">
     <span class="md-ellipsis">
-      module_name
+      
+        module_name
+      
     </span>
   </a>
   
@@ -822,7 +951,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.output" class="md-nav__link">
     <span class="md-ellipsis">
-      output
+      
+        output
+      
     </span>
   </a>
   
@@ -831,7 +962,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.output_quantizer_settings" class="md-nav__link">
     <span class="md-ellipsis">
-      output_quantizer_settings
+      
+        output_quantizer_settings
+      
     </span>
   </a>
   
@@ -840,7 +973,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.__call__" class="md-nav__link">
     <span class="md-ellipsis">
-      __call__
+      
+        __call__
+      
     </span>
   </a>
   
@@ -849,7 +984,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.__enter__" class="md-nav__link">
     <span class="md-ellipsis">
-      __enter__
+      
+        __enter__
+      
     </span>
   </a>
   
@@ -858,7 +995,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.__exit__" class="md-nav__link">
     <span class="md-ellipsis">
-      __exit__
+      
+        __exit__
+      
     </span>
   </a>
   
@@ -867,7 +1006,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.__repr__" class="md-nav__link">
     <span class="md-ellipsis">
-      __repr__
+      
+        __repr__
+      
     </span>
   </a>
   
@@ -876,7 +1017,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.attach" class="md-nav__link">
     <span class="md-ellipsis">
-      attach
+      
+        attach
+      
     </span>
   </a>
   
@@ -885,7 +1028,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.detach" class="md-nav__link">
     <span class="md-ellipsis">
-      detach
+      
+        detach
+      
     </span>
   </a>
   
@@ -894,7 +1039,9 @@
           <li class="md-nav__item">
   <a href="#fastforward.export.module_export.ModuleIORecorder.store_io_as_dict" class="md-nav__link">
     <span class="md-ellipsis">
-      store_io_as_dict
+      
+        store_io_as_dict
+      
     </span>
   </a>
   
@@ -908,16 +1055,9 @@
         <li class="md-nav__item">
   <a href="#fastforward.export.module_export.export_modules" class="md-nav__link">
     <span class="md-ellipsis">
-      export_modules
-    </span>
-  </a>
-  
-</li>
       
-        <li class="md-nav__item">
-  <a href="#fastforward.export.module_export.maybe_dequantize_tensors" class="md-nav__link">
-    <span class="md-ellipsis">
-      maybe_dequantize_tensors
+        export_modules
+      
     </span>
   </a>
   
@@ -926,7 +1066,9 @@
         <li class="md-nav__item">
   <a href="#fastforward.export.module_export.maybe_extend_encodings_file" class="md-nav__link">
     <span class="md-ellipsis">
-      maybe_extend_encodings_file
+      
+        maybe_extend_encodings_file
+      
     </span>
   </a>
   
@@ -936,6 +1078,203 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_7_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../pipeline/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pipeline
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_7_3" id="__nav_3_1_7_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_7_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_7_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    pipeline
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/orchestrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    orchestrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    qnn_onnx_pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    qnn_onnx_qdq_pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -955,15 +1294,77 @@
   
   
   
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_7_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../stages/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stages
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_7_4" id="__nav_3_1_7_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_7_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_7_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    stages
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../flags/" class="md-nav__link">
+      <a href="../stages/annotations/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    flags
+    
+  
+    annotations
+  
+
     
   </span>
+  
   
 
       </a>
@@ -979,37 +1380,19 @@
   
   
     <li class="md-nav__item">
-      <a href="../../forward_override/" class="md-nav__link">
+      <a href="../stages/base_pipeline_stages/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    forward_override
+    
+  
+    base_pipeline_stages
+  
+
     
   </span>
   
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logging_utils/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    logging_utils
-    
-  </span>
   
 
       </a>
@@ -1036,33 +1419,42 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_7_4_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../mpath/" class="md-nav__link ">
+            <a href="../stages/onnx/" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    mpath
+    
+  
+    onnx
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_10" id="__nav_3_1_10_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_7_4_3" id="__nav_3_1_7_4_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_1_10">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_1_7_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_7_4_3">
             <span class="md-nav__icon md-icon"></span>
-            mpath
+            
+  
+    onnx
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1073,14 +1465,19 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/fragments/" class="md-nav__link">
+      <a href="../stages/onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    fragments
+    
+  
+    onnx_export_stages
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1096,14 +1493,19 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/selector/" class="md-nav__link">
+      <a href="../stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    selector
+    
+  
+    onnx_qdq_export_stages
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1115,6 +1517,134 @@
           </ul>
         </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stages/passes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    passes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../forward_override/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    forward_override
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logging_utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    logging_utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1142,14 +1672,19 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../nn/" class="md-nav__link ">
+            <a href="../../mpath/" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
-    nn
+    
+  
+    mpath
+  
+
     
   </span>
+  
   
 
             </a>
@@ -1164,7 +1699,132 @@
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_11_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_11">
             <span class="md-nav__icon md-icon"></span>
-            nn
+            
+  
+    mpath
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mpath/fragments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    fragments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mpath/selector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../nn/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nn
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_1_12" id="__nav_3_1_12_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    nn
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1180,9 +1840,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     activations
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1203,9 +1868,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     container
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1226,9 +1896,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     conv
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1249,9 +1924,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     dynamic_linear_quantizer
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1272,9 +1952,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     embedding
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1295,9 +1980,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     functional
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1318,9 +2008,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     linear
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1341,9 +2036,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     linear_quantizer
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1364,9 +2064,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     normalization
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1387,9 +2092,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quantized_module
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1410,9 +2120,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quantizer
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1441,9 +2156,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     overrides
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1470,7 +2190,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_14" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1479,24 +2199,33 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quantization
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_13" id="__nav_3_1_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_14" id="__nav_3_1_14_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_1_13">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_14">
             <span class="md-nav__icon md-icon"></span>
-            quantization
+            
+  
+    quantization
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1518,7 +2247,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_13_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_14_1" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1527,24 +2256,33 @@
   
   
   <span class="md-ellipsis">
+    
+  
     affine
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_13_1" id="__nav_3_1_13_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_14_1" id="__nav_3_1_14_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_13_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_1_13_1">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_14_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_14_1">
             <span class="md-nav__icon md-icon"></span>
-            affine
+            
+  
+    affine
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1560,9 +2298,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     dynamic
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1583,9 +2326,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     function
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1606,9 +2354,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     range
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1629,9 +2382,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     static
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1655,14 +2413,75 @@
   
   
     <li class="md-nav__item">
+      <a href="../../quantization/freeze/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    freeze
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../quantization/function/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
+    
+  
     function
+  
+
     
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quantization/gptq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    gptq
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -1683,55 +2502,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     granularity
+  
+
     
   </span>
   
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../quantization/local_error/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    local_error
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../quantization/output_mse/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    output_mse
-    
-  </span>
   
 
       </a>
@@ -1752,9 +2530,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quant_init
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1775,9 +2558,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quantizer_annotations
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1798,9 +2586,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     random
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1821,9 +2614,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     ste
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1844,9 +2642,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     strict_quantization
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1867,9 +2670,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     tiled_tensor
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1898,9 +2706,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     quantized_tensor
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1927,7 +2740,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_16" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1936,24 +2749,33 @@
   
   
   <span class="md-ellipsis">
+    
+  
     range_setting
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_15" id="__nav_3_1_15_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_16" id="__nav_3_1_16_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_1_15">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_16">
             <span class="md-nav__icon md-icon"></span>
-            range_setting
+            
+  
+    range_setting
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1969,9 +2791,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     common
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1992,9 +2819,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     min_error
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2015,9 +2847,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     minmax
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2046,9 +2883,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     serialization
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2075,7 +2917,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_17" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_18" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2084,24 +2926,33 @@
   
   
   <span class="md-ellipsis">
+    
+  
     testing
+  
+
     
   </span>
+  
   
 
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_17" id="__nav_3_1_17_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_1_18" id="__nav_3_1_18_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_17_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_1_17">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1_18">
             <span class="md-nav__icon md-icon"></span>
-            testing
+            
+  
+    testing
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -2117,9 +2968,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     autoquant
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2140,9 +2996,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     initialization
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2163,9 +3024,42 @@
   
   
   <span class="md-ellipsis">
+    
+  
     metrics
+  
+
     
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing/package_mock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    package_mock
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2186,9 +3080,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     string
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2217,9 +3116,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     type_common
+  
+
     
   </span>
+  
   
 
       </a>
@@ -2253,6 +3157,7 @@
           
           
             <div class="md-content" data-md-component="content">
+              
               <article class="md-content__inner md-typeset">
                 
                   
@@ -2286,13 +3191,33 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
 
 
-  <div class="doc doc-children">
+<div class="doc doc-children">
 
 
 
 
 
 
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.export.module_export.logger" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.module_export.logger" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
 
 
 
@@ -2309,6 +3234,7 @@ Please expect API changes. We encourage you to file bug reports if you run into 
     <div class="doc doc-contents ">
 
 
+
         <p>Provides functionality for logging inputs/outputs/kwargs.</p>
 
 
@@ -2318,19 +3244,20 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
 
 
-                  <details class="quote">
+                  <details class="mkdocstrings-source">
                     <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">module</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">module_name</span> <span class="o">=</span> <span class="n">module_name</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">RemovableHandle</span> <span class="o">=</span> <span class="kc">None</span>
@@ -2339,14 +3266,15 @@ Please expect API changes. We encourage you to file bug reports if you run into 
     <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer_settings</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer_settings</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">kwargs_quantizer_settings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
 
 
-  <div class="doc doc-children">
+<div class="doc doc-children">
 
 
 
@@ -2426,6 +3354,26 @@ Please expect API changes. We encourage you to file bug reports if you run into 
   </span>
 
 <a href="#fastforward.export.module_export.ModuleIORecorder.kwargs" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="fastforward.export.module_export.ModuleIORecorder.kwargs_quantizer_settings" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">kwargs_quantizer_settings</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.module_export.ModuleIORecorder.kwargs_quantizer_settings" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -2531,22 +3479,23 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Logs inputs/outputs/kwargs in dictionary.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">input_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
@@ -2558,8 +3507,9 @@ Please expect API changes. We encourage you to file bug reports if you run into 
     <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output_</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">output_</span><span class="p">,)</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer_settings</span> <span class="o">=</span> <span class="n">maybe_dequantize_tensors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span> <span class="o">=</span> <span class="n">maybe_dequantize_tensors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2580,12 +3530,12 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Attach the recorder to the module when entering the context.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ModuleIORecorder&quot;</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ModuleIORecorder&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach the recorder to the module when entering the context.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">attach</span><span class="p">()</span>
     <span class="k">return</span> <span class="bp">self</span>
@@ -2609,16 +3559,16 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Detach the recorder from the module when exiting the context.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">exc_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exc_value</span><span class="p">:</span> <span class="ne">BaseException</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
@@ -2644,11 +3594,11 @@ Please expect API changes. We encourage you to file bug reports if you run into 
     <div class="doc doc-contents ">
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
 <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> for module </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">&quot;</span>
 </code></pre></div></td></tr></table></div>
@@ -2671,14 +3621,14 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Attach recorder to tracked module.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach recorder to tracked module.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Handle for </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2"> is already attached. Cannot attach a new one.&quot;</span>
@@ -2704,12 +3654,12 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Remove recorder from tracked module.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove recorder from tracked module.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
@@ -2733,18 +3683,18 @@ Please expect API changes. We encourage you to file bug reports if you run into 
         <p>Store inputs/outputs/kwargs as a pickle dictionary.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">store_io_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">store_io_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store inputs/outputs/kwargs as a pickle dictionary.&quot;&quot;&quot;</span>
     <span class="n">input_output_registry</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
@@ -2773,7 +3723,7 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
 
 <h3 id="fastforward.export.module_export.export_modules" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">export_modules</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">module_or_module_collection</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">enable_encodings_propagation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">export_modules</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">module_or_module_collection</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding_schema_handler</span><span class="o">=</span><span class="n">V1SchemaHandler</span><span class="p">(),</span> <span class="n">alter_node_names</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">onnx_export_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s1">&#39;qnn&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;onnx&#39;</span><span class="p">,</span> <span class="n">pipeline_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">orchestrator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#fastforward.export.module_export.export_modules" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -2906,23 +3856,6 @@ information.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>enable_encodings_propagation</code>
-            </td>
-            <td>
-                  <code><span title="bool">bool</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Option to propagate the quantization encodings through as many
-view-type operations as possible for each exported graph.</p>
-              </div>
-            </td>
-            <td>
-                  <code>False</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>verbose</code>
             </td>
             <td>
@@ -2931,6 +3864,141 @@ view-type operations as possible for each exported graph.</p>
             <td>
               <div class="doc-md-description">
                 <p>Whether to print verbose messages. If <code>None</code>, some messages will be printed.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>encoding_schema_handler</code>
+            </td>
+            <td>
+                  <code><span title="fastforward.export._export_schemas.EncodingSchemaHandler">EncodingSchemaHandler</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Object for choosing and creating the appropriate QNN encodings
+file schema</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="fastforward.export._export_schemas.V1SchemaHandler">V1SchemaHandler</span>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>alter_node_names</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to alter the node names in a graph. This is due to some versions
+of QNN creating new nodes that might cause a duplicate name issue.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>onnx_export_options</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Dictionary for passing setting to the <code>torch.onnx.export</code> function.
+WARNING: Certain options (such as setting the <code>optimize</code> to True) can cause misalignments between
+the ONNX graph and the quantization encodings file. For example, if your mode contains linear layers,
+the associated weight transposition will be removed from the graph and the weights permanently transposed.
+If this is combined with per channel quantization on the weights then your encodings will be pointing
+to the wrong dimension of the weights.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>target</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Export target used for pipeline resolution when <code>pipeline_factory</code> is not provided.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;qnn&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>format</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Export format used for pipeline resolution when <code>pipeline_factory</code> is not provided.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;onnx&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pipeline_factory</code>
+            </td>
+            <td>
+                  <code><span title="fastforward.export.module_export._PipelineFactoryT">_PipelineFactoryT</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional direct pipeline factory override for module export requests.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>orchestrator</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pipeline&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;orchestrator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ExportOrchestrator&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;registry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.export.pipeline.ExportOrchestrator&lt;/code&gt;)" href="../pipeline/orchestrator/#fastforward.export.pipeline.orchestrator.ExportOrchestrator">ExportOrchestrator</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional orchestrator instance used to run all module exports.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>registry</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pipeline&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;registry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;PipelineRegistry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt; (&lt;code&gt;fastforward.export.pipeline.PipelineRegistry&lt;/code&gt;)" href="../pipeline/registry/#fastforward.export.pipeline.registry.PipelineRegistry">PipelineRegistry</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional registry used when constructing orchestrator in <code>export(...)</code>.</p>
               </div>
             </td>
             <td>
@@ -2965,31 +4033,9 @@ and ONNX files are stored).</p>
     </table>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
@@ -3085,15 +4131,83 @@ and ONNX files are stored).</p>
 <span class="normal">218</span>
 <span class="normal">219</span>
 <span class="normal">220</span>
-<span class="normal">221</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">args</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[()],</span>
     <span class="n">module_or_module_collection</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span> <span class="o">|</span> <span class="n">MPathCollection</span><span class="p">,</span>
     <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">output_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
     <span class="n">kwargs</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">enable_encodings_propagation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">encoding_schema_handler</span><span class="p">:</span> <span class="n">EncodingSchemaHandler</span> <span class="o">=</span> <span class="n">V1SchemaHandler</span><span class="p">(),</span>
+    <span class="n">alter_node_names</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">onnx_export_options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;qnn&quot;</span><span class="p">,</span>
+    <span class="nb">format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;onnx&quot;</span><span class="p">,</span>
+    <span class="n">pipeline_factory</span><span class="p">:</span> <span class="n">_PipelineFactoryT</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">orchestrator</span><span class="p">:</span> <span class="n">ExportOrchestrator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="n">PipelineRegistry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export a collection of modules from a given model.</span>
 
@@ -3122,9 +4236,22 @@ and ONNX files are stored).</p>
 <span class="sd">        model_name: The name of the model, the output directory will be named after it.</span>
 <span class="sd">        kwargs: The kwargs used at inference for the torch model</span>
 <span class="sd">        output_path: Path to the exported artifacts.</span>
-<span class="sd">        enable_encodings_propagation: Option to propagate the quantization encodings through as many</span>
-<span class="sd">            view-type operations as possible for each exported graph.</span>
 <span class="sd">        verbose: Whether to print verbose messages. If `None`, some messages will be printed.</span>
+<span class="sd">        encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings</span>
+<span class="sd">            file schema</span>
+<span class="sd">        alter_node_names: Whether to alter the node names in a graph. This is due to some versions</span>
+<span class="sd">            of QNN creating new nodes that might cause a duplicate name issue.</span>
+<span class="sd">        onnx_export_options: Dictionary for passing setting to the `torch.onnx.export` function.</span>
+<span class="sd">            WARNING: Certain options (such as setting the `optimize` to True) can cause misalignments between</span>
+<span class="sd">            the ONNX graph and the quantization encodings file. For example, if your mode contains linear layers,</span>
+<span class="sd">            the associated weight transposition will be removed from the graph and the weights permanently transposed.</span>
+<span class="sd">            If this is combined with per channel quantization on the weights then your encodings will be pointing</span>
+<span class="sd">            to the wrong dimension of the weights.</span>
+<span class="sd">        target: Export target used for pipeline resolution when `pipeline_factory` is not provided.</span>
+<span class="sd">        format: Export format used for pipeline resolution when `pipeline_factory` is not provided.</span>
+<span class="sd">        pipeline_factory: Optional direct pipeline factory override for module export requests.</span>
+<span class="sd">        orchestrator: Optional orchestrator instance used to run all module exports.</span>
+<span class="sd">        registry: Optional registry used when constructing orchestrator in `export(...)`.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        paths: A dictionary of module names to exported paths (location where the encodings</span>
@@ -3177,31 +4304,50 @@ and ONNX files are stored).</p>
         <span class="n">module_name</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">module_name</span>
         <span class="n">module_output_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">module_name</span>
 
-        <span class="n">module_input_data</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">input</span>
-        <span class="n">module_input_kwargs</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">kwargs</span>
+        <span class="c1"># Export with detached tensors to avoid torch.export failures caused by</span>
+        <span class="c1"># non-leaf inputs captured from prior module executions.</span>
+        <span class="n">module_input_data</span> <span class="o">=</span> <span class="n">_deep_detach_tensors</span><span class="p">(</span><span class="n">module_io_recorder</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
+        <span class="n">module_input_kwargs</span> <span class="o">=</span> <span class="n">_deep_detach_tensors</span><span class="p">(</span><span class="n">module_io_recorder</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">onnx_options</span> <span class="o">=</span> <span class="n">onnx_export_options</span> <span class="ow">or</span> <span class="p">{}</span>
 
         <span class="n">export</span><span class="p">(</span>
             <span class="n">module</span><span class="p">,</span>
             <span class="n">module_input_data</span><span class="p">,</span>
             <span class="n">module_output_path</span><span class="p">,</span>
             <span class="n">module_name</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+            <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span>
             <span class="n">model_kwargs</span><span class="o">=</span><span class="n">module_input_kwargs</span><span class="p">,</span>
-            <span class="n">enable_encodings_propagation</span><span class="o">=</span><span class="n">enable_encodings_propagation</span><span class="p">,</span>
             <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="n">encoding_schema_handler</span><span class="o">=</span><span class="n">encoding_schema_handler</span><span class="p">,</span>
+            <span class="n">alter_node_names</span><span class="o">=</span><span class="n">alter_node_names</span><span class="p">,</span>
+            <span class="n">onnx_export_options</span><span class="o">=</span><span class="n">onnx_options</span><span class="p">,</span>
+            <span class="n">pipeline_factory</span><span class="o">=</span><span class="n">pipeline_factory</span><span class="p">,</span>
+            <span class="n">orchestrator</span><span class="o">=</span><span class="n">orchestrator</span><span class="p">,</span>
+            <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">module_input_quantizer_settings</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">input_quantizer_settings</span>
         <span class="n">module_output_quantizer_settings</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">output_quantizer_settings</span>
+        <span class="n">module_kwargs_quantizer_settings</span> <span class="o">=</span> <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">kwargs_quantizer_settings</span>
         <span class="n">quantizer_settings</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">module_input_quantizer_settings</span><span class="p">,</span>
             <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">module_output_quantizer_settings</span><span class="p">,</span>
+            <span class="s2">&quot;kwargs&quot;</span><span class="p">:</span> <span class="n">module_kwargs_quantizer_settings</span><span class="p">,</span>
         <span class="p">}</span>
-        <span class="n">maybe_extend_encodings_file</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">module_output_path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">)</span>
+        <span class="n">maybe_extend_encodings_file</span><span class="p">(</span>
+            <span class="n">module_name</span><span class="p">,</span> <span class="n">module_output_path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">,</span> <span class="n">encoding_schema_handler</span>
+        <span class="p">)</span>
 
         <span class="n">input_output_location</span> <span class="o">=</span> <span class="n">module_output_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">_input_output.pickle&quot;</span>
         <span class="n">module_io_recorder</span><span class="o">.</span><span class="n">store_io_as_dict</span><span class="p">(</span><span class="n">input_output_location</span><span class="p">)</span>
 
         <span class="n">paths</span><span class="p">[</span><span class="n">module_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">module_output_path</span>
+        <span class="c1"># Since we are using the same handler, we need to clear the entries once the</span>
+        <span class="c1"># process is complete for each modules. Otherwise, there can be duplicate entries</span>
+        <span class="c1"># and overriding of encodings from one module to the next.</span>
+        <span class="n">encoding_schema_handler</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">paths</span>
 </code></pre></div></td></tr></table></div>
@@ -3213,183 +4359,8 @@ and ONNX files are stored).</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.export.module_export.maybe_dequantize_tensors" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">maybe_dequantize_tensors</span><span class="p">(</span><span class="n">tensors</span><span class="p">)</span></code>
-
-<a href="#fastforward.export.module_export.maybe_dequantize_tensors" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Dequantizes tensors.</p>
-<p>The output tensors of quantized modules will usually be returned
-as <code>QuantizedTensor</code>s. As these are custom tensors they cannot be
-used in that form for exporting, and need to be dequantized. This
-function performs this dequantization in the case a <code>QuantizedTensor</code>
-is found on the input/output module capture, and it also stores
-its quantization settings, so these can be appended to the encodings
-file.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>tensors</code>
-            </td>
-            <td>
-                  <code><span title="tuple">tuple</span>[<span title="torch.Tensor">Tensor</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>A tuple of tensors, where some of these may be
-<code>QuantizedTensor</code>s.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="tuple">tuple</span>[<span title="torch.Tensor">Tensor</span>, ...]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The (maybe) dequantized tensors, and the quantizer settings for</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="tuple">tuple</span>[<span title="fastforward.export._export_helpers.QuantParametersDict">QuantParametersDict</span>, ...]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>each of those.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_dequantize_tensors</span><span class="p">(</span>
-    <span class="n">tensors</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dequantizes tensors.</span>
-
-<span class="sd">    The output tensors of quantized modules will usually be returned</span>
-<span class="sd">    as `QuantizedTensor`s. As these are custom tensors they cannot be</span>
-<span class="sd">    used in that form for exporting, and need to be dequantized. This</span>
-<span class="sd">    function performs this dequantization in the case a `QuantizedTensor`</span>
-<span class="sd">    is found on the input/output module capture, and it also stores</span>
-<span class="sd">    its quantization settings, so these can be appended to the encodings</span>
-<span class="sd">    file.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        tensors: A tuple of tensors, where some of these may be</span>
-<span class="sd">            `QuantizedTensor`s.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        The (maybe) dequantized tensors, and the quantizer settings for</span>
-<span class="sd">        each of those.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">output_tensors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">quantizer_settings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">for</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="n">tensors</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">QuantizedTensor</span><span class="p">):</span>
-            <span class="n">quant_args</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">quant_args</span><span class="p">()</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quant_args</span><span class="p">,</span> <span class="n">StaticAffineQuantParams</span><span class="p">)</span>
-            <span class="n">scale</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">num_bits</span> <span class="o">=</span> <span class="n">quant_args</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span> <span class="n">quant_args</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="n">quant_args</span><span class="o">.</span><span class="n">num_bits</span>
-            <span class="n">tensor_quant_args</span><span class="p">:</span> <span class="n">QuantParametersDict</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;scale&quot;</span><span class="p">:</span> <span class="n">scale</span><span class="p">,</span>
-                <span class="s2">&quot;offset&quot;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span>
-                <span class="s2">&quot;num_bits&quot;</span><span class="p">:</span> <span class="n">num_bits</span><span class="p">,</span>
-            <span class="p">}</span>
-
-            <span class="n">quantizer_settings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tensor_quant_args</span><span class="p">)</span>
-            <span class="n">output_tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">dequantize</span><span class="p">())</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">output_tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">output_tensors</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">quantizer_settings</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
 <h3 id="fastforward.export.module_export.maybe_extend_encodings_file" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">maybe_extend_encodings_file</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">module_export</span><span class="o">.</span><span class="n">maybe_extend_encodings_file</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">quantizer_settings</span><span class="p">,</span> <span class="n">encoding_schema_handler</span><span class="p">)</span></code>
 
 <a href="#fastforward.export.module_export.maybe_extend_encodings_file" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -3454,7 +4425,7 @@ activations or parameters.</p>
                 <code>quantizer_settings</code>
             </td>
             <td>
-                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="tuple">tuple</span>[<span title="fastforward.export._export_helpers.QuantParametersDict">QuantParametersDict</span>, ...]]</code>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3465,74 +4436,30 @@ activations or parameters.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>encoding_schema_handler</code>
+            </td>
+            <td>
+                  <code><span title="fastforward.export._export_schemas.EncodingSchemaHandler">EncodingSchemaHandler</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Object for choosing and creating the appropriate QNN encodings
+file schema</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
       </tbody>
     </table>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">285</span>
 <span class="normal">286</span>
 <span class="normal">287</span>
 <span class="normal">288</span>
@@ -3542,10 +4469,95 @@ activations or parameters.</p>
 <span class="normal">292</span>
 <span class="normal">293</span>
 <span class="normal">294</span>
-<span class="normal">295</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
     <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
-    <span class="n">quantizer_settings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantParametersDict</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span>
+    <span class="n">quantizer_settings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">encoding_schema_handler</span><span class="p">:</span> <span class="n">EncodingSchemaHandler</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extends the QNN encodings file.</span>
 
@@ -3562,16 +4574,14 @@ activations or parameters.</p>
 <span class="sd">        module_name: Name of the module.</span>
 <span class="sd">        path: Path where the module output directory is stored.</span>
 <span class="sd">        quantizer_settings: The quantizer settings gathered during inference.</span>
+<span class="sd">        encoding_schema_handler: Object for choosing and creating the appropriate QNN encodings</span>
+<span class="sd">            file schema</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">encodings_file_location</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">.encodings&quot;</span>
     <span class="n">onnx_artifact_location</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">.onnx&quot;</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">encodings_file_location</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
         <span class="n">encodings_dictionary</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
-
-    <span class="c1"># The existing encodings dictionary (only its `activation_encodings` section)</span>
-    <span class="c1"># might need to be overwritten.</span>
-    <span class="n">activation_encodings_dictionary</span> <span class="o">=</span> <span class="n">encodings_dictionary</span><span class="p">[</span><span class="s2">&quot;activation_encodings&quot;</span><span class="p">]</span>
 
     <span class="c1"># In order to associate potential inputs with quantizer settings we need</span>
     <span class="c1"># to retrieve the graph input names. This can be done through the onnxruntime</span>
@@ -3581,36 +4591,60 @@ activations or parameters.</p>
     <span class="p">)</span>
 
     <span class="n">quantizer_input_settings</span> <span class="o">=</span> <span class="n">quantizer_settings</span><span class="p">[</span><span class="s2">&quot;input&quot;</span><span class="p">]</span>
+    <span class="n">quantizer_kwargs_settings</span> <span class="o">=</span> <span class="n">quantizer_settings</span><span class="p">[</span><span class="s2">&quot;kwargs&quot;</span><span class="p">]</span>
     <span class="n">ort_session_inputs</span> <span class="o">=</span> <span class="n">ort_session</span><span class="o">.</span><span class="n">get_inputs</span><span class="p">()</span>
 
-    <span class="c1"># Here we iterate through the quantizer input settings and in the case that</span>
-    <span class="c1"># an input does not appear on the original encodings file then we create</span>
-    <span class="c1"># a new entry for it.</span>
-    <span class="c1"># NB: We cannot retrieve the input&#39;s name from the QuantizedTensor, because</span>
-    <span class="c1"># we are operating at the module and not graph level. However, we can consider</span>
-    <span class="c1"># that the inputs will appear in the same sequence in both graph and module.</span>
-    <span class="k">for</span> <span class="n">input_idx</span><span class="p">,</span> <span class="n">quant_settings</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">quantizer_input_settings</span><span class="p">):</span>
-        <span class="n">ort_input_name</span> <span class="o">=</span> <span class="n">ort_session_inputs</span><span class="p">[</span><span class="n">input_idx</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+    <span class="c1"># Iterate first through all the graph inputs. In the case we find that the</span>
+    <span class="c1"># input name exists in the kwargs quantizer settings, then we know that</span>
+    <span class="c1"># the argument was passed as kwarg, and we assign its stored encoding.</span>
+    <span class="c1"># If it is not found in the kwargs we consider it to be a positional input</span>
+    <span class="c1"># instead. We perform the same check (whether the quantizer settings are</span>
+    <span class="c1"># not None) and we add the settings to the schema handler.</span>
 
-        <span class="k">if</span> <span class="n">ort_input_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">activation_encodings_dictionary</span><span class="p">:</span>
-            <span class="n">qnn_encoding_entry</span> <span class="o">=</span> <span class="n">create_qnn_encoding_entry</span><span class="p">(</span><span class="n">quant_settings</span><span class="p">)</span>
-            <span class="n">activation_encodings_dictionary</span><span class="p">[</span><span class="n">ort_input_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">qnn_encoding_entry</span>
+    <span class="c1"># NB: We consider that the order of the positional arguments is the same</span>
+    <span class="c1"># for the torch module and the ONNX graph.</span>
+    <span class="n">quantizer_kwargs_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">quantizer_kwargs_settings</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">positional_input_idx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">ort_input</span> <span class="ow">in</span> <span class="n">ort_session_inputs</span><span class="p">:</span>
+        <span class="c1"># First check if the input is defined as kwarg and if that is quantized.</span>
+        <span class="n">quant_settings</span> <span class="o">=</span> <span class="n">quantizer_kwargs_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ort_input</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">quant_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">encoding_schema_handler</span><span class="o">.</span><span class="n">add_encoding</span><span class="p">(</span><span class="n">ort_input</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">quant_settings</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># Then the input was passed as a positional argument, or there are no positional</span>
+        <span class="c1"># inputs. We check if the input was quantized and iterate over the input quantizer</span>
+        <span class="c1"># settings.</span>
+        <span class="k">elif</span> <span class="n">positional_input_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">quantizer_input_settings</span><span class="p">):</span>
+            <span class="n">quant_settings</span> <span class="o">=</span> <span class="n">quantizer_input_settings</span><span class="p">[</span><span class="n">positional_input_idx</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">quant_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">encoding_schema_handler</span><span class="o">.</span><span class="n">add_encoding</span><span class="p">(</span><span class="n">ort_input</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">quant_settings</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">positional_input_idx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">frame</span> <span class="o">:=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">():</span>
+                <span class="n">function_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">frame</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">function_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.maybe_extend_encodings_file&quot;</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">function_name</span><span class="si">}</span><span class="s2">] Input mapping not found (this is NOT necessarily an error):</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  • Input: &#39;</span><span class="si">{</span><span class="n">ort_input</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; (module: &#39;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">&#39;)</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  • Available kwargs: </span><span class="si">{</span><span class="n">quantizer_kwargs_keys</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  • Args exhausted: range(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">quantizer_input_settings</span><span class="p">)</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  • Causes: missing quantizer | pruned export | graph change</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  • Action: skipping encodings entry</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-    <span class="c1"># The same process detailed for appending input encodings to the encodings</span>
-    <span class="c1"># dictionary is mirrored for the output encodings.</span>
+    <span class="c1"># Then iterate through the graph outputs and in the case an output is assigned</span>
+    <span class="c1"># has quantizer settings, then add them to the schema handler.</span>
     <span class="n">quantizer_output_settings</span> <span class="o">=</span> <span class="n">quantizer_settings</span><span class="p">[</span><span class="s2">&quot;output&quot;</span><span class="p">]</span>
     <span class="n">ort_session_outputs</span> <span class="o">=</span> <span class="n">ort_session</span><span class="o">.</span><span class="n">get_outputs</span><span class="p">()</span>
 
-    <span class="k">for</span> <span class="n">output_idx</span><span class="p">,</span> <span class="n">quant_settings</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">quantizer_output_settings</span><span class="p">):</span>
-        <span class="n">ort_output_name</span> <span class="o">=</span> <span class="n">ort_session_outputs</span><span class="p">[</span><span class="n">output_idx</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">for</span> <span class="n">ort_output</span><span class="p">,</span> <span class="n">output_quantizer_settings</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">ort_session_outputs</span><span class="p">,</span> <span class="n">quantizer_output_settings</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">output_quantizer_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">encoding_schema_handler</span><span class="o">.</span><span class="n">add_encoding</span><span class="p">(</span><span class="n">ort_output</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">output_quantizer_settings</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">ort_output_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">activation_encodings_dictionary</span><span class="p">:</span>
-            <span class="n">qnn_encoding_entry</span> <span class="o">=</span> <span class="n">create_qnn_encoding_entry</span><span class="p">(</span><span class="n">quant_settings</span><span class="p">)</span>
-            <span class="n">activation_encodings_dictionary</span><span class="p">[</span><span class="n">ort_output_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">qnn_encoding_entry</span>
-
-    <span class="c1"># We overwrite the `activation_encodings` of the original encodings dictionary</span>
-    <span class="c1"># so it includes any non-explicitly quantized inputs and store the updated version.</span>
-    <span class="n">encodings_dictionary</span><span class="p">[</span><span class="s2">&quot;activation_encodings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">activation_encodings_dictionary</span>
+    <span class="n">encodings_dictionary</span> <span class="o">=</span> <span class="n">encoding_schema_handler</span><span class="o">.</span><span class="n">build_encodings_dictionary</span><span class="p">()</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">encodings_file_location</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">encodings_dictionary</span><span class="p">,</span> <span class="n">fp</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
@@ -3675,10 +4709,11 @@ activations or parameters.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
