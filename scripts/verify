@@ -49,12 +49,14 @@ function shell-check ()
 function notebook-copyright()
 {
   local failed=0
-  for nb in docs/examples/*.nb.py; do
-    if ! tail -3 "$nb" | grep -q 'SPDX-License-Identifier'; then
+  local expected
+  expected=$'# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.\n# SPDX-License-Identifier: BSD-3-Clause-Clear'
+  while IFS= read -r nb; do
+    if [ "$(tail -2 "$nb")" != "$expected" ]; then
       echo "Missing copyright footer: $nb"
       failed=1
     fi
-  done
+  done < <(find docs -name '*.nb.py')
   return "$failed"
 }
 
