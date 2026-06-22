@@ -9,3 +9,4 @@ Here is a list of examples which you could check to learn how to use FastForward
 * [Building and customizing export pipelines](export_pipeline.nb.py)
 * [Save and load quantization state](save_load_quantization_state.nb.py)
 * [Autoquant](autoquant.md)
+* [Autoquant: Quantizing Llama-3.2](autoquant_llama.nb.py)

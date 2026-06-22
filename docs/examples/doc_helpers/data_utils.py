@@ -5,7 +5,10 @@
 # Copyright 2018- The Hugging Face team. All rights reserved. Licensed under the Apache License, Version 2.0
 # License is provided for attribution purposes only, Not a Contribution
 
-from itertools import chain
+from itertools import chain, islice
+from typing import Sized
+
+from tqdm import tqdm
 
 
 def tokenize_dataset(dataset, tokenizer, sequence_length):
@@ -52,3 +55,8 @@ def tokenize_dataset(dataset, tokenizer, sequence_length):
         desc=f"Grouping texts in chunks of {sequence_length}",
     )
     return tokenized_datasets
+
+
+def sliced_tqdm(iterator: Sized, limit: int | None = None, **kwargs) -> tqdm:
+    numel = limit if limit else len(iterator)
+    return tqdm(islice(iterator, limit), total=numel, **kwargs)  # type:ignore[call-overload]

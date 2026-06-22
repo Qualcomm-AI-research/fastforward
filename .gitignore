@@ -5,6 +5,7 @@ __pycache__/
 *.egg
 MANIFEST
 .pytest_cache/
+*.ipynb
 .ipynb_checkpoints
 .mypy_cache/
 .dmypy.json
