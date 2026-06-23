@@ -581,7 +581,7 @@ def test_trace_then_local_optimize_only_targets_specified_module() -> None:
     initial_w2 = model.fc2.weight.data.clone()
 
     specs = [
-        SubgraphSpec(model.fc1, model.fc1, fn=functools.partial(_sgd_step, lr=0.1)),
+        SubgraphSpec(region=model.fc1, fn=functools.partial(_sgd_step, lr=0.1)),
     ]
     calibration = [torch.randn(1, 8) for _ in range(4)]
 
@@ -610,7 +610,7 @@ def test_trace_then_local_optimize_fn_receives_original_module_and_dataset() -> 
         received["batches"] = list(bundle)
 
     # WHEN we run local_optimize with the spy fn
-    specs = [SubgraphSpec(model.fc1, model.fc1, fn=spy)]
+    specs = [SubgraphSpec(region=model.fc1, fn=spy)]
     with local_optimize(graph, specs):
         graph(calibration)
 
@@ -651,8 +651,8 @@ def test_trace_then_local_optimize_multiple_specs_each_targets_its_module() -> N
         call_log.append(name)
 
     specs = [
-        SubgraphSpec(model.fc1, model.fc1, fn=functools.partial(record, "fc1")),
-        SubgraphSpec(model.fc2, model.fc2, fn=functools.partial(record, "fc2")),
+        SubgraphSpec(region=model.fc1, fn=functools.partial(record, "fc1")),
+        SubgraphSpec(region=model.fc2, fn=functools.partial(record, "fc2")),
     ]
     calibration = [torch.randn(1, 8) for _ in range(2)]
 

@@ -134,7 +134,7 @@ def test_register_and_resolve(target: TargetType | str, expected_modules_attr: l
 
     # THEN the expected modules are returned
     expected = [getattr(model, attr) for attr in expected_modules_attr]
-    assert set(result) == set(expected)
+    assert {s.region for s in result} == set(expected)
 
 
 def test_register_overwrites_previous() -> None:
@@ -148,7 +148,7 @@ def test_register_overwrites_previous() -> None:
     result = registry.resolve(model, _dummy_algorithm)
 
     # THEN only Conv2d is returned (overwritten, not appended)
-    assert result == [model.conv]
+    assert [s.region for s in result] == [model.conv]
 
 
 def test_resolve_unregistered_algorithm_raises() -> None:
@@ -184,4 +184,4 @@ def test_register_and_resolve_heterogeneous_target() -> None:
 
     # THEN resolving returns all Linear layers and the conv instance
     result = registry.resolve(model, _dummy_algorithm)
-    assert set(result) == {model.linear1, model.linear2, model.conv}
+    assert {s.region for s in result} == {model.linear1, model.linear2, model.conv}

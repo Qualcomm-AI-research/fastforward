@@ -941,23 +941,73 @@ def topological_sort(graph: GraphModule) -> list[NodeRef]:
 DEFAULT_CONTEXT = nullcontext()
 
 
+@dataclasses.dataclass(frozen=True)
+class Span:
+    """A contiguous path between two modules in the graph (inclusive)."""
+
+    start: torch.nn.Module
+    end: torch.nn.Module
+
+
+@dataclasses.dataclass(frozen=True)
+class Group:
+    """A set of sibling modules that form a single logical unit.
+
+    Members must be siblings in the graph: they must share the same
+    predecessors and the same successors. The canonical example is the
+    `{q_proj, k_proj, v_proj}` triplet in attention, all reading from the
+    same layernorm and all feeding into sdpa.
+
+    Non-sibling combinations (e.g. modules in different layers) are rejected
+    at resolution time, since they have no well-defined position in topological
+    order to act as a single unit.
+    """
+
+    modules: tuple[torch.nn.Module, ...]
+
+
+"""Regions define what a spec can target.
+- A single `torch.nn.Module` e.g. model.linear1.
+- A `Span` e.g. every layer between model.linear1 and model.relu (inclusive).
+- A `Group` e.g. {Q, K, V}_proj — sibling modules treated as one logical unit.
+"""
+Region: TypeAlias = torch.nn.Module | Span | Group
+
+
+@dataclasses.dataclass(frozen=True)
+class ResolvedRegion:
+    """The resolved form of a Region against a concrete graph."""
+
+    nodes: set[NodeRef]
+    target: torch.nn.Module
+
+
+def _validate_siblings(graph: GraphModule, refs: Sequence[NodeRef]) -> None:
+    """Ensure all `refs` share the same predecessors and successors in `graph`."""
+    if len(refs) < 2:
+        return
+
+    pred = set(graph.node_inputs(refs[0]))
+    succ = set(graph.node_outputs(refs[0]))
+    for ref in refs[1:]:
+        if set(graph.node_inputs(ref)) != pred or set(graph.node_outputs(ref)) != succ:
+            names = [r.name for r in refs]
+            msg = f"Group members must be siblings (same predecessors and successors): {names}"
+            raise ValueError(msg)
+
+
 @dataclasses.dataclass
 class SubgraphSpec:
     """A specification for targeting a subgraph with a function.
 
-    When the `input` and `output` modules of a GraphModule are selected, we can create a
-    subgraph that includes all layers on the path (inclusive).
-
     Args:
-        input: The start module of the subgraph.
-        output: The end module of the subgraph.
+        region: The region to turn into a subgraph.
         fn: Function to execute on the subgraph.
         contexts: Sequence of ContextManagers that generate input activations. If
             not specified, inputs are computed in a single default execution context.
     """
 
-    input: torch.nn.Module
-    output: torch.nn.Module
+    region: Region
 
     fn: dataclasses.InitVar[Callable[..., None]]
     contexts: dataclasses.InitVar[Contexts | None] = None
@@ -965,6 +1015,20 @@ class SubgraphSpec:
 
     def __post_init__(self, fn: Callable[..., None], contexts: Contexts | None = None) -> None:
         self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
+
+    def resolve(self, graph: GraphModule) -> ResolvedRegion:
+        """Resolve this spec's region into concrete graph nodes and an optional wrapper subgraph."""
+        match self.region:
+            case Span(start=start, end=end):
+                in_ref, out_ref = graph.node_ref(start), graph.node_ref(end)
+                path_nodes = find_nodes_on_path(graph, in_ref, out_ref)
+                return ResolvedRegion(path_nodes, create_subgraph(graph, path_nodes))
+            case Group(modules=modules):
+                group_refs = [graph.node_ref(m) for m in modules]
+                _validate_siblings(graph, group_refs)
+                return ResolvedRegion(set(group_refs), create_subgraph(graph, set(group_refs)))
+            case torch.nn.Module() as module:
+                return ResolvedRegion({graph.node_ref(module)}, module)
 
 
 OutputNode = NodeRef | GraphModule
@@ -1049,25 +1113,20 @@ def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphMod
     targets: set[NodeRef] = set()
     subgraphs: list[tuple[set[NodeRef], GraphModule]] = []
     seen_targets: set[NodeRef] = set()
+    spec_targets: list[torch.nn.Module] = []
 
     # Create "targets": the most granular collection of nodes we need to have, given the specs.
     for spec in specs:
-        in_ref, out_ref = graph.node_ref(spec.input), graph.node_ref(spec.output)
+        resolved = spec.resolve(graph)
+        if overlap := resolved.nodes & seen_targets:
+            msg = f"Overlapping nodes in subgraph specs: {overlap}"
+            raise ValueError(msg)
 
-        if spec.input is not spec.output:
-            path_nodes = find_nodes_on_path(graph, in_ref, out_ref)
-            if overlap := path_nodes & seen_targets:
-                msg = f"Overlapping nodes in subgraph specs: {overlap}"
-                raise ValueError(msg)
-            seen_targets |= path_nodes
-            targets |= path_nodes
-            subgraphs.append((path_nodes, create_subgraph(graph, path_nodes)))
-        else:
-            if in_ref in seen_targets:
-                msg = f"Overlapping nodes in subgraph specs: {{{in_ref}}}"
-                raise ValueError(msg)
-            seen_targets.add(in_ref)
-            targets.add(in_ref)
+        seen_targets |= resolved.nodes
+        targets |= resolved.nodes
+        spec_targets.append(resolved.target)
+        if isinstance(resolved.target, GraphModule):
+            subgraphs.append((resolved.nodes, resolved.target))
 
     # Now create the coarse complement. whatever we dont see as targets, try and get the
     # coarsest level (try not to unfold into leaves if not needed).
@@ -1126,12 +1185,9 @@ def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphMod
         assert isinstance(rewritten, (NodeRef, AttributeRef))
         new_graph.add_output(rewritten)
 
-    # Finally, add the delegate to whatever node in the new graph had it designated. For subgraphs
-    # we specifically use the spec.output as ref, for other specs spec.output is spec.input.
-    for spec in specs:
-        target_ref = context[graph.node_ref(spec.output).name]
-        base_ref = target_ref if isinstance(target_ref, NodeRef) else target_ref.unwrap_ref()
-        assert isinstance(base_ref, NodeRef)
+    # Attach delegates to their target node in the reduced graph.
+    for target, spec in zip(spec_targets, specs):
+        base_ref = new_graph.node_ref(target)
         new_graph._nodes[base_ref.id] = dataclasses.replace(
             new_graph._nodes[base_ref.id], delegate=spec.delegate
         )

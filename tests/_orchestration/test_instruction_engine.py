@@ -603,8 +603,7 @@ def _make_optimizer_specs(model: _Model) -> list[SubgraphSpec]:
 
     return [
         SubgraphSpec(
-            model.residual_1.linear,
-            model.residual_1.linear,
+            region=model.residual_1.linear,
             fn=functools.partial(dummy, lr=0.1),
         )
     ]

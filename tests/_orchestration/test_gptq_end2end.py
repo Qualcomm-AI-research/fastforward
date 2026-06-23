@@ -169,9 +169,7 @@ def test_gptq_llama_7b_perplexity() -> None:
     specs = []
     for proj_name in projection_names:
         for match in ff.mpath.search(f"**/{proj_name}", graph):
-            specs.append(
-                graph_module.SubgraphSpec(input=match.module, output=match.module, fn=gptq_fn)
-            )
+            specs.append(graph_module.SubgraphSpec(region=match.module, fn=gptq_fn))
 
     offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
 

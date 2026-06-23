@@ -18,6 +18,7 @@ import torch
 import fastforward as ff
 
 from fastforward import mpath
+from fastforward._orchestration.graph_module import Region, SubgraphSpec
 
 Algorithm: TypeAlias = Callable[..., Any]
 
@@ -36,8 +37,8 @@ class Selector(abc.ABC):
     """
 
     @abc.abstractmethod
-    def resolve(self, model: torch.nn.Module) -> list[torch.nn.Module]:
-        """Return the modules in *model* that this selector targets."""
+    def resolve(self, model: torch.nn.Module) -> list[Region]:
+        """Return the regions in *model* that this selector targets."""
         ...
 
 
@@ -47,7 +48,7 @@ class ModuleTypeSelector(Selector):
 
     types: tuple[type[torch.nn.Module], ...]
 
-    def resolve(self, model: torch.nn.Module) -> list[torch.nn.Module]:  # noqa: D102
+    def resolve(self, model: torch.nn.Module) -> list[Region]:  # noqa: D102
         return [m for m in model.modules() if isinstance(m, self.types)]
 
 
@@ -60,7 +61,7 @@ class ModuleInstanceSelector(Selector):
 
     modules: frozenset[torch.nn.Module]
 
-    def resolve(self, model: torch.nn.Module) -> list[torch.nn.Module]:  # noqa: D102
+    def resolve(self, model: torch.nn.Module) -> list[Region]:  # noqa: D102
         if not self.modules <= (model_modules := set(model.modules())):
             missing = self.modules - model_modules
             msg = f"Modules {[type(m).__name__ for m in missing]} not found on model {type(model).__name__}."
@@ -75,7 +76,7 @@ class MPathSelector(Selector):
 
     query: str
 
-    def resolve(self, model: torch.nn.Module) -> list[torch.nn.Module]:  # noqa: D102
+    def resolve(self, model: torch.nn.Module) -> list[Region]:  # noqa: D102
         return list(mpath.search(self.query, model).modules())
 
 
@@ -85,9 +86,9 @@ class CompositeSelector(Selector):
 
     selectors: tuple[Selector, ...]
 
-    def resolve(self, model: torch.nn.Module) -> list[torch.nn.Module]:  # noqa: D102
+    def resolve(self, model: torch.nn.Module) -> list[Region]:  # noqa: D102
         seen: set[int] = set()
-        result: list[torch.nn.Module] = []
+        result: list[Region] = []
         for selector in self.selectors:
             for m in selector.resolve(model):
                 if id(m) not in seen:
@@ -180,8 +181,8 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         """
         self._specs[algorithm] = AlgorithmSpec(target=normalize(target))
 
-    def resolve(self, model: torch.nn.Module, algorithm: Algorithm) -> list[torch.nn.Module]:
-        """Return the modules in a model that the given algorithm targets.
+    def resolve(self, model: torch.nn.Module, algorithm: Algorithm) -> list[SubgraphSpec]:
+        """Return specs for each region in a model that the given algorithm targets.
 
         Raises:
             NoTargetsFound: If no target is registered for the algorithm, or if the
@@ -191,18 +192,20 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
             msg = f"No target registered for algorithm {algorithm.__name__!r}."
             raise NoTargetsFound(msg)
 
-        if not (modules := self._specs[algorithm].target.resolve(model)):
+        if not (regions := self._specs[algorithm].target.resolve(model)):
             msg = f"Target for {algorithm.__name__!r} matched no modules on {type(model).__name__}."
             raise NoTargetsFound(msg)
 
-        return modules
+        return [SubgraphSpec(region=region, fn=algorithm) for region in regions]
 
 
 _registry = _AlgorithmRegistry()
 
 
 def register(algorithm: Algorithm, targets: TargetType | Selector) -> None:
-    """Register the modules an algorithm targets.
+    """Declare which modules an algorithm should target.
+
+    Re-registering the same algorithm overwrites the previous target.
 
     Args:
         algorithm: The algorithm to register targets for.
@@ -211,8 +214,8 @@ def register(algorithm: Algorithm, targets: TargetType | Selector) -> None:
     _registry.register(algorithm, targets)
 
 
-def resolve(model: torch.nn.Module, algorithm: Algorithm) -> list[torch.nn.Module]:
-    """Resolve which modules in a model an algorithm targets.
+def resolve(model: torch.nn.Module, algorithm: Algorithm) -> list[SubgraphSpec]:
+    """Resolve which regions in a model an algorithm targets.
 
     Args:
         model: The model to resolve targets against.

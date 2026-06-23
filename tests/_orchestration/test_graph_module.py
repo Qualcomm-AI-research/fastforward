@@ -14,8 +14,10 @@ from fastforward._orchestration.graph_module import (
     DEFAULT_CONTEXT,
     Const,
     GraphModule,
+    Group,
     InputRef,
     NodeRef,
+    Span,
     SubgraphSpec,
     create_subgraph,
     find_nodes_on_path,
@@ -397,8 +399,7 @@ def test_local_error_opt() -> None:
     # GIVEN a SubgraphSpec that targets only the first residual's linear layer
     specs = [
         SubgraphSpec(
-            model.residual_1.linear,
-            model.residual_1.linear,
+            region=model.residual_1.linear,
             fn=functools.partial(dummy, lr=0.1),
         )
     ]
@@ -421,13 +422,11 @@ def test_local_optimization_overlapping_specs_raises() -> None:
     residual_1_relu = graph.get_submodule("residual_1.relu")
     specs = [
         SubgraphSpec(
-            input=residual_1_linear,
-            output=residual_1_relu,
+            region=Span(start=residual_1_linear, end=residual_1_relu),
             fn=_noop,
         ),
         SubgraphSpec(
-            input=residual_1_linear,
-            output=residual_1_relu,
+            region=Span(start=residual_1_linear, end=residual_1_relu),
             fn=_noop,
         ),
     ]
@@ -498,8 +497,7 @@ def test_local_optimization_with_attribute_refs() -> None:
     relu = graph.get_submodule("relu")
     specs = [
         SubgraphSpec(
-            input=linear1,
-            output=relu,
+            region=Span(start=linear1, end=relu),
             fn=optimize_first_output,
         )
     ]
@@ -542,13 +540,11 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     residual_2_linear = graph.get_submodule("residual_2.linear")
     specs = [
         SubgraphSpec(
-            input=residual_1_linear,
-            output=residual_1_linear,
+            region=residual_1_linear,
             fn=simple_opt,
         ),
         SubgraphSpec(
-            input=residual_2_linear,
-            output=residual_2_linear,
+            region=residual_2_linear,
             fn=simple_opt,
         ),
     ]
@@ -590,8 +586,7 @@ def test_local_optimization_entire_graph() -> None:
     sigmoid = graph.get_submodule("sigmoid")
     specs = [
         SubgraphSpec(
-            input=residual_1_linear,
-            output=sigmoid,
+            region=Span(start=residual_1_linear, end=sigmoid),
             fn=full_opt,
         )
     ]
@@ -635,8 +630,7 @@ def test_local_optimization_with_const_inputs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=linear,
-            output=linear,
+            region=linear,
             fn=opt_with_const,
         )
     ]
@@ -816,55 +810,116 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
         ("no specs", [], 2),
         (
             "fold target (layer_0)",
-            [SubgraphSpec(model.layer_0, model.layer_0, fn=_noop)],
+            [SubgraphSpec(region=model.layer_0, fn=_noop)],
             2,
         ),
         (
             "both top-level folds",
             [
-                SubgraphSpec(model.layer_0, model.layer_0, fn=_noop),
-                SubgraphSpec(model.layer_1, model.layer_1, fn=_noop),
+                SubgraphSpec(region=model.layer_0, fn=_noop),
+                SubgraphSpec(region=model.layer_1, fn=_noop),
             ],
             2,
         ),
         (
             "leaf target (q_proj_0)",
-            [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop)],
+            [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop)],
             7,
         ),
         (
             "two leaves same fold (q_proj_0 + k_proj_0)",
             [
-                SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop),
-                SubgraphSpec(model.layer_0.attn.k_proj, model.layer_0.attn.k_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.k_proj, fn=_noop),
             ],
             7,
         ),
         (
             "symmetric leaves across layers",
             [
-                SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop),
-                SubgraphSpec(model.layer_1.attn.q_proj, model.layer_1.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=_noop),
             ],
             12,
         ),
         (
             "mixed fold + leaf (attn_0 fold, q_proj_1 leaf)",
             [
-                SubgraphSpec(model.layer_0.attn, model.layer_0.attn, fn=_noop),
-                SubgraphSpec(model.layer_1.attn.q_proj, model.layer_1.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn, fn=_noop),
+                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=_noop),
             ],
             8,
         ),
         (
             "path within single fold (q_proj_0 -> out_proj_0)",
-            [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.out_proj, fn=_noop)],
+            [
+                SubgraphSpec(
+                    region=Span(start=model.layer_0.attn.q_proj, end=model.layer_0.attn.out_proj),
+                    fn=_noop,
+                )
+            ],
             5,
         ),
         (
             "path across layers (mlp_0.down -> q_proj_1)",
-            [SubgraphSpec(model.layer_0.mlp.down, model.layer_1.attn.q_proj, fn=_noop)],
+            [
+                SubgraphSpec(
+                    region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj),
+                    fn=_noop,
+                )
+            ],
             9,
+        ),
+        (
+            "group of Q/K/V siblings in layer_0.attn",
+            [
+                SubgraphSpec(
+                    region=Group((
+                        model.layer_0.attn.q_proj,
+                        model.layer_0.attn.k_proj,
+                        model.layer_0.attn.v_proj,
+                    )),
+                    fn=_noop,
+                ),
+            ],
+            5,
+        ),
+        (
+            "group of Q/K/V + adjacent out_proj singleton",
+            [
+                SubgraphSpec(
+                    region=Group((
+                        model.layer_0.attn.q_proj,
+                        model.layer_0.attn.k_proj,
+                        model.layer_0.attn.v_proj,
+                    )),
+                    fn=_noop,
+                ),
+                SubgraphSpec(region=model.layer_0.attn.out_proj, fn=_noop),
+            ],
+            5,
+        ),
+        (
+            "group of Q/K/V in each of layer_0 and layer_1",
+            [
+                SubgraphSpec(
+                    region=Group((
+                        model.layer_0.attn.q_proj,
+                        model.layer_0.attn.k_proj,
+                        model.layer_0.attn.v_proj,
+                    )),
+                    fn=_noop,
+                ),
+                SubgraphSpec(
+                    region=Group((
+                        model.layer_1.attn.q_proj,
+                        model.layer_1.attn.k_proj,
+                        model.layer_1.attn.v_proj,
+                    )),
+                    fn=_noop,
+                ),
+            ],
+            8,
         ),
     ]
 
@@ -910,7 +965,7 @@ def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse()
     # GIVEN a 2-layer model with a leaf target inside layer_0.attn
     model = _TwoLayerModel()
     graph = model.to_graph_module()
-    specs = [SubgraphSpec(model.layer_0.attn.q_proj, model.layer_0.attn.q_proj, fn=_noop)]
+    specs = [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop)]
 
     # WHEN we reduce with that spec
     reduced = reduce_resolution(graph, specs)
@@ -939,7 +994,11 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
     # GIVEN a 2-layer model with a path spec spanning two layers
     model = _TwoLayerModel()
     graph = model.to_graph_module()
-    specs = [SubgraphSpec(model.layer_0.mlp.down, model.layer_1.attn.q_proj, fn=_noop)]
+    specs = [
+        SubgraphSpec(
+            region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj), fn=_noop
+        )
+    ]
 
     # WHEN we reduce with that path spec
     reduced = reduce_resolution(graph, specs)
@@ -955,6 +1014,43 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
     # THEN untouched siblings stay at the coarsest possible level
     assert model.layer_0.attn in modules
     assert model.layer_1.mlp in modules
+
+
+def test_group_non_siblings_raises() -> None:
+    # GIVEN modules from different layers (not siblings)
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+    specs = [
+        SubgraphSpec(
+            region=Group((model.layer_0.attn.q_proj, model.layer_1.attn.q_proj)),
+            fn=_noop,
+        )
+    ]
+
+    # WHEN we try to reduce with a non-sibling group
+    # THEN it raises a ValueError
+    with pytest.raises(ValueError, match="siblings"):
+        reduce_resolution(graph, specs)
+
+
+def test_group_single_module() -> None:
+    # GIVEN a group with a single module
+    model = _TwoLayerModel()
+    graph = model.to_graph_module()
+    x = torch.randn(1, 8)
+    expected = model(x)
+    specs = [
+        SubgraphSpec(
+            region=Group((model.layer_0.attn.q_proj,)),
+            fn=_noop,
+        )
+    ]
+
+    # WHEN we reduce with a single-member group
+    reduced = reduce_resolution(graph, specs)
+
+    # THEN forward output still matches
+    torch.testing.assert_close(reduced(x), expected)
 
 
 def test_reduce_resolution_multi_output_fold_unwraps_first_output() -> None:
@@ -1025,8 +1121,7 @@ def test_local_optimization_with_kwargs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=linear,
-            output=linear,
+            region=linear,
             fn=opt_kwargs,
         )
     ]
@@ -1071,8 +1166,7 @@ def test_local_optimization_with_multiple_inputs() -> None:
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
-            input=linear,
-            output=linear,
+            region=linear,
             fn=multi_input_opt,
         )
     ]
