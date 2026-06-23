@@ -28,6 +28,7 @@ from fastforward._orchestration.instruction_engine import (
     CallModule,
     DeleteRegisterEntries,
     InstructionEngine,
+    InstructionPasses,
     InstructionScheduler,
     LoadAttribute,
     MoveActivations,
@@ -351,8 +352,9 @@ def test_optimization_only_pass() -> None:
     graph._nodes[node_3.id] = dataclasses.replace(graph._nodes[node_3.id], delegate=delegate)
 
     # WHEN instructions are scheduled with the optimization_only_pass
-    scheduler = InstructionScheduler(passes=[optimization_only_pass])
-    instructions = scheduler.schedule(graph).instructions
+    program = InstructionScheduler().schedule(graph)
+    program = InstructionPasses.apply(program, [optimization_only_pass])
+    instructions = program.instructions
 
     # THEN the resulting instructions should be exactly 4,
     # OptimizeModule(node_1) -> CallModule(node_1) -> CallModule(node_2) -> OptimizeModule(node_3)
@@ -379,8 +381,9 @@ def test_lifetime_management_pass() -> None:
     graph.add_output(node_2)
 
     # WHEN instructions are scheduled with the lifetime_management_pass
-    scheduler = InstructionScheduler(passes=[lifetime_management_pass])
-    instructions = scheduler.schedule(graph).instructions
+    program = InstructionScheduler().schedule(graph)
+    program = InstructionPasses.apply(program, [lifetime_management_pass])
+    instructions = program.instructions
 
     # THEN the resulting instructions should be exactly 5,
     # CallM(node_1) -> Del(inp) -> CallM(node_2) -> Del(node_1) -> Ret(node_2)
@@ -394,6 +397,24 @@ def test_lifetime_management_pass() -> None:
         isinstance(instructions[3], DeleteRegisterEntries) and instructions[3].targets[0] == node_1
     )
     assert isinstance(instructions[4], ReturnOutputs)
+
+
+def test_instruction_passes_no_passes() -> None:
+    """Test that applying no passes leaves the program's instructions unchanged."""
+    # GIVEN a sequential graph x -> node_1 -> node_2 -> out
+    graph = GraphModule()
+    inputs = graph.add_input("x")
+    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
+    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
+    graph.add_output(node_2)
+
+    program = InstructionScheduler().schedule(graph)
+
+    # WHEN no passes are applied (passes defaulting to None)
+    result = InstructionPasses.apply(program)
+
+    # THEN the instructions are unchanged
+    assert result.instructions == program.instructions
 
 
 def test_local_error_multiple_contexts() -> None:

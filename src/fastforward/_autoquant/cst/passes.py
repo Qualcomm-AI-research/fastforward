@@ -118,61 +118,6 @@ class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):
         return libcst.FlattenSentinel(nodes)
 
 
-_AUG_OP_TO_BINARY_OP: dict[type[libcst.BaseAugOp], type[libcst.BaseBinaryOp]] = {
-    libcst.AddAssign: libcst.Add,
-    libcst.SubtractAssign: libcst.Subtract,
-    libcst.MultiplyAssign: libcst.Multiply,
-    libcst.DivideAssign: libcst.Divide,
-    libcst.FloorDivideAssign: libcst.FloorDivide,
-    libcst.ModuloAssign: libcst.Modulo,
-    libcst.PowerAssign: libcst.Power,
-    libcst.LeftShiftAssign: libcst.LeftShift,
-    libcst.RightShiftAssign: libcst.RightShift,
-    libcst.BitAndAssign: libcst.BitAnd,
-    libcst.BitOrAssign: libcst.BitOr,
-    libcst.BitXorAssign: libcst.BitXor,
-    libcst.MatrixMultiplyAssign: libcst.MatrixMultiply,
-}
-
-
-class ExpandAugAssign(libcst.CSTTransformer):
-    """Expand augmented assignments into a regular assignment with a binary operation.
-
-    For example, ``a += b`` is converted into ``a = a + b``.
-    This conversion enables subsequent passes to mark the (now explicit) binary
-    operation as a replacement candidate and quantize it like any other binary
-    operation.
-
-    Targets that are not assignable expressions (i.e., not `libcst.Name`,
-    `libcst.Attribute`, or `libcst.Subscript`) or that use augmentation
-    operators without a known binary counterpart are left untouched.
-    """
-
-    @override
-    def leave_AugAssign(
-        self, original_node: libcst.AugAssign, updated_node: libcst.AugAssign
-    ) -> libcst.AugAssign | libcst.Assign:
-        del original_node
-        binary_op_cls = _AUG_OP_TO_BINARY_OP.get(type(updated_node.operator))
-        if binary_op_cls is None:
-            return updated_node
-
-        target = updated_node.target
-        if not isinstance(target, (libcst.Name, libcst.Attribute, libcst.Subscript)):
-            return updated_node
-
-        binary_operation = libcst.BinaryOperation(
-            left=target.deep_clone(),
-            operator=binary_op_cls(),
-            right=updated_node.value,
-        )
-        return libcst.Assign(
-            targets=(libcst.AssignTarget(target=target),),
-            value=binary_operation,
-            semicolon=updated_node.semicolon,
-        )
-
-
 class WrapAssignments(libcst.CSTTransformer):
     """Wraps all types of assignments into a wrapped assignment.
 

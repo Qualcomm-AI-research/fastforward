@@ -1191,6 +1191,7 @@ def inference_mode(
     from fastforward._orchestration.instruction_engine import (
         InstructionEngine,
         InstructionPass,
+        InstructionPasses,
         InstructionScheduler,
         lifetime_management_pass,
     )
@@ -1199,7 +1200,8 @@ def inference_mode(
     if offloading_strategy is not None:
         passes.append(offloading_strategy.create_instruction_pass(graph))
 
-    program = InstructionScheduler(passes=passes).schedule(graph)
+    program = InstructionScheduler().schedule(graph)
+    program = InstructionPasses.apply(program, passes)
 
     class _InferenceEngine(InstructionEngine):
         @torch.inference_mode()
@@ -1233,6 +1235,7 @@ def local_optimize(
     from fastforward._orchestration.instruction_engine import (
         InstructionEngine,
         InstructionPass,
+        InstructionPasses,
         InstructionScheduler,
         lifetime_management_pass,
         optimization_only_pass,
@@ -1243,5 +1246,6 @@ def local_optimize(
         passes.append(offloading_strategy.create_instruction_pass(graph))
 
     single_resolution_graph = reduce_resolution(graph, specs)
-    program = InstructionScheduler(passes=passes).schedule(single_resolution_graph)
+    program = InstructionScheduler().schedule(single_resolution_graph)
+    program = InstructionPasses.apply(program, passes)
     return _GraphExecutionContext(graph, program, InstructionEngine())

@@ -660,6 +660,32 @@ class InstructionEngine:
         return self.run_instructions(program.instructions, register)
 
 
+class InstructionPasses:
+    """Applies a sequence of instruction passes to a program.
+
+    Each pass is a pure function transforming an instruction sequence into a new one.
+    Passes are applied in order.
+    """
+
+    @staticmethod
+    def apply(
+        program: InstructionProgram, passes: Sequence[InstructionPass] | None = None
+    ) -> InstructionProgram:
+        """Apply the given passes to the program's instruction sequence.
+
+        Args:
+            program: The instruction program to transform.
+            passes: Passes to apply in order. If None, the program is returned unchanged.
+
+        Returns:
+            A new program with the transformed instruction sequence.
+        """
+        instructions = program.instructions
+        for pass_fn in passes or []:
+            instructions = pass_fn(instructions)
+        return dataclasses.replace(program, instructions=instructions)
+
+
 def lifetime_management_pass(instructions: Instructions) -> Instructions:
     """Insert DeleteRegisterEntries instructions to free memory when values are no longer needed.
 
@@ -965,32 +991,28 @@ def _cancel_redundant_activation_moves(
 class InstructionScheduler:
     """Schedules instruction sequences from GraphModule structure.
 
-    Analyzes graph dependencies to determine node execution order, generates
-    instructions for each node, and applies optional transformation passes.
-    Produces an InstructionEngine that executes the scheduled instruction sequence.
+    Analyzes graph dependencies to determine node execution order and generates
+    instructions for each node.
 
     Args:
-        passes: Optional sequence of transformation passes to apply to scheduled instructions.
         ordering_strategy: Strategy for determining node execution order. Defaults to topological sort.
     """
 
     def __init__(
         self,
-        passes: Sequence[InstructionPass] | None = None,
         ordering_strategy: Callable[[GraphModule], list[NodeRef]] | None = None,
     ) -> None:
-        self._passes = passes or []
         self._ordering_strategy = ordering_strategy or topological_sort
         self._node_contexts: Mapping[_BaseRef, Contexts] = {}
 
     def schedule(self, graph: GraphModule) -> InstructionProgram:
-        """Schedule node execution and build an engine to run the graph.
+        """Schedule node execution and build an instruction program.
 
         Args:
             graph: GraphModule to schedule execution for.
 
         Returns:
-            InstructionEngine ready to execute the graph.
+            InstructionProgram ready for pass application and execution.
         """
         order = self._ordering_strategy(graph)
 
@@ -999,9 +1021,6 @@ class InstructionScheduler:
             instructions = self._schedule(graph, order)
         finally:
             self._node_contexts = {}
-
-        for pass_fn in self._passes:
-            instructions = pass_fn(instructions)
 
         return InstructionProgram(instructions=instructions, input_refs=graph._inputs)
 
