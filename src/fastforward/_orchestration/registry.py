@@ -8,9 +8,10 @@ We provide some default mappings at the end of this file.
 from __future__ import annotations
 
 import abc
+import contextlib
 import dataclasses
 
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Any, Iterable, Iterator, Mapping, TypeAlias, cast
 
 import torch
@@ -226,6 +227,33 @@ def resolve(model: torch.nn.Module, algorithm: Algorithm) -> list[SubgraphSpec]:
             registered target matched no modules on the model.
     """
     return _registry.resolve(model, algorithm)
+
+
+@contextlib.contextmanager
+def override(
+    algorithm: Algorithm, targets: TargetType | Selector | None
+) -> Generator[None, None, None]:
+    """Temporarily override the registered target for an algorithm.
+
+    If *targets* is None the existing registration is used unchanged.
+
+    Args:
+        algorithm: The algorithm whose targets to override.
+        targets: The temporary target specification, or None to keep the current one.
+    """
+    if targets is None:
+        yield
+        return
+
+    previous = _registry._specs.get(algorithm)
+    _registry.register(algorithm, targets)
+    try:
+        yield
+    finally:
+        if previous is None:
+            _registry._specs.pop(algorithm, None)
+        else:
+            _registry._specs[algorithm] = previous
 
 
 # We pre-register baseline methods with expected Algorithm-Target pairs.
