@@ -46,6 +46,20 @@ function shell-check ()
   grep -Elr '^#!(.*/|.*env +)(sh|bash|ksh)' ${DIRS_TO_CHECK} | xargs shellcheck
 }
 
+function notebook-copyright()
+{
+  local failed=0
+  local expected
+  expected=$'# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.\n# SPDX-License-Identifier: BSD-3-Clause-Clear'
+  while IFS= read -r nb; do
+    if [ "$(tail -2 "$nb")" != "$expected" ]; then
+      echo "Missing copyright footer: $nb"
+      failed=1
+    fi
+  done < <(find docs -name '*.nb.py')
+  return "$failed"
+}
+
 function markers-check()
 {
   ! grep -riI --exclude=verify --exclude='*.ambr' --exclude-dir=.cache --exclude-dir=.git --exclude-dir=.mypy_cache -e fixme -e xxx -e todo
