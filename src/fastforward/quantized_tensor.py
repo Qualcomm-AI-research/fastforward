@@ -403,7 +403,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def raw_data(self) -> torch.Tensor:
-        """Return raw data representation.
+        """Raw data representation.
 
         Returns:
             Torch.Tensor: the raw_data as a normal tensor.
@@ -430,7 +430,7 @@ class QuantizedTensor(torch.Tensor):
 
     @property
     def quant_func(self) -> type["QuantizationFunction[QuantizationParameters]"]:
-        """Return the associated quantization function.
+        """The associated quantization function.
 
         Returns:
             BaseQuantizationFunction: The `QuantizationFunction` implementation used

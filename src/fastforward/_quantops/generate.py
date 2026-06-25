@@ -79,7 +79,7 @@ class _ModuleGenerator:
 
     @property
     def config(self) -> libcst.PartialParserConfig:
-        """Get parser configuration for this module."""
+        """Parser configuration for this module."""
         return self._module.config_for_parsing
 
     def append_import(self, import_module: str, from_module: str | None = None) -> None:

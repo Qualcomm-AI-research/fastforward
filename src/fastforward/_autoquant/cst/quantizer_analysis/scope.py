@@ -180,7 +180,7 @@ class _Assignments(Generic[_MetadataT]):
 
     @property
     def variables(self) -> Iterator[str]:
-        """Return an iterator over the variable names in the current scope.
+        """Iterator over the variable names in the current scope.
 
         This property provides a way to access the variable names that are being tracked
         in the current scope. It yields each variable name as a string.

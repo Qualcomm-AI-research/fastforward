@@ -364,7 +364,7 @@ class GraphModule(torch.nn.Module):
 
     @property
     def input_names(self) -> list[str]:
-        """Return the list of graph input names in definition order."""
+        """The list of graph input names in definition order."""
         return list(self._inputs.keys())
 
     def node_inputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:

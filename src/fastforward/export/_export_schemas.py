@@ -63,7 +63,7 @@ def _preprocess_quantization_params(
 class EncodingSchemaHandler(Protocol):
     @property
     def version(self) -> str:
-        """Return the schema version string."""
+        """The schema version string."""
         ...
 
     def build_encodings_dictionary(

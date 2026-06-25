@@ -210,7 +210,7 @@ class QuantizerMetadata:
 
     @property
     def shape(self) -> tuple[int, ...] | torch.Size | None:
-        """Return the shape metadata, if set. Otherwise return None.
+        """The shape metadata, if set. Otherwise None.
 
         Returns:
             tuple[int, ...] | torch.Size | None: The shape attribute.
@@ -407,7 +407,7 @@ class Quantizer(torch.nn.Module):
 
     @property
     def overrides(self) -> Iterator[override.OverrideFn[torch.Tensor]]:
-        """Yield overrides attached to this quantizer."""
+        """Overrides attached to this quantizer."""
         yield from self._quantizer_overrides.values()
 
     @typing_override

@@ -79,7 +79,7 @@ class SupportsRangeBasedOperator(RangeSettable, Protocol):
 
     @property
     def symmetric(self) -> bool:
-        """Return boolean indicating if quantizer is symmetric.
+        """Boolean indicating if quantizer is symmetric.
 
         Returns:
             Boolean indicating if quantization operator is symmetric or not
