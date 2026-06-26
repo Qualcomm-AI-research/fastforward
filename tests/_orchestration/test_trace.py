@@ -20,6 +20,8 @@ from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 from torch import nn
 
+from .conftest import sgd_step
+
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
     reason=f"requires PyTorch >= {_MIN_TORCH_VERSION}",
@@ -562,16 +564,6 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
     assert {Op.torch_module, Op.call_function, Op.get_attr}.issubset(op_kinds)
 
 
-def _sgd_step(module: nn.Module, bundle: ActivationBundle, lr: float) -> None:
-    """Minimal optimization fn: one SGD step per calibration batch through `module`."""
-    optim = torch.optim.SGD(params=module.parameters(), lr=lr)
-    for args, kwargs in bundle:
-        optim.zero_grad()
-        loss = (module(*args, **kwargs) ** 2).mean()
-        loss.backward()
-        optim.step()
-
-
 def test_trace_then_local_optimize_only_targets_specified_module() -> None:
     # GIVEN a traced TinyMLP and a SubgraphSpec targeting only fc1
     model = _TinyMLP().eval()
@@ -581,7 +573,7 @@ def test_trace_then_local_optimize_only_targets_specified_module() -> None:
     initial_w2 = model.fc2.weight.data.clone()
 
     specs = [
-        SubgraphSpec(region=model.fc1, fn=functools.partial(_sgd_step, lr=0.1)),
+        SubgraphSpec(region=model.fc1, fn=functools.partial(sgd_step, lr=0.1)),
     ]
     calibration = [torch.randn(1, 8) for _ in range(4)]
 

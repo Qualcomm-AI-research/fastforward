@@ -43,6 +43,8 @@ from fastforward._orchestration.instruction_engine import (
     optimization_only_pass,
 )
 
+from .conftest import Model, sgd_step
+
 
 def test_merge_zips_datasets_together() -> None:
     """Test that merge correctly zips multiple datasets element-wise."""
@@ -534,84 +536,17 @@ def test_move_activations_moves_register_entry_and_reports_ref() -> None:
     assert list(instruction.produces()) == []
 
 
-class _Residual(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear = torch.nn.Linear(5, 5)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        h = self.linear(x)
-        h = torch.nn.ReLU()(h)
-        return x + h
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("input")
-        linear = graph.add_node("linear", self.linear, [inp])
-        relu = graph.add_node("relu", torch.nn.ReLU(), [linear])
-        (add,) = graph.add_subgraph("add", _Add().to_graph_module(), [inp, relu])
-        graph.add_output(add)
-        return graph
-
-
-class _Add(torch.nn.Module):
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return x + y
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        x = graph.add_input("x")
-        y = graph.add_input("y")
-        output = graph.add_node("add", self, [x, y])
-        graph.add_output(output)
-        return graph
-
-
-class _Model(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.residual_1 = _Residual()
-        self.residual_2 = _Residual()
-
-    def forward(self, x: torch.Tensor) -> Any:
-        h = self.residual_1(x)
-        h = self.residual_2(h)
-        return torch.nn.Sigmoid()(h)
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        input_ref = graph.add_input("input")
-        (residual_1,) = graph.add_subgraph(
-            "residual_1", self.residual_1.to_graph_module(), [input_ref]
-        )
-        (residual_2,) = graph.add_subgraph(
-            "residual_2", self.residual_2.to_graph_module(), [residual_1]
-        )
-        sigmoid = graph.add_node("sigmoid", torch.nn.Sigmoid(), [residual_2])
-        graph.add_output(sigmoid)
-        return graph
-
-
-def _make_optimizer_specs(model: _Model) -> list[SubgraphSpec]:
-    def dummy(module: torch.nn.Module, bundle: ActivationBundle, lr: float) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=lr)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            loss = (module(*args, **kwargs) ** 2).mean()
-            loss.backward()
-            optim.step()
-
+def _make_optimizer_specs(model: Model) -> list[SubgraphSpec]:
     return [
         SubgraphSpec(
             region=model.residual_1.linear,
-            fn=functools.partial(dummy, lr=0.1),
+            fn=functools.partial(sgd_step, lr=0.1),
         )
     ]
 
 
-def test_local_optimizer_with_offload_everything_only_updates_targeted_layer() -> None:
+def test_local_optimizer_with_offload_everything_only_updates_targeted_layer(model: Model) -> None:
     # GIVEN a model, graph, calibration data, and a spec targeting residual_1's linear layer
-    model = _Model()
     graph = model.to_graph_module()
     initial_w1 = model.residual_1.linear.weight.data.clone()
     initial_w2 = model.residual_2.linear.weight.data.clone()
@@ -630,9 +565,8 @@ def test_local_optimizer_with_offload_everything_only_updates_targeted_layer() -
     assert torch.allclose(initial_w2, model.residual_2.linear.weight.data)
 
 
-def test_local_optimizer_without_offloading_only_updates_targeted_layer() -> None:
+def test_local_optimizer_without_offloading_only_updates_targeted_layer(model: Model) -> None:
     # GIVEN a model, graph, and calibration data
-    model = _Model()
     graph = model.to_graph_module()
     initial_w1 = model.residual_1.linear.weight.data.clone()
     initial_w2 = model.residual_2.linear.weight.data.clone()

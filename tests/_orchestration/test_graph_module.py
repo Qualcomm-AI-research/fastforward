@@ -5,8 +5,6 @@
 import functools
 import uuid
 
-from typing import Any
-
 import pytest
 import torch
 
@@ -27,88 +25,26 @@ from fastforward._orchestration.graph_module import (
     remap_subgraph_reference,
 )
 from fastforward._orchestration.instruction_engine import (
-    ActivationBundle,
     ActivationDataset,
     ActivationRegister,
     CallModule,
 )
 
-
-def _noop(*_args: Any, **_kwargs: Any) -> None:
-    pass
-
-
-class Add(torch.nn.Module):
-    """Placeholder due to lack of torch.nn.Add()."""
-
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """Add two tensors together and return the result."""
-        return x + y
-
-    def to_graph_module(self) -> GraphModule:
-        """Transform 'Add' to a GraphModule."""
-        graph = GraphModule()
-        x = graph.add_input("x")
-        y = graph.add_input("y")
-        output = graph.add_node("add", self, [x, y])
-        graph.add_output(output)
-        return graph
+from .conftest import (
+    Add,
+    ConstReturn,
+    ConstReturnKwargs,
+    DualOutModel,
+    Model,
+    MultiOutputModel,
+    TwoLayerModel,
+    noop,
+    sgd_step,
+)
 
 
-class Residual(torch.nn.Module):
-    """Simple residual forward pass."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear = torch.nn.Linear(5, 5)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        """Forward pass of MyResidual."""
-        h = self.linear(x)
-        h = torch.nn.ReLU()(h)
-        return x + h
-
-    def to_graph_module(self) -> GraphModule:
-        """Transform 'Residual' to a GraphModule."""
-        graph = GraphModule()
-        input = graph.add_input("input")
-        linear = graph.add_node("linear", self.linear, [input])
-        relu = graph.add_node("relu", torch.nn.ReLU(), [linear])
-        (add,) = graph.add_subgraph("add", Add().to_graph_module(), [input, relu])
-        graph.add_output(add)
-        return graph
-
-
-class Model(torch.nn.Module):
-    """Simple Module class for demonstrative purposes."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.residual_1 = Residual()
-        self.residual_2 = Residual()
-
-    def forward(self, x: torch.Tensor) -> Any:
-        """Forward pass of MyModel."""
-        h = self.residual_1(x)
-        h = self.residual_2(h)
-        return torch.nn.Sigmoid()(h)
-
-    def to_graph_module(self) -> GraphModule:
-        """Transform 'MyModel' to a GraphModule."""
-        graph = GraphModule()
-        input = graph.add_input("input")
-        (residual_1,) = graph.add_subgraph("residual_1", self.residual_1.to_graph_module(), [input])
-        (residual_2,) = graph.add_subgraph(
-            "residual_2", self.residual_2.to_graph_module(), [residual_1]
-        )
-        sigmoid = graph.add_node("sigmoid", torch.nn.Sigmoid(), [residual_2])
-        graph.add_output(sigmoid)
-        return graph
-
-
-def test_graph_module_forward_pass() -> None:
+def test_graph_module_forward_pass(model: Model) -> None:
     # GIVEN a PyTorch model and its equivalent GraphModule representation
-    model = Model()
     graph = model.to_graph_module()
     x = torch.randn(1, 5)
 
@@ -120,35 +56,9 @@ def test_graph_module_forward_pass() -> None:
     torch.testing.assert_close(model_output, engine_output)
 
 
-class MultiOutputModel(torch.nn.Module):
-    """Model with multiple outputs."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear1 = torch.nn.Linear(5, 3)
-        self.linear2 = torch.nn.Linear(5, 2)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Forward pass returning two outputs."""
-        out1 = torch.nn.ReLU()(self.linear1(x))
-        out2 = torch.nn.Sigmoid()(self.linear2(x))
-        return out1, out2
-
-    def to_graph_module(self) -> GraphModule:
-        """Convert to GraphModule with multiple outputs."""
-        graph = GraphModule()
-        input = graph.add_input("input")
-        linear1_out = graph.add_node("linear1", self.linear1, args=[input])
-        relu_out = graph.add_node("relu", torch.nn.ReLU(), args=[linear1_out])
-        linear2_out = graph.add_node("linear2", self.linear2, args=[input])
-        sigmoid_out = graph.add_node("sigmoid", torch.nn.Sigmoid(), args=[linear2_out])
-        graph.add_output(relu_out, sigmoid_out)
-        return graph
-
-
-def test_multi_output_graph_module() -> None:
+def test_multi_output_graph_module(multi_output_model: MultiOutputModel) -> None:
     # GIVEN a model with multiple outputs and its corresponding GraphModule
-    model = MultiOutputModel()
+    model = multi_output_model
     graph = model.to_graph_module()
     x = torch.randn(1, 5)
 
@@ -159,13 +69,6 @@ def test_multi_output_graph_module() -> None:
     # THEN the outputs should be identical
     torch.testing.assert_close(model_out1, graph_out1)
     torch.testing.assert_close(model_out2, graph_out2)
-
-
-class ConstReturn(torch.nn.Module):
-    """A model that returns only a constant value."""
-
-    def forward(self, _: Any, c: Any) -> Any:
-        return c
 
 
 def test_const_input_type() -> None:
@@ -181,13 +84,6 @@ def test_const_input_type() -> None:
 
     # THEN the output should be the constant value
     assert graph_output is c
-
-
-class ConstReturnKwargs(torch.nn.Module):
-    """A model that returns only a keyword argument."""
-
-    def forward(self, _: Any, const_kwarg: Any = None) -> Any:
-        return const_kwarg
 
 
 def test_const_type_kwargs() -> None:
@@ -229,9 +125,8 @@ def test_keyword_binding_for_subgraph() -> None:
     torch.testing.assert_close(result, input_x + input_y)
 
 
-def test_create_subgraph_functional_equivalence() -> None:
+def test_create_subgraph_functional_equivalence(model: Model) -> None:
     # GIVEN a Model and GraphModule equivalent
-    model = Model()
     graph = model.to_graph_module()
 
     # GIVEN the minimal node set lying in the GraphModule
@@ -276,10 +171,10 @@ def test_node_ref_identity_across_graphs() -> None:
     assert lin_g1.name != lin_g2.name
 
 
-def test_attribute_ref_indexing() -> None:
+def test_attribute_ref_indexing(multi_output_model: MultiOutputModel) -> None:
     # GIVEN a model that returns a tuple and a GraphModule that uses AttributeRef to access elements
     graph = GraphModule()
-    model = MultiOutputModel()
+    model = multi_output_model
     input_ref = graph.add_input("input")
 
     # WHEN we add a node that returns a tuple and use indexing to access individual outputs
@@ -370,10 +265,9 @@ def test_remap_subgraph_reference_attribute_ref() -> None:
     assert attribute_ref != alternative_attribute_ref
 
 
-def test_local_error_opt() -> None:
+def test_local_error_opt(model: Model) -> None:
     """Integration test for Local Error Optimization."""
     # GIVEN a Model with two residual blocks and its GraphModule representation
-    model = Model()
     graph = model.to_graph_module()
 
     # GIVEN we store initial weights for comparison
@@ -383,24 +277,11 @@ def test_local_error_opt() -> None:
     # GIVEN a simple calibration dataset
     calibration_data = [torch.randn(1, 5) for _ in range(10)]
 
-    # GIVEN a dummy optimization function
-    def dummy(module: torch.nn.Module, bundle: ActivationBundle, lr: float) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=lr)
-
-        for args, kwargs in bundle:
-            optim.zero_grad()
-
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-
-            optim.step()
-
     # GIVEN a SubgraphSpec that targets only the first residual's linear layer
     specs = [
         SubgraphSpec(
             region=model.residual_1.linear,
-            fn=functools.partial(dummy, lr=0.1),
+            fn=functools.partial(sgd_step, lr=0.1),
         )
     ]
 
@@ -413,21 +294,20 @@ def test_local_error_opt() -> None:
     assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
-def test_local_optimization_overlapping_specs_raises() -> None:
+def test_local_optimization_overlapping_specs_raises(model: Model) -> None:
     """Test that local_optimize rejects overlapping specs."""
     # GIVEN two SubgraphSpecs that overlap
-    model = Model()
     graph = model.to_graph_module()
     residual_1_linear = graph.get_submodule("residual_1.linear")
     residual_1_relu = graph.get_submodule("residual_1.relu")
     specs = [
         SubgraphSpec(
             region=Span(start=residual_1_linear, end=residual_1_relu),
-            fn=_noop,
+            fn=noop,
         ),
         SubgraphSpec(
             region=Span(start=residual_1_linear, end=residual_1_relu),
-            fn=_noop,
+            fn=noop,
         ),
     ]
 
@@ -469,10 +349,10 @@ def test_call_module_single_tensor_arg() -> None:
     assert output_contexts[DEFAULT_CONTEXT].batches[0].shape == (2, 3)
 
 
-def test_local_optimization_with_attribute_refs() -> None:
+def test_local_optimization_with_attribute_refs(multi_output_model: MultiOutputModel) -> None:
     """Test local_optimize with AttributeRef outputs in subgraphs."""
     # GIVEN a model that returns multiple outputs
-    model = MultiOutputModel()
+    model = multi_output_model
     graph = model.to_graph_module()
 
     # GIVEN we track initial weights
@@ -482,23 +362,13 @@ def test_local_optimization_with_attribute_refs() -> None:
     # GIVEN calibration data
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
-    # GIVEN an optimization function
-    def optimize_first_output(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN a spec targeting the first output path
     linear1 = graph.get_submodule("linear1")
     relu = graph.get_submodule("relu")
     specs = [
         SubgraphSpec(
             region=Span(start=linear1, end=relu),
-            fn=optimize_first_output,
+            fn=sgd_step,
         )
     ]
 
@@ -512,10 +382,9 @@ def test_local_optimization_with_attribute_refs() -> None:
     assert torch.allclose(initial_linear2_weight, model.linear2.weight.data)
 
 
-def test_local_optimization_multiple_non_overlapping_specs() -> None:
+def test_local_optimization_multiple_non_overlapping_specs(model: Model) -> None:
     """Test local_optimize with multiple non-overlapping specs."""
     # GIVEN a model with two residual blocks
-    model = Model()
     graph = model.to_graph_module()
 
     # GIVEN we track initial weights
@@ -525,27 +394,17 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     # GIVEN calibration data
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
-    # GIVEN a simple optimization function
-    def simple_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN two non-overlapping specs
     residual_1_linear = graph.get_submodule("residual_1.linear")
     residual_2_linear = graph.get_submodule("residual_2.linear")
     specs = [
         SubgraphSpec(
             region=residual_1_linear,
-            fn=simple_opt,
+            fn=sgd_step,
         ),
         SubgraphSpec(
             region=residual_2_linear,
-            fn=simple_opt,
+            fn=sgd_step,
         ),
     ]
 
@@ -558,10 +417,9 @@ def test_local_optimization_multiple_non_overlapping_specs() -> None:
     assert not torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
-def test_local_optimization_entire_graph() -> None:
+def test_local_optimization_entire_graph(model: Model) -> None:
     """Test local_optimize when spec covers entire graph."""
     # GIVEN a model and its graph
-    model = Model()
     graph = model.to_graph_module()
 
     # GIVEN we track all weights
@@ -571,23 +429,13 @@ def test_local_optimization_entire_graph() -> None:
     # GIVEN calibration data
     calibration_data = [torch.randn(1, 5) for _ in range(5)]
 
-    # GIVEN an optimization function
-    def full_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN a spec covering the entire graph
     residual_1_linear = graph.get_submodule("residual_1.linear")
     sigmoid = graph.get_submodule("sigmoid")
     specs = [
         SubgraphSpec(
             region=Span(start=residual_1_linear, end=sigmoid),
-            fn=full_opt,
+            fn=sgd_step,
         )
     ]
 
@@ -617,21 +465,11 @@ def test_local_optimization_with_const_inputs() -> None:
     # GIVEN calibration data
     calibration_data = [None for _ in range(5)]
 
-    # GIVEN an optimization function
-    def opt_with_const(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
             region=linear,
-            fn=opt_with_const,
+            fn=sgd_step,
         )
     ]
 
@@ -643,10 +481,9 @@ def test_local_optimization_with_const_inputs() -> None:
     assert not torch.allclose(initial_weight, linear.weight.data)
 
 
-def test_local_optimization_no_specs() -> None:
+def test_local_optimization_no_specs(model: Model) -> None:
     """Test local_optimize with no optimization specs (only partitioning)."""
     # GIVEN a model and its graph
-    model = Model()
     graph = model.to_graph_module()
 
     # GIVEN we track initial weights
@@ -668,185 +505,48 @@ def test_local_optimization_no_specs() -> None:
     assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
-class _SmallAttn(torch.nn.Module):
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.q_proj = torch.nn.Linear(dim, dim, bias=False)
-        self.k_proj = torch.nn.Linear(dim, dim, bias=False)
-        self.v_proj = torch.nn.Linear(dim, dim, bias=False)
-        self.out_proj = torch.nn.Linear(dim, dim, bias=False)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        q = self.q_proj(x)
-        k = self.k_proj(x)
-        v = self.v_proj(x)
-        attn = torch.nn.functional.scaled_dot_product_attention(q, k, v)
-        return self.out_proj(attn)
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        q = graph.add_node("q_proj", self.q_proj, [inp])
-        k = graph.add_node("k_proj", self.k_proj, [inp])
-        v = graph.add_node("v_proj", self.v_proj, [inp])
-        attn = graph.add_node("sdpa", torch.nn.functional.scaled_dot_product_attention, [q, k, v])
-        out = graph.add_node("out_proj", self.out_proj, [attn])
-        graph.add_output(out)
-        return graph
-
-
-class _SmallMLP(torch.nn.Module):
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.up = torch.nn.Linear(dim, dim, bias=False)
-        self.down = torch.nn.Linear(dim, dim, bias=False)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        return self.down(torch.nn.functional.relu(self.up(x)))
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        up = graph.add_node("up", self.up, [inp])
-        act = graph.add_node("act", torch.nn.functional.relu, [up])
-        down = graph.add_node("down", self.down, [act])
-        graph.add_output(down)
-        return graph
-
-
-class _DecoderLayer(torch.nn.Module):
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.attn = _SmallAttn(dim)
-        self.mlp = _SmallMLP(dim)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        return self.mlp(self.attn(x))
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        (attn_out,) = graph.add_subgraph(
-            "attn", self.attn.to_graph_module(), [inp], original_module=self.attn
-        )
-        (mlp_out,) = graph.add_subgraph(
-            "mlp", self.mlp.to_graph_module(), [attn_out], original_module=self.mlp
-        )
-        graph.add_output(mlp_out)
-        return graph
-
-
-class _TwoLayerModel(torch.nn.Module):
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.layer_0 = _DecoderLayer(dim)
-        self.layer_1 = _DecoderLayer(dim)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        return self.layer_1(self.layer_0(x))
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        (layer_0_out,) = graph.add_subgraph(
-            "layer_0", self.layer_0.to_graph_module(), [inp], original_module=self.layer_0
-        )
-        (layer_1_out,) = graph.add_subgraph(
-            "layer_1",
-            self.layer_1.to_graph_module(),
-            [layer_0_out],
-            original_module=self.layer_1,
-        )
-        graph.add_output(layer_1_out)
-        return graph
-
-
-class _DualOutLayer(torch.nn.Module):
-    """Layer with two output leaves consumed independently downstream."""
-
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.left = torch.nn.Linear(dim, dim, bias=False)
-        self.right = torch.nn.Linear(dim, dim, bias=False)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.left(x), self.right(x)
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        left = graph.add_node("left", self.left, [inp])
-        right = graph.add_node("right", self.right, [inp])
-        graph.add_output(left, right)
-        return graph
-
-
-class _DualOutModel(torch.nn.Module):
-    """Wraps a multi-output fold so we can test coarse rewiring of tuple outputs."""
-
-    def __init__(self, dim: int = 8) -> None:
-        super().__init__()
-        self.layer = _DualOutLayer(dim)
-        self.combine = torch.nn.Linear(dim, dim, bias=False)
-
-    def forward(self, x: torch.Tensor) -> Any:
-        a, b = self.layer(x)
-        return self.combine(a + b)
-
-    def to_graph_module(self) -> GraphModule:
-        graph = GraphModule()
-        inp = graph.add_input("x")
-        a, b = graph.add_subgraph(
-            "layer", self.layer.to_graph_module(), [inp], original_module=self.layer
-        )
-        merged = graph.add_node("merge", torch.add, [a, b])
-        out = graph.add_node("combine", self.combine, [merged])
-        graph.add_output(out)
-        return graph
-
-
-def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int]]:
+def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int]]:
     return [
         ("no specs", [], 2),
         (
             "fold target (layer_0)",
-            [SubgraphSpec(region=model.layer_0, fn=_noop)],
+            [SubgraphSpec(region=model.layer_0, fn=noop)],
             2,
         ),
         (
             "both top-level folds",
             [
-                SubgraphSpec(region=model.layer_0, fn=_noop),
-                SubgraphSpec(region=model.layer_1, fn=_noop),
+                SubgraphSpec(region=model.layer_0, fn=noop),
+                SubgraphSpec(region=model.layer_1, fn=noop),
             ],
             2,
         ),
         (
             "leaf target (q_proj_0)",
-            [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop)],
+            [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop)],
             7,
         ),
         (
             "two leaves same fold (q_proj_0 + k_proj_0)",
             [
-                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop),
-                SubgraphSpec(region=model.layer_0.attn.k_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop),
+                SubgraphSpec(region=model.layer_0.attn.k_proj, fn=noop),
             ],
             7,
         ),
         (
             "symmetric leaves across layers",
             [
-                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop),
-                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop),
+                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=noop),
             ],
             12,
         ),
         (
             "mixed fold + leaf (attn_0 fold, q_proj_1 leaf)",
             [
-                SubgraphSpec(region=model.layer_0.attn, fn=_noop),
-                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn, fn=noop),
+                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=noop),
             ],
             8,
         ),
@@ -855,7 +555,7 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
             [
                 SubgraphSpec(
                     region=Span(start=model.layer_0.attn.q_proj, end=model.layer_0.attn.out_proj),
-                    fn=_noop,
+                    fn=noop,
                 )
             ],
             5,
@@ -865,7 +565,7 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
             [
                 SubgraphSpec(
                     region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj),
-                    fn=_noop,
+                    fn=noop,
                 )
             ],
             9,
@@ -879,7 +579,7 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
                         model.layer_0.attn.k_proj,
                         model.layer_0.attn.v_proj,
                     )),
-                    fn=_noop,
+                    fn=noop,
                 ),
             ],
             5,
@@ -893,9 +593,9 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
                         model.layer_0.attn.k_proj,
                         model.layer_0.attn.v_proj,
                     )),
-                    fn=_noop,
+                    fn=noop,
                 ),
-                SubgraphSpec(region=model.layer_0.attn.out_proj, fn=_noop),
+                SubgraphSpec(region=model.layer_0.attn.out_proj, fn=noop),
             ],
             5,
         ),
@@ -908,7 +608,7 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
                         model.layer_0.attn.k_proj,
                         model.layer_0.attn.v_proj,
                     )),
-                    fn=_noop,
+                    fn=noop,
                 ),
                 SubgraphSpec(
                     region=Group((
@@ -916,7 +616,7 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
                         model.layer_1.attn.k_proj,
                         model.layer_1.attn.v_proj,
                     )),
-                    fn=_noop,
+                    fn=noop,
                 ),
             ],
             8,
@@ -924,9 +624,9 @@ def _spec_cases(model: _TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], in
     ]
 
 
-def test_reduce_resolution_forward_pass_correctness() -> None:
+def test_reduce_resolution_forward_pass_correctness(two_layer_model: TwoLayerModel) -> None:
     # GIVEN a 2-layer transformer-shaped model with nested folds
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
     x = torch.randn(1, 8)
     expected = model(x)
@@ -944,9 +644,11 @@ def test_reduce_resolution_forward_pass_correctness() -> None:
         )
 
 
-def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse() -> None:
+def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse(
+    two_layer_model: TwoLayerModel,
+) -> None:
     # GIVEN a 2-layer model with no specs (fully coarse target)
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
 
     # WHEN we reduce with no specs
@@ -961,11 +663,13 @@ def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse() -> None:
     assert model.layer_0.mlp not in modules
 
 
-def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse() -> None:
+def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse(
+    two_layer_model: TwoLayerModel,
+) -> None:
     # GIVEN a 2-layer model with a leaf target inside layer_0.attn
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
-    specs = [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=_noop)]
+    specs = [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop)]
 
     # WHEN we reduce with that spec
     reduced = reduce_resolution(graph, specs)
@@ -990,13 +694,13 @@ def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse()
     assert model.layer_0.attn not in modules
 
 
-def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
+def test_reduce_resolution_path_spec_inserts_subgraph_node(two_layer_model: TwoLayerModel) -> None:
     # GIVEN a 2-layer model with a path spec spanning two layers
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
     specs = [
         SubgraphSpec(
-            region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj), fn=_noop
+            region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj), fn=noop
         )
     ]
 
@@ -1016,14 +720,14 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node() -> None:
     assert model.layer_1.mlp in modules
 
 
-def test_group_non_siblings_raises() -> None:
+def test_group_non_siblings_raises(two_layer_model: TwoLayerModel) -> None:
     # GIVEN modules from different layers (not siblings)
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
     specs = [
         SubgraphSpec(
             region=Group((model.layer_0.attn.q_proj, model.layer_1.attn.q_proj)),
-            fn=_noop,
+            fn=noop,
         )
     ]
 
@@ -1033,16 +737,16 @@ def test_group_non_siblings_raises() -> None:
         reduce_resolution(graph, specs)
 
 
-def test_group_single_module() -> None:
+def test_group_single_module(two_layer_model: TwoLayerModel) -> None:
     # GIVEN a group with a single module
-    model = _TwoLayerModel()
+    model = two_layer_model
     graph = model.to_graph_module()
     x = torch.randn(1, 8)
     expected = model(x)
     specs = [
         SubgraphSpec(
             region=Group((model.layer_0.attn.q_proj,)),
-            fn=_noop,
+            fn=noop,
         )
     ]
 
@@ -1053,9 +757,11 @@ def test_group_single_module() -> None:
     torch.testing.assert_close(reduced(x), expected)
 
 
-def test_reduce_resolution_multi_output_fold_unwraps_first_output() -> None:
+def test_reduce_resolution_multi_output_fold_unwraps_first_output(
+    dual_out_model: DualOutModel,
+) -> None:
     # GIVEN a model whose inner fold returns TWO outputs consumed independently
-    model = _DualOutModel()
+    model = dual_out_model
     graph = model.to_graph_module()
     x = torch.randn(1, 8)
     expected = model(x)
@@ -1108,21 +814,11 @@ def test_local_optimization_with_kwargs() -> None:
     # GIVEN calibration data
     calibration_data = [None for _ in range(5)]
 
-    # GIVEN an optimization function
-    def opt_kwargs(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
             region=linear,
-            fn=opt_kwargs,
+            fn=sgd_step,
         )
     ]
 
@@ -1153,21 +849,11 @@ def test_local_optimization_with_multiple_inputs() -> None:
     calibration_data_input1 = [torch.randn(1, 5) for _ in range(5)]
     calibration_data_input2 = [torch.randn(1, 5) for _ in range(5)]
 
-    # GIVEN an optimization function
-    def multi_input_opt(module: torch.nn.Module, bundle: ActivationBundle) -> None:
-        optim = torch.optim.SGD(params=module.parameters(), lr=0.1)
-        for args, kwargs in bundle:
-            optim.zero_grad()
-            output = module(*args, **kwargs)
-            loss = (output**2).mean()
-            loss.backward()
-            optim.step()
-
     # GIVEN a spec targeting the linear layer
     specs = [
         SubgraphSpec(
             region=linear,
-            fn=multi_input_opt,
+            fn=sgd_step,
         )
     ]
 
@@ -1208,9 +894,8 @@ def test_node_with_no_inputs_executes_once() -> None:
     assert isinstance(output, torch.Tensor)
 
 
-def test_inference_mode_restores_state_on_exit() -> None:
+def test_inference_mode_restores_state_on_exit(model: Model) -> None:
     # GIVEN a fresh GraphModule (program and engine are None)
-    model = Model()
     graph = model.to_graph_module()
     original_program = graph._program
     original_engine = graph._engine
@@ -1228,9 +913,8 @@ def test_inference_mode_restores_state_on_exit() -> None:
     assert graph._engine is original_engine
 
 
-def test_inference_mode_restores_previously_compiled_state() -> None:
+def test_inference_mode_restores_previously_compiled_state(model: Model) -> None:
     # GIVEN a GraphModule that has already been used (program/engine are set)
-    model = Model()
     graph = model.to_graph_module()
     x = torch.randn(1, 5)
     graph(x)  # triggers compilation
@@ -1249,9 +933,8 @@ def test_inference_mode_restores_previously_compiled_state() -> None:
     assert graph._engine is original_engine
 
 
-def test_inference_mode_produces_same_output_as_default() -> None:
+def test_inference_mode_produces_same_output_as_default(model: Model) -> None:
     # GIVEN a GraphModule and an input tensor
-    model = Model()
     graph = model.to_graph_module()
     x = torch.randn(1, 5)
 
