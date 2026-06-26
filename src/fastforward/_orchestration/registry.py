@@ -26,8 +26,8 @@ Algorithm: TypeAlias = Callable[..., Any]
 TargetType: TypeAlias = (
     type[torch.nn.Module]
     | torch.nn.Module
-    | str
-    | Iterable["type[torch.nn.Module] | torch.nn.Module | str | Selector"]
+    | mpath.selector.BaseSelector
+    | Iterable["type[torch.nn.Module] | torch.nn.Module | mpath.selector.BaseSelector | Selector"]
 )
 
 
@@ -73,9 +73,9 @@ class ModuleInstanceSelector(Selector):
 
 @dataclasses.dataclass(frozen=True)
 class MPathSelector(Selector):
-    """Selects modules in a model by mpath query."""
+    """Selects modules in a model by a (pre-parsed) mpath query."""
 
-    query: str
+    query: mpath.selector.BaseSelector
 
     def resolve(self, model: torch.nn.Module) -> list[Region]:  # noqa: D102
         return list(mpath.search(self.query, model).modules())
@@ -104,7 +104,7 @@ def normalize(target: TargetType | Selector) -> Selector:
     Targets as provided by users can be a variety of inputs. We expect:
     - (sequence of) Module types : I want to target all torch.nn.Linear layers.
     - (sequence of) instantiated modules : I want to target these specific layers.
-    - String query for Mpath : I want to target these specific layers.
+    - A parsed mpath query : I want to target the modules this query matches.
 
     Args:
         target: A user provided target that should be normalized.
@@ -117,11 +117,11 @@ def normalize(target: TargetType | Selector) -> Selector:
             return target
         case type() if issubclass(target, torch.nn.Module):
             return ModuleTypeSelector(types=(target,))
-        case str():
+        case mpath.selector.BaseSelector():
             return MPathSelector(query=target)
         case torch.nn.Module():
             return ModuleInstanceSelector(modules=frozenset([target]))
-        case target if isinstance(target, Iterable):
+        case target if isinstance(target, Iterable) and not isinstance(target, str):  # type: ignore[redundant-expr, unreachable]
             if not (items := list(target)):
                 raise TypeError("Empty target sequence")
 
@@ -133,7 +133,7 @@ def normalize(target: TargetType | Selector) -> Selector:
             msg = f"Expected a torch.nn.Module subclass, got {target!r}."  # type: ignore[unreachable]
             raise TypeError(msg)
         case _:
-            msg = f"Invalid target: expected a Module type, Module instance, mpath string, or sequence thereof; got {target!r}."  # type: ignore[unreachable]
+            msg = f"Invalid target: expected a Module type, Module instance, parsed mpath query, or sequence thereof; got {target!r}."  # type: ignore[unreachable]
             raise TypeError(msg)
 
 
@@ -178,7 +178,7 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
 
         Args:
             algorithm: The algorithm that runs on 'target'.
-            target: A Selector, Module type, Module instance, mpath string, or sequence thereof.
+            target: A Selector, Module type, Module instance, parsed mpath query, or sequence thereof.
         """
         self._specs[algorithm] = AlgorithmSpec(target=normalize(target))
 
@@ -210,7 +210,7 @@ def register(algorithm: Algorithm, targets: TargetType | Selector) -> None:
 
     Args:
         algorithm: The algorithm to register targets for.
-        targets: A Selector, module type, tuple of types, mpath query string, or list of module instances.
+        targets: A Selector, module type, tuple of types, parsed mpath query, or list of module instances.
     """
     _registry.register(algorithm, targets)
 

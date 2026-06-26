@@ -4,6 +4,7 @@
 import pytest
 import torch
 
+from fastforward import mpath
 from fastforward._orchestration.registry import (
     CompositeSelector,
     ModuleInstanceSelector,
@@ -15,6 +16,10 @@ from fastforward._orchestration.registry import (
     _AlgorithmRegistry,
     normalize,
 )
+
+# mpath selectors compare by fragment identity, init them here once.
+_ATTENTION_QUERY = mpath.query("layers/*/attention")
+_ATTN_QUERY = mpath.query("layers/*/attn")
 
 
 @pytest.mark.parametrize(
@@ -29,7 +34,7 @@ from fastforward._orchestration.registry import (
             [torch.nn.Linear, torch.nn.Conv2d],
             ModuleTypeSelector(types=(torch.nn.Linear, torch.nn.Conv2d)),
         ),
-        ("layers.*.attention", MPathSelector(query="layers.*.attention")),
+        (_ATTENTION_QUERY, MPathSelector(query=_ATTENTION_QUERY)),
     ],
     ids=["single_type", "tuple_of_types", "list_of_types", "mpath_query"],
 )
@@ -66,12 +71,14 @@ def test_normalize_list_of_instances() -> None:
         ([], "Empty target sequence"),
         ([torch.nn.Linear, 42], "Invalid target"),
         ([int, str], "Expected a torch.nn.Module subclass"),
+        ("layers/*/attention", "Invalid target"),
     ],
     ids=[
         "non_module_type",
         "empty_sequence",
         "invalid_item_in_sequence",
         "non_module_types_in_sequence",
+        "raw_string",
     ],
 )
 def test_normalize_raises(target: object, match: str) -> None:
@@ -82,18 +89,18 @@ def test_normalize_raises(target: object, match: str) -> None:
 
 
 def test_normalize_heterogeneous_sequence() -> None:
-    # GIVEN a mix of a type, an instance, and an mpath query
+    # GIVEN a mix of a type, an instance, and a parsed mpath query
     m = torch.nn.Linear(4, 4)
 
     # WHEN normalizing a heterogeneous sequence
-    result = normalize([torch.nn.Conv2d, m, "layers.*.attn"])
+    result = normalize([torch.nn.Conv2d, m, _ATTN_QUERY])
 
     # THEN a CompositeSelector with one selector per element is returned
     assert result == CompositeSelector(
         selectors=(
             ModuleTypeSelector(types=(torch.nn.Conv2d,)),
             ModuleInstanceSelector(modules=frozenset([m])),
-            MPathSelector(query="layers.*.attn"),
+            MPathSelector(query=_ATTN_QUERY),
         )
     )
 
@@ -114,7 +121,7 @@ def _dummy_algorithm() -> None:
     "target, expected_modules_attr",
     [
         pytest.param(torch.nn.Linear, ["linear1", "linear2"], id="type_target"),
-        pytest.param("linear1", ["linear1"], id="mpath_target"),
+        pytest.param(mpath.query("linear1"), ["linear1"], id="mpath_target"),
         pytest.param("explicit", ["conv"], id="module_instances"),
     ],
 )
@@ -126,6 +133,7 @@ def test_register_and_resolve(target: TargetType | str, expected_modules_attr: l
     # Swap placeholder for actual module instances
     if target == "explicit":
         target = [model.conv]
+    assert not isinstance(target, str)  # "explicit" is the only str and is swapped above
 
     registry.register(_dummy_algorithm, target)
 
