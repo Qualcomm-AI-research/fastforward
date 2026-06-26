@@ -17,6 +17,8 @@ from fastforward._orchestration.registry import (
     normalize,
 )
 
+from ._models import TinyModel
+
 # mpath selectors compare by fragment identity, init them here once.
 _ATTENTION_QUERY = mpath.query("layers/*/attention")
 _ATTN_QUERY = mpath.query("layers/*/attn")
@@ -105,14 +107,6 @@ def test_normalize_heterogeneous_sequence() -> None:
     )
 
 
-class _TinyModel(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear1 = torch.nn.Linear(4, 4)
-        self.linear2 = torch.nn.Linear(4, 4)
-        self.conv = torch.nn.Conv2d(3, 3, 1)
-
-
 def _dummy_algorithm() -> None:
     pass
 
@@ -125,10 +119,12 @@ def _dummy_algorithm() -> None:
         pytest.param("explicit", ["conv"], id="module_instances"),
     ],
 )
-def test_register_and_resolve(target: TargetType | str, expected_modules_attr: list[str]) -> None:
+def test_register_and_resolve(
+    target: TargetType | str, expected_modules_attr: list[str], tiny_model: TinyModel
+) -> None:
     # GIVEN a registry and a model
     registry = _AlgorithmRegistry()
-    model = _TinyModel()
+    model = tiny_model
 
     # Swap placeholder for actual module instances
     if target == "explicit":
@@ -145,10 +141,10 @@ def test_register_and_resolve(target: TargetType | str, expected_modules_attr: l
     assert {s.region for s in result} == set(expected)
 
 
-def test_register_overwrites_previous() -> None:
+def test_register_overwrites_previous(tiny_model: TinyModel) -> None:
     # GIVEN a registry with Linear registered, then overwritten with Conv2d
     registry = _AlgorithmRegistry()
-    model = _TinyModel()
+    model = tiny_model
     registry.register(_dummy_algorithm, torch.nn.Linear)
     registry.register(_dummy_algorithm, torch.nn.Conv2d)
 
@@ -159,10 +155,10 @@ def test_register_overwrites_previous() -> None:
     assert [s.region for s in result] == [model.conv]
 
 
-def test_resolve_unregistered_algorithm_raises() -> None:
+def test_resolve_unregistered_algorithm_raises(tiny_model: TinyModel) -> None:
     # GIVEN an empty registry
     registry = _AlgorithmRegistry()
-    model = _TinyModel()
+    model = tiny_model
 
     # WHEN resolving an unregistered algorithm
     # THEN NoTargetsFound is raised
@@ -170,10 +166,10 @@ def test_resolve_unregistered_algorithm_raises() -> None:
         registry.resolve(model, _dummy_algorithm)
 
 
-def test_resolve_empty_match_raises() -> None:
+def test_resolve_empty_match_raises(tiny_model: TinyModel) -> None:
     # GIVEN a registry with BatchNorm2d registered (not present in model)
     registry = _AlgorithmRegistry()
-    model = _TinyModel()
+    model = tiny_model
     registry.register(_dummy_algorithm, torch.nn.BatchNorm2d)
 
     # WHEN resolving
@@ -182,10 +178,10 @@ def test_resolve_empty_match_raises() -> None:
         registry.resolve(model, _dummy_algorithm)
 
 
-def test_register_and_resolve_heterogeneous_target() -> None:
+def test_register_and_resolve_heterogeneous_target(tiny_model: TinyModel) -> None:
     # GIVEN a registry and a model
     registry = _AlgorithmRegistry()
-    model = _TinyModel()
+    model = tiny_model
 
     # WHEN registering a heterogeneous target (type + specific instance)
     registry.register(_dummy_algorithm, [torch.nn.Linear, model.conv])
@@ -193,3 +189,27 @@ def test_register_and_resolve_heterogeneous_target() -> None:
     # THEN resolving returns all Linear layers and the conv instance
     result = registry.resolve(model, _dummy_algorithm)
     assert {s.region for s in result} == {model.linear1, model.linear2, model.conv}
+
+
+def test_module_instance_selector_missing_module_raises(tiny_model: TinyModel) -> None:
+    # GIVEN a selector requiring an instance that is absent from the model
+    model = tiny_model
+    absent = torch.nn.Linear(4, 4)
+    selector = ModuleInstanceSelector(modules=frozenset([absent]))
+
+    # WHEN we resolve it against the model
+    # THEN it raises because the required instance is not part of the model
+    with pytest.raises(ValueError, match="not found on model"):
+        selector.resolve(model)
+
+
+def test_algorithm_registry_mapping_protocol() -> None:
+    # GIVEN a registry with one algorithm registered
+    registry = _AlgorithmRegistry()
+    registry.register(_dummy_algorithm, torch.nn.Linear)
+
+    # WHEN we use the Mapping protocol (__len__, __iter__, __getitem__)
+    # THEN it reflects the single registration
+    assert len(registry) == 1
+    assert list(registry) == [_dummy_algorithm]
+    assert registry[_dummy_algorithm].target == ModuleTypeSelector(types=(torch.nn.Linear,))

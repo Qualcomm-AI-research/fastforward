@@ -16,10 +16,31 @@ from fastforward._orchestration.graph_module import (
     local_optimize,
 )
 from fastforward._orchestration.instruction_engine import ActivationBundle
-from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
+from fastforward._orchestration.trace import (
+    _MIN_TORCH_VERSION,
+    _make_dict,
+    _make_list,
+    _make_slice,
+    _make_tuple,
+    trace,
+)
 from packaging.version import Version
 from torch import nn
 
+from ._models import (
+    CatModel,
+    DeviceCastModel,
+    KwargForward,
+    MixedOps,
+    MultiAxisIndex,
+    NestedMLP,
+    NestedWithTensorOps,
+    TinyMLP,
+    ToyDecoderLayer,
+    ToyLlama,
+    TupleOut,
+    WithBuffer,
+)
 from .conftest import sgd_step
 
 pytestmark = pytest.mark.skipif(
@@ -50,156 +71,9 @@ skip_without_transformers = pytest.mark.skipif(
 )
 
 
-class _TinyMLP(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.fc1 = nn.Linear(8, 16)
-        self.act = nn.SiLU()
-        self.fc2 = nn.Linear(16, 4)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y: torch.Tensor = self.fc2(self.act(self.fc1(x)))
-        return y
-
-
-class _TupleOut(nn.Module):
-    """Returns a tuple to exercise output_unflatten."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.fc = nn.Linear(4, 4)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
-        return (self.fc(x),)
-
-
-class _MultiAxisIndex(nn.Module):
-    """Exercises unflatten-arg for tuple/None/slice indexing."""
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x[None, :, None]
-
-
-class _WithBuffer(nn.Module):
-    """Module with a registered buffer accessed during forward."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.register_buffer("scale", torch.tensor([2.0]))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        assert isinstance(self.scale, torch.Tensor)
-        return x * self.scale
-
-
-class _KwargForward(nn.Module):
-    """Exercises l_kw_*_ unmangling."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.fc = nn.Linear(4, 4)
-
-    def forward(self, x: torch.Tensor, *, scale: torch.Tensor) -> torch.Tensor:
-        y: torch.Tensor = self.fc(x) * scale
-        return y
-
-
-class _NestedMLP(nn.Module):
-    """Two-level nesting to exercise add_subgraph scoping."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.block = _TinyMLP()
-        self.head = nn.Linear(4, 2)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.head(self.block(x))  # type: ignore[no-any-return]
-
-
-class _MixedOps(nn.Module):
-    """Mix of nn.Module calls, tensor ops (transpose, mul), and a buffer access.
-
-    Used to verify that the tracer assigns the correct Op kind per node:
-    nn.Module calls become Op.torch_module (callable is the Module), tensor
-    ops become Op.call_function (callable is an aten op, not a Module), buffer
-    reads become Op.get_attr (callable is a closure).
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.fc = nn.Linear(8, 8)
-        self.act = nn.SiLU()
-        self.register_buffer("scale", torch.tensor(2.0))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        z = self.fc(x)
-        z = self.act(z)
-        # transpose twice keeps shapes valid while emitting two call_function nodes
-        y = torch.transpose(z, -1, -2)
-        out = torch.transpose(y, -1, -2)
-        assert isinstance(self.scale, torch.Tensor)
-        return out * self.scale
-
-
-# ---------------------------------------------------------------------------
-# Toy Llama-shaped model used for the GPTQ-pipeline smoke test. The structure
-# mirrors HuggingFace's LlamaForCausalLM well enough that mpath patterns from
-# the GPTQ notebook (e.g. "*/q_proj", "*/gate_proj") match the same way:
-#   model.layers.{i}.self_attn.{q,k,v,o}_proj
-#   model.layers.{i}.mlp.{gate,up,down}_proj
-# Only the structure matters — the math is a stand-in (no attention, no SiLU).
-# ---------------------------------------------------------------------------
-
-
-class _ToyAttention(nn.Module):
-    def __init__(self, dim: int) -> None:
-        super().__init__()
-        self.q_proj = nn.Linear(dim, dim)
-        self.k_proj = nn.Linear(dim, dim)
-        self.v_proj = nn.Linear(dim, dim)
-        self.o_proj = nn.Linear(dim, dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.o_proj(self.q_proj(x) + self.k_proj(x) + self.v_proj(x))  # type: ignore[no-any-return]
-
-
-class _ToyMLP(nn.Module):
-    def __init__(self, dim: int, ff_mult: int = 2) -> None:
-        super().__init__()
-        self.gate_proj = nn.Linear(dim, dim * ff_mult)
-        self.up_proj = nn.Linear(dim, dim * ff_mult)
-        self.down_proj = nn.Linear(dim * ff_mult, dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.down_proj(self.gate_proj(x) * self.up_proj(x))  # type: ignore[no-any-return]
-
-
-class _ToyDecoderLayer(nn.Module):
-    def __init__(self, dim: int) -> None:
-        super().__init__()
-        self.self_attn = _ToyAttention(dim)
-        self.mlp = _ToyMLP(dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.self_attn(x)
-        x = x + self.mlp(x)
-        return x
-
-
-class _ToyLlama(nn.Module):
-    def __init__(self, dim: int = 16, n_layers: int = 2) -> None:
-        super().__init__()
-        self.layers = nn.ModuleList([_ToyDecoderLayer(dim) for _ in range(n_layers)])
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        for layer in self.layers:
-            x = layer(x)
-        return x
-
-
-def test_trace_tiny_mlp_returns_graph_module() -> None:
+def test_trace_tiny_mlp_returns_graph_module(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP module and an example input
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
 
     # WHEN the module is traced
@@ -210,9 +84,9 @@ def test_trace_tiny_mlp_returns_graph_module() -> None:
     assert graph.input_names
 
 
-def test_trace_tiny_mlp_preserves_module_nodes() -> None:
+def test_trace_tiny_mlp_preserves_module_nodes(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP module with three submodules (fc1, act, fc2)
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
 
     # WHEN the module is traced
@@ -225,9 +99,9 @@ def test_trace_tiny_mlp_preserves_module_nodes() -> None:
     assert "fc2" in module_nodes
 
 
-def test_trace_recovers_leaf_modules_by_identity() -> None:
+def test_trace_recovers_leaf_modules_by_identity(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP with parametric and parameter-free leaf submodules
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
 
     # WHEN the module is traced
@@ -245,9 +119,9 @@ def test_trace_recovers_leaf_modules_by_identity() -> None:
     assert graph.node_ref(model.act).name == "act"
 
 
-def test_trace_recovers_nested_modules_by_dotted_path() -> None:
+def test_trace_recovers_nested_modules_by_dotted_path(nested_mlp: NestedMLP) -> None:
     # GIVEN a model with a nested submodule (block.fc1, block.fc2, ...)
-    model = _NestedMLP().eval()
+    model = nested_mlp.eval()
     x = torch.randn(2, 8)
 
     # WHEN the module is traced
@@ -269,15 +143,15 @@ def test_trace_recovers_nested_modules_by_dotted_path() -> None:
 
 def test_trace_recovers_module_list_children_by_numeric_dotted_path() -> None:
     # GIVEN a model with nn.ModuleList (layers.0, layers.1, ...)
-    model = _ToyLlama(dim=16, n_layers=2).eval()
+    model = ToyLlama(dim=16, n_layers=2).eval()
     x = torch.randn(1, 16)
 
     # WHEN the module is traced
     graph = trace(model, x)
     layer0 = model.layers[0]
     layer1 = model.layers[1]
-    assert isinstance(layer0, _ToyDecoderLayer)
-    assert isinstance(layer1, _ToyDecoderLayer)
+    assert isinstance(layer0, ToyDecoderLayer)
+    assert isinstance(layer1, ToyDecoderLayer)
 
     # THEN leaf modules behind numeric indices are recoverable via dotted lookup
     assert graph.get_submodule("layers.0.self_attn.q_proj") is layer0.self_attn.q_proj
@@ -288,9 +162,9 @@ def test_trace_recovers_module_list_children_by_numeric_dotted_path() -> None:
     assert graph.node_ref(layer1.mlp.gate_proj).name == "layers.1.mlp.gate_proj"
 
 
-def test_trace_nested_model_forward_matches_eager() -> None:
+def test_trace_nested_model_forward_matches_eager(nested_mlp: NestedMLP) -> None:
     # GIVEN a nested model with a sub-block of submodules
-    model = _NestedMLP().eval()
+    model = nested_mlp.eval()
     x = torch.randn(2, 8)
     with torch.no_grad():
         expected = model(x)
@@ -304,9 +178,9 @@ def test_trace_nested_model_forward_matches_eager() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_tiny_mlp_forward_matches_eager() -> None:
+def test_trace_tiny_mlp_forward_matches_eager(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP module and the eager-mode forward output for an example input
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     with torch.no_grad():
         expected = model(x)
@@ -320,9 +194,9 @@ def test_trace_tiny_mlp_forward_matches_eager() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_preserves_output_structure_tuple() -> None:
+def test_trace_preserves_output_structure_tuple(tuple_out: TupleOut) -> None:
     # GIVEN a module whose forward returns a 1-tuple of tensors
-    model = _TupleOut().eval()
+    model = tuple_out.eval()
     x = torch.randn(2, 4)
     with torch.no_grad():
         expected = model(x)
@@ -339,9 +213,9 @@ def test_trace_preserves_output_structure_tuple() -> None:
     torch.testing.assert_close(got[0], expected[0], atol=1e-5, rtol=1e-5)
 
 
-def test_trace_kwarg_input_names_match_module_signature() -> None:
+def test_trace_kwarg_input_names_match_module_signature(kwarg_forward: KwargForward) -> None:
     # GIVEN a module whose forward signature includes a keyword-only argument `scale`
-    model = _KwargForward().eval()
+    model = kwarg_forward.eval()
     x = torch.randn(2, 4)
     scale = torch.randn(4)
     with torch.no_grad():
@@ -358,9 +232,9 @@ def test_trace_kwarg_input_names_match_module_signature() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_constant_indexing_via_unflatten_arg() -> None:
+def test_trace_constant_indexing_via_unflatten_arg(multi_axis_index: MultiAxisIndex) -> None:
     # GIVEN a module that indexes into a tensor with a multi-axis None/slice key
-    model = _MultiAxisIndex().eval()
+    model = multi_axis_index.eval()
     x = torch.randn(8)
     with torch.no_grad():
         expected = model(x)
@@ -374,9 +248,9 @@ def test_trace_constant_indexing_via_unflatten_arg() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_with_buffer_forward_matches_eager() -> None:
+def test_trace_with_buffer_forward_matches_eager(with_buffer: WithBuffer) -> None:
     # GIVEN a module that reads from a registered buffer during forward
-    model = _WithBuffer().eval()
+    model = with_buffer.eval()
     x = torch.randn(4)
     with torch.no_grad():
         expected = model(x)
@@ -394,9 +268,9 @@ def test_trace_with_buffer_forward_matches_eager() -> None:
     assert isinstance(moved, GraphModule)
 
 
-def test_trace_shares_weights_by_identity() -> None:
+def test_trace_shares_weights_by_identity(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP that has been traced into a graph
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
@@ -411,9 +285,9 @@ def test_trace_shares_weights_by_identity() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_backward_matches_eager() -> None:
+def test_trace_backward_matches_eager(tiny_mlp: TinyMLP) -> None:
     # GIVEN a tiny MLP in train mode and the eager gradients of `loss = model(x).sum()`
-    model = _TinyMLP()
+    model = tiny_mlp
     x = torch.randn(2, 8)
     eager_out = model(x).sum()
     eager_grads = torch.autograd.grad(eager_out, list(model.parameters()))
@@ -429,9 +303,9 @@ def test_trace_backward_matches_eager() -> None:
         torch.testing.assert_close(eg, gg, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_module_calls_emit_torch_module_op_with_module_callable() -> None:
+def test_trace_module_calls_emit_torch_module_op_with_module_callable(mixed_ops: MixedOps) -> None:
     # GIVEN a model mixing nn.Module calls, tensor ops, and a buffer read
-    model = _MixedOps().eval()
+    model = mixed_ops.eval()
     x = torch.randn(2, 8)
 
     # WHEN the model is traced
@@ -449,9 +323,11 @@ def test_trace_module_calls_emit_torch_module_op_with_module_callable() -> None:
     assert {id(n.target) for n in torch_module_nodes} == {id(model.fc), id(model.act)}
 
 
-def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable() -> None:
+def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable(
+    mixed_ops: MixedOps,
+) -> None:
     # GIVEN a traced model with torch.transpose and aten.mul calls
-    model = _MixedOps().eval()
+    model = mixed_ops.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
@@ -471,9 +347,9 @@ def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable() -> No
         )
 
 
-def test_trace_buffer_access_emits_get_attr_op_with_closure_callable() -> None:
+def test_trace_buffer_access_emits_get_attr_op_with_closure_callable(mixed_ops: MixedOps) -> None:
     # GIVEN a traced model with a registered buffer read in forward
-    model = _MixedOps().eval()
+    model = mixed_ops.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
@@ -493,9 +369,9 @@ def test_trace_buffer_access_emits_get_attr_op_with_closure_callable() -> None:
     assert resolved.data_ptr() == model.scale.data_ptr()
 
 
-def test_trace_node_op_invariants_hold_for_every_node() -> None:
+def test_trace_node_op_invariants_hold_for_every_node(mixed_ops: MixedOps) -> None:
     # GIVEN a traced model with a representative mix of operations
-    model = _MixedOps().eval()
+    model = mixed_ops.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
@@ -522,7 +398,9 @@ def test_trace_node_op_invariants_hold_for_every_node() -> None:
     assert {Op.torch_module, Op.call_function, Op.get_attr}.issubset(seen_ops)
 
 
-def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
+def test_trace_node_op_invariants_hold_through_add_subgraph_inlining(
+    nested_with_tensor_ops: NestedWithTensorOps,
+) -> None:
     # GIVEN a NESTED model where tensor ops live inside a submodule. add_subgraph
     # used to drop the `op` field of inlined nodes — so an aten op (call_function)
     # nested inside `block` would surface in the parent graph as Op.torch_module
@@ -530,15 +408,7 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
     # to .to(device) the OpOverload) and any code that assumes torch_module nodes
     # wrap real nn.Modules. This test walks the inlined parent graph and pins
     # the op contract for every node.
-    class _NestedWithTensorOps(nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.block = _MixedOps()  # contains fc + act + transpose + mul + buffer
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            return self.block(x)  # type: ignore[no-any-return]
-
-    model = _NestedWithTensorOps().eval()
+    model = nested_with_tensor_ops.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
@@ -564,9 +434,9 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining() -> None:
     assert {Op.torch_module, Op.call_function, Op.get_attr}.issubset(op_kinds)
 
 
-def test_trace_then_local_optimize_only_targets_specified_module() -> None:
+def test_trace_then_local_optimize_only_targets_specified_module(tiny_mlp: TinyMLP) -> None:
     # GIVEN a traced TinyMLP and a SubgraphSpec targeting only fc1
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
     initial_w1 = model.fc1.weight.data.clone()
@@ -586,11 +456,13 @@ def test_trace_then_local_optimize_only_targets_specified_module() -> None:
     assert torch.allclose(initial_w2, model.fc2.weight.data)
 
 
-def test_trace_then_local_optimize_fn_receives_original_module_and_dataset() -> None:
+def test_trace_then_local_optimize_fn_receives_original_module_and_dataset(
+    tiny_mlp: TinyMLP,
+) -> None:
     # GIVEN a traced TinyMLP — verify the delegate fn contract: it gets a callable
     # whose parameters include the targeted module's parameters, and the calibration
     # data arrives as a non-empty iterable of batches in the captured context
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
     calibration = [torch.randn(1, 8) for _ in range(3)]
@@ -614,9 +486,9 @@ def test_trace_then_local_optimize_fn_receives_original_module_and_dataset() -> 
     assert len(received["batches"]) == len(calibration)
 
 
-def test_trace_then_inference_mode_forward_matches_eager() -> None:
+def test_trace_then_inference_mode_forward_matches_eager(tiny_mlp: TinyMLP) -> None:
     # GIVEN a traced TinyMLP and the eager forward output
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     with torch.no_grad():
         expected = model(x)
@@ -630,10 +502,12 @@ def test_trace_then_inference_mode_forward_matches_eager() -> None:
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-def test_trace_then_local_optimize_multiple_specs_each_targets_its_module() -> None:
+def test_trace_then_local_optimize_multiple_specs_each_targets_its_module(
+    tiny_mlp: TinyMLP,
+) -> None:
     # GIVEN a traced TinyMLP and two SubgraphSpecs (one per Linear) — the typical
     # GPTQ pattern where every projection gets its own single-module spec
-    model = _TinyMLP().eval()
+    model = tiny_mlp.eval()
     x = torch.randn(2, 8)
     graph = trace(model, x)
     call_log: list[str] = []
@@ -725,20 +599,10 @@ def test_trace_qwen3_8b_forward_matches_eager() -> None:
     torch.testing.assert_close(got.logits, expected.logits, atol=0.05, rtol=0.01)
 
 
-def test_trace_keeps_dtype_layout_cast_device_agnostic() -> None:
+def test_trace_keeps_dtype_layout_cast_device_agnostic(device_cast_model: DeviceCastModel) -> None:
     """torch.export bakes x.device as a cpu literal; ff.trace strips it."""
-
     # GIVEN a module whose forward follows x's runtime device via .float().to(x.device)
-    class _M(nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.register_buffer("inv_freq", torch.ones(4))
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            assert isinstance(self.inv_freq, torch.Tensor)
-            return x * self.inv_freq.float().to(x.device)
-
-    model = _M().eval()
+    model = device_cast_model.eval()
     example = torch.randn(1, 4)
 
     # WHEN torch.export captures the cast, x.device is resolved to a literal cpu kwarg
@@ -757,9 +621,41 @@ def test_trace_keeps_dtype_layout_cast_device_agnostic() -> None:
     for post_cast in matches:
         assert "device" not in post_cast.kwargs
 
-    # AND the forward pass through the GraphModule matches eager _M().forward()
+    # AND the forward pass through the GraphModule matches eager DeviceCastModel.forward()
     with torch.no_grad():
         expected = model(example)
         got = graph(example)
 
     torch.testing.assert_close(got, expected)
+
+
+def test_trace_synthesizes_container_node_for_list_arg(cat_model: CatModel) -> None:
+    # GIVEN a model that passes a list of tensors as an op argument
+    model = cat_model.eval()
+    x = torch.randn(2, 4)
+    with torch.no_grad():
+        expected = model(x)
+
+    # WHEN the model is traced
+    graph = trace(model, x)
+
+    # THEN a _make_list container node is synthesized to rebuild the list argument
+    make_list_nodes = [
+        n for n in graph._nodes.values() if n.op == Op.call_function and n.target is _make_list
+    ]
+    assert len(make_list_nodes) == 1
+
+    # THEN the forward pass through the graph still matches eager
+    with torch.no_grad():
+        got = graph(x)
+    torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
+
+
+def test_make_container_helpers_round_trip_values() -> None:
+    # GIVEN the container constructors the tracer wires into call_function nodes
+    # WHEN each is called the way the engine calls it
+    # THEN it reconstructs the corresponding Python container
+    assert _make_tuple(1, 2, 3) == (1, 2, 3)
+    assert _make_list(1, 2, 3) == [1, 2, 3]
+    assert _make_slice(1, 5, 2) == slice(1, 5, 2)
+    assert _make_dict(a=1, b=2) == {"a": 1, "b": 2}

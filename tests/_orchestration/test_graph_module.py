@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+import dataclasses
 import functools
 import uuid
 
@@ -17,12 +18,14 @@ from fastforward._orchestration.graph_module import (
     NodeRef,
     Span,
     SubgraphSpec,
+    _BaseRef,
     create_subgraph,
     find_nodes_on_path,
     inference_mode,
     local_optimize,
     reduce_resolution,
     remap_subgraph_reference,
+    topological_sort,
 )
 from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
@@ -30,17 +33,18 @@ from fastforward._orchestration.instruction_engine import (
     CallModule,
 )
 
-from .conftest import (
+from ._models import (
     Add,
     ConstReturn,
     ConstReturnKwargs,
     DualOutModel,
     Model,
     MultiOutputModel,
+    ProbeModule,
+    RNGTensor,
     TwoLayerModel,
-    noop,
-    sgd_step,
 )
+from .conftest import noop, sgd_step
 
 
 def test_graph_module_forward_pass(model: Model) -> None:
@@ -865,21 +869,14 @@ def test_local_optimization_with_multiple_inputs() -> None:
     assert not torch.allclose(initial_weight, linear.weight.data)
 
 
-def test_node_with_no_inputs_executes_once() -> None:
+def test_node_with_no_inputs_executes_once(rng_tensor: RNGTensor) -> None:
     """Test that nodes with no inputs execute once."""
-
-    class RNGTensor(torch.nn.Module):
-        """Generate a tensor."""
-
-        def forward(self) -> torch.Tensor:
-            return torch.randn(5)
-
     # GIVEN a GraphModule with a tensor generator that has no inputs
     graph = GraphModule()
     x = graph.add_input("x")
 
     # Node with NO inputs - just generates a tensor
-    y = graph.add_node("get_tensor", RNGTensor(), args=[])
+    y = graph.add_node("get_tensor", rng_tensor, args=[])
 
     # Node that uses both x and the generated y
     (result,) = graph.add_subgraph("add", Add().to_graph_module(), [x, y])
@@ -947,18 +944,9 @@ def test_inference_mode_produces_same_output_as_default(model: Model) -> None:
     torch.testing.assert_close(inference_output, default_output)
 
 
-def test_inference_mode_enables_torch_inference_mode() -> None:
+def test_inference_mode_enables_torch_inference_mode(probe_module: ProbeModule) -> None:
     # GIVEN a module that records whether torch.is_inference_mode_enabled during forward
-    class ProbeModule(torch.nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.is_on_inference_mode = False
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            self.is_on_inference_mode = torch.is_inference_mode_enabled()
-            return x
-
-    probe = ProbeModule()
+    probe = probe_module
     graph = GraphModule()
     inp = graph.add_input("x")
     out = graph.add_node("probe", probe, [inp])
@@ -1072,8 +1060,6 @@ def test_graph_accepts_iterable_of_tuple_batches() -> None:
 
 
 def test_graph_accepts_iterable_of_dataclass_batches() -> None:
-    import dataclasses
-
     @dataclasses.dataclass
     class Batch:
         x: torch.Tensor
@@ -1094,3 +1080,182 @@ def test_graph_accepts_iterable_of_dataclass_batches() -> None:
     flat = next(iter(results.values()))
     for got, exp in zip(flat, expected):
         assert torch.allclose(got, exp)
+
+
+def test_node_ref_unknown_module_raises(model: Model) -> None:
+    # GIVEN a graph and a module that is not part of it
+    graph = model.to_graph_module()
+    stranger = torch.nn.Linear(3, 3)
+
+    # WHEN we look up a NodeRef for the foreign module
+    # THEN node_ref raises (the module has no node in the graph)
+    with pytest.raises(ValueError, match="not found in Graphmodule"):
+        graph.node_ref(stranger)
+
+
+def test_add_input_duplicate_name_raises() -> None:
+    # GIVEN a graph that already has an input named "x"
+    graph = GraphModule()
+    graph.add_input("x")
+
+    # WHEN we add a second input with the same name
+    # THEN it raises rather than silently shadowing the first
+    with pytest.raises(ValueError, match="Duplicate input name"):
+        graph.add_input("x")
+
+
+def test_add_output_unknown_node_raises() -> None:
+    # GIVEN a NodeRef that does not belong to the graph
+    graph = GraphModule()
+    foreign_ref = NodeRef(id=uuid.uuid4(), name="foreign")
+
+    # WHEN we register it as an output
+    # THEN it raises because the node is not in the graph
+    with pytest.raises(ValueError, match="Unknown node name"):
+        graph.add_output(foreign_ref)
+
+
+def test_add_output_non_noderef_attribute_raises() -> None:
+    # GIVEN an AttributeRef whose base resolves to an InputRef (not a NodeRef)
+    graph = GraphModule()
+    input_ref = graph.add_input("x")
+    attr_of_input = input_ref[0]
+
+    # WHEN we try to use it as a graph output
+    # THEN it raises because outputs must resolve to a NodeRef
+    with pytest.raises(ValueError, match="has to resolve to a NodeRef"):
+        graph.add_output(attr_of_input)
+
+
+def test_add_node_duplicate_id_raises() -> None:
+    # GIVEN a graph with a node added under an explicit id
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    node_id = uuid.uuid4()
+    graph.add_node("first", torch.nn.Identity(), [inp], node_id=node_id)
+
+    # WHEN we add another node reusing that id
+    # THEN it raises rather than overwriting the existing node
+    with pytest.raises(ValueError, match="Duplicate node id"):
+        graph.add_node("second", torch.nn.Identity(), [inp], node_id=node_id)
+
+
+def test_add_subgraph_without_outputs_raises() -> None:
+    # GIVEN a subgraph that never declared an output
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    empty_subgraph = GraphModule()
+    empty_subgraph.add_input("x")
+
+    # WHEN we inline it
+    # THEN it raises because there is nothing to wire as the fold's output
+    with pytest.raises(ValueError, match="no output nodes"):
+        graph.add_subgraph("sub", empty_subgraph, [inp])
+
+
+def test_add_subgraph_wrong_input_count_raises() -> None:
+    # GIVEN an Add subgraph that expects two inputs
+    graph = GraphModule()
+    inp = graph.add_input("x")
+
+    # WHEN we inline it with only one positional arg
+    # THEN it raises on the input-count mismatch
+    with pytest.raises(ValueError, match="inputs"):
+        graph.add_subgraph("add", Add().to_graph_module(), [inp])
+
+
+def test_add_subgraph_unknown_kwarg_raises() -> None:
+    # GIVEN an Add subgraph (inputs named "x" and "y")
+    graph = GraphModule()
+    inp = graph.add_input("x")
+
+    # WHEN we bind a keyword that is not one of its inputs
+    # THEN it raises naming the offending kwarg
+    with pytest.raises(ValueError, match="does not have input 'z'"):
+        graph.add_subgraph("add", Add().to_graph_module(), [inp], {"z": Const(1.0)})
+
+
+def test_add_subgraph_duplicate_binding_raises() -> None:
+    # GIVEN an Add subgraph where "x" is already bound positionally
+    graph = GraphModule()
+    inp = graph.add_input("x")
+
+    # WHEN we also bind "x" as a keyword (so "x" gets two values, "y" none)
+    # THEN it raises on the duplicate binding for "x"
+    with pytest.raises(ValueError, match="duplicate binding for 'x'"):
+        graph.add_subgraph("add", Add().to_graph_module(), [inp], {"x": Const(1.0)})
+
+
+def test_find_nodes_on_path_start_not_in_graph_raises(model: Model) -> None:
+    # GIVEN a graph and a NodeRef that is not part of it
+    graph = model.to_graph_module()
+    sigmoid = graph.node_ref(graph.get_submodule("sigmoid"))
+    foreign = NodeRef(id=uuid.uuid4(), name="foreign")
+
+    # WHEN start is unknown
+    # THEN find_nodes_on_path raises
+    with pytest.raises(ValueError, match="Start node .* not found"):
+        find_nodes_on_path(graph, foreign, sigmoid)
+
+
+def test_find_nodes_on_path_end_not_in_graph_raises(model: Model) -> None:
+    # GIVEN a graph with a valid start but an unknown end
+    graph = model.to_graph_module()
+    start = graph.node_ref(model.residual_1.linear)
+    foreign = NodeRef(id=uuid.uuid4(), name="foreign")
+
+    # WHEN end is unknown
+    # THEN find_nodes_on_path raises
+    with pytest.raises(ValueError, match="End node .* not found"):
+        find_nodes_on_path(graph, start, foreign)
+
+
+def test_find_nodes_on_path_no_path_raises(model: Model) -> None:
+    # GIVEN two real nodes where `end` lies upstream of `start` (no forward path)
+    graph = model.to_graph_module()
+    sigmoid = graph.node_ref(graph.get_submodule("sigmoid"))
+    residual_1_linear = graph.node_ref(model.residual_1.linear)
+
+    # WHEN we search from the downstream sigmoid back toward residual_1.linear
+    # THEN no directed path exists and it raises
+    with pytest.raises(ValueError, match="not reachable"):
+        find_nodes_on_path(graph, sigmoid, residual_1_linear)
+
+
+def test_topological_sort_circular_dependency_raises() -> None:
+    # GIVEN a graph with two nodes wired into a dependency cycle
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    a = graph.add_node("a", torch.nn.Identity(), [inp])
+    b = graph.add_node("b", torch.nn.Identity(), [a])
+    # Force a cycle: rebind node "a" so it also depends on "b".
+    graph._nodes[a.id] = dataclasses.replace(graph._nodes[a.id], args=[inp, b])
+
+    # WHEN we topologically sort the leaves
+    # THEN the cycle is detected
+    with pytest.raises(ValueError, match="Circular dependency"):
+        topological_sort(graph)
+
+
+def test_remap_subgraph_reference_unknown_ref_type_raises() -> None:
+    # GIVEN a _BaseRef subclass that is none of NodeRef/InputRef/Const/AttributeRef
+    class _UnknownRef(_BaseRef):
+        pass
+
+    unknown = _UnknownRef()
+
+    # WHEN remapping it
+    # THEN the match's exhaustiveness guard fires
+    with pytest.raises(AssertionError, match="Unexpected reference type"):
+        remap_subgraph_reference(unknown, {}, {}, "")
+
+
+def test_input_ref_and_const_repr() -> None:
+    # GIVEN an InputRef and a Const
+    input_ref = InputRef(id=uuid.uuid4(), name="x")
+    const = Const(value=42)
+
+    # WHEN we repr them
+    # THEN the representations surface the name / value
+    assert repr(input_ref) == "InputRef(x)"
+    assert repr(const) == "Const(42)"

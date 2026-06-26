@@ -36,6 +36,7 @@ from fastforward._orchestration.instruction_engine import (
     OffloadEverything,
     OptimizeModule,
     ReturnOutputs,
+    StoreValue,
     _cancel_module_round_trips,
     _cancel_redundant_activation_moves,
     _weight_offloading_pass,
@@ -43,7 +44,8 @@ from fastforward._orchestration.instruction_engine import (
     optimization_only_pass,
 )
 
-from .conftest import Model, sgd_step
+from ._models import Add, AddConstant, Model, ReturnTuple
+from .conftest import sgd_step
 
 
 def test_merge_zips_datasets_together() -> None:
@@ -116,13 +118,9 @@ def test_call_module_broadcasts_single_batch_to_match_n_batches() -> None:
     # GIVEN a graph with a module that takes two inputs
     graph = GraphModule()
 
-    class AddTwo(torch.nn.Module):
-        def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-            return x + y
-
     input1 = graph.add_input("x")
     input2 = graph.add_input("y")
-    node = graph.add_node("add", AddTwo(), [input1, input2])
+    node = graph.add_node("add", Add(), [input1, input2])
     graph.add_output(node)
 
     # WHEN we pass a 3-batch dataset and a 1-batch dataset (batch-invariant value)
@@ -270,10 +268,6 @@ def test_instruction_generator_with_attribute_ref() -> None:
     """Test instruction generation when AttributeRef is used."""
     # GIVEN a graph where a node returns a tuple and we extract an element for next node
     graph = GraphModule()
-
-    class ReturnTuple(torch.nn.Module):
-        def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-            return x, x * 2
 
     inputs = graph.add_input("x")
     tuple_node = graph.add_node("tuple_node", ReturnTuple(), [inputs])
@@ -485,10 +479,6 @@ def test_graph_execution_with_const_argument() -> None:
     # GIVEN a graph with a module that takes both an input and a constant
     graph = GraphModule()
     inputs = graph.add_input("x")
-
-    class AddConstant(torch.nn.Module):
-        def forward(self, x: torch.Tensor, const: int) -> torch.Tensor:
-            return x + const
 
     const_value = Const(10)
     node = graph.add_node("add_const", AddConstant(), [inputs, const_value])
@@ -1008,3 +998,137 @@ def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
     assert len(received) == 2
     assert list(received[0]) == [((1,), {}), ((2,), {})]
     assert list(received[1]) == [((10,), {}), ((20,), {})]
+
+
+def test_merge_empty_sequence_raises() -> None:
+    # GIVEN no datasets to merge
+    # WHEN merge is called with an empty sequence
+    # THEN it raises rather than returning an empty/degenerate dataset
+    with pytest.raises(ValueError, match="at least one dataset"):
+        ActivationDataset.merge([])
+
+
+def test_prepare_input_register_too_many_positionals_raises() -> None:
+    # GIVEN a graph with a single input
+    graph = GraphModule()
+    graph.add_input("x")
+
+    # WHEN we bind more positional args than there are inputs
+    # THEN it raises on the positional-count mismatch
+    with pytest.raises(TypeError, match="Expected 1 positional"):
+        InstructionEngine.prepare_input_register(
+            graph._inputs, args=(10, 20), kwargs={}, contexts=[nullcontext()]
+        )
+
+
+def test_schedule_ref_id_unknown_reference_type_raises() -> None:
+    # GIVEN a _BaseRef subclass that is none of NodeRef/InputRef/Const/AttributeRef
+    class _UnknownRef(_BaseRef):
+        pass
+
+    scheduler = InstructionScheduler()
+
+    # WHEN the scheduler tries to resolve it
+    # THEN the exhaustiveness guard rejects the unsupported reference type
+    with pytest.raises(TypeError, match="Unsupported reference type"):
+        scheduler._schedule_ref_id(_UnknownRef())
+
+
+def test_load_attribute_extracts_dict_key_item() -> None:
+    # GIVEN a register whose dataset batches are dicts (item access via [key])
+    context = nullcontext()
+    source = NodeRef(id=uuid.uuid4(), name="source")
+    target = NodeRef(id=uuid.uuid4(), name="target")
+    register: ActivationRegister = {
+        source: {context: ActivationDataset([{"logits": 1}, {"logits": 2}])}
+    }
+
+    # WHEN we LoadAttribute a string key
+    LoadAttribute(source=source, target=target, attribute="logits").execute(register)
+
+    # THEN each batch is reduced to that key's value via item access
+    assert register[target][context].batches == [1, 2]
+
+
+def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
+    # GIVEN batches that are objects without __getitem__ (so batch["x"] raises TypeError)
+    import dataclasses
+
+    @dataclasses.dataclass
+    class Out:
+        logits: int
+
+    context = nullcontext()
+    source = NodeRef(id=uuid.uuid4(), name="source")
+    target = NodeRef(id=uuid.uuid4(), name="target")
+    register: ActivationRegister = {source: {context: ActivationDataset([Out(1), Out(2)])}}
+
+    # WHEN we LoadAttribute a string key (item access fails, getattr fallback succeeds)
+    LoadAttribute(source=source, target=target, attribute="logits").execute(register)
+
+    # THEN the attribute is read via getattr on each batch
+    assert register[target][context].batches == [1, 2]
+
+
+def test_move_to_device_recurses_into_nested_tuples_and_lists() -> None:
+    # GIVEN a value mixing nested tuples and lists of tensors (plus a non-tensor leaf)
+    from fastforward._orchestration.instruction_engine import _move_to_device
+
+    value = ([torch.randn(2, 3), (torch.randn(4), "scalar")], torch.randn(1))
+
+    # WHEN we move it to a device
+    moved = _move_to_device(value, torch.device("cpu"))
+
+    # THEN container structure is preserved recursively and tensors are moved
+    assert isinstance(moved, tuple)
+    inner_list, outer_tensor = moved
+    assert isinstance(inner_list, list)
+    assert inner_list[0].device == torch.device("cpu")
+    inner_tuple = inner_list[1]
+    assert isinstance(inner_tuple, tuple)
+    assert inner_tuple[0].device == torch.device("cpu")
+    # THEN non-tensor leaves pass through untouched
+    assert inner_tuple[1] == "scalar"
+    assert outer_tensor.device == torch.device("cpu")
+
+
+def test_activation_dataset_contains_checks_membership() -> None:
+    # GIVEN a dataset of batches
+    dataset = ActivationDataset([1, 2, 3])
+
+    # WHEN/THEN membership is delegated to the underlying batches
+    assert 2 in dataset
+    assert 99 not in dataset
+
+
+def test_activation_dataset_from_value_passthrough_when_already_dataset() -> None:
+    # GIVEN an existing ActivationDataset
+    existing = ActivationDataset([1, 2])
+
+    # WHEN from_value is given a value that is already a dataset
+    result = ActivationDataset.from_value(existing)
+
+    # THEN it is returned unchanged (no re-wrapping)
+    assert result is existing
+
+
+def test_store_value_uses_reports_its_target() -> None:
+    # GIVEN a StoreValue writing under a target ref
+    target = NodeRef(id=uuid.uuid4(), name="t")
+    instr = StoreValue(target=target, value=123, contexts=[nullcontext()])
+
+    # WHEN we enumerate the refs it uses
+    # THEN the target is reported (offloading liveness depends on this)
+    assert list(instr.uses()) == [target]
+
+
+def test_load_attribute_uses_and_produces_report_source_and_target() -> None:
+    # GIVEN a LoadAttribute extracting from a source into a target
+    source = NodeRef(id=uuid.uuid4(), name="src")
+    target = NodeRef(id=uuid.uuid4(), name="dst")
+    instr = LoadAttribute(source=source, target=target, attribute=0)
+
+    # WHEN we enumerate its register interactions
+    # THEN uses() reports the source and produces() reports the target
+    assert list(instr.uses()) == [source]
+    assert list(instr.produces()) == [target]
