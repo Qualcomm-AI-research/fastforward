@@ -426,15 +426,15 @@ class MoveModule(Instruction):
         if isinstance(self.device, dict):
             for name, parameter in self.module.named_parameters():
                 if name in self.device:
-                    parameter.data = parameter.data.to(device=self.device[name], non_blocking=True)
+                    parameter.data = parameter.data.to(device=self.device[name])
             for name, buffer in self.module.named_buffers():
                 if name in self.device:
-                    buffer.data = buffer.data.to(device=self.device[name], non_blocking=True)
+                    buffer.data = buffer.data.to(device=self.device[name])
         else:
             for parameter in self.module.parameters():
-                parameter.data = parameter.data.to(device=self.device, non_blocking=True)
+                parameter.data = parameter.data.to(device=self.device)
             for buffer in self.module.buffers():
-                buffer.data = buffer.data.to(device=self.device, non_blocking=True)
+                buffer.data = buffer.data.to(device=self.device)
 
 
 def _move_to_device(value: Any, device: torch.device) -> Any:
@@ -449,7 +449,7 @@ def _move_to_device(value: Any, device: torch.device) -> Any:
     """
     match value:
         case torch.Tensor():
-            return value.to(device=device, non_blocking=True)
+            return value.to(device=device)
         case tuple():
             return tuple(_move_to_device(v, device) for v in value)
         case list():
