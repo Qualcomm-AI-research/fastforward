@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 import re
 import warnings
+import weakref
 
-from typing import Any, Callable, cast
+from typing import Any, Callable, Iterator, cast
 
 import torch
 import torch.nn as nn
@@ -15,11 +17,52 @@ import torch.utils._pytree as pytree
 
 from packaging.version import Version
 from torch import fx
-from torch.export import unflatten as _unflatten_exported
+
+import fastforward as ff
 
 from fastforward._orchestration.graph_module import Const, GraphModule, NodeRef, Op, _BaseRef
 
 _MIN_TORCH_VERSION = Version("2.6.0")
+
+
+@contextlib.contextmanager
+def _placeholder_uninitialized_params(module: nn.Module) -> Iterator[None]:
+    """Temporarily replace uninitialized parameters/buffers with empty placeholders.
+
+    `torch.export` walks every parameter and buffer on a module, which raises on
+    `UninitializedParameter`/`UninitializedBuffer` (lazy quantizer scale/offset that
+    are only materialized during calibration). Since tracing runs with quantization
+    disabled, these tensors are never read, so we swap them for tiny real tensors for
+    the duration of the export and restore the originals afterwards.
+    """
+    uninitialized = (
+        torch.nn.parameter.UninitializedParameter,
+        torch.nn.parameter.UninitializedBuffer,
+    )
+    saved: list[tuple[nn.Module, str, Any, bool]] = []
+    for submodule in module.modules():
+        for name, param in list(submodule.named_parameters(recurse=False)):
+            if isinstance(param, uninitialized):
+                saved.append((submodule, name, param, True))
+                delattr(submodule, name)
+                submodule.register_parameter(
+                    name, nn.Parameter(torch.empty(0), requires_grad=False)
+                )
+        for name, buf in list(submodule.named_buffers(recurse=False)):
+            if isinstance(buf, uninitialized):
+                saved.append((submodule, name, buf, False))
+                delattr(submodule, name)
+                submodule.register_buffer(name, torch.empty(0))
+
+    try:
+        yield
+    finally:
+        for submodule, name, original, is_param in saved:
+            delattr(submodule, name)
+            if is_param:
+                submodule.register_parameter(name, original)
+            else:
+                submodule.register_buffer(name, original)
 
 
 def _make_tuple(*items: Any) -> tuple[Any, ...]:
@@ -420,6 +463,13 @@ class _GraphBuilder:
         return self._graph
 
 
+# We keep track of a GraphModule cache to ensure we don't re-trace the same model twice
+# under different orchestration needs (e.g. PTQ vs inference).
+_graph_cache: weakref.WeakKeyDictionary[torch.nn.Module, GraphModule] = weakref.WeakKeyDictionary()
+
+
+@ff.flags.context(ff.strict_quantization, False)
+@torch.no_grad()
 def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
     """Trace `module` with example inputs and return a `GraphModule`.
 
@@ -449,37 +499,38 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
         msg = f"fastforward._orchestration.trace requires PyTorch >= {_MIN_TORCH_VERSION}; got {torch.__version__}."
         raise RuntimeError(msg)
 
+    if module in _graph_cache:
+        return _graph_cache[module]
+
     positional_names = [
         p.name
         for p in inspect.signature(module.forward).parameters.values()
         if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
     ]
 
-    exported_program = torch.export.export(module, args=args, kwargs=kwargs, strict=False)
-    unflattened = _unflatten_exported(exported_program)
+    with ff.disable_quantization(module), _placeholder_uninitialized_params(module):
+        exported_program = torch.export.export(module, args=args, kwargs=kwargs)
+        unflattened = torch.export.unflatten(exported_program)
 
-    fold_fqns = tuple(
-        name
-        for name, mod in unflattened.named_modules()
-        if _is_non_leaf_graph_module(mod) and name and _fold_needs_preservation(mod)
-    )
-    if fold_fqns:
-        exported_program = torch.export.export(
-            module,
-            args=args,
-            kwargs=kwargs,
-            strict=False,
-            preserve_module_call_signature=fold_fqns,
+        fold_fqns = tuple(
+            name
+            for name, mod in unflattened.named_modules()
+            if _is_non_leaf_graph_module(mod) and name and _fold_needs_preservation(mod)
         )
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="Attempted to insert a get_attr Node with no underlying reference",
-                category=UserWarning,
+        if fold_fqns:
+            exported_program = torch.export.export(
+                module, args=args, kwargs=kwargs, preserve_module_call_signature=fold_fqns
             )
-            unflattened = _unflatten_exported(exported_program)
-    _strip_hardcoded_device_placements(unflattened)
-    out_spec = _capture_out_spec(module, unflattened, args, kwargs)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="Attempted to insert a get_attr Node with no underlying reference",
+                    category=UserWarning,
+                )
+                unflattened = torch.export.unflatten(exported_program)
+
+        _strip_hardcoded_device_placements(unflattened)
+        out_spec = _capture_out_spec(module, unflattened, args, kwargs)
 
     builder = _GraphBuilder(
         module,
@@ -488,4 +539,6 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
         positional_names=positional_names,
         out_spec=out_spec,
     )
-    return builder.build(unflattened)
+
+    _graph_cache[module] = builder.build(unflattened)
+    return _graph_cache[module]

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import math
 
-from typing import Any, Callable, Collection, cast
+from typing import Any, Callable, Iterable, cast
 
 import torch
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def gptq(
     module: ff.nn.QuantizedLinear,
-    dataset: Collection[Any],
+    dataset: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
     block_size: int = 128,
     perc_damp: float = 0.01,
     actorder: bool = False,
@@ -33,7 +33,8 @@ def gptq(
 
     Args:
         module: A QuantizedLinear layer whose weight_quantizer is a LinearQuantizer.
-        dataset: Input activations, iterable of tensors [batch_size, seq_len, in_features].
+        dataset: Input activations flowing from the previous layer, an iterable.
+            Each entry is a tuple of args (tuple of obj) and kwargs (dict).
         block_size: Number of columns to process per block.
         perc_damp: Dampening factor as percentage of mean diagonal value.
         actorder: Whether to reorder columns by activation magnitude.
@@ -181,12 +182,15 @@ def column_quantizer(
     return _quant_fn
 
 
-def calculate_hessian(layer: ff.nn.QuantizedLinear, activations: Collection[Any]) -> torch.Tensor:
+def calculate_hessian(
+    layer: ff.nn.QuantizedLinear, activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]]
+) -> torch.Tensor:
     """Calculate approximate Hessian matrix from layer activations.
 
     Args:
-        layer: QuantizedLinear layer to quantize
-        activations: Input activations, iterable of tensors [batch_size, seq_len, in_features]
+        layer: QuantizedLinear layer to quantize.
+        activations: Input activations flowing from the previous layer., an iterable.
+            Each entry is a tuple of args (tuple of obj) and kwargs (dict).
 
     Returns:
         Hessian matrix of shape [in_features, in_features] in float32
@@ -197,7 +201,7 @@ def calculate_hessian(layer: ff.nn.QuantizedLinear, activations: Collection[Any]
     hessian = torch.zeros((in_features, in_features), device=device, dtype=torch.float64)
     n_samples = 0
 
-    for activation in activations:
+    for (activation,), _ in activations:
         activation = cast(torch.Tensor, activation)
         bsz, seq_len, hidden = activation.shape
 
