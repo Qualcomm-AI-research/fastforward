@@ -80,11 +80,11 @@ addopts = [
   "--strict-markers",
   "--strict-config",
   "-m",
-  "not slow",
+  "not benchmark and not slow",
 ]
 markers = [
-  "benchmark: marks benchmark tests",
-  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "benchmark: marks benchmark tests (deselected by default; run with `--include-benchmark`)",
+  "slow: marks tests as slow (deselected by default; run with `--include-slow`)",
 ]
 filterwarnings = [
   "error",

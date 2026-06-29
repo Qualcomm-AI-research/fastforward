@@ -18,3 +18,9 @@ Tests marked `@pytest.mark.slow` are skipped by default. Run them with `--includ
 python3 -m pytest --include-slow tests/path/to/relevant_tests.py
 ```
 
+Tests marked `@pytest.mark.benchmark` are also skipped by default and are not
+included by `--include-slow`. Run them explicitly with `--include-benchmark`:
+
+```bash
+python3 -m pytest --include-benchmark tests/path/to/relevant_tests.py
+```

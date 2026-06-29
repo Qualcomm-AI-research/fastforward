@@ -15,9 +15,10 @@ from fastforward.testing import seed_prngs
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Adds the `--include-slow` option to the unit tests.
+    """Adds the `--include-slow` and `--include-benchmark` options to the unit tests.
 
-    This allows the user to choose whether to run tests marked as `slow`.
+    These allow the user to choose whether to run tests marked as `slow` or
+    `benchmark`, both of which are deselected by default.
     """
     parser.addoption(
         "--include-slow",
@@ -26,20 +27,41 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="run tests marked as `slow`, too",
     )
+    parser.addoption(
+        "--include-benchmark",
+        action="store_const",
+        const=True,
+        default=False,
+        help="run tests marked as `benchmark`, too",
+    )
 
     parser.addoption("--timeout", help="set timeout (in seconds) for `slow` tests", type=float)
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    """Configures pytest to modify the mark expression based on the `--include-slow` option.
+def _strip_marker_clause(markexpr: str, marker: str) -> str:
+    """Removes the `not <marker>` clause from a pytest mark expression.
 
-    If the `--include-slow` option is used, modifies the mark expression to include
-    tests marked as `slow`.
+    The longer `and`-joined forms are replaced first so no dangling `and`
+    operator is left behind in the expression.
+    """
+    for clause in [f"and not {marker}", f"not {marker} and", f"not {marker}"]:
+        markexpr = markexpr.replace(clause, "")
+    return markexpr
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Configures pytest to modify the mark expression based on the `--include-*` options.
+
+    The default mark expression deselects both `slow` and `benchmark` tests.
+    Passing `--include-slow` strips only the `not slow` clause and passing
+    `--include-benchmark` strips only the `not benchmark` clause, so the two
+    options are independent: each leaves the other marker's clause intact.
     """
     if config.option.include_slow:
-        # Replacing 'and not slow' first avoids an invalid `and` left behind.
-        for replacement in ["and not slow", "not slow"]:
-            config.option.markexpr = config.option.markexpr.replace(replacement, "")
+        config.option.markexpr = _strip_marker_clause(config.option.markexpr, "slow")
+    if config.option.include_benchmark:
+        config.option.markexpr = _strip_marker_clause(config.option.markexpr, "benchmark")
+    config.option.markexpr = config.option.markexpr.strip()
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
