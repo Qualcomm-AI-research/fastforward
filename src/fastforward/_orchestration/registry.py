@@ -257,4 +257,4 @@ def override(
 
 
 # We pre-register baseline methods with expected Algorithm-Target pairs.
-register(ff.quantization.gptq, ff.nn.QuantizedLinear)
+register(ff.quantization.gptq, (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d))

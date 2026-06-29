@@ -22,17 +22,20 @@ logger = logging.getLogger(__name__)
 
 
 def gptq(
-    module: ff.nn.QuantizedLinear,
+    module: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
     dataset: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
     block_size: int = 128,
     perc_damp: float = 0.01,
     actorder: bool = False,
     layer_name: str = "",
 ) -> None:
-    """Quantize a QuantizedLinear layer in-place using GPTQ.
+    """Quantize a QuantizedLinear or QuantizedConv2d layer in-place using GPTQ.
+
+    Only `PerTensor` and `PerChannel(channel_dim=0)` weight quantizer granularities
+    are supported on Conv2d.
 
     Args:
-        module: A QuantizedLinear layer whose weight_quantizer is a LinearQuantizer.
+        module: A QuantizedLinear or QuantizedConv2d layer whose weight_quantizer is a LinearQuantizer.
         dataset: Input activations flowing from the previous layer, an iterable.
             Each entry is a tuple of args (tuple of obj) and kwargs (dict).
         block_size: Number of columns to process per block.
@@ -44,8 +47,23 @@ def gptq(
         msg = f"weight_quantizer must be a LinearQuantizer, got {type(module.weight_quantizer).__name__}."
         raise ValueError(msg)
 
-    columns = module.weight.shape[1]
+    original_weight_shape = module.weight.shape
     weights = module.weight.data.clone().float()
+
+    if isinstance(module, ff.nn.QuantizedConv2d):
+        match module.weight_quantizer.granularity:
+            case granularities.PerTensor() | granularities.PerChannel(channel_dims=(0,)):
+                pass
+            case _ as g:
+                msg = (
+                    "GPTQ on QuantizedConv2d currently supports only PerTensor and "
+                    f"PerChannel(channel_dim=0) granularities. Got: {type(g).__name__}."
+                )
+                raise NotImplementedError(msg)
+        # (out_channels, in_channels/groups, kH, kW) -> (out_channels, in_channels/groups * kH * kW)
+        weights = weights.flatten(1)
+
+    columns = weights.shape[1]
 
     weight_quantizer = module.weight_quantizer
 
@@ -89,7 +107,7 @@ def gptq(
     quantized_weights = quantized_weights[:, restore_order]
     errors = errors[:, restore_order]
 
-    module.weight.copy_(quantized_weights.to(module.weight.dtype))
+    module.weight.copy_(quantized_weights.view(original_weight_shape).to(module.weight.dtype))
 
     loss = torch.mean(torch.abs(errors)).item()
     num_bits = module.weight_quantizer.num_bits
@@ -124,7 +142,10 @@ def column_quantizer(
             offset = offset.expand(out_features) if offset is not None else None
 
         case granularities.PerChannel(channel_dims=(0,)):
-            pass  # Already one scale per row.
+            # Linear: scale.shape == (out_features,) — reshape is a no-op.
+            # Conv2d: scale.shape == (out_channels, 1, 1, 1) — reshape flattens to (out_channels,).
+            scale = scale.reshape(out_features)
+            offset = offset.reshape(out_features) if offset is not None else None
 
         case granularities.PerChannel(channel_dims=(1,)):
             # One scale for the entire column.
@@ -183,33 +204,33 @@ def column_quantizer(
 
 
 def calculate_hessian(
-    layer: ff.nn.QuantizedLinear, activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]]
+    layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
+    activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
 ) -> torch.Tensor:
     """Calculate approximate Hessian matrix from layer activations.
 
     Args:
-        layer: QuantizedLinear layer to quantize.
-        activations: Input activations flowing from the previous layer., an iterable.
+        layer: QuantizedLinear or QuantizedConv2d layer to quantize.
+        activations: Input activations flowing from the previous layer, an iterable.
             Each entry is a tuple of args (tuple of obj) and kwargs (dict).
 
     Returns:
-        Hessian matrix of shape [in_features, in_features] in float32
+        Hessian matrix of shape [in_features, in_features] in float32, where
+        in_features = weight.shape[1] for Linear and in_channels/groups * kH * kW for Conv2d.
     """
-    in_features = layer.weight.shape[1]
     device = layer.weight.device
+    in_features = _hessian_in_features(layer)
+    flatten_input = _input_flattener(layer)
 
     hessian = torch.zeros((in_features, in_features), device=device, dtype=torch.float64)
     n_samples = 0
 
     for (activation,), _ in activations:
         activation = cast(torch.Tensor, activation)
-        bsz, seq_len, hidden = activation.shape
+        x = flatten_input(activation.to(device=device, dtype=torch.float32))
 
-        activation = activation.reshape(bsz * seq_len, hidden)
-        x = activation.transpose(0, 1).to(device=device, dtype=torch.float32)
-
-        hessian.mul_(n_samples / (n_samples + (bsz * seq_len)))
-        n_samples += bsz * seq_len
+        hessian.mul_(n_samples / (n_samples + x.shape[1]))
+        n_samples += x.shape[1]
 
         x.mul_(math.sqrt(2.0 / n_samples))
         hessian.add_(x @ x.transpose(0, 1))
@@ -218,6 +239,51 @@ def calculate_hessian(
     dead = torch.diag(hessian) == 0
     hessian[dead, dead] = 1
     return hessian.float()
+
+
+def _hessian_in_features(layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d) -> int:
+    """Number of input features the Hessian is built over.
+
+    Matches the column count of the flattened weight used inside `gptq`:
+    `in_features` for Linear, `in_channels/groups * kH * kW` for Conv2d.
+    """
+    if isinstance(layer, ff.nn.QuantizedConv2d):
+        _, in_per_group, kh, kw = layer.weight.shape
+        return in_per_group * kh * kw
+    return layer.weight.shape[1]
+
+
+def _input_flattener(
+    layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """Build the per-batch reshape that produces `(in_features, samples)` activations.
+
+    For Linear: `(B, S, H) -> (H, B*S)`.
+    For Conv2d: `(N, C, H, W) -> (C/groups * kH * kW, N*L)` via `nn.Unfold`,
+    matching the flattened weight layout used inside `gptq`.
+    """
+    if isinstance(layer, ff.nn.QuantizedConv2d):
+        assert not isinstance(layer.padding, str), "string padding not supported"
+        unfold = torch.nn.Unfold(
+            kernel_size=layer.kernel_size,
+            dilation=layer.dilation,
+            padding=layer.padding,
+            stride=layer.stride,
+        )
+
+        def _conv2d(activation: torch.Tensor) -> torch.Tensor:
+            # (N, C, H, W) -> (N, C*kH*kW, L) -> (C*kH*kW, N*L)
+            unfolded = cast(torch.Tensor, unfold(activation))
+            return unfolded.permute(1, 0, 2).flatten(1)
+
+        return _conv2d
+
+    def _linear(activation: torch.Tensor) -> torch.Tensor:
+        # (B, S, H) -> (B*S, H) -> (H, B*S)
+        bsz, seq_len, hidden = activation.shape
+        return activation.reshape(bsz * seq_len, hidden).transpose(0, 1)
+
+    return _linear
 
 
 def invert_hessian(hessian: torch.Tensor, perc_damp: float) -> torch.Tensor:
