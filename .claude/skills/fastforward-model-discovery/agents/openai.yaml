@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastForward Model Discovery"
+  short_description: "Resolve a local or git model source and write load_model/model_inputs into __init__.py"
+  default_prompt: "Use $fastforward-model-discovery to resolve the model source and fill in load_model and model_inputs."

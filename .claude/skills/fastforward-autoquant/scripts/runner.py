@@ -1,0 +1,561 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+"""Autoquant skill runner — bootstrap package files and execute autoquant/verify commands."""
+
+from __future__ import annotations
+
+import json
+import os
+import shlex
+import subprocess
+import typing
+
+from dataclasses import dataclass
+from pathlib import Path
+
+try:
+    from .contracts import Request
+except ImportError:  # pragma: no cover
+    from contracts import Request
+
+_JSON = dict[str, typing.Any]
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    """Shell command execution result."""
+
+    command: str
+    returncode: int
+    stdout: str
+    stderr: str
+    log_path: str = ""
+
+
+_COPYRIGHT_HEADER = (
+    "# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.\n"
+    "# SPDX-License-Identifier: BSD-3-Clause-Clear\n"
+)
+
+_INIT_PY_TEMPLATE = '''{copyright}"""Generated quantized package APIs."""
+
+from __future__ import annotations
+
+import importlib.util
+import os
+import sys
+import typing
+from functools import wraps
+from pathlib import Path
+from typing import Callable, ParamSpec, TypeVar
+
+import torch
+
+import fastforward as ff
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def bypass(func: Callable[P, R]) -> Callable[..., R]:
+    """Create a quantized dispatch shim that ignores output_quantizer."""
+
+    @wraps(func)
+    def _dispatch(
+        *args: P.args,
+        output_quantizer: ff.nn.Quantizer,
+        **kwargs: P.kwargs,
+    ) -> R:
+        del output_quantizer
+        return func(*args, **kwargs)
+
+    return _dispatch
+
+
+{custom_operators_table_source}
+
+
+{replacement_patterns_source}
+
+
+{load_model_source}
+
+{model_inputs_source}
+
+def quantized_model(
+    model: torch.nn.Module,
+    extra_conversion: None | dict = None,
+    skip_quantized_modules: bool = True,
+) -> torch.nn.Module:
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "generated_autoquant", Path(__file__).resolve().parent / "autoquant.py"
+        )
+        generated_autoquant = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_autoquant)
+    except FileNotFoundError as ex:
+        print(f"Run autoquant to generate {{ex.filename}}")
+        raise
+
+    return ff.quantize_model(
+        model,
+        skip_quantized_modules=skip_quantized_modules,
+        extra_conversion=extra_conversion or {{}},
+    )
+'''
+
+_STUB_LOAD_MODEL = """\
+def load_model(
+    device: str | torch.device = "cpu",
+    dtype: str | torch.dtype | None = None,
+) -> torch.nn.Module:
+    raise RuntimeError(
+        "Stub: implement load_model, or run fastforward-model-resolver / "
+        "fastforward-model-discovery to populate this file."
+    )"""
+
+_STUB_MODEL_INPUTS = """\
+def model_inputs(
+    runs: int = 1,
+) -> list[tuple[tuple[typing.Any, ...], dict[str, typing.Any]]]:
+    raise RuntimeError(
+        "Stub: implement model_inputs, or run fastforward-model-resolver / "
+        "fastforward-model-discovery to populate this file."
+    )"""
+
+_STUB_CUSTOM_OPERATORS_TABLE = """\
+def custom_operators_table():
+    \"\"\"Return None (default). Override to register model-specific operator dispatches.\"\"\"
+    return None"""
+
+_STUB_REPLACEMENT_PATTERNS = """\
+def replacement_patterns():
+    \"\"\"Return [] (default). Override to provide pre-rewrite source patterns for ff.autoquantize.\"\"\"
+    return []"""
+
+_MAIN_PY_CONTENT = '''{copyright}"""Generated package CLI for autoquant and verify."""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import json
+import logging
+import sys
+from pathlib import Path
+
+import numpy as np
+import torch
+
+import fastforward as ff
+
+
+_CURRENT_PY = Path(__file__).resolve()
+if str(_CURRENT_PY.parents[1]) not in sys.path:
+    sys.path.insert(0, str(_CURRENT_PY.parents[1]))
+_generated_pkg = __import__(_CURRENT_PY.parent.name)
+
+
+@contextlib.contextmanager
+def temp_seed(seed: int):
+    np_state = np.random.get_state()
+    np.random.seed(seed)
+
+    torch_state = torch.random.get_rng_state()
+    torch.random.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch_cuda_states = torch.cuda.get_rng_state_all()
+        torch.cuda.manual_seed_all(seed)
+
+    try:
+        yield
+    finally:
+        np.random.set_state(np_state)
+
+        torch.random.set_rng_state(torch_state)
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(torch_cuda_states)
+
+
+def _run_autoquant() -> None:
+    with temp_seed(0):
+        model = _generated_pkg.load_model(device="cpu", dtype=None)
+    out_path = _CURRENT_PY.parent / "autoquant.py"
+    ff.autoquantize(
+        model,
+        operator_table=_generated_pkg.custom_operators_table(),
+        output_path=str(out_path),
+        force_overwrite=True,
+        auto_import=False,
+        use_type_inference=True,
+        replacement_patterns=_generated_pkg.replacement_patterns(),
+    )
+    tests_path = _CURRENT_PY.parent / "test_autoquant_failures.py"
+    tests_path.write_text(
+        "# Generated by package autoquant command\\n"
+        "def test_autoquant_generation_smoke():\\n"
+        "    assert True\\n"
+    )
+    logging.info(f"Wrote autoquant module to {{out_path}}")
+
+
+def _run_verify(
+    runs: int,
+    seed: int,
+    device: str | torch.device = "cuda",
+    dtype: str | torch.dtype | None = None,
+    quant_schema: str | None = None,
+    calibration_samples: int = 16,
+    estimator: str = "running_minmax",
+) -> None:
+    with temp_seed(seed):
+        batches = _generated_pkg.model_inputs(runs=runs)
+
+    logging.info("Loading original model...")
+    with temp_seed(seed):
+        original_model = _generated_pkg.load_model(device=device, dtype=dtype)
+
+    logging.info(f"Running {{runs}} original-model inferences...")
+    with torch.inference_mode(), temp_seed(seed):
+        original_preds = [
+            original_model(*tuple(args), **dict(kwargs)).float().cpu()
+            for args, kwargs in batches
+        ]
+
+    logging.info("Loading model for quantization (CPU first to reduce GPU peak)...")
+    quantized_model = _generated_pkg.quantized_model(original_model)
+    del original_model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    if quant_schema is not None:
+        import importlib.util as _ilu
+        _schema_path = _CURRENT_PY.parent / "quant_schemas.py"
+        if not _schema_path.exists():
+            raise RuntimeError(
+                "quant_schemas.py not found at {{_schema_path}}. "
+                "Run the fastforward-quantize skill first."
+            )
+        _spec = _ilu.spec_from_file_location("quant_schemas", _schema_path)
+        _qmod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_qmod)
+        config = _qmod.get_schema(quant_schema)
+        config.initialize(quantized_model)
+        _est_fn = getattr(ff.range_setting, estimator)
+        logging.info(
+            "Calibrating schema \'%s\' with %d samples, estimator=%s...",
+            quant_schema, calibration_samples, estimator,
+        )
+        with torch.no_grad(), ff.estimate_ranges(quantized_model, _est_fn):
+            for _ in range(calibration_samples):
+                with temp_seed(seed):
+                    _calib = _generated_pkg.model_inputs(runs=1)
+                with torch.inference_mode():
+                    for _a, _kw in _calib:
+                        quantized_model(*tuple(_a), **dict(_kw))
+
+    _strict = quant_schema is not None
+    per_run = []
+    logging.info(f"Running {{runs}} quantized-model inferences and comparisons...")
+    with torch.inference_mode(), ff.strict_quantization(_strict), temp_seed(seed):
+        quantized_preds = [
+            quantized_model(*tuple(args), **dict(kwargs)).float().cpu()
+            for args, kwargs in batches
+        ]
+
+    for i, (original_pred, quantized_pred) in enumerate(zip(original_preds, quantized_preds)):
+        diff = quantized_pred - original_pred
+        mae = diff.abs().mean().item()
+        rmse = diff.pow(2).mean().sqrt().item()
+        max_abs = diff.abs().max().item()
+        per_run.append({{"run": i, "mae": mae, "rmse": rmse, "max_abs": max_abs}})
+        logging.info(f"Run {{i + 1:02d}}: MAE={{mae:.6f}}, RMSE={{rmse:.6f}}, MAX_ABS={{max_abs:.6f}}")
+
+    stats = torch.tensor(
+        [[r["mae"], r["rmse"], r["max_abs"]] for r in per_run],
+        dtype=torch.float64,
+    )
+    logging.info("=== Summary (quantized vs original) ===")
+    logging.info(f"Runs: {{runs}}")
+    logging.info(f"MAE     mean={{stats[:, 0].mean().item():.6f}}, std={{stats[:, 0].std(unbiased=False).item():.6f}}")
+    logging.info(f"RMSE    mean={{stats[:, 1].mean().item():.6f}}, std={{stats[:, 1].std(unbiased=False).item():.6f}}")
+    logging.info(f"MAX_ABS mean={{stats[:, 2].mean().item():.6f}}, std={{stats[:, 2].std(unbiased=False).item():.6f}}")
+    logging.info(json.dumps({{"runs": per_run}}, indent=2))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generated quantized package commands")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("autoquant", help="Generate autoquant.py + failure tests")
+
+    verify = sub.add_parser("verify", help="Compare original and quantized outputs")
+    verify.add_argument("--runs", type=int, default=1)
+    verify.add_argument("--seed", type=int, default=0)
+    verify.add_argument(
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+    )
+    verify.add_argument(
+        "--dtype",
+        type=str,
+        default=None,
+    )
+    verify.add_argument(
+        "--quant-schema",
+        type=str,
+        default=None,
+        metavar="SCHEMA",
+        help="QuantizationConfig from quant_schemas.py (e.g. w8, w8a8, best). Omit for stub-only verify.",
+    )
+    verify.add_argument("--calibration-samples", type=int, default=16)
+    verify.add_argument(
+        "--estimator",
+        type=str,
+        default="running_minmax",
+        choices=["running_minmax", "smoothed_minmax"],
+    )
+
+    args = parser.parse_args()
+
+    log_path = _CURRENT_PY.parent / f"{{args.command}}.log"
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+
+    fh = logging.FileHandler(log_path, mode="w")
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
+    root.addHandler(fh)
+
+    sh_out = logging.StreamHandler(sys.stdout)
+    sh_out.setLevel(logging.WARNING)
+    sh_out.addFilter(lambda r: r.levelno < logging.ERROR)
+    sh_out.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    root.addHandler(sh_out)
+
+    sh_err = logging.StreamHandler(sys.stderr)
+    sh_err.setLevel(logging.ERROR)
+    sh_err.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    root.addHandler(sh_err)
+
+    logging.info("cmd: %s", " ".join(sys.argv))
+    logging.info("args: %s", vars(args))
+
+    try:
+        if args.command == "autoquant":
+            _run_autoquant()
+        elif args.command == "verify":
+            _run_verify(
+                args.runs, args.seed, args.device, args.dtype,
+                args.quant_schema, args.calibration_samples, args.estimator,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logging.error(f"Command failed: {{type(exc).__name__}}: {{exc}}", exc_info=True)
+        raise
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _package_exists(package_dir: Path) -> bool:
+    return (package_dir / "__init__.py").exists() and (package_dir / "main.py").exists()
+
+
+def _has_stubs(package_dir: Path) -> bool:
+    """Return True if __init__.py still contains unpopulated stub implementations."""
+    init = package_dir / "__init__.py"
+    if not init.exists():
+        return True
+    text = init.read_text()
+    return (
+        'raise RuntimeError(\n        "Stub:' in text
+        or "raise RuntimeError(\n        'Stub:" in text
+        or '"Stub: implement load_model' in text
+        or '"Stub: implement model_inputs' in text
+    )
+
+
+def _bootstrap(
+    *,
+    output_dir: Path,
+    overwrite: bool,
+) -> tuple[Path, list[str]]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    notes: list[str] = []
+
+    init_path = output_dir / "__init__.py"
+    main_path = output_dir / "main.py"
+
+    if overwrite or not init_path.exists():
+        init_path.write_text(
+            _INIT_PY_TEMPLATE.format(
+                copyright=_COPYRIGHT_HEADER,
+                custom_operators_table_source=_STUB_CUSTOM_OPERATORS_TABLE,
+                replacement_patterns_source=_STUB_REPLACEMENT_PATTERNS,
+                load_model_source=_STUB_LOAD_MODEL,
+                model_inputs_source=_STUB_MODEL_INPUTS,
+            )
+        )
+        notes.append("created __init__.py")
+    else:
+        notes.append("kept existing __init__.py")
+
+    if overwrite or not main_path.exists():
+        main_path.write_text(_MAIN_PY_CONTENT.format(copyright=_COPYRIGHT_HEADER))
+        notes.append("created main.py")
+    else:
+        notes.append("kept existing main.py")
+
+    return output_dir, notes
+
+
+def _expand_prefix(prefix: str) -> list[str]:
+    tokens = shlex.split(prefix)
+    if not tokens:
+        return []
+    tokens[0] = str(Path(tokens[0]).expanduser())
+    return tokens
+
+
+def _exec(
+    cmd_parts: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+    log_path: Path,
+) -> CommandResult:
+    cmd_str = " ".join(shlex.quote(x) for x in cmd_parts)
+    out_path = log_path.with_suffix(".out")
+    err_path = log_path.with_suffix(".err")
+    with open(out_path, "w") as out_file, open(err_path, "w") as err_file:
+        proc = subprocess.run(
+            cmd_parts, cwd=str(cwd), env=env, check=False, stdout=out_file, stderr=err_file
+        )
+    stdout = out_path.read_text() if out_path.stat().st_size > 0 else ""
+    if not stdout:
+        out_path.unlink(missing_ok=True)
+    stderr = err_path.read_text() if err_path.stat().st_size > 0 else ""
+    if not stderr:
+        err_path.unlink(missing_ok=True)
+    return CommandResult(
+        command=cmd_str,
+        returncode=proc.returncode,
+        stdout=stdout,
+        stderr=stderr,
+        log_path=str(log_path),
+    )
+
+
+def run(request: Request) -> _JSON:
+    """Bootstrap the package and execute autoquant/verify commands."""
+    package_dir, bootstrap_notes = _bootstrap(
+        output_dir=request.output_dir,
+        overwrite=request.overwrite_output_files,
+    )
+    notes: list[str] = bootstrap_notes
+
+    if request.generate_only:
+        return {
+            "status": "success",
+            "generate_only": True,
+            "package_dir": str(package_dir),
+            "artifacts": {
+                "init_py": str(package_dir / "__init__.py"),
+                "main_py": str(package_dir / "main.py"),
+            },
+            "notes": notes,
+        }
+
+    if _has_stubs(package_dir):
+        return {
+            "status": "needs_preparation",
+            "message": (
+                "__init__.py still contains stub implementations. "
+                "Populate load_model and model_inputs before running autoquant."
+            ),
+            "package_dir": str(package_dir),
+            "notes": notes
+            + [
+                "For HuggingFace model IDs: run $fastforward-model-resolver",
+                "For local paths or git URLs: run $fastforward-model-discovery",
+            ],
+        }
+
+    env = os.environ.copy()
+    pythonpath_parts = [str(request.output_dir)]
+    if env.get("PYTHONPATH"):
+        pythonpath_parts.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+
+    prefix = _expand_prefix(request.command_prefix) if request.command_prefix else []
+    base_cmd = prefix + ["python", str(package_dir / "main.py")]
+
+    autoquant_cmd = _exec(
+        base_cmd + ["autoquant"],
+        cwd=request.output_dir,
+        env=env,
+        log_path=package_dir / "autoquant.log",
+    )
+    verify_cmd = (
+        _exec(
+            base_cmd + ["verify"],
+            cwd=request.output_dir,
+            env=env,
+            log_path=package_dir / "verify.log",
+        )
+        if autoquant_cmd.returncode == 0
+        else None
+    )
+
+    artifacts = {
+        "package_dir": str(package_dir),
+        "init_py": str(package_dir / "__init__.py"),
+        "main_py": str(package_dir / "main.py"),
+        "autoquant_py": str(package_dir / "autoquant.py"),
+        "tests_py": str(package_dir / "test_autoquant_failures.py"),
+        "summary_json": str(package_dir / "autoquant_summary.json"),
+        "results_json": str(package_dir / "autoquant_results.json"),
+    }
+
+    summary: _JSON = {
+        "status": "success"
+        if autoquant_cmd.returncode == 0 and verify_cmd is not None and verify_cmd.returncode == 0
+        else "partial",
+        "artifacts": artifacts,
+        "commands": {
+            "autoquant": {
+                "command": autoquant_cmd.command,
+                "returncode": autoquant_cmd.returncode,
+                "stdout": autoquant_cmd.stdout,
+                "stderr": autoquant_cmd.stderr,
+                "log_path": autoquant_cmd.log_path,
+            },
+            "verify": {
+                "command": verify_cmd.command if verify_cmd else None,
+                "returncode": verify_cmd.returncode if verify_cmd else None,
+                "stdout": verify_cmd.stdout if verify_cmd else None,
+                "stderr": verify_cmd.stderr if verify_cmd else None,
+                "log_path": verify_cmd.log_path if verify_cmd else None,
+                "skipped": verify_cmd is None,
+            },
+        },
+        "notes": notes,
+    }
+
+    (package_dir / "autoquant_results.json").write_text(
+        json.dumps(
+            {
+                "autoquant_returncode": autoquant_cmd.returncode,
+                "verify_returncode": verify_cmd.returncode if verify_cmd else None,
+            },
+            indent=2,
+        )
+    )
+    (package_dir / "autoquant_summary.json").write_text(json.dumps(summary, indent=2))
+    return summary

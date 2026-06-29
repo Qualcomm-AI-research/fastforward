@@ -1,0 +1,4 @@
+interface:
+  display_name: "HuggingFace Model Resolver"
+  short_description: "Synthesise load_model and model_inputs for any HuggingFace model by fetching config.json and README examples."
+  default_prompt: "Use $hf-model-resolver to implement load_model and model_inputs for this HuggingFace model."

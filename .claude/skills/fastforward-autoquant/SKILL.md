@@ -1,0 +1,141 @@
+---
+name: fastforward-autoquant
+description: Source-driven FastForward autoquant orchestration. Given an output_dir containing a bootstrapped package with working load_model and model_inputs, execute `autoquant` and `verify` commands via the fully-generated `main.py`. Use after fastforward-model-resolver or fastforward-model-discovery has populated __init__.py.
+---
+
+# FastForward AutoQuant
+
+Bootstraps a quantization package and runs `autoquant` + `verify` against it.
+
+**Prerequisite:** `__init__.py` must already contain working `load_model` and `model_inputs`
+implementations before the commands are executed. Use the appropriate preparation skill first:
+
+| Model source | `probe_pipeline` result | Preparation skill |
+|---|---|---|
+| HuggingFace model ID | probe exit 0 | `$fastforward-model-resolver` |
+| HuggingFace model ID | probe exit 1 | `$fastforward-model-resolver` → `$fastforward-model-discovery` |
+| Local path or git URL | (not run) | `$fastforward-model-discovery` |
+
+When `$fastforward-model-resolver` returns `status="needs_discovery"`, immediately invoke
+`$fastforward-model-discovery` with the `model_path`, `output_file`, and `checkpoint` from
+the resolver response before proceeding to autoquant.
+
+---
+
+## Autoquant workflow
+
+1. **Validate request payload.**
+   - Accept only `intent="autoquantize_model"`.
+   - Require `output_dir`.
+   - `output_dir`'s basename must be a valid Python identifier — `main.py` imports the
+     package via `__import__(dir_basename)`, so names with dashes or dots (e.g.
+     `sam-3-artifacts`, `my.model.artifacts`) are rejected. Use underscores instead
+     (e.g. `sam_3_artifacts`).
+   - Validate optional fields (`command_prefix`, `overwrite_output_files`, `generate_only`).
+   - Reject unsupported payload shapes with clear migration guidance.
+
+2. **Bootstrap output package files.**
+   - Create `output_dir/__init__.py` and `output_dir/main.py` if they do not exist.
+   - **`__init__.py`** is the only file users ever edit. It exports:
+     - `load_model` — instantiate the model
+     - `model_inputs` — return `list[tuple[args, kwargs]]` input batches
+     - `custom_operators_table` — return an operator table for `ff.autoquantize`, or `None`
+     - `quantized_model` — loads `autoquant.py` and calls `ff.quantize_model` (do not edit)
+     - `bypass` — utility decorator for building dispatch shims in `custom_operators_table`
+   - **`main.py`** is fully generated and must never be edited by users.
+     Regenerating `main.py` at any time is safe.
+   - Bootstrap policy:
+     - keep existing files by default
+     - overwrite only when `overwrite_output_files=true`
+
+3. **Check that `__init__.py` is ready.**
+   - If `load_model` or `model_inputs` still contain stub `raise RuntimeError(...)` bodies,
+     stop and return `needs_preparation` with actionable guidance:
+     - HuggingFace model IDs (probe exit 0) → run `$fastforward-model-resolver`
+     - HuggingFace model IDs (probe exit 1) → run `$fastforward-model-resolver`, then `$fastforward-model-discovery` with the returned `model_path`
+     - Local paths or git URLs → run `$fastforward-model-discovery`
+   - If `generate_only=true`, skip this check and return `success` immediately.
+
+4. **Execute generated package commands.**
+   - Default commands (run from `output_dir`):
+     - `python ./main.py autoquant`
+     - `python ./main.py verify`
+   - If user provides environment guidance (e.g., pixi/uv/venv), prepend `command_prefix`.
+   - Skip `verify` if `generate_only=true` or if `autoquant` returned a non-zero exit code.
+
+5. **Collect artifacts and command logs.**
+   - Persist `autoquant_results.json` and `autoquant_summary.json`.
+   - Persist resolved command lines, return codes, stdout, stderr.
+
+6. **Return final structured response.**
+   - `status` in `{success, partial, needs_preparation}`.
+   - Artifact paths and command execution details.
+   - Actionable failure diagnostics.
+
+---
+
+## Required input contract
+
+Provide a JSON payload to `scripts/entrypoint.py:handle_request`.
+
+Required fields:
+- `intent`: must be `"autoquantize_model"`
+- `output_dir` / `artifacts_dir`: directory containing (or to contain) `__init__.py` and `main.py`.
+  Its basename must be a valid Python identifier (no dashes/dots) — `main.py` imports it
+  directly via `__import__()`.
+
+Optional fields:
+- `overwrite_output_files`: set `true` to overwrite existing package files (default `false`)
+- `generate_only`: set `true` to bootstrap the package and return without running commands
+- `seed`: deterministic seed (default `0`)
+- `max_workers`: reserved for future use
+- `command_prefix`: optional command prefix (e.g. `~/bin/pixi run` or `uv run`)
+
+## Artifacts to produce
+
+All generated artifacts are written directly under `output_dir`.
+
+Required files in `output_dir`:
+- `main.py`
+- `__init__.py` (exports `load_model`, `model_inputs`, `quantized_model`)
+- `autoquant.py` (generated by running package `autoquant` command)
+- `test_autoquant_failures.py` (generated by running package `autoquant` command)
+- `autoquant.log` (logging output from `autoquant` command)
+- `verify.log` (logging output from `verify` command)
+- `autoquant_results.json`
+- `autoquant_summary.json`
+
+## Response requirements
+
+Return a structured status payload that includes:
+- `status` (`"success"`, `"partial"`, or `"needs_preparation"`)
+- artifact paths (`autoquant_results.json`, `autoquant_summary.json`, `test_autoquant_failures.py`)
+- executed command lines, return codes, stdout, stderr
+
+## Agent behavior rules
+
+- **`__init__.py` is the only file users edit.** `main.py` is a generated orchestrator —
+  never ask users to edit it.
+- **Never implement `load_model` or `model_inputs` here.** That is the responsibility of
+  `$fastforward-model-resolver` (HF) or `$fastforward-model-discovery` (local/git).
+- If `load_model` or `model_inputs` contain stub `raise RuntimeError(...)` bodies and
+  `generate_only` is not set, return `needs_preparation` — do not proceed to run commands.
+- Preserve deterministic execution and reproducibility.
+- Surface command-level errors with the full stdout/stderr from the failed command.
+- `test_autoquant_failures.py` is owned by the package `autoquant` command, not this skill.
+- Respect file ownership: keep user-authored `__init__.py` by default; `main.py` may always
+  be regenerated.
+- `generate_only=true` is the preferred way to bootstrap a package for manual editing.
+
+## Scope limits
+
+This skill only bootstraps the package and runs `autoquant` / `verify`. It does not:
+- Download models or resolve source paths
+- Implement `load_model` or `model_inputs`
+- Scan model source code
+
+## Example request
+
+```json
+{"intent": "autoquantize_model", "output_dir": "./artifacts", "command_prefix": "~/bin/pixi run -e ff"}
+```
