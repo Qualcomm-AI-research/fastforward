@@ -63,6 +63,7 @@ def fake_my_package() -> Iterator[str]:
         yield name
 
 
+@pytest.mark.slow
 def test_pattern_rule_robust_type_annotation_on_external_functions(
     fake_my_package: str,
     snapshot: syrupy.assertion.SnapshotAssertion,

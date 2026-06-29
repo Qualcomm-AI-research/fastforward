@@ -680,6 +680,7 @@ class _IssueBDispatchImportModule(torch.nn.Module):
         return _issue_b_external_dispatch(x, x)
 
 
+@pytest.mark.slow
 def test_pattern_based_replacement(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
     module = ExampleModule1B()
     rule = ff.autoquant.PatternRule.from_str(
@@ -717,6 +718,7 @@ def test_autoquant_prefers_attribute_name_for_module_alias_resolution(
     assert snapshot == actual
 
 
+@pytest.mark.slow
 def test_helper_public_api_refs_follow_renamed_helpers() -> None:
     # GIVEN a module that uses torch.nn.MultiheadAttention, whose implementation
     # calls helpers such as multi_head_attention_forward via handle_torch_function
@@ -802,6 +804,7 @@ def test_autoquant_caller_has_distinct_quantizers_for_two_helpers_sharing_op_nam
     )
 
 
+@pytest.mark.slow
 def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
     # GIVEN an optable where a dispatch op resolves to a qualified name whose root
     # module ("sam3_quantized") is not imported in the module under quantization
@@ -841,6 +844,7 @@ def test_autoquant_emits_import_for_injected_dispatch_namespace() -> None:
     assert "sam3_quantized.interpolate" in code
 
 
+@pytest.mark.slow
 def test_autoquant_cross_file_dispatch_namespace_contract(tmp_path: pathlib.Path) -> None:
     # GIVEN an optable whose dispatch op resolves to an external module root
     # ("sam3_quantized") not present in the module under quantization
