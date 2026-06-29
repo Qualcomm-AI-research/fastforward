@@ -23,7 +23,7 @@ Use conventional Commits in format: <type>(<scope>): <description>
 
 - Subject: lowercase start, imperative mood, no period, under 72 chars.
 - Types: feat, fix, docs, style, refactor, test, perf, ci, build, chore
-- Scopes: autoquant, orchestration, export, ci, docs
+- Scopes: autoquant, orchestration, algorithms, export, ci, docs
 
 Examples: feat(export): introduce export pipeline registry, fix(autoquant): resolve inherited method ownership
 

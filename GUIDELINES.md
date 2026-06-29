@@ -52,6 +52,7 @@ specification. Every commit message must have the form:
 |------------------|-----------------------------------------------|
 | `autoquant`      | Automatic quantization                        |
 | `orchestration`  | Orchestration and tracing                     |
+| `algorithms`     | Quantization algorithms (e.g. GPTQ)           |
 | `export`         | Model export pipelines                        |
 | `ci`             | CI configuration and scripts                  |
 | `docs`           | Documentation                                 |
