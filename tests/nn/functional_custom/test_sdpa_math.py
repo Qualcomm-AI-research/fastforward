@@ -17,13 +17,14 @@ torch.backends.cudnn.deterministic = True
 
 _ATTN_MASK_OPTS = [False, "float", "bool", "causal"]
 
+GROUP_ATTN_VALUES = [1, 4] if torch.__version__ >= "2.5" else [1]
+
 
 # ------------------------------------------------------------------------------
 # BIT-EXACT TESTS
-
-
+@pytest.mark.skipif(torch.__version__ < "2.5", reason="Bit-exact tests require torch 2.5 or higher")
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("scale", [None, 0.1], ids=lambda s: f"scale={s}" if s else "")
 @pytest.mark.parametrize("dropout_p", [0.0, 0.5], ids=lambda p: f"dropout={p}")
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
@@ -39,17 +40,11 @@ def test_unquantized_attn_zero_error(
     # GIVEN: output of torch scaled-dot-product-attention MATH implementation as
     #        used as in attention layers
     q, k, v, attn_mask, is_causal = _make_attn_inputs(input_type, groups, use_attn_mask, device)
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         torch.manual_seed(0)  # for dropout reproducibility
         out_torch = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask,
-            scale=scale,
-            dropout_p=dropout_p,
-            is_causal=is_causal,
-            enable_gqa=groups > 1,
+            q, k, v, attn_mask, scale=scale, dropout_p=dropout_p, is_causal=is_causal, **kwargs
         )
 
     # WHEN: fastforward version of scaled-dot-product-attention is
@@ -78,7 +73,8 @@ def test_unquantized_attn_zero_error(
 # UPCAST DTYPE TESTS
 
 
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.skipif(torch.__version__ < "2.5", reason="Bit-exact tests require torch 2.5 or higher")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
 @pytest.mark.parametrize(
     "dtype", [torch.float16, torch.bfloat16], ids=lambda dt: str(dt).split(".")[-1]
@@ -97,6 +93,7 @@ def test_unquantized_sdpa_implicitly_upcast_to_fp32(
     q, k, v, attn_mask, is_causal = _make_attn_inputs(
         input_type, groups, use_attn_mask, device, dtype
     )
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         out_torch = F.scaled_dot_product_attention(
             q,
@@ -104,7 +101,7 @@ def test_unquantized_sdpa_implicitly_upcast_to_fp32(
             v,
             attn_mask,
             is_causal=is_causal,
-            enable_gqa=groups > 1,
+            **kwargs,
         )
 
     # WHEN: fastforward version of scaled-dot-product-attention is executed
@@ -126,7 +123,8 @@ def test_unquantized_sdpa_implicitly_upcast_to_fp32(
     assert torch.all(out_torch == out_ff)
 
 
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.skipif(torch.__version__ < "2.5", reason="Bit-exact tests require torch 2.5 or higher")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
 @pytest.mark.parametrize(
     "upcast", [True, torch.float32], ids=lambda dt: f"upcast={str(dt).split('.')[-1]}"
@@ -149,14 +147,10 @@ def test_unquantized_sdpa_default_upcast_zero_error(
     q, k, v, attn_mask, is_causal = _make_attn_inputs(
         input_type, groups, use_attn_mask, device, dtype
     )
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         out_torch = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask,
-            is_causal=is_causal,
-            enable_gqa=groups > 1,
+            q, k, v, attn_mask, is_causal=is_causal, **kwargs
         )
 
     # WHEN: fastforward version of scaled-dot-product-attention is executed
@@ -178,7 +172,8 @@ def test_unquantized_sdpa_default_upcast_zero_error(
     assert torch.all(out_torch == out_ff)
 
 
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.skipif(torch.__version__ < "2.5", reason="Torch<2.5 do not upcast SDPA")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
 @pytest.mark.parametrize("upcast", [None, False], ids=lambda dt: f"upcast={str(dt).split('.')[-1]}")
 @pytest.mark.parametrize(
@@ -199,14 +194,10 @@ def test_unquantized_sdpa_upcast_disabled_imply_small_error(
     q, k, v, attn_mask, is_causal = _make_attn_inputs(
         input_type, groups, use_attn_mask, device, dtype
     )
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         out_torch = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask,
-            is_causal=is_causal,
-            enable_gqa=groups > 1,
+            q, k, v, attn_mask, is_causal=is_causal, **kwargs
         )
 
     # WHEN: fastforward version of scaled-dot-product-attention is executed over
@@ -240,7 +231,7 @@ def test_unquantized_sdpa_upcast_disabled_imply_small_error(
 )
 @pytest.mark.parametrize("strict_quant", [True, False], ids=lambda sq: "strict" if sq else "")
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("scale", [None, 0.01], ids=lambda s: f"scale={s}" if s else "")
 @pytest.mark.parametrize("dropout_p", [0.0, 0.5], ids=lambda p: f"dropout={p}")
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
@@ -256,21 +247,14 @@ def test_quantized_attn(
     use_attn_mask: bool | str,
     strict_quant: bool,
 ) -> None:
-
     # GIVEN: The output of torch scaled-dot-product-attention MATH implementation
     #        with self-attention-like inputs
     q, k, v, attn_mask, is_causal = _make_attn_inputs(input_type, groups, use_attn_mask, device)
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         torch.manual_seed(0)  # for dropout reproducibility
         out_torch = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask,
-            scale=scale,
-            dropout_p=dropout_p,
-            is_causal=is_causal,
-            enable_gqa=groups > 1,
+            q, k, v, attn_mask, scale=scale, dropout_p=dropout_p, is_causal=is_causal, **kwargs
         )
 
     if groups > 1 and strict_quant:
@@ -289,9 +273,9 @@ def test_quantized_attn(
                 scale=scale,
                 dropout_p=dropout_p,
                 is_causal=is_causal,
-                enable_gqa=groups > 1,
                 strict_quantization=False,
                 neg_inf=-1000.0,
+                **kwargs,
             )
         torch.manual_seed(0)  # for dropout reproducibility
         out_ff = qsdpa(
@@ -302,9 +286,9 @@ def test_quantized_attn(
             scale=scale,
             dropout_p=dropout_p,
             is_causal=is_causal,
-            enable_gqa=groups > 1,
             strict_quantization=False,
             neg_inf=-1000.0,
+            **kwargs,
         ).dequantize()
 
     # THEN: output error is in tolerance and proportionate with bits
@@ -369,7 +353,7 @@ QUANTIZER_KEYS_BITS_TOL = (
 
 
 @pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
-@pytest.mark.parametrize("groups", [1, 4], ids=lambda g: f"gqa={g}" if g > 1 else "")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("input_type", ["cross_attn", "self_attn"])
 @pytest.mark.parametrize("quantize_key, bits, tol", QUANTIZER_KEYS_BITS_TOL)
@@ -384,21 +368,14 @@ def test_partially_quantized_attn(
     scale: float | None = None,
     dropout_p: float = 0.0,
 ) -> None:
-
     # GIVEN: The output of torch scaled-dot-product-attention MATH implementation
     #        with self-attention-like inputs
     q, k, v, attn_mask, is_causal = _make_attn_inputs(input_type, groups, use_attn_mask, device)
+    kwargs = {"enable_gqa": groups > 1} if torch.__version__ >= "2.5" else {}
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         torch.manual_seed(0)  # for dropout reproducibility
         out_torch = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask,
-            scale=scale,
-            dropout_p=dropout_p,
-            is_causal=is_causal,
-            enable_gqa=groups > 1,
+            q, k, v, attn_mask, scale=scale, dropout_p=dropout_p, is_causal=is_causal, **kwargs
         )
 
     # WHEN: quantized version of fastforward SDPA is executed on the same inputs,
