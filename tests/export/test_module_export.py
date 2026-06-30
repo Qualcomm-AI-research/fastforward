@@ -1,6 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import dataclasses
 import json
 import pathlib
 import pickle
@@ -11,6 +12,7 @@ import fastforward as ff
 import optree
 import pytest
 import torch
+import torch.utils._pytree as pytree
 
 from fastforward.export._export_schemas import LegacySchemaHandler, V1SchemaHandler, V2SchemaHandler
 from fastforward.export.module_export import ModuleIORecorder, _deep_dequantize, export_modules
@@ -25,6 +27,25 @@ _WEIGHT_NAME_CANDIDATES = {"weight", "permute", "transpose", "t"}
 ONNX_EXPORT_OPTIONS = {"opset_version": OPSET_VERSION}
 
 
+@dataclasses.dataclass
+class _ModelOutputLike:
+    """A non-tuple, dict-like output container mimicking HF `ModelOutput`.
+
+    Registered as a pytree node so it flattens the way HF outputs do during
+    export. Used to verify the recorder strips such containers from stored IO.
+    """
+
+    logits: torch.Tensor
+    hidden: torch.Tensor
+
+
+pytree.register_pytree_node(
+    _ModelOutputLike,
+    lambda out: ([out.logits, out.hidden], None),
+    lambda children, _context: _ModelOutputLike(*children),
+)
+
+
 def test_module_io_recorder(
     simple_model: QuantizedModelFixture, tmp_path: pathlib.Path, _seed_prngs: int
 ) -> None:
@@ -37,6 +58,51 @@ def test_module_io_recorder(
             model(data)
         recorder.store_io_as_dict(tmp_path / f"{model_name}_input_output.pickle")
         _check_module_input_output_has_been_stored(tmp_path, model_name)
+
+
+def test_module_io_recorder_flattens_structured_output(tmp_path: pathlib.Path) -> None:
+    """Structured (non-tuple) outputs are flattened to a tuple of plain tensors.
+
+    Mirrors the HF `ModelOutput` case: the deployment graph (ONNX/QNN) emits a
+    flat tuple of tensors, so the recorded reference IO must do the same and must
+    not retain the framework-specific container (which would also force that
+    framework to be importable at unpickle time).
+    """
+
+    # GIVEN: a module whose forward returns a dict-like dataclass holding a
+    # quantized and an unquantized tensor.
+    class StructuredOutputModule(torch.nn.Module):
+        def forward(self, x: torch.Tensor) -> _ModelOutputLike:
+            return _ModelOutputLike(logits=ff.random.random_quantized((2, 2)), hidden=x)
+
+    module = StructuredOutputModule()
+    module_name = "structured_output_module"
+    data = torch.randn(2, 2)
+
+    # WHEN: recording the module IO and storing it.
+    with ModuleIORecorder(module, module_name) as recorder:
+        module(data)
+        recorder.store_io_as_dict(tmp_path / f"{module_name}_input_output.pickle")
+
+    # THEN: the in-memory record is a flat tuple of plain tensors with aligned
+    # quantizer settings (the quantized leaf has settings, the plain one does not).
+    assert isinstance(recorder.output, tuple)
+    assert len(recorder.output) == 2
+    assert all(not isinstance(leaf, ff.QuantizedTensor) for leaf in recorder.output)
+    assert len(recorder.output_quantizer_settings) == 2
+    assert recorder.output_quantizer_settings[0] is not None
+    assert recorder.output_quantizer_settings[1] is None
+
+    # THEN: the stored output is a flat tuple of plain tensors and contains no
+    # `_ModelOutputLike` container.
+    with open(tmp_path / f"{module_name}_input_output.pickle", "rb") as fp:
+        stored = pickle.load(fp)
+
+    assert isinstance(stored["output"], tuple)
+    assert len(stored["output"]) == 2
+    for leaf in stored["output"]:
+        assert isinstance(leaf, torch.Tensor)
+        assert not isinstance(leaf, (ff.QuantizedTensor, _ModelOutputLike))
 
 
 @pytest.mark.parametrize(

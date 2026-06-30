@@ -20,6 +20,7 @@ from typing import Any, Callable, TypeAlias, overload
 import onnxruntime  # type: ignore[import-untyped]
 import optree
 import torch
+import torch.utils._pytree as pytree
 
 from typing_extensions import override
 
@@ -66,11 +67,16 @@ class ModuleIORecorder:
         """Logs inputs/outputs/kwargs in dictionary."""
         self.input = input_ if isinstance(input_, tuple) else (input_,)
         self.kwargs = kwargs
-        self.output = output_ if isinstance(output_, tuple) else (output_,)
 
         self.input, self.input_quantizer_settings = _deep_dequantize(self.input)
-        self.output, self.output_quantizer_settings = _deep_dequantize(self.output)
         self.kwargs, self.kwargs_quantizer_settings = _deep_dequantize(self.kwargs)
+
+        # Flatten the output into the same leaf order the export path (torch.export
+        # / ONNX) produces, so the stored reference IO is a flat tuple of plain
+        # tensors that matches the deployed graph's output and carries no
+        # framework-specific container types (e.g. HF `ModelOutput`).
+        output_leaves = pytree.tree_leaves(output_)
+        self.output, self.output_quantizer_settings = _dequantize_leaves(output_leaves)
 
     @override
     def __repr__(self) -> str:
@@ -398,6 +404,35 @@ def _dequant_and_get_quantparams(
     }
 
     return tensor.dequantize(), tensor_quant_args
+
+
+def _dequantize_leaves(
+    leaves: list[Any],
+) -> tuple[tuple[Any, ...], tuple[QuantParametersDict | None, ...]]:
+    """Dequantize a flat list of leaves, collecting quantization parameters.
+
+    Unlike `_deep_dequantize`, this operates on an already-flattened sequence of
+    leaves and returns flat tuples. It is used for module outputs, which are
+    flattened to match the deployment graph's tuple-of-tensors output order.
+
+    Args:
+        leaves: A flat list of leaves (tensors and/or other values).
+
+    Returns:
+        A flat tuple of (maybe) dequantized leaves and a flat tuple of quantizer
+        settings aligned with it (None for non-quantized leaves).
+    """
+    dequantized: list[Any] = []
+    quantizer_settings: list[QuantParametersDict | None] = []
+    for leaf in leaves:
+        if isinstance(leaf, QuantizedTensor):
+            dequant_tensor, quant_setting = _dequant_and_get_quantparams(leaf)
+            dequantized.append(dequant_tensor)
+            quantizer_settings.append(quant_setting)
+        else:
+            dequantized.append(leaf)
+            quantizer_settings.append(None)
+    return tuple(dequantized), tuple(quantizer_settings)
 
 
 _StructedQuantParams = (
