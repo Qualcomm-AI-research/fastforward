@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/quantization/tiled_tensor/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/">
       
       
-        <link rel="prev" href="../strict_quantization/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../../quantized_tensor/">
+        <link rel="next" href="sdpa/">
       
       
         
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
-        <title>tiled_tensor - FastForward</title>
+        <title>custom - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.tiled_tensor.T" class="md-skip">
+        <a href="#fastforward.nn.functional.custom.__all__" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              tiled_tensor
+              custom
             
           </span>
         </div>
@@ -205,7 +205,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../.." class="md-tabs__link">
+        <a href="../../../../.." class="md-tabs__link">
           
   
   
@@ -223,7 +223,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../examples/" class="md-tabs__link">
+      <a href="../../../../../examples/" class="md-tabs__link">
         
   
   
@@ -246,7 +246,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+        <a href="../../../" class="md-tabs__link">
           
   
   
@@ -282,7 +282,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -362,7 +362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   
@@ -397,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/" class="md-nav__link">
+      <a href="../../../../../examples/" class="md-nav__link">
         
   
   
@@ -496,7 +496,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../../../" class="md-nav__link ">
               
   
   
@@ -538,7 +538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../autoquant/" class="md-nav__link">
+      <a href="../../../autoquant/" class="md-nav__link">
         
   
   
@@ -566,7 +566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cache/" class="md-nav__link">
+      <a href="../../../cache/" class="md-nav__link">
         
   
   
@@ -594,7 +594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/" class="md-nav__link">
+      <a href="../../../common/" class="md-nav__link">
         
   
   
@@ -622,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dataclasses/" class="md-nav__link">
+      <a href="../../../dataclasses/" class="md-nav__link">
         
   
   
@@ -650,7 +650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dispatcher/" class="md-nav__link">
+      <a href="../../../dispatcher/" class="md-nav__link">
         
   
   
@@ -678,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../exceptions/" class="md-nav__link">
+      <a href="../../../exceptions/" class="md-nav__link">
         
   
   
@@ -721,7 +721,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/" class="md-nav__link ">
+            <a href="../../../export/" class="md-nav__link ">
               
   
   
@@ -763,7 +763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/export/" class="md-nav__link">
+      <a href="../../../export/export/" class="md-nav__link">
         
   
   
@@ -791,7 +791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/module_export/" class="md-nav__link">
+      <a href="../../../export/module_export/" class="md-nav__link">
         
   
   
@@ -834,7 +834,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/pipeline/" class="md-nav__link ">
+            <a href="../../../export/pipeline/" class="md-nav__link ">
               
   
   
@@ -876,7 +876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/pipeline/core/" class="md-nav__link">
+      <a href="../../../export/pipeline/core/" class="md-nav__link">
         
   
   
@@ -904,7 +904,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/pipeline/orchestrator/" class="md-nav__link">
+      <a href="../../../export/pipeline/orchestrator/" class="md-nav__link">
         
   
   
@@ -932,7 +932,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+      <a href="../../../export/pipeline/qnn_onnx_pipeline/" class="md-nav__link">
         
   
   
@@ -960,7 +960,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+      <a href="../../../export/pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
         
   
   
@@ -988,7 +988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/pipeline/registry/" class="md-nav__link">
+      <a href="../../../export/pipeline/registry/" class="md-nav__link">
         
   
   
@@ -1039,7 +1039,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/stages/" class="md-nav__link ">
+            <a href="../../../export/stages/" class="md-nav__link ">
               
   
   
@@ -1081,7 +1081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/stages/annotations/" class="md-nav__link">
+      <a href="../../../export/stages/annotations/" class="md-nav__link">
         
   
   
@@ -1109,7 +1109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/stages/base_pipeline_stages/" class="md-nav__link">
+      <a href="../../../export/stages/base_pipeline_stages/" class="md-nav__link">
         
   
   
@@ -1152,7 +1152,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../export/stages/onnx/" class="md-nav__link ">
+            <a href="../../../export/stages/onnx/" class="md-nav__link ">
               
   
   
@@ -1194,7 +1194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/stages/onnx/onnx_export_stages/" class="md-nav__link">
+      <a href="../../../export/stages/onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
@@ -1222,7 +1222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
+      <a href="../../../export/stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
@@ -1258,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../export/stages/passes/" class="md-nav__link">
+      <a href="../../../export/stages/passes/" class="md-nav__link">
         
   
   
@@ -1302,7 +1302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flags/" class="md-nav__link">
+      <a href="../../../flags/" class="md-nav__link">
         
   
   
@@ -1330,7 +1330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../forward_override/" class="md-nav__link">
+      <a href="../../../forward_override/" class="md-nav__link">
         
   
   
@@ -1358,7 +1358,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../logging_utils/" class="md-nav__link">
+      <a href="../../../logging_utils/" class="md-nav__link">
         
   
   
@@ -1401,7 +1401,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../mpath/" class="md-nav__link ">
+            <a href="../../../mpath/" class="md-nav__link ">
               
   
   
@@ -1443,7 +1443,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/fragments/" class="md-nav__link">
+      <a href="../../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -1471,7 +1471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mpath/selector/" class="md-nav__link">
+      <a href="../../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -1504,6 +1504,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1514,15 +1516,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../nn/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -1546,7 +1548,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_12_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_12_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_12">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1564,7 +1566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/activations/" class="md-nav__link">
+      <a href="../../activations/" class="md-nav__link">
         
   
   
@@ -1592,7 +1594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/container/" class="md-nav__link">
+      <a href="../../container/" class="md-nav__link">
         
   
   
@@ -1620,7 +1622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/conv/" class="md-nav__link">
+      <a href="../../conv/" class="md-nav__link">
         
   
   
@@ -1648,7 +1650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1676,7 +1678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/embedding/" class="md-nav__link">
+      <a href="../../embedding/" class="md-nav__link">
         
   
   
@@ -1701,6 +1703,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1711,15 +1715,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12_6" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../nn/functional/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1743,7 +1747,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_12_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_1_12_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_12_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1758,6 +1762,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1768,15 +1774,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12_6_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_12_6_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../nn/functional/custom/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   
@@ -1794,13 +1800,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_1_12_6_1" id="__nav_3_1_12_6_1_label" tabindex="0">
+              <label class="md-nav__link md-nav__link--active" for="__nav_3_1_12_6_1" id="__nav_3_1_12_6_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_1_12_6_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_1_12_6_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_12_6_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1818,7 +1824,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/functional/custom/sdpa/" class="md-nav__link">
+      <a href="sdpa/" class="md-nav__link">
         
   
   
@@ -1862,7 +1868,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/linear/" class="md-nav__link">
+      <a href="../../linear/" class="md-nav__link">
         
   
   
@@ -1890,7 +1896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1918,7 +1924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/normalization/" class="md-nav__link">
+      <a href="../../normalization/" class="md-nav__link">
         
   
   
@@ -1946,7 +1952,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/quantized_module/" class="md-nav__link">
+      <a href="../../quantized_module/" class="md-nav__link">
         
   
   
@@ -1974,7 +1980,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../nn/quantizer/" class="md-nav__link">
+      <a href="../../quantizer/" class="md-nav__link">
         
   
   
@@ -2010,7 +2016,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../orchestration/" class="md-nav__link">
+      <a href="../../../orchestration/" class="md-nav__link">
         
   
   
@@ -2038,7 +2044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../overrides/" class="md-nav__link">
+      <a href="../../../overrides/" class="md-nav__link">
         
   
   
@@ -2063,8 +2069,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2075,15 +2079,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_15" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../quantization/" class="md-nav__link ">
               
   
   
@@ -2107,7 +2111,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_15_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_15">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2140,7 +2144,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../affine/" class="md-nav__link ">
+            <a href="../../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -2182,7 +2186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../affine/dynamic/" class="md-nav__link">
+      <a href="../../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -2210,7 +2214,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../affine/function/" class="md-nav__link">
+      <a href="../../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -2238,7 +2242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../affine/range/" class="md-nav__link">
+      <a href="../../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -2266,7 +2270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../affine/static/" class="md-nav__link">
+      <a href="../../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -2302,7 +2306,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../freeze/" class="md-nav__link">
+      <a href="../../../quantization/freeze/" class="md-nav__link">
         
   
   
@@ -2330,7 +2334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../function/" class="md-nav__link">
+      <a href="../../../quantization/function/" class="md-nav__link">
         
   
   
@@ -2358,7 +2362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gptq/" class="md-nav__link">
+      <a href="../../../quantization/gptq/" class="md-nav__link">
         
   
   
@@ -2386,7 +2390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../granularity/" class="md-nav__link">
+      <a href="../../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -2414,7 +2418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quant_init/" class="md-nav__link">
+      <a href="../../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -2442,7 +2446,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantizer_annotations/" class="md-nav__link">
+      <a href="../../../quantization/quantizer_annotations/" class="md-nav__link">
         
   
   
@@ -2470,7 +2474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../random/" class="md-nav__link">
+      <a href="../../../quantization/random/" class="md-nav__link">
         
   
   
@@ -2498,7 +2502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ste/" class="md-nav__link">
+      <a href="../../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -2526,7 +2530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../strict_quantization/" class="md-nav__link">
+      <a href="../../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -2551,35 +2555,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    tiled_tensor
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -2595,68 +2574,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.tiled_tensor.T" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        T
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.tiled_tensor.check_tile_compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        check_tile_compatibility
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.tiled_tensor.rows_to_tiles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        rows_to_tiles
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.tiled_tensor.tiles_to_rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        tiles_to_rows
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2677,7 +2594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantized_tensor/" class="md-nav__link">
+      <a href="../../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -2720,7 +2637,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../range_setting/" class="md-nav__link ">
+            <a href="../../../range_setting/" class="md-nav__link ">
               
   
   
@@ -2762,7 +2679,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/common/" class="md-nav__link">
+      <a href="../../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -2790,7 +2707,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/min_error/" class="md-nav__link">
+      <a href="../../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -2818,7 +2735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../range_setting/minmax/" class="md-nav__link">
+      <a href="../../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -2854,7 +2771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../serialization/" class="md-nav__link">
+      <a href="../../../serialization/" class="md-nav__link">
         
   
   
@@ -2897,7 +2814,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../testing/" class="md-nav__link ">
+            <a href="../../../testing/" class="md-nav__link ">
               
   
   
@@ -2939,7 +2856,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/autoquant/" class="md-nav__link">
+      <a href="../../../testing/autoquant/" class="md-nav__link">
         
   
   
@@ -2967,7 +2884,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/initialization/" class="md-nav__link">
+      <a href="../../../testing/initialization/" class="md-nav__link">
         
   
   
@@ -2995,7 +2912,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/metrics/" class="md-nav__link">
+      <a href="../../../testing/metrics/" class="md-nav__link">
         
   
   
@@ -3023,7 +2940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/package_mock/" class="md-nav__link">
+      <a href="../../../testing/package_mock/" class="md-nav__link">
         
   
   
@@ -3051,7 +2968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/string/" class="md-nav__link">
+      <a href="../../../testing/string/" class="md-nav__link">
         
   
   
@@ -3087,7 +3004,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../type_common/" class="md-nav__link">
+      <a href="../../../type_common/" class="md-nav__link">
         
   
   
@@ -3143,7 +3060,7 @@
   
 
 
-  <h1>tiled_tensor</h1>
+  <h1>custom</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -3173,14 +3090,34 @@
 
 
 
-<h3 id="fastforward.quantization.tiled_tensor.T" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">tiled_tensor</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span></code>
+<h3 id="fastforward.nn.functional.custom.__all__" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;scaled_dot_product_attention&#39;</span><span class="p">,</span> <span class="s1">&#39;sdpa_upcast&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.tiled_tensor.T" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.functional.custom.__all__" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="fastforward.nn.functional.custom.sdpa_upcast" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">sdpa_upcast</span> <span class="o">=</span> <span class="n">_SDPAUpcast</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.functional.custom.sdpa_upcast" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
@@ -3195,21 +3132,21 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.quantization.tiled_tensor.check_tile_compatibility" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">tiled_tensor</span><span class="o">.</span><span class="n">check_tile_compatibility</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">)</span></code>
+<h3 id="fastforward.nn.functional.custom.scaled_dot_product_attention" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">scaled_dot_product_attention</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dropout_p</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">is_causal</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">enable_gqa</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">neg_inf</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">),</span> <span class="n">attn_scores_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attn_mask_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">masked_scores_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attn_weights_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scaled_query_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scaled_key_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dropout_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
-<a href="#fastforward.quantization.tiled_tensor.check_tile_compatibility" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.nn.functional.custom.scaled_dot_product_attention" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Helper function to assess whether a given tile size can be used with a given data shape.</p>
-<p>The function will raise an error if not, otherwise return None.</p>
+        <p>Quantized version of torch.nn.functional.scaled_dot_product_attention.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>fastforward/quantization/tiled_tensor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">19</span>
+              <summary>Source code in <code>fastforward/nn/functional/custom/sdpa.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
+<span class="normal">19</span>
 <span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
@@ -3232,184 +3169,36 @@
 <span class="normal">39</span>
 <span class="normal">40</span>
 <span class="normal">41</span>
-<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">check_tile_compatibility</span><span class="p">(</span><span class="n">input_size</span><span class="p">:</span> <span class="n">SizeT</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">:</span> <span class="n">SizeT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Helper function to assess whether a given tile size can be used with a given data shape.</span>
-
-<span class="sd">    The function will raise an error if not, otherwise return None.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">input_size</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tile_size</span><span class="p">):</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Input dimensionality must match tile_size dimensionality got &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">input_size</span><span class="p">)</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tile_size</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-
-    <span class="n">mismatched</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">tile_dim</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">)):</span>
-        <span class="k">if</span> <span class="n">tile_dim</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">input_dim</span> <span class="o">%</span> <span class="n">tile_dim</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">mismatched</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">mismatched</span><span class="p">:</span>
-        <span class="n">errors</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">input_size</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">tile_size</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2"> for dimension </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">mismatched</span><span class="p">]</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Each dimension of tile_size must divide the corresponding input dimension. Got &quot;</span>
-            <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
-            <span class="o">+</span> <span class="s2">&quot;.&quot;</span>
-        <span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="fastforward.quantization.tiled_tensor.rows_to_tiles" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">tiled_tensor</span><span class="o">.</span><span class="n">rows_to_tiles</span><span class="p">(</span><span class="n">tiled_data</span><span class="p">,</span> <span class="n">data_size</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.tiled_tensor.rows_to_tiles" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Reshape and permute <code>tiled_data</code>.</p>
-<p>Reshape and permute <code>tiled_data</code> to a tensor of <code>data_size</code> tiled by <code>tile_size</code> where each row
-in tiled_data corresponds to a single tile.</p>
-        <hr />
-<div class="highlight"><pre><span></span><code>tiled_data: Data to reshape and permute
-data_size: Size of the output
-tile_size: Tile size to use for row collection
-</code></pre></div>
-        <hr />
-<div class="highlight"><pre><span></span><code>Tensor: The reshaped tensor.
-</code></pre></div>
-        <hr />
-<div class="highlight"><pre><span></span><code>ValueError: `tiled_data`&#39;s size does not correspond to `data_size` and `tile_size`.
-</code></pre></div>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>fastforward/quantization/tiled_tensor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rows_to_tiles</span><span class="p">(</span>
-    <span class="n">tiled_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">data_size</span><span class="p">:</span> <span class="n">SizeT</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">:</span> <span class="n">SizeT</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;data_shape&quot;</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reshape and permute `tiled_data`.</span>
-
-<span class="sd">    Reshape and permute `tiled_data` to a tensor of `data_size` tiled by `tile_size` where each row</span>
-<span class="sd">    in tiled_data corresponds to a single tile.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">    ----</span>
-<span class="sd">        tiled_data: Data to reshape and permute</span>
-<span class="sd">        data_size: Size of the output</span>
-<span class="sd">        tile_size: Tile size to use for row collection</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">    -------</span>
-<span class="sd">        Tensor: The reshaped tensor.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">    ------</span>
-<span class="sd">        ValueError: `tiled_data`&#39;s size does not correspond to `data_size` and `tile_size`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data_size</span><span class="p">)</span>
-
-    <span class="n">tile_size_to_use</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">data_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">tile_size</span> <span class="o">==</span> <span class="s2">&quot;data_shape&quot;</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">tile_size</span><span class="p">)</span>
-    <span class="n">data_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">data_size</span><span class="p">)</span>
-    <span class="n">check_tile_compatibility</span><span class="p">(</span><span class="n">data_size</span><span class="p">,</span> <span class="n">tile_size_to_use</span><span class="p">)</span>
-
-    <span class="n">expected_rows</span> <span class="o">=</span> <span class="n">data_size</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">//</span> <span class="n">tile_size_to_use</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
-    <span class="n">expected_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">((</span><span class="n">expected_rows</span><span class="p">,</span> <span class="n">tile_size_to_use</span><span class="o">.</span><span class="n">numel</span><span class="p">()))</span>
-    <span class="k">if</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">!=</span> <span class="n">expected_size</span><span class="p">:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;tiled_data is expected to be of size </span><span class="si">{</span><span class="n">expected_size</span><span class="si">}</span><span class="s2"> but found </span><span class="si">{</span><span class="n">tiled_data</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-
-    <span class="n">num_dim_blocks</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">//</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">data_size</span><span class="p">,</span> <span class="n">tile_size_to_use</span><span class="p">)]</span>
-    <span class="n">tiled_intermediate_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">_interleave</span><span class="p">(</span><span class="n">num_dim_blocks</span><span class="p">,</span> <span class="n">tile_size_to_use</span><span class="p">))</span>
-
-    <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tiled_intermediate_shape</span><span class="p">)</span>
-    <span class="n">permutation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ndims</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ndims</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-    <span class="n">tiled_shape</span> <span class="o">=</span> <span class="p">[</span><span class="n">tiled_intermediate_shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">permutation</span><span class="p">]</span>
-    <span class="n">reverse_permutation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_interleave</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ndims</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndims</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ndims</span><span class="p">)))</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tiled_shape</span><span class="p">)</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">reverse_permutation</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data_size</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="fastforward.quantization.tiled_tensor.tiles_to_rows" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">tiled_tensor</span><span class="o">.</span><span class="n">tiles_to_rows</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">)</span></code>
-
-<a href="#fastforward.quantization.tiled_tensor.tiles_to_rows" class="headerlink" title="Permanent link">#</a></h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Reshape and permute data.</p>
-<p>Reshape and permute data to a tensor in which the elements per tile are
-laid out per row, following tile_size.</p>
-        <hr />
-<div class="highlight"><pre><span></span><code>data: Data to reshape and permute
-tile_size: Tile size to use for row collection
-</code></pre></div>
-        <hr />
-<div class="highlight"><pre><span></span><code>Tensor: The reshaped tensor.
-</code></pre></div>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>fastforward/quantization/tiled_tensor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">71</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span>
 <span class="normal">74</span>
@@ -3427,43 +3216,78 @@ tile_size: Tile size to use for row collection
 <span class="normal">86</span>
 <span class="normal">87</span>
 <span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span>
-<span class="normal">97</span>
-<span class="normal">98</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tiles_to_rows</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">:</span> <span class="n">SizeT</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;data_shape&quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reshape and permute data.</span>
+<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scaled_dot_product_attention</span><span class="p">(</span>
+    <span class="n">query</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">key</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">attn_mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dropout_p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">is_causal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">enable_gqa</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">neg_inf</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">),</span>
+    <span class="n">attn_scores_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">attn_mask_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">masked_scores_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">attn_weights_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">scaled_query_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">scaled_key_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dropout_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_quantizer</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strict_quantization</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Quantizer</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantized version of torch.nn.functional.scaled_dot_product_attention.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">strict_quantization</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">strict_quantization</span> <span class="o">=</span> <span class="n">get_strict_quantization</span><span class="p">()</span>
 
-<span class="sd">    Reshape and permute data to a tensor in which the elements per tile are</span>
-<span class="sd">    laid out per row, following tile_size.</span>
+    <span class="n">dispatch_op</span> <span class="o">=</span> <span class="n">dispatch</span><span class="p">(</span>
+        <span class="s2">&quot;scaled_dot_product_attention&quot;</span><span class="p">,</span>
+        <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask</span><span class="p">,</span>
+        <span class="n">dropout_p</span><span class="o">=</span><span class="n">dropout_p</span><span class="p">,</span>
+        <span class="n">is_causal</span><span class="o">=</span><span class="n">is_causal</span><span class="p">,</span>
+        <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+        <span class="n">enable_gqa</span><span class="o">=</span><span class="n">enable_gqa</span><span class="p">,</span>
+        <span class="n">neg_inf</span><span class="o">=</span><span class="n">neg_inf</span><span class="p">,</span>
+        <span class="n">attn_scores_quantizer</span><span class="o">=</span><span class="n">attn_scores_quantizer</span><span class="p">,</span>
+        <span class="n">attn_mask_quantizer</span><span class="o">=</span><span class="n">attn_mask_quantizer</span><span class="p">,</span>
+        <span class="n">masked_scores_quantizer</span><span class="o">=</span><span class="n">masked_scores_quantizer</span><span class="p">,</span>
+        <span class="n">attn_weights_quantizer</span><span class="o">=</span><span class="n">attn_weights_quantizer</span><span class="p">,</span>
+        <span class="n">scaled_query_quantizer</span><span class="o">=</span><span class="n">scaled_query_quantizer</span><span class="p">,</span>
+        <span class="n">scaled_key_quantizer</span><span class="o">=</span><span class="n">scaled_key_quantizer</span><span class="p">,</span>
+        <span class="n">dropout_quantizer</span><span class="o">=</span><span class="n">dropout_quantizer</span><span class="p">,</span>
+        <span class="n">output_quantizer</span><span class="o">=</span><span class="n">output_quantizer</span><span class="p">,</span>
+        <span class="n">strict_quantization</span><span class="o">=</span><span class="n">strict_quantization</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">selected_op</span> <span class="o">=</span> <span class="n">dispatch_op</span>
+    <span class="k">assert</span> <span class="n">selected_op</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">    ----</span>
-<span class="sd">        data: Data to reshape and permute</span>
-<span class="sd">        tile_size: Tile size to use for row collection</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">    -------</span>
-<span class="sd">        Tensor: The reshaped tensor.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-
-    <span class="n">tile_size</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="n">tile_size</span> <span class="o">==</span> <span class="s2">&quot;data_shape&quot;</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">tile_size</span><span class="p">)</span>
-    <span class="n">check_tile_compatibility</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">tile_size</span><span class="p">)</span>
-    <span class="n">num_dim_blocks</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">//</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">tile_size</span><span class="p">)]</span>
-
-    <span class="n">data_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">_interleave</span><span class="p">(</span><span class="n">num_dim_blocks</span><span class="p">,</span> <span class="n">tile_size</span><span class="p">))</span>
-    <span class="n">num_blocks</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">//</span> <span class="n">tile_size</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
-
-    <span class="n">tiled_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data_shape</span><span class="p">)</span>
-    <span class="n">permutation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">tiled_data</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="n">permutation</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">selected_op</span><span class="p">(</span>
+        <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask</span><span class="p">,</span>
+        <span class="n">dropout_p</span><span class="o">=</span><span class="n">dropout_p</span><span class="p">,</span>
+        <span class="n">is_causal</span><span class="o">=</span><span class="n">is_causal</span><span class="p">,</span>
+        <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+        <span class="n">enable_gqa</span><span class="o">=</span><span class="n">enable_gqa</span><span class="p">,</span>
+        <span class="n">neg_inf</span><span class="o">=</span><span class="n">neg_inf</span><span class="p">,</span>
+        <span class="n">attn_scores_quantizer</span><span class="o">=</span><span class="n">attn_scores_quantizer</span><span class="p">,</span>
+        <span class="n">attn_mask_quantizer</span><span class="o">=</span><span class="n">attn_mask_quantizer</span><span class="p">,</span>
+        <span class="n">masked_scores_quantizer</span><span class="o">=</span><span class="n">masked_scores_quantizer</span><span class="p">,</span>
+        <span class="n">attn_weights_quantizer</span><span class="o">=</span><span class="n">attn_weights_quantizer</span><span class="p">,</span>
+        <span class="n">scaled_query_quantizer</span><span class="o">=</span><span class="n">scaled_query_quantizer</span><span class="p">,</span>
+        <span class="n">scaled_key_quantizer</span><span class="o">=</span><span class="n">scaled_key_quantizer</span><span class="p">,</span>
+        <span class="n">dropout_quantizer</span><span class="o">=</span><span class="n">dropout_quantizer</span><span class="p">,</span>
+        <span class="n">output_quantizer</span><span class="o">=</span><span class="n">output_quantizer</span><span class="p">,</span>
+        <span class="n">strict_quantization</span><span class="o">=</span><span class="n">strict_quantization</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3526,10 +3350,10 @@ tile_size: Tile size to use for row collection
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

@@ -14,7 +14,7 @@ class QuantizedLlamaForCausalLM(LlamaForCausalLM, QuantizedModule):
         super().__init_quantization__()
 
     # Required for LM eval
-    def tie_weights(self):
+    def tie_weights(self, missing_keys: set[str] | None = None, recompute_mapping: bool = True):
         pass
 
 

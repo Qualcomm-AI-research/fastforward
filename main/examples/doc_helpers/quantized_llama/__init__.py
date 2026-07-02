@@ -3,6 +3,7 @@
 
 from .attention import (
     QuantizedLlamaAttention,
+    QuantizedLlamaSDPAttention,
 )
 from .decoder import QuantizedLlamaDecoderLayer
 from .llama import QuantizedLlamaForCausalLM, QuantizedLlamaModel
@@ -12,6 +13,7 @@ from .rotary_embedding import QuantizedLlamaRotaryEmbedding
 
 __all__ = [
     "QuantizedLlamaAttention",
+    "QuantizedLlamaSDPAttention",
     "QuantizedLlamaDecoderLayer",
     "QuantizedLlamaForCausalLM",
     "QuantizedLlamaModel",
