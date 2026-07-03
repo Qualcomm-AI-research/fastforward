@@ -24,7 +24,11 @@ from fastforward._autoquant.cst.node_creation import (
 from fastforward._autoquant.function_context import FunctionContext
 from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
-from fastforward._autoquant.pysource.scope import ImportSymbol, ScopeProvider
+from fastforward._autoquant.pysource.scope import (
+    ImportSymbol,
+    ScopeProvider,
+    _resolve_relative_module_name,
+)
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
@@ -64,6 +68,51 @@ def _flatten_small_statements(
         else:
             result.append(stmt)
     return result
+
+
+class ConvertRelativeImports(libcst.CSTTransformer):
+    """Rewrite relative `ImportFrom` statements into absolute form.
+
+    Downstream mypy-based type inference in `MypyTypeProvider` feeds the
+    module source to `mypy.build.build` with a synthetic module name that has
+    no parent package. Any `from .` / `from ..` statement in the input source
+    causes mypy to raise `CompileError: No parent module -- cannot perform
+    relative import` at parse time, aborting the whole pass.
+
+    This transformer resolves the leading dots against the module's own
+    qualified name so mypy only ever sees absolute imports.
+    """
+
+    def __init__(self, module_qualified_name: str) -> None:
+        super().__init__()
+        self._module_qualified_name = module_qualified_name
+
+    @override
+    def leave_ImportFrom(
+        self, original_node: libcst.ImportFrom, updated_node: libcst.ImportFrom
+    ) -> libcst.ImportFrom:
+        del original_node
+        relative_levels = len(updated_node.relative)
+        if relative_levels == 0:
+            return updated_node
+
+        module_name = (
+            libcst.Module([]).code_for_node(updated_node.module)
+            if updated_node.module is not None
+            else None
+        )
+        absolute_module = _resolve_relative_module_name(
+            self._module_qualified_name, relative_levels, module_name
+        )
+        return updated_node.with_changes(relative=(), module=_dotted_name_to_cst(absolute_module))
+
+
+def _dotted_name_to_cst(dotted: str) -> libcst.Attribute | libcst.Name:
+    parts = dotted.split(".")
+    node: libcst.Attribute | libcst.Name = libcst.Name(parts[0])
+    for part in parts[1:]:
+        node = libcst.Attribute(value=node, attr=libcst.Name(part))
+    return node
 
 
 class ConvertSemicolonJoinedStatements(libcst.CSTTransformer):

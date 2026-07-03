@@ -18,6 +18,7 @@ import libcst.metadata
 
 from typing_extensions import override
 
+from fastforward._autoquant.cst.passes import ConvertRelativeImports
 from fastforward._autoquant.cst.pattern import PatternRule, PatternRuleTransformer
 from fastforward._autoquant.cst.validation import ensure_type
 from fastforward._autoquant.pass_manager import PassManager
@@ -270,18 +271,26 @@ class _ModuleSource:
 
         module_cst = libcst.parse_module(textwrap.dedent(src))
 
-        passes = self._preprocessing_passes
+        module_qualified_name = fully_qualified_name(module)
+        # Convert relative imports to absolute form so downstream mypy-based
+        # analysis (which sees the source under a synthetic module name) does
+        # not choke on `from .` / `from ..` statements.
+        prefix_passes: tuple[libcst.CSTTransformer, ...] = (
+            ConvertRelativeImports(module_qualified_name),
+        )
         if self._replacement_patterns:
             pattern_transformer = PatternRuleTransformer(
                 self._replacement_patterns,
-                module_qualified_name=fully_qualified_name(module),
+                module_qualified_name=module_qualified_name,
             )
             # PatternRules are applied first to match against the original source
-            passes = (pattern_transformer,) + tuple(passes)
+            prefix_passes = (pattern_transformer,) + prefix_passes
+
+        passes = prefix_passes + tuple(self._preprocessing_passes)
 
         pm = PassManager(passes)
         module_cst = pm(module_cst)
-        logger.info("SourceContext: finished preprocessing module %s", fully_qualified_name(module))
+        logger.info("SourceContext: finished preprocessing module %s", module_qualified_name)
         return module_cst
 
     def qualified_name(self) -> str:

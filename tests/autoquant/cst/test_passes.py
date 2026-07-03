@@ -41,6 +41,109 @@ def some_function():
 """
 
 
+def test_convert_relative_imports_absolute_untouched() -> None:
+    """Absolute imports must not be rewritten."""
+    # GIVEN code that only contains absolute imports
+    input_code = "from absolute.pkg import a\nimport os\n"
+
+    # WHEN we apply ConvertRelativeImports
+    transformer = passes.ConvertRelativeImports("some.module")
+
+    # THEN the code is left unchanged
+    assert_input_transforms_as_expected(input_code, transformer, input_code)
+
+
+def test_convert_relative_imports_single_dot() -> None:
+    """`from .name import x` resolves against the current package."""
+    # GIVEN a single-dot relative import inside package `pkg.sub`
+    input_code = "from .sibling import Foo\n"
+    expected = "from pkg.sub.sibling import Foo\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.mod")
+
+    # THEN the leading dot is resolved to the current package
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_double_dot() -> None:
+    """`from ..name import x` climbs one package level."""
+    # GIVEN a double-dot relative import inside package `pkg.sub`
+    input_code = "from ..cache_utils import DynamicCache\n"
+    expected = "from pkg.cache_utils import DynamicCache\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.mod")
+
+    # THEN the import climbs one package level to `pkg`
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_triple_dot() -> None:
+    """`from ..name import x` climbs one package level."""
+    # GIVEN a triple-dot relative import inside package `pkg.sub.subsub`
+    input_code = "from ...cache_utils import DynamicCache\n"
+    expected = "from pkg.cache_utils import DynamicCache\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.subsub.mod")
+
+    # THEN the import climbs two package levels to `pkg`
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_bare_from_dot() -> None:
+    """`from . import x` resolves module to the current package."""
+    # GIVEN a bare single-dot import inside package `pkg.sub`
+    input_code = "from . import z\n"
+    expected = "from pkg.sub import z\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.mod")
+
+    # THEN the module resolves to the current package `pkg.sub`
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_bare_from_double_dot() -> None:
+    """`from . import x` resolves module to the current package."""
+    # GIVEN a bare double-dot import inside package `pkg.sub`
+    input_code = "from .. import sub2\n"
+    expected = "from pkg import sub2\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.mod")
+
+    # THEN the module resolves to the parent package `pkg`
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_bare_from_triple_dot() -> None:
+    """`from . import x` resolves module to the current package."""
+    # GIVEN a bare triple-dot import inside package `pkg.sub.subsub`
+    input_code = "from ... import sub2\n"
+    expected = "from pkg import sub2\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.subsub.mod")
+
+    # THEN the module resolves to the grandparent package `pkg`
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
+def test_convert_relative_imports_multi_names() -> None:
+    """Multi-name relative imports keep every alias intact."""
+    # GIVEN a relative import that pulls multiple names, including an alias
+    input_code = "from .helpers import Foo, Bar as B\n"
+    expected = "from pkg.sub.helpers import Foo, Bar as B\n"
+
+    # WHEN we apply ConvertRelativeImports with the module's qualified name
+    transformer = passes.ConvertRelativeImports("pkg.sub.mod")
+
+    # THEN the import becomes absolute and every alias is preserved
+    assert_input_transforms_as_expected(input_code, transformer, expected)
+
+
 def test_statement_suite_to_indented_block() -> None:
     """Verifies simple statement suite is replaced by indented block."""
     # GIVEN code with non-simple statements, and its reference simplified version
