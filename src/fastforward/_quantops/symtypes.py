@@ -215,6 +215,9 @@ EllipsisType = Type("EllipsisType", py_repr="...")
 Size = Type("torch.Size") | Tuple[Int, EllipsisType]
 Quantizer = Type("Quantizer")
 DType = Type("DType", py_repr="torch.dtype")
+Device = Type("Device", py_repr="torch.device")
+Layout = Type("Layout", py_repr="torch.layout")
+MemoryFormat = Type("MemoryFormat", py_repr="torch.memory_format")
 
 
 def str_to_type(name: str) -> Type:
@@ -245,6 +248,12 @@ def str_to_type(name: str) -> Type:
             return EllipsisType
         case "dtype" | "DType" | "torch.dtype":
             return DType
+        case "device" | "Device" | "torch.device":
+            return Device
+        case "layout" | "Layout" | "torch.layout":
+            return Layout
+        case "memory_format" | "MemoryFormat" | "torch.memory_format":
+            return MemoryFormat
         case "Quantizer":
             return Quantizer
     msg = f"No known type with name '{name}'"

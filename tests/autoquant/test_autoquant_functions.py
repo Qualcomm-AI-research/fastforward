@@ -173,3 +173,43 @@ def test_autoquant_unsupported_contexts_fallback_inline(
     result = _autoquantize_str(input)
     ast.parse(result)
     assert snapshot == result
+
+
+@pytest.mark.slow
+def test_autoquant_translates_like_ops_and_creates_output_quantizers() -> None:
+    # GIVEN code that constructs tensors with the torch *_like factories
+    input = """
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        a = torch.ones_like(x)
+        b = torch.zeros_like(x)
+        c = torch.full_like(x, 5.0)
+        d = torch.empty_like(x)
+        return a
+    """
+
+    # WHEN autoquant processes the function
+    result = _autoquantize_str(input)
+    ast.parse(result)
+
+    # THEN each torch.*_like call is rewritten to its ff.nn.functional equivalent
+    # with a freshly created output_quantizer (like every other quantized op).
+    assert (
+        "fastforward.nn.functional.ones_like(x, output_quantizer=self.quantizer_ones_like)"
+        in result
+    )
+    assert (
+        "fastforward.nn.functional.zeros_like(x, output_quantizer=self.quantizer_zeros_like)"
+        in result
+    )
+    assert (
+        "fastforward.nn.functional.full_like(x, 5.0, output_quantizer=self.quantizer_full_like)"
+        in result
+    )
+    assert (
+        "fastforward.nn.functional.empty_like(x, output_quantizer=self.quantizer_empty_like)"
+        in result
+    )
+    assert "torch.ones_like" not in result
+    assert "torch.zeros_like" not in result
+    assert "torch.full_like" not in result
+    assert "torch.empty_like" not in result

@@ -62,6 +62,10 @@ __all__ = [
     "max_pool2d",
     "interpolate",
     "unfold",
+    "ones_like",
+    "zeros_like",
+    "full_like",
+    "empty_like",
 ]
 
 
@@ -1663,6 +1667,156 @@ def unfold(
 
     output = torch.nn.functional.unfold(
         input=input, kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:154
+def ones_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.ones_like(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:157
+def zeros_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.zeros_like(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:160
+def full_like(
+    input: torch.Tensor,
+    fill_value: Union[float, int],
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.full_like(
+        input=input,
+        fill_value=fill_value,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:163
+def empty_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.empty_like(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
     )
     if output_quantizer is not None:
         output = output_quantizer(output)

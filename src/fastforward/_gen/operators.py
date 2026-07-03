@@ -64,6 +64,10 @@ __all__ = [
     "max_pool2d",
     "interpolate",
     "unfold",
+    "ones_like",
+    "zeros_like",
+    "full_like",
+    "empty_like",
 ]
 
 
@@ -1520,6 +1524,169 @@ def unfold(
         dilation=dilation,
         padding=padding,
         stride=stride,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:154
+def ones_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "ones_like",
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.ones_like
+    return selected_op(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:157
+def zeros_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "zeros_like",
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.zeros_like
+    return selected_op(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:160
+def full_like(
+    input: torch.Tensor,
+    fill_value: Union[float, int],
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "full_like",
+        input=input,
+        fill_value=fill_value,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.full_like
+    return selected_op(
+        input=input,
+        fill_value=fill_value,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:163
+def empty_like(
+    input: torch.Tensor,
+    dtype: torch.dtype | None = None,
+    layout: torch.layout | None = None,
+    device: torch.device | None = None,
+    requires_grad: bool = False,
+    memory_format: torch.memory_format | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "empty_like",
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.empty_like
+    return selected_op(
+        input=input,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        memory_format=memory_format,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )

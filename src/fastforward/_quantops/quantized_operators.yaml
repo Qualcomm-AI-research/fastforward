@@ -146,3 +146,19 @@
 
 - op: "unfold(input: Quantized, kernel_size: int | tuple[int, ...], dilation: int | tuple[int, ...] = 1, padding: int | tuple[int, ...] = 0, stride: int | tuple[int, ...] = 1) -> Quantized"
   fallback: torch.nn.functional.unfold
+
+# `*_like` constructors. These read only the shape/dtype/device metadata of `input`;
+# under strict quantization they require an `output_quantizer`, like every other
+# quantized operator. `empty_like` fills the output with uninitialized data, so
+# quantizing it is meaningless, but it is included for API completeness.
+- op: "ones_like(input: Quantized, dtype: Optional[DType] = None, layout: Optional[Layout] = None, device: Optional[Device] = None, requires_grad: Bool = False, memory_format: Optional[MemoryFormat] = None) -> Quantized"
+  fallback: torch.ones_like
+
+- op: "zeros_like(input: Quantized, dtype: Optional[DType] = None, layout: Optional[Layout] = None, device: Optional[Device] = None, requires_grad: Bool = False, memory_format: Optional[MemoryFormat] = None) -> Quantized"
+  fallback: torch.zeros_like
+
+- op: "full_like(input: Quantized, fill_value: Number, dtype: Optional[DType] = None, layout: Optional[Layout] = None, device: Optional[Device] = None, requires_grad: Bool = False, memory_format: Optional[MemoryFormat] = None) -> Quantized"
+  fallback: torch.full_like
+
+- op: "empty_like(input: Quantized, dtype: Optional[DType] = None, layout: Optional[Layout] = None, device: Optional[Device] = None, requires_grad: Bool = False, memory_format: Optional[MemoryFormat] = None) -> Quantized"
+  fallback: torch.empty_like

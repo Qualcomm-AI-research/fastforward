@@ -118,11 +118,6 @@ def transpose(input: QuantizedTensor, *args: Any) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.transpose(*args), input)
 
 
-@register("ones_like", None)  # type: ignore[arg-type]
-def ones_like(input: QuantizedTensor, **kwargs: Any) -> torch.Tensor:
-    return torch.ones_like(input.raw_data, **{"dtype": torch.float, **kwargs})
-
-
 class _ScaleGradient(torch.autograd.Function):
     """Scale the gradient by `scalar` during backward pass."""
 

@@ -10,6 +10,7 @@ import fastforward
 import pytest
 import torch
 
+from fastforward.nn import QuantizerStub
 from fastforward.nn.linear_quantizer import LinearQuantizer
 from fastforward.quantization import granularity
 from fastforward.quantization.affine import AffineQuantizationFunction, StaticAffineQuantParams
@@ -85,7 +86,9 @@ def test_linear_quantizer_op_gradients() -> None:
         scale=scale, offset=offset, num_bits=num_bits, granularity=fastforward.PerTensor()
     )
     quant_data = AffineQuantizationFunction.quantize(data, quant_params)
-    quant_data.backward(torch.ones_like(quant_data))
+    quant_data.backward(
+        fastforward.nn.functional.ones_like(quant_data, output_quantizer=QuantizerStub())
+    )
 
     assert data.grad is not None
     assert scale.grad is not None
@@ -297,7 +300,9 @@ def test_linear_quantizer_asymmetric_per_channel_gradients() -> None:
     data.requires_grad = True
 
     quant_data = quantizer(data)
-    quant_data.backward(torch.ones_like(quant_data))
+    quant_data.backward(
+        fastforward.nn.functional.ones_like(quant_data, output_quantizer=QuantizerStub())
+    )
 
     assert data.grad is not None
     assert quantizer.scale.grad is not None
@@ -379,7 +384,9 @@ def test_linear_quantizer_asymmetric_per_tile_gradients(_seed_prngs: int) -> Non
     data.requires_grad = True
 
     quant_data = quantizer(data)
-    quant_data.backward(torch.ones_like(quant_data))
+    quant_data.backward(
+        fastforward.nn.functional.ones_like(quant_data, output_quantizer=QuantizerStub())
+    )
 
     assert data.grad is not None
     assert quantizer.scale.grad is not None
