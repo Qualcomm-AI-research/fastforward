@@ -6,6 +6,7 @@ from typing import Any
 from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
+    stage_capture_model_io,
     stage_convert_captured_impl_ff_qdq,
 )
 from fastforward.export.stages.onnx.onnx_export_stages import (
@@ -30,6 +31,8 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     ```text
     ff_model (pipeline input)
         |
+        | +--> capture_model_io (branch; golden I/O reference, no downstream)
+        |
         v
     capture_ff
         |
@@ -48,6 +51,9 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
 
     Why each stage exists:
 
+    - `capture_model_io`:
+      Runs an eager forward and pickles the model's dequantized input/output/kwargs to
+      `<model_name>_input_output.pickle` as a golden reference. Runs on its own branch.
     - `capture_ff`:
       Exports the FastForward QuantizedModule via `torch.export.export` and
       returns an `ExportedProgram` that retains FF quantize/dequantize ops as
@@ -82,6 +88,9 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     """
     onnx_pipeline = Pipeline(pipeline_kwargs)
 
+    onnx_pipeline.register_stage(
+        stage_capture_model_io, "capture_model_io", capture_stage_output=True
+    )
     capture_ff_stage = onnx_pipeline.register_stage(stage_capture_impl_ff, "capture_ff")
     convert_captured_ff_qdq_stage = onnx_pipeline.register_stage(
         stage_convert_captured_impl_ff_qdq, "convert_captured_ff_qdq"

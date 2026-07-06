@@ -6,6 +6,7 @@ from typing import Any
 from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
+    stage_capture_model_io,
     stage_cleanup_ff_quantizer_artifacts,
     stage_convert_captured_impl_ff,
     stage_passthrough_ff_module,
@@ -34,6 +35,8 @@ def qnn_onnx_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
 
     ```text
     ff_model (pipeline input)
+        |
+        | +--> capture_model_io (branch; golden I/O reference, no downstream)
         |
         | +--> source_ff_module ---------------------+
         |                                            |
@@ -75,6 +78,10 @@ def qnn_onnx_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     - `source_ff_module`:
       Keeps the original FF module available for multi-input stages that need both
       the captured graph and source module context.
+    - `capture_model_io`:
+      Runs an eager forward and pickles the model's dequantized input/output/kwargs to
+      `<model_name>_input_output.pickle` as a golden reference for parity checks. Runs on
+      its own branch and feeds no downstream stage.
     - `capture_ff`:
       Exports to FX graph form, annotates FF quantization specs, and propagates
       those specs through compatible view operations.
@@ -118,6 +125,9 @@ def qnn_onnx_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
 
     source_ff_module_stage = onnx_pipeline.register_stage(
         stage_passthrough_ff_module, "source_ff_module"
+    )
+    onnx_pipeline.register_stage(
+        stage_capture_model_io, "capture_model_io", capture_stage_output=True
     )
     capture_ff_stage = onnx_pipeline.register_stage(stage_capture_impl_ff, "capture_ff")
     convert_captured_ff_stage = onnx_pipeline.register_stage(

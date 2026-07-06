@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import pathlib
+import pickle
 import warnings
 
 from typing import Any, Generator, TypeAlias
@@ -481,3 +482,47 @@ def test_export_with_optimization_options(
     opt_nodes = len(optimized_model.graph.node)
 
     assert 0 < opt_nodes < unopt_nodes
+
+
+@pytest.mark.slow
+def test_export_writes_model_io_pickle(
+    tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
+) -> None:
+    # GIVEN a quantized model.
+    data = torch.randn(32, 10)
+    quant_model, activation_quantizers, parameter_quantizers = simple_model
+    model_name = "test_export_writes_model_io_pickle"
+    output_directory = tmp_path / model_name
+
+    estimate_model_ranges = initialize_quantizers_to_linear_quantizer(
+        quant_model, activation_quantizers, parameter_quantizers
+    )
+    estimate_model_ranges(data)
+    quant_model.eval()
+
+    # WHEN exporting the quantized model.
+    export(
+        quant_model,
+        (data,),
+        output_directory,
+        model_name,
+        onnx_export_options=ONNX_EXPORT_OPTIONS,
+    )
+
+    # THEN a golden-reference I/O pickle is written alongside the ONNX artifact,
+    # holding dequantized input/output/kwargs (no QuantizedTensor survives).
+    pickle_path = output_directory / f"{model_name}_input_output.pickle"
+    assert pickle_path.is_file()
+
+    with open(pickle_path, "rb") as fp:
+        io_dict = pickle.load(fp)
+
+    assert set(io_dict) == {"input", "output", "kwargs"}
+    assert len(io_dict["input"]) == 1
+    assert len(io_dict["output"]) == 1
+    assert io_dict["kwargs"] == {}
+
+    assert isinstance(io_dict["input"][0], torch.Tensor)
+    assert not isinstance(io_dict["input"][0], ff.QuantizedTensor)
+    assert isinstance(io_dict["output"][0], torch.Tensor)
+    assert not isinstance(io_dict["output"][0], ff.QuantizedTensor)

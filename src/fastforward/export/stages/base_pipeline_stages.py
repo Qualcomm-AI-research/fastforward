@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import pathlib
+
 from typing import Any, TypeAlias, cast
 
 import torch
@@ -12,6 +14,7 @@ from torch.fx.passes.infra.pass_manager import PassManager
 
 import fastforward as ff
 
+from fastforward.export._io_capture import ModuleIORecorder
 from fastforward.export.stages.passes import AnnotateFFQuantSpecs, PropagateFFQuantSpecs
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
@@ -204,6 +207,45 @@ def stage_passthrough_ff_module(
     del sample_inputs, context
     (module,) = modules
     return module
+
+
+def stage_capture_model_io(
+    modules: tuple[ff.nn.QuantizedModule, ...],
+    sample_inputs: _SampleInputsT,
+    context: dict[str, Any],
+) -> pathlib.Path:
+    """Capture the model's dequantized input/output/kwargs as a golden reference.
+
+    Runs an eager forward with a `ModuleIORecorder` attached to the whole model and
+    pickles `{input, output, kwargs}` (with `QuantizedTensor`s dequantized) to
+    `<output_dir>/<model_name>_input_output.pickle`, alongside the ONNX/encodings
+    artifacts. This mirrors what `export_modules` records per submodule and provides a
+    reference for onnxruntime/on-device parity checks.
+
+    This is a root stage: it receives the source FF module as its sole input and feeds
+    no downstream stage.
+
+    The recorder needs an eager forward, but the surrounding pipeline runs under
+    `export_mode(True)` (used for graph capture, not eager execution). `export_mode` is
+    therefore switched off for the duration of the capture forward. Quantizers stay
+    active so the recorded output is a `QuantizedTensor` that the recorder dequantizes.
+    """
+    (model,) = modules
+    if len(sample_inputs) == 0:
+        msg = "sample_inputs cannot be empty"
+        raise ValueError(msg)
+
+    sample_args, sample_kwargs = sample_inputs[0]
+    output_dir = pathlib.Path(context["output_dir"])
+    model_name = context["model_name"]
+    pickle_path = output_dir / f"{model_name}_input_output.pickle"
+
+    with ff.export_mode(False), ff.strict_quantization(False), torch.no_grad():
+        with ModuleIORecorder(model, model_name) as recorder:
+            model(*sample_args, **sample_kwargs)
+            recorder.store_io_as_dict(pickle_path)
+
+    return pickle_path
 
 
 def stage_cleanup_ff_quantizer_artifacts(
