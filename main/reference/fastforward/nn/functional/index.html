@@ -3111,7 +3111,7 @@
 
 
 <h3 id="fastforward.nn.functional.add" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#fastforward.nn.functional.add" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -3151,7 +3151,7 @@
 <span class="normal">757</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span>
     <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">other</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">output_quantizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;Quantizer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">strict_quantization</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -6546,7 +6546,7 @@
 
 
 <h3 id="fastforward.nn.functional.sub" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#fastforward.nn.functional.sub" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -6586,7 +6586,7 @@
 <span class="normal">788</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sub</span><span class="p">(</span>
     <span class="nb">input</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">other</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">output_quantizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;Quantizer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">strict_quantization</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>

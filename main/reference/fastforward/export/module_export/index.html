@@ -3404,8 +3404,7 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
-<span class="normal">47</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
 <span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span>
@@ -3415,7 +3414,8 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 <span class="normal">54</span>
 <span class="normal">55</span>
 <span class="normal">56</span>
-<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">57</span>
+<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">module</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">module_name</span> <span class="o">=</span> <span class="n">module_name</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">RemovableHandle</span> <span class="o">=</span> <span class="kc">None</span>
@@ -3639,8 +3639,7 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
-<span class="normal">60</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">60</span>
 <span class="normal">61</span>
 <span class="normal">62</span>
 <span class="normal">63</span>
@@ -3653,7 +3652,13 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 <span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
-<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">input_</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
@@ -3663,11 +3668,16 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Logs inputs/outputs/kwargs in dictionary.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">input</span> <span class="o">=</span> <span class="n">input_</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">input_</span><span class="p">,)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output_</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">output_</span><span class="p">,)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs_quantizer_settings</span> <span class="o">=</span> <span class="n">_deep_dequantize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c1"># Flatten the output into the same leaf order the export path (torch.export</span>
+    <span class="c1"># / ONNX) produces, so the stored reference IO is a flat tuple of plain</span>
+    <span class="c1"># tensors that matches the deployed graph&#39;s output and carries no</span>
+    <span class="c1"># framework-specific container types (e.g. HF `ModelOutput`).</span>
+    <span class="n">output_leaves</span> <span class="o">=</span> <span class="n">pytree</span><span class="o">.</span><span class="n">tree_leaves</span><span class="p">(</span><span class="n">output_</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_quantizer_settings</span> <span class="o">=</span> <span class="n">_dequantize_leaves</span><span class="p">(</span><span class="n">output_leaves</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3690,10 +3700,10 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ModuleIORecorder&quot;</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ModuleIORecorder&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach the recorder to the module when entering the context.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">attach</span><span class="p">()</span>
     <span class="k">return</span> <span class="bp">self</span>
@@ -3719,14 +3729,14 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">exc_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exc_value</span><span class="p">:</span> <span class="ne">BaseException</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
@@ -3754,9 +3764,9 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@override</span>
 <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> for module </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">&quot;</span>
 </code></pre></div></td></tr></table></div>
@@ -3781,12 +3791,12 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach recorder to tracked module.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Handle for </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2"> is already attached. Cannot attach a new one.&quot;</span>
@@ -3814,10 +3824,10 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove recorder from tracked module.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
@@ -3843,16 +3853,16 @@ Please expect API changes. We encourage you to file bug reports if you run into 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">store_io_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">store_io_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store inputs/outputs/kwargs as a pickle dictionary.&quot;&quot;&quot;</span>
     <span class="n">input_output_registry</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
@@ -4193,13 +4203,7 @@ and ONNX files are stored).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
@@ -4350,7 +4354,13 @@ and ONNX files are stored).</p>
 <span class="normal">279</span>
 <span class="normal">280</span>
 <span class="normal">281</span>
-<span class="normal">282</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_modules</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">args</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[()],</span>
     <span class="n">module_or_module_collection</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span> <span class="o">|</span> <span class="n">MPathCollection</span><span class="p">,</span>
@@ -4617,13 +4627,7 @@ file schema</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/module_export.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">291</span>
 <span class="normal">292</span>
 <span class="normal">293</span>
 <span class="normal">294</span>
@@ -4711,7 +4715,13 @@ file schema</p>
 <span class="normal">376</span>
 <span class="normal">377</span>
 <span class="normal">378</span>
-<span class="normal">379</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">maybe_extend_encodings_file</span><span class="p">(</span>
     <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
     <span class="n">quantizer_settings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
