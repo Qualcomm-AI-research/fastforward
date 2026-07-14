@@ -10,7 +10,7 @@ dependencies = [
   "importlib-metadata",
   "libcst",
   "mypy<1.17",
-  "numpy>=1.24,<2.0",
+  "numpy>=2",
   "onnx",
   "onnxruntime",
   "onnxscript",
@@ -95,7 +95,7 @@ filterwarnings = [
 [tool.mypy]
 mypy_path = "src:$MYPY_CONFIG_FILE_DIR/build/stubs"
 exclude = ['build/', 'docs/examples', 'tests/autoquant/test_data']
-python_version = "3.10"
+python_version = "3.12"
 warn_unused_configs = true
 strict = true
 show_error_codes = true
