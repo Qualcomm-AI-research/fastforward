@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-${CONDA_EXE:-$CONDA_PREFIX/bin/conda} run --name "${2:-$CONDA_DEFAULT_ENV}" --live-stream python3 -m pip install -v --no-deps --no-build-isolation -e "${1:-.}/[dev,test]"
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/opt/venv}"
+uv sync --inexact --no-default-groups --group dev --group test --group docs --project "${1:-.}"

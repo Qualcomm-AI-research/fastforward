@@ -43,18 +43,18 @@ jobs:
 
       - run: |
           apt update -qq && apt install -y jq
+          python3 -m pip install uv
       - name: Install torch matching default versions
         run: |
           VER_TORCH=$(python3 scripts/versions.py default --field torch)
           VER_CUDA=$(python3 scripts/versions.py default --field cuda | tr -d '.')
-          python3 -m pip install torch==${VER_TORCH} --extra-index-url https://download.pytorch.org/whl/cu${VER_CUDA}
-          python3 -m pip install ".[docs]"
+          uv pip install --system --no-cache torch==${VER_TORCH} --extra-index-url https://download.pytorch.org/whl/cu${VER_CUDA}
+          uv pip install --system --no-cache . --group pyproject.toml:docs
 
       - name: Generate docs
         run: |
           export DOCS_REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           export DOCS_SITE_URL="$(curl -k -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages | jq -r '.html_url')"
-          python3 -m pip install ".[docs]"
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -136,7 +136,8 @@ jobs:
           ref: "${{ env.PAGES_BRANCH }}"
       - uses: actions/checkout@v4
       - run: |
-          python3 -m pip install ".[docs]"
+          python3 -m pip install uv
+          uv pip install --system --no-cache . --group pyproject.toml:docs
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

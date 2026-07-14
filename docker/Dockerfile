@@ -1,7 +1,9 @@
-FROM ubuntu:22.04
+ARG VER_CUDA=13.0
+FROM nvidia/cuda:${VER_CUDA}.0-base-ubuntu22.04
 
-ENV CONDA_DEFAULT_ENV=dev \
-    CONDA_PREFIX=/opt/conda \
+ENV VIRTUAL_ENV=/opt/venv \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 RUN apt update && \
@@ -27,14 +29,8 @@ RUN apt update && \
 RUN curl -L 'https://pki.qualcomm.com/{qc_root_g2_cert.crt,ssl_v4_cert.crt}' -o '/usr/local/share/ca-certificates/#1' \
     && update-ca-certificates
 
-RUN curl -o /tmp/conda.sh -L 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
-    && mkdir -m 777 -p ${CONDA_PREFIX} \
-    && setfacl -d -m o::rwx ${CONDA_PREFIX} \
-    && bash /tmp/conda.sh -u -b -p ${CONDA_PREFIX} \
-    && rm /tmp/conda.sh \
-    && ${CONDA_PREFIX}/bin/conda config --set channel_priority strict \
-    && ${CONDA_PREFIX}/bin/conda init --no-user --system --all \
-    && echo "conda activate $CONDA_DEFAULT_ENV" >> /etc/profile.d/conda.sh
+RUN curl -L "https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz" \
+        | tar --preserve-permissions --directory /usr/local/bin --strip-components=1 -x -z -f -
 
 RUN echo '%users ALL = (ALL) NOPASSWD: ALL' > /etc/sudoers.d/passwordless \
     && echo '\
@@ -55,35 +51,25 @@ ARG VER_PYTHON \
     VER_TORCH \
     VER_CUDA
 
-RUN ${CONDA_PREFIX}/bin/conda create --quiet --name ${CONDA_DEFAULT_ENV} -y --strict-channel-priority \
-        python=${VER_PYTHON} \
-        pip \
-        python-build \
-        cuda-gdb \
-        cuda-nvcc \
-        cuda-nvtx \
-        cuda-libraries-dev \
-        -c conda-forge \
-        -c nvidia/label/cuda-${VER_CUDA} \
-    # Install torch via pip to not depend on mkl
-    && export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \
-    && ${CONDA_PREFIX}/bin/conda run  --name ${CONDA_DEFAULT_ENV} --live-stream \
-        python3 -m pip install --no-cache-dir torch==${VER_TORCH}+cu${VER_CUDA_SHORT} --extra-index-url="https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}" \
-    && ${CONDA_PREFIX}/bin/conda clean --yes --all --verbose \
-    && rm -rf ~/.conda*
+RUN uv python install ${VER_PYTHON} \
+    && uv venv --python ${VER_PYTHON} ${VIRTUAL_ENV} \
+    && chmod -R 777 ${VIRTUAL_ENV} ${UV_PYTHON_INSTALL_DIR} \
+    && setfacl -R -d -m o::rwx ${VIRTUAL_ENV}
+
+ENV PATH=${VIRTUAL_ENV}/bin:$PATH
+
+RUN export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \
+    && uv pip install --no-cache torch==${VER_TORCH}+cu${VER_CUDA_SHORT} \
+        --extra-index-url="https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}"
 
 COPY pyproject.toml /workspace/
 
-RUN export PIP_CACHE_DIR=/tmp/pip-cache \
-    && export BUILD_DIR=/tmp/build \
-    && mkdir -p $BUILD_DIR \
-    && ${CONDA_PREFIX}/bin/conda run --name ${CONDA_DEFAULT_ENV} --live-stream bash -c "set -x -o pipefail; \
-        python3 -m pip install --dry-run --ignore-installed  --report $BUILD_DIR/pip-report.json -v -C build-dir=$BUILD_DIR/{wheel_tag} /workspace[dev,test,docs] ; \
-        jq '.install[0].metadata.requires_dist[] | split(\";\") | .[0]' $BUILD_DIR/pip-report.json | xargs -i python3 -m pip install {} \
-    " \
-    && rm -rf $BUILD_DIR \
-    && rm -rf $PIP_CACHE_DIR
+# --inexact keeps the torch installed above out of the sync.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-install-project --inexact \
+        --project /workspace \
+        --no-default-groups --group dev --group test --group docs
 
 ENV PYTHONPYCACHEPREFIX=/tmp
-ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") ; . /etc/profile.d/conda.sh ; ./scripts/rebuild && exec $0 "$@"
+ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") ; ./scripts/rebuild && exec $0 "$@"
 CMD bash

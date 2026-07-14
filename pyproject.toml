@@ -22,7 +22,7 @@ dependencies = [
   "typing-extensions",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   # duplicate build-system.requires for editable mode (non-isolated)
   "scikit-build-core[wheels]>=0.9",
@@ -32,9 +32,9 @@ dev = [
   "notebook",
 ]
 test = [
-  "pytest>=6", 
-  "pytest-cov>=3", 
-  "types-PyYAML", 
+  "pytest>=6",
+  "pytest-cov>=3",
+  "types-PyYAML",
   "syrupy",
 ]
 docs = [

@@ -109,8 +109,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          python3 -m pip install build
-          python3 -m build --verbose --wheel --outdir=wheelhouse/
+          python3 -m pip install uv
+          uv build --wheel --out-dir=wheelhouse/
       - uses: actions/upload-artifact@v3
         with:
           name: "fastforward"
@@ -149,7 +149,7 @@ jobs:
           name: "fastforward"
           path: "wheelhouse"
       - if: env.RUN_TESTS == 'true'
-        run: python3 -m pip install --no-cache-dir --no-dependencies "$(find wheelhouse -name '*.whl')"
+        run: uv pip install --system --no-cache --no-deps "$(find wheelhouse -name '*.whl')"
       - if: env.RUN_TESTS == 'true'
         run: python3 -m pytest --include-slow
 
@@ -170,7 +170,7 @@ jobs:
       matrix:
         JOB:
           - NAME: mypy
-            PREPARE: "python3 -m pip install '.[docs]'"
+            PREPARE: "uv pip install --system --no-cache . --group pyproject.toml:docs"
           - NAME: shell-check
             PREPARE: "apt update && apt install --yes shellcheck"
           - NAME: format

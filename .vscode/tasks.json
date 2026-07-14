@@ -6,8 +6,7 @@
 			"label": "build",
 			"command": "./scripts/rebuild",
 			"args": [
-				"${workspaceFolder}",
-				"${env:CONDA_DEFAULT_ENV}"
+				"${workspaceFolder}"
 			],
 			"runOptions": {
 				"runOn": "folderOpen"
