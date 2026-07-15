@@ -3762,7 +3762,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=911981b7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0d75e47c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3779,7 +3779,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=40bf3f48">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f525a511">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3791,7 +3791,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1c45f8de">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d84a31d8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3826,8 +3826,14 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="kn">from</span><span class="w"> </span><span class="nn">doc_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">quantized_llama</span> <span class="k">as</span> <span class="n">quantized_llama</span>  <span class="c1"># noqa: F401</span>
 
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
+<span class="c1"># Quiet down known-benign export warnings so the tutorial output stays readable:</span>
+<span class="c1"># torch.onnx registration/exporter chatter, onnxscript's constant-folder skipping a</span>
+<span class="c1"># node it cannot pre-evaluate, and module-export notices about non-quantized inputs</span>
+<span class="c1"># (mask/positions) that legitimately have no encodings entry.</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"torch.onnx._internal._registration"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"torch.onnx._internal.exporter"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"onnxscript.optimizer._constant_folding"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"fastforward.export.module_export"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
 
 <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="kc">False</span><span class="p">);</span>  <span class="c1"># fmt: skip  # noqa: E703</span>
 </pre></div>
@@ -3848,8 +3854,14 @@ from transformers import LlamaConfig, LlamaForCausalLM
 from doc_helpers import quantized_llama as quantized_llama  # noqa: F401
 
 warnings.filterwarnings("ignore")
+# Quiet down known-benign export warnings so the tutorial output stays readable:
+# torch.onnx registration/exporter chatter, onnxscript's constant-folder skipping a
+# node it cannot pre-evaluate, and module-export notices about non-quantized inputs
+# (mask/positions) that legitimately have no encodings entry.
 logging.getLogger("torch.onnx._internal._registration").setLevel(logging.ERROR)
 logging.getLogger("torch.onnx._internal.exporter").setLevel(logging.ERROR)
+logging.getLogger("onnxscript.optimizer._constant_folding").setLevel(logging.ERROR)
+logging.getLogger("fastforward.export.module_export").setLevel(logging.ERROR)
 
 torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703</div>
 </div>
@@ -3858,7 +3870,7 @@ torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bdcbe1f6">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9c9fb799">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3869,7 +3881,7 @@ torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2cb12a44">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=a47be377">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3908,10 +3920,26 @@ torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703</div>
 <span class="n">w_quantizers</span> <span class="o">|=</span> <span class="n">ff</span><span class="o">.</span><span class="n">find_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">"**/layers/*/mlp/*/[quantizer:parameter/weight]"</span><span class="p">)</span>
 <span class="n">w_quantizers</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">ff</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">())</span>
 
-<span class="c1"># Calibrate quantizers with a single forward pass</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">causal_attention_mask</span><span class="p">(</span><span class="n">sequence_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">lowest_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">100.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Build an additive causal mask of shape (1, 1, seq, seq).</span>
+
+<span class="sd">    Positions a token may attend to are 0; future positions are masked with `lowest_value`.</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">sequence_length</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">),</span> <span class="n">lowest_value</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mask</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">)</span>
+
+
+<span class="c1"># Calibrate quantizers with a single forward pass. We pass the same explicit causal mask that</span>
+<span class="c1"># we will export with (see the Export section below), so the ranges we estimate reflect the</span>
+<span class="c1"># inputs the deployed graph actually sees.</span>
 <span class="n">ff</span><span class="o">.</span><span class="n">set_strict_quantization</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">with</span> <span class="n">ff</span><span class="o">.</span><span class="n">estimate_ranges</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ff</span><span class="o">.</span><span class="n">range_setting</span><span class="o">.</span><span class="n">running_minmax</span><span class="p">):</span>
-    <span class="n">model</span><span class="p">(</span><span class="n">input_ids</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">SEQUENCE_LENGTH</span><span class="p">)))</span>
+    <span class="n">model</span><span class="p">(</span>
+        <span class="n">input_ids</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">SEQUENCE_LENGTH</span><span class="p">)),</span>
+        <span class="n">attention_mask</span><span class="o">=</span><span class="n">causal_attention_mask</span><span class="p">(</span><span class="n">SEQUENCE_LENGTH</span><span class="p">),</span>
+    <span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-2">SEQUENCE_LENGTH = 128
 
@@ -3934,17 +3962,33 @@ w_quantizers = ff.find_quantizers(model, "**/layers/*/self_attn/*/[quantizer:par
 w_quantizers |= ff.find_quantizers(model, "**/layers/*/mlp/*/[quantizer:parameter/weight]")
 w_quantizers.initialize(ff.nn.LinearQuantizer, num_bits=8, granularity=ff.PerChannel())
 
-# Calibrate quantizers with a single forward pass
+
+def causal_attention_mask(sequence_length: int, lowest_value: float = -100.0) -&gt; torch.Tensor:
+    """Build an additive causal mask of shape (1, 1, seq, seq).
+
+    Positions a token may attend to are 0; future positions are masked with `lowest_value`.
+    """
+    mask = torch.full((sequence_length, sequence_length), lowest_value)
+    mask = torch.triu(mask, diagonal=1)
+    return mask.reshape(1, 1, sequence_length, sequence_length)
+
+
+# Calibrate quantizers with a single forward pass. We pass the same explicit causal mask that
+# we will export with (see the Export section below), so the ranges we estimate reflect the
+# inputs the deployed graph actually sees.
 ff.set_strict_quantization(False)
 with ff.estimate_ranges(model, ff.range_setting.running_minmax):
-    model(input_ids=torch.randint(0, config.vocab_size, (1, SEQUENCE_LENGTH)))</div>
+    model(
+        input_ids=torch.randint(0, config.vocab_size, (1, SEQUENCE_LENGTH)),
+        attention_mask=causal_attention_mask(SEQUENCE_LENGTH),
+    )</div>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d56bfd71">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c9433cdc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3955,7 +3999,7 @@ with ff.estimate_ranges(model, ff.range_setting.running_minmax):
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3834ed7e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f1376057">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4105,7 +4149,7 @@ model</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d97ad83e">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=679c54cd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4116,14 +4160,15 @@ model</div>
 <p>💡 <strong>Note</strong>: Quantization-spec propagation is now performed automatically by the export pipeline (the <code>PropagateFFQuantSpecs</code> pass runs as part of <code>stage_convert_captured_impl_ff</code>). The old <code>enable_encodings_propagation</code> keyword has been removed; you no longer need to opt in.</p>
 </blockquote>
 <p>We do not want the model to construct its causal attention mask inside the forward pass
-when running on device. Instead, we precompute the mask ahead of time and pass it as an
-explicit input, so it appears in the exported graph as data rather than as control flow
-the QNN converter would have to synthesize.</p>
+when running on device. Instead, we precompute the mask ahead of time (reusing the
+<code>causal_attention_mask</code> helper we calibrated with above) and pass it as an explicit input,
+so it appears in the exported graph as data rather than as control flow the QNN converter
+would have to synthesize.</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6f459f96">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7df9f521">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4141,17 +4186,7 @@ the QNN converter would have to synthesize.</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">causal_attention_mask</span><span class="p">(</span><span class="n">sequence_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">lowest_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">100.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Build an additive causal mask of shape (1, 1, seq, seq).</span>
-
-<span class="sd">    Positions a token may attend to are 0; future positions are masked with `lowest_value`.</span>
-<span class="sd">    """</span>
-    <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">sequence_length</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">),</span> <span class="n">lowest_value</span><span class="p">)</span>
-    <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">mask</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">,</span> <span class="n">sequence_length</span><span class="p">)</span>
-
-
-<span class="n">work_dir</span> <span class="o">=</span> <span class="n">TemporaryDirectory</span><span class="p">()</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">work_dir</span> <span class="o">=</span> <span class="n">TemporaryDirectory</span><span class="p">()</span>
 <span class="n">work_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">work_dir</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
 <span class="n">model_name</span> <span class="o">=</span> <span class="s2">"llama_test"</span>
@@ -4175,17 +4210,7 @@ the QNN converter would have to synthesize.</p>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-4">def causal_attention_mask(sequence_length: int, lowest_value: float = -100.0) -&gt; torch.Tensor:
-    """Build an additive causal mask of shape (1, 1, seq, seq).
-
-    Positions a token may attend to are 0; future positions are masked with `lowest_value`.
-    """
-    mask = torch.full((sequence_length, sequence_length), lowest_value)
-    mask = torch.triu(mask, diagonal=1)
-    return mask.reshape(1, 1, sequence_length, sequence_length)
-
-
-work_dir = TemporaryDirectory()
+<div class="clipboard-copy-txt" id="cell-4">work_dir = TemporaryDirectory()
 work_root = Path(work_dir.name)
 
 model_name = "llama_test"
@@ -4214,19 +4239,18 @@ export_result = export(
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=44f7b5de">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c98547ef">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>As a result our chosen output directory is now populated with all the relevant files. Because we choose to split the parameters from the ONNX graph, we will get separate files for each model parameter. However, running the command below, we can see on the top the ONNX and encodings files which are the most relevant to us.
-Note that we limit the directory print-out to the first 15 items.</p>
+<p>As a result our chosen output directory is now populated with all the relevant files. By default the parameters are split out of the ONNX graph and stored as external data in a single sidecar file, so alongside the <code>.onnx</code> graph you will mainly see that external-data file and the <code>.encodings</code> file, which are the most relevant to us.</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f41fa02a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=61ea9a8a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4244,9 +4268,9 @@ Note that we limit the directory print-out to the first 15 items.</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="nb">sorted</span><span class="p">(</span><span class="n">output_directory</span><span class="o">.</span><span class="n">iterdir</span><span class="p">())[:</span><span class="mi">15</span><span class="p">]</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="nb">sorted</span><span class="p">(</span><span class="n">output_directory</span><span class="o">.</span><span class="n">iterdir</span><span class="p">())</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-5">sorted(output_directory.iterdir())[:15]</div>
+<div class="clipboard-copy-txt" id="cell-5">sorted(output_directory.iterdir())</div>
 </div>
 </div>
 </div>
@@ -4258,16 +4282,17 @@ Note that we limit the directory print-out to the first 15 items.</p>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[5]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>[PosixPath('/tmp/tmp4pg8oht6/llama_test/llama_test'),
- PosixPath('/tmp/tmp4pg8oht6/llama_test/llama_test.encodings'),
- PosixPath('/tmp/tmp4pg8oht6/llama_test/llama_test.onnx')]</pre>
+<pre>[PosixPath('/tmp/tmp7z1c0m03/llama_test/llama_test'),
+ PosixPath('/tmp/tmp7z1c0m03/llama_test/llama_test.encodings'),
+ PosixPath('/tmp/tmp7z1c0m03/llama_test/llama_test.onnx'),
+ PosixPath('/tmp/tmp7z1c0m03/llama_test/llama_test_input_output.pickle')]</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2fd47017">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=80dd34fb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4278,7 +4303,7 @@ Note that we limit the directory print-out to the first 15 items.</p>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7a48351a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=a0f73406">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4327,7 +4352,7 @@ with open(data_location, "wb") as fp:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7b9c0b91">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=516e2d01">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4335,11 +4360,12 @@ with open(data_location, "wb") as fp:
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="module-level-export">Module Level Export<a class="anchor-link" href="#module-level-export">¶</a></h2><p>To further demonstrate the capabilities of FastForward's export feature, we illustrate how the <code>export_modules</code> function can be utilized to prepare a collection of modules for deployment on a device. In this example, we use <a href="mpath.nb.py">MPath</a> to select various modules, which are then passed to the <code>export_modules</code> function.</p>
 <p>After execution, all the individual modules are stored along with their respective inputs/outputs tensors (both for quantized and non-quantized versions of the model to aid comparison). This functionality aims to aid in cases where the full model might be failing during either QNN conversion or deployment steps, as well as providing insight to problems arising in performance (either regarding execution speed or unexpected quantization errors)</p>
+<p>Note that the selections below are deliberately at several granularities and overlap: <code>**/layers/0</code> already contains the MLP, attention, and layer-norm submodules we also select individually. Each selected module is exported independently, so overlapping selections simply give you artifacts at every level you asked for.</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=19ec9392">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5a8d1d26">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4408,132 +4434,9 @@ paths = export_modules(
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'hidden_states' (module: 'model.layers.0.self_attn')
-  • Available kwargs: ['hidden_states', 'attention_mask', 'position_ids', 'past_key_values', 'use_cache', 'position_embeddings']
-  • Args exhausted: range(0)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
 </div>
 </div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'attention_mask' (module: 'model.layers.0.self_attn')
-  • Available kwargs: ['hidden_states', 'attention_mask', 'position_ids', 'past_key_values', 'use_cache', 'position_embeddings']
-  • Args exhausted: range(0)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_ids' (module: 'model.layers.0.self_attn')
-  • Available kwargs: ['hidden_states', 'attention_mask', 'position_ids', 'past_key_values', 'use_cache', 'position_embeddings']
-  • Args exhausted: range(0)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_embeddings_0' (module: 'model.layers.0.self_attn')
-  • Available kwargs: ['hidden_states', 'attention_mask', 'position_ids', 'past_key_values', 'use_cache', 'position_embeddings']
-  • Args exhausted: range(0)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_embeddings_1' (module: 'model.layers.0.self_attn')
-  • Available kwargs: ['hidden_states', 'attention_mask', 'position_ids', 'past_key_values', 'use_cache', 'position_embeddings']
-  • Args exhausted: range(0)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'attention_mask' (module: 'model.layers.0')
-  • Available kwargs: ['attention_mask', 'position_embeddings', 'position_ids', 'past_key_values', 'use_cache']
-  • Args exhausted: range(1)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_embeddings_0' (module: 'model.layers.0')
-  • Available kwargs: ['attention_mask', 'position_embeddings', 'position_ids', 'past_key_values', 'use_cache']
-  • Args exhausted: range(1)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_embeddings_1' (module: 'model.layers.0')
-  • Available kwargs: ['attention_mask', 'position_embeddings', 'position_ids', 'past_key_values', 'use_cache']
-  • Args exhausted: range(1)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[fastforward.export.module_export.maybe_extend_encodings_file] Input mapping not found (this is NOT necessarily an error):
-  • Input: 'position_ids' (module: 'model.layers.0')
-  • Available kwargs: ['attention_mask', 'position_embeddings', 'position_ids', 'past_key_values', 'use_cache']
-  • Args exhausted: range(1)
-  • Causes: missing quantizer | pruned export | graph change
-  • Action: skipping encodings entry
-
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5e44963a">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dfa361fe">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4544,7 +4447,7 @@ paths = export_modules(
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=49caf0bb">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=78378c30">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4576,28 +4479,28 @@ paths = export_modules(
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>{'model.layers.0.mlp.up_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.mlp.up_proj'),
- 'model.layers.0.self_attn': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.self_attn'),
- 'model.layers.0.self_attn.k_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.self_attn.k_proj'),
- 'model.layers.0.self_attn.v_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.self_attn.v_proj'),
- 'model.layers.0': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0'),
- 'model.norm': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.norm'),
- 'model.embed_tokens': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.embed_tokens'),
- 'model.layers.0.mlp.down_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.mlp.down_proj'),
- 'model.layers.0.post_attention_layernorm': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.post_attention_layernorm'),
- 'lm_head': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head'),
- 'model.layers.0.self_attn.q_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.self_attn.q_proj'),
- 'model.layers.0.input_layernorm': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.input_layernorm'),
- 'model.layers.0.mlp': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.mlp'),
- 'model.layers.0.self_attn.o_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.self_attn.o_proj'),
- 'model.layers.0.mlp.gate_proj': PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/model.layers.0.mlp.gate_proj')}</pre>
+<pre>{'model.layers.0.self_attn.k_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.self_attn.k_proj'),
+ 'model.embed_tokens': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.embed_tokens'),
+ 'model.layers.0.mlp': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.mlp'),
+ 'model.norm': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.norm'),
+ 'model.layers.0': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0'),
+ 'model.layers.0.mlp.gate_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.mlp.gate_proj'),
+ 'model.layers.0.post_attention_layernorm': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.post_attention_layernorm'),
+ 'model.layers.0.self_attn.v_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.self_attn.v_proj'),
+ 'model.layers.0.input_layernorm': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.input_layernorm'),
+ 'model.layers.0.mlp.up_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.mlp.up_proj'),
+ 'model.layers.0.self_attn.o_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.self_attn.o_proj'),
+ 'model.layers.0.self_attn.q_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.self_attn.q_proj'),
+ 'lm_head': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head'),
+ 'model.layers.0.self_attn': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.self_attn'),
+ 'model.layers.0.mlp.down_proj': PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/model.layers.0.mlp.down_proj')}</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f6d991fa">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dc570003">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4608,7 +4511,7 @@ paths = export_modules(
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=52990625">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1521b53a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4640,18 +4543,18 @@ paths = export_modules(
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>[PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head/lm_head'),
- PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head/lm_head.encodings'),
- PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head/lm_head.onnx'),
- PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head/lm_head_input_output.pickle'),
- PosixPath('/tmp/tmp4pg8oht6/modules/llama_modules/lm_head/lm_head_nonquantized_input_output.pickle')]</pre>
+<pre>[PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head/lm_head'),
+ PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head/lm_head.encodings'),
+ PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head/lm_head.onnx'),
+ PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head/lm_head_input_output.pickle'),
+ PosixPath('/tmp/tmp7z1c0m03/modules/llama_modules/lm_head/lm_head_nonquantized_input_output.pickle')]</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d7ab9c38">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4cfb4f67">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4662,7 +4565,7 @@ paths = export_modules(
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=db4377a2">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=06dc596b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4689,7 +4592,7 @@ paths = export_modules(
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c5329efa">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8ddc3f24">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4702,7 +4605,7 @@ deployment through QNN. Instructions on how to proceed with on-device deployment
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5f5f421b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3b406eab">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

@@ -1236,6 +1236,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#fastforward.export.stages.base_pipeline_stages.stage_capture_model_io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_capture_model_io
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#fastforward.export.stages.base_pipeline_stages.stage_cleanup_ff_quantizer_artifacts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3316,12 +3327,12 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">92</span>
 <span class="normal">93</span>
-<span class="normal">94</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">GraphModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PassResult</span><span class="p">:</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">GraphModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PassResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete unused submodules, run dead-code elimination, and recompile.&quot;&quot;&quot;</span>
     <span class="n">module</span><span class="o">.</span><span class="n">delete_all_unused_submodules</span><span class="p">()</span>
     <span class="n">module</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">eliminate_dead_code</span><span class="p">()</span>
@@ -3395,10 +3406,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
@@ -3407,7 +3415,10 @@
 <span class="normal">80</span>
 <span class="normal">81</span>
 <span class="normal">82</span>
-<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">GraphModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PassResult</span><span class="p">:</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">GraphModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PassResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove unused ``get_attr`` nodes and recompile the graph module.&quot;&quot;&quot;</span>
     <span class="n">nodes_to_remove</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">Node</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
@@ -3562,10 +3573,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span>
@@ -3592,7 +3600,10 @@
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_capture_impl_ff</span><span class="p">(</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_capture_impl_ff</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -3632,26 +3643,31 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="fastforward.export.stages.base_pipeline_stages.stage_cleanup_ff_quantizer_artifacts" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">base_pipeline_stages</span><span class="o">.</span><span class="n">stage_cleanup_ff_quantizer_artifacts</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+<h3 id="fastforward.export.stages.base_pipeline_stages.stage_capture_model_io" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">base_pipeline_stages</span><span class="o">.</span><span class="n">stage_capture_model_io</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
 
-<a href="#fastforward.export.stages.base_pipeline_stages.stage_cleanup_ff_quantizer_artifacts" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#fastforward.export.stages.base_pipeline_stages.stage_capture_model_io" class="headerlink" title="Permanent link">#</a></h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Remove FF quantizer artifacts from a captured graph module.</p>
-<p>This stage runs a dedicated cleanup flow after capture:
-prune unused get_attrs, validate no live quantizer references remain,
-then finalize graph/module cleanup.</p>
+        <p>Capture the model's dequantized input/output/kwargs as a golden reference.</p>
+<p>Runs an eager forward with a <code>ModuleIORecorder</code> attached to the whole model and
+pickles <code>{input, output, kwargs}</code> (with <code>QuantizedTensor</code>s dequantized) to
+<code>&lt;output_dir&gt;/&lt;model_name&gt;_input_output.pickle</code>, alongside the ONNX/encodings
+artifacts. This mirrors what <code>export_modules</code> records per submodule and provides a
+reference for onnxruntime/on-device parity checks.</p>
+<p>This is a root stage: it receives the source FF module as its sole input and feeds
+no downstream stage.</p>
+<p>The recorder needs an eager forward, but the surrounding pipeline runs under
+<code>export_mode(True)</code> (used for graph capture, not eager execution). <code>export_mode</code> is
+therefore switched off for the duration of the capture forward. Quantizers stay
+active so the recorded output is a <code>QuantizedTensor</code> that the recorder dequantizes.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">212</span>
 <span class="normal">213</span>
 <span class="normal">214</span>
 <span class="normal">215</span>
@@ -3680,7 +3696,108 @@ then finalize graph/module cleanup.</p>
 <span class="normal">238</span>
 <span class="normal">239</span>
 <span class="normal">240</span>
-<span class="normal">241</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_cleanup_ff_quantizer_artifacts</span><span class="p">(</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_capture_model_io</span><span class="p">(</span>
+    <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Capture the model&#39;s dequantized input/output/kwargs as a golden reference.</span>
+
+<span class="sd">    Runs an eager forward with a `ModuleIORecorder` attached to the whole model and</span>
+<span class="sd">    pickles `{input, output, kwargs}` (with `QuantizedTensor`s dequantized) to</span>
+<span class="sd">    `&lt;output_dir&gt;/&lt;model_name&gt;_input_output.pickle`, alongside the ONNX/encodings</span>
+<span class="sd">    artifacts. This mirrors what `export_modules` records per submodule and provides a</span>
+<span class="sd">    reference for onnxruntime/on-device parity checks.</span>
+
+<span class="sd">    This is a root stage: it receives the source FF module as its sole input and feeds</span>
+<span class="sd">    no downstream stage.</span>
+
+<span class="sd">    The recorder needs an eager forward, but the surrounding pipeline runs under</span>
+<span class="sd">    `export_mode(True)` (used for graph capture, not eager execution). `export_mode` is</span>
+<span class="sd">    therefore switched off for the duration of the capture forward. Quantizers stay</span>
+<span class="sd">    active so the recorded output is a `QuantizedTensor` that the recorder dequantizes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">model</span><span class="p">,)</span> <span class="o">=</span> <span class="n">modules</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample_inputs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;sample_inputs cannot be empty&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">sample_args</span><span class="p">,</span> <span class="n">sample_kwargs</span> <span class="o">=</span> <span class="n">sample_inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">context</span><span class="p">[</span><span class="s2">&quot;output_dir&quot;</span><span class="p">])</span>
+    <span class="n">model_name</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">]</span>
+    <span class="n">pickle_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">_input_output.pickle&quot;</span>
+
+    <span class="k">with</span> <span class="n">ff</span><span class="o">.</span><span class="n">export_mode</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span> <span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+        <span class="k">with</span> <span class="n">ModuleIORecorder</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">recorder</span><span class="p">:</span>
+            <span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">sample_args</span><span class="p">,</span> <span class="o">**</span><span class="n">sample_kwargs</span><span class="p">)</span>
+            <span class="n">recorder</span><span class="o">.</span><span class="n">store_io_as_dict</span><span class="p">(</span><span class="n">pickle_path</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pickle_path</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.export.stages.base_pipeline_stages.stage_cleanup_ff_quantizer_artifacts" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">base_pipeline_stages</span><span class="o">.</span><span class="n">stage_cleanup_ff_quantizer_artifacts</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.base_pipeline_stages.stage_cleanup_ff_quantizer_artifacts" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remove FF quantizer artifacts from a captured graph module.</p>
+<p>This stage runs a dedicated cleanup flow after capture:
+prune unused get_attrs, validate no live quantizer references remain,
+then finalize graph/module cleanup.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_cleanup_ff_quantizer_artifacts</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">fx</span><span class="o">.</span><span class="n">GraphModule</span><span class="p">,</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedModule</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -3738,10 +3855,7 @@ quantization operations from the graph.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">133</span>
 <span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
@@ -3772,7 +3886,10 @@ quantization operations from the graph.</p>
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span>
-<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_convert_captured_impl_ff</span><span class="p">(</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_convert_captured_impl_ff</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">ExportedProgram</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -3833,10 +3950,7 @@ structure for further rewriting.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
 <span class="normal">173</span>
@@ -3861,7 +3975,10 @@ structure for further rewriting.</p>
 <span class="normal">192</span>
 <span class="normal">193</span>
 <span class="normal">194</span>
-<span class="normal">195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_convert_captured_impl_ff_qdq</span><span class="p">(</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_convert_captured_impl_ff_qdq</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">ExportedProgram</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -3999,26 +4116,26 @@ structure for further rewriting.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_fp_eval</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_fp_eval</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">_EvaluableModuleT</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -4060,15 +4177,15 @@ structure for further rewriting.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">201</span>
 <span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
 <span class="normal">205</span>
-<span class="normal">206</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_passthrough_ff_module</span><span class="p">(</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_passthrough_ff_module</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedModule</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
@@ -4186,26 +4303,26 @@ structure for further rewriting.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/stages/base_pipeline_stages.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_quantized_eval</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stage_quantized_eval</span><span class="p">(</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">_EvaluableModuleT</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="n">sample_inputs</span><span class="p">:</span> <span class="n">_SampleInputsT</span><span class="p">,</span>
     <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>

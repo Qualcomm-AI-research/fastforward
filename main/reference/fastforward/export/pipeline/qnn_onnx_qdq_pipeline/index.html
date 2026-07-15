@@ -3162,6 +3162,8 @@ itself (as Q/DQ node inputs and initializers) rather than in side-channel
 <p>High-level flow:</p>
 <div class="highlight"><pre><span></span><code>ff_model (pipeline input)
     |
+    | +--&gt; capture_model_io (branch; golden I/O reference, no downstream)
+    |
     v
 capture_ff
     |
@@ -3179,6 +3181,9 @@ save_onnx_proto
 </code></pre></div>
 <p>Why each stage exists:</p>
 <ul>
+<li><code>capture_model_io</code>:
+  Runs an eager forward and pickles the model's dequantized input/output/kwargs to
+  <code>&lt;model_name&gt;_input_output.pickle</code> as a golden reference. Runs on its own branch.</li>
 <li><code>capture_ff</code>:
   Exports the FastForward QuantizedModule via <code>torch.export.export</code> and
   returns an <code>ExportedProgram</code> that retains FF quantize/dequantize ops as
@@ -3281,88 +3286,96 @@ including opset version).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/pipeline/qnn_onnx_qdq_pipeline.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span>
-<span class="normal">97</span>
-<span class="normal">98</span>
-<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">qnn_onnx_qdq_pipeline</span><span class="p">(</span><span class="n">pipeline_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pipeline</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 19</span>
+<span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">qnn_onnx_qdq_pipeline</span><span class="p">(</span><span class="n">pipeline_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pipeline</span><span class="p">:</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create the FastForward -&gt; ONNX QDQ export pipeline.</span>
 
 <span class="sd">    This pipeline captures a quantized FastForward model and emits an ONNX</span>
@@ -3376,6 +3389,8 @@ including opset version).</p>
 
 <span class="sd">    ```text</span>
 <span class="sd">    ff_model (pipeline input)</span>
+<span class="sd">        |</span>
+<span class="sd">        | +--&gt; capture_model_io (branch; golden I/O reference, no downstream)</span>
 <span class="sd">        |</span>
 <span class="sd">        v</span>
 <span class="sd">    capture_ff</span>
@@ -3395,6 +3410,9 @@ including opset version).</p>
 
 <span class="sd">    Why each stage exists:</span>
 
+<span class="sd">    - `capture_model_io`:</span>
+<span class="sd">      Runs an eager forward and pickles the model&#39;s dequantized input/output/kwargs to</span>
+<span class="sd">      `&lt;model_name&gt;_input_output.pickle` as a golden reference. Runs on its own branch.</span>
 <span class="sd">    - `capture_ff`:</span>
 <span class="sd">      Exports the FastForward QuantizedModule via `torch.export.export` and</span>
 <span class="sd">      returns an `ExportedProgram` that retains FF quantize/dequantize ops as</span>
@@ -3429,6 +3447,9 @@ including opset version).</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">onnx_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="n">pipeline_kwargs</span><span class="p">)</span>
 
+    <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span>
+        <span class="n">stage_capture_model_io</span><span class="p">,</span> <span class="s2">&quot;capture_model_io&quot;</span><span class="p">,</span> <span class="n">capture_stage_output</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
     <span class="n">capture_ff_stage</span> <span class="o">=</span> <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span><span class="n">stage_capture_impl_ff</span><span class="p">,</span> <span class="s2">&quot;capture_ff&quot;</span><span class="p">)</span>
     <span class="n">convert_captured_ff_qdq_stage</span> <span class="o">=</span> <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span>
         <span class="n">stage_convert_captured_impl_ff_qdq</span><span class="p">,</span> <span class="s2">&quot;convert_captured_ff_qdq&quot;</span>

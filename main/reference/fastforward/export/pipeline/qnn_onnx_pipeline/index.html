@@ -3159,6 +3159,8 @@ encodings file extracted from ONNX metadata.</p>
 <p>High-level flow:</p>
 <div class="highlight"><pre><span></span><code>ff_model (pipeline input)
     |
+    | +--&gt; capture_model_io (branch; golden I/O reference, no downstream)
+    |
     | +--&gt; source_ff_module ---------------------+
     |                                            |
     | +--&gt; capture_ff --&gt; convert_captured_ff ---+
@@ -3198,6 +3200,10 @@ encodings file extracted from ONNX metadata.</p>
 <li><code>source_ff_module</code>:
   Keeps the original FF module available for multi-input stages that need both
   the captured graph and source module context.</li>
+<li><code>capture_model_io</code>:
+  Runs an eager forward and pickles the model's dequantized input/output/kwargs to
+  <code>&lt;model_name&gt;_input_output.pickle</code> as a golden reference for parity checks. Runs on
+  its own branch and feeds no downstream stage.</li>
 <li><code>capture_ff</code>:
   Exports to FX graph form, annotates FF quantization specs, and propagates
   those specs through compatible view operations.</li>
@@ -3298,8 +3304,7 @@ stages (for example naming, export options, and schema handler).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/export/pipeline/qnn_onnx_pipeline.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 26</span>
-<span class="normal"> 27</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 27</span>
 <span class="normal"> 28</span>
 <span class="normal"> 29</span>
 <span class="normal"> 30</span>
@@ -3429,7 +3434,17 @@ stages (for example naming, export options, and schema handler).</p>
 <span class="normal">154</span>
 <span class="normal">155</span>
 <span class="normal">156</span>
-<span class="normal">157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">qnn_onnx_pipeline</span><span class="p">(</span><span class="n">pipeline_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pipeline</span><span class="p">:</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">qnn_onnx_pipeline</span><span class="p">(</span><span class="n">pipeline_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pipeline</span><span class="p">:</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create the default FastForward -&gt; ONNX -&gt; QNN-encodings export pipeline.</span>
 
 <span class="sd">    This pipeline captures a quantized FastForward model, removes runtime-only</span>
@@ -3440,6 +3455,8 @@ stages (for example naming, export options, and schema handler).</p>
 
 <span class="sd">    ```text</span>
 <span class="sd">    ff_model (pipeline input)</span>
+<span class="sd">        |</span>
+<span class="sd">        | +--&gt; capture_model_io (branch; golden I/O reference, no downstream)</span>
 <span class="sd">        |</span>
 <span class="sd">        | +--&gt; source_ff_module ---------------------+</span>
 <span class="sd">        |                                            |</span>
@@ -3481,6 +3498,10 @@ stages (for example naming, export options, and schema handler).</p>
 <span class="sd">    - `source_ff_module`:</span>
 <span class="sd">      Keeps the original FF module available for multi-input stages that need both</span>
 <span class="sd">      the captured graph and source module context.</span>
+<span class="sd">    - `capture_model_io`:</span>
+<span class="sd">      Runs an eager forward and pickles the model&#39;s dequantized input/output/kwargs to</span>
+<span class="sd">      `&lt;model_name&gt;_input_output.pickle` as a golden reference for parity checks. Runs on</span>
+<span class="sd">      its own branch and feeds no downstream stage.</span>
 <span class="sd">    - `capture_ff`:</span>
 <span class="sd">      Exports to FX graph form, annotates FF quantization specs, and propagates</span>
 <span class="sd">      those specs through compatible view operations.</span>
@@ -3524,6 +3545,9 @@ stages (for example naming, export options, and schema handler).</p>
 
     <span class="n">source_ff_module_stage</span> <span class="o">=</span> <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span>
         <span class="n">stage_passthrough_ff_module</span><span class="p">,</span> <span class="s2">&quot;source_ff_module&quot;</span>
+    <span class="p">)</span>
+    <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span>
+        <span class="n">stage_capture_model_io</span><span class="p">,</span> <span class="s2">&quot;capture_model_io&quot;</span><span class="p">,</span> <span class="n">capture_stage_output</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">)</span>
     <span class="n">capture_ff_stage</span> <span class="o">=</span> <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span><span class="n">stage_capture_impl_ff</span><span class="p">,</span> <span class="s2">&quot;capture_ff&quot;</span><span class="p">)</span>
     <span class="n">convert_captured_ff_stage</span> <span class="o">=</span> <span class="n">onnx_pipeline</span><span class="o">.</span><span class="n">register_stage</span><span class="p">(</span>

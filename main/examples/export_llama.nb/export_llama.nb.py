@@ -48,8 +48,14 @@ from transformers import LlamaConfig, LlamaForCausalLM
 from doc_helpers import quantized_llama as quantized_llama  # noqa: F401
 
 warnings.filterwarnings("ignore")
+# Quiet down known-benign export warnings so the tutorial output stays readable:
+# torch.onnx registration/exporter chatter, onnxscript's constant-folder skipping a
+# node it cannot pre-evaluate, and module-export notices about non-quantized inputs
+# (mask/positions) that legitimately have no encodings entry.
 logging.getLogger("torch.onnx._internal._registration").setLevel(logging.ERROR)
 logging.getLogger("torch.onnx._internal.exporter").setLevel(logging.ERROR)
+logging.getLogger("onnxscript.optimizer._constant_folding").setLevel(logging.ERROR)
+logging.getLogger("fastforward.export.module_export").setLevel(logging.ERROR)
 
 torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703
 # -
@@ -80,10 +86,26 @@ w_quantizers = ff.find_quantizers(model, "**/layers/*/self_attn/*/[quantizer:par
 w_quantizers |= ff.find_quantizers(model, "**/layers/*/mlp/*/[quantizer:parameter/weight]")
 w_quantizers.initialize(ff.nn.LinearQuantizer, num_bits=8, granularity=ff.PerChannel())
 
-# Calibrate quantizers with a single forward pass
+
+def causal_attention_mask(sequence_length: int, lowest_value: float = -100.0) -> torch.Tensor:
+    """Build an additive causal mask of shape (1, 1, seq, seq).
+
+    Positions a token may attend to are 0; future positions are masked with `lowest_value`.
+    """
+    mask = torch.full((sequence_length, sequence_length), lowest_value)
+    mask = torch.triu(mask, diagonal=1)
+    return mask.reshape(1, 1, sequence_length, sequence_length)
+
+
+# Calibrate quantizers with a single forward pass. We pass the same explicit causal mask that
+# we will export with (see the Export section below), so the ranges we estimate reflect the
+# inputs the deployed graph actually sees.
 ff.set_strict_quantization(False)
 with ff.estimate_ranges(model, ff.range_setting.running_minmax):
-    model(input_ids=torch.randint(0, config.vocab_size, (1, SEQUENCE_LENGTH)))
+    model(
+        input_ids=torch.randint(0, config.vocab_size, (1, SEQUENCE_LENGTH)),
+        attention_mask=causal_attention_mask(SEQUENCE_LENGTH),
+    )
 # -
 
 # ## Quantized Model
@@ -100,22 +122,13 @@ model
 # > 💡 **Note**: Quantization-spec propagation is now performed automatically by the export pipeline (the `PropagateFFQuantSpecs` pass runs as part of `stage_convert_captured_impl_ff`). The old `enable_encodings_propagation` keyword has been removed; you no longer need to opt in.
 #
 # We do not want the model to construct its causal attention mask inside the forward pass
-# when running on device. Instead, we precompute the mask ahead of time and pass it as an
-# explicit input, so it appears in the exported graph as data rather than as control flow
-# the QNN converter would have to synthesize.
+# when running on device. Instead, we precompute the mask ahead of time (reusing the
+# `causal_attention_mask` helper we calibrated with above) and pass it as an explicit input,
+# so it appears in the exported graph as data rather than as control flow the QNN converter
+# would have to synthesize.
 
 
 # +
-def causal_attention_mask(sequence_length: int, lowest_value: float = -100.0) -> torch.Tensor:
-    """Build an additive causal mask of shape (1, 1, seq, seq).
-
-    Positions a token may attend to are 0; future positions are masked with `lowest_value`.
-    """
-    mask = torch.full((sequence_length, sequence_length), lowest_value)
-    mask = torch.triu(mask, diagonal=1)
-    return mask.reshape(1, 1, sequence_length, sequence_length)
-
-
 work_dir = TemporaryDirectory()
 work_root = Path(work_dir.name)
 
@@ -141,10 +154,9 @@ export_result = export(
 )
 # -
 
-# As a result our chosen output directory is now populated with all the relevant files. Because we choose to split the parameters from the ONNX graph, we will get separate files for each model parameter. However, running the command below, we can see on the top the ONNX and encodings files which are the most relevant to us.
-# Note that we limit the directory print-out to the first 15 items.
+# As a result our chosen output directory is now populated with all the relevant files. By default the parameters are split out of the ONNX graph and stored as external data in a single sidecar file, so alongside the `.onnx` graph you will mainly see that external-data file and the `.encodings` file, which are the most relevant to us.
 
-sorted(output_directory.iterdir())[:15]
+sorted(output_directory.iterdir())
 
 # It is advised to store both the input batch and the model output in order to later check with the same data the performance of the model on device. Here we store these as a dictionary, keeping the `input` field as None since the input to the model is a dictionary batch, so it contains only `kwargs`.
 
@@ -168,6 +180,8 @@ with open(data_location, "wb") as fp:
 # To further demonstrate the capabilities of FastForward's export feature, we illustrate how the `export_modules` function can be utilized to prepare a collection of modules for deployment on a device. In this example, we use [MPath](mpath.nb.py) to select various modules, which are then passed to the `export_modules` function.
 #
 # After execution, all the individual modules are stored along with their respective inputs/outputs tensors (both for quantized and non-quantized versions of the model to aid comparison). This functionality aims to aid in cases where the full model might be failing during either QNN conversion or deployment steps, as well as providing insight to problems arising in performance (either regarding execution speed or unexpected quantization errors)
+#
+# Note that the selections below are deliberately at several granularities and overlap: `**/layers/0` already contains the MLP, attention, and layer-norm submodules we also select individually. Each selected module is exported independently, so overlapping selections simply give you artifacts at every level you asked for.
 
 # +
 modules_output_path = work_root / "modules"

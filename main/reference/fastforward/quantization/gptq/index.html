@@ -3233,11 +3233,11 @@
                 <code>layer</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.linear.QuantizedLinear&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedLinear&lt;/code&gt;)" href="../../nn/linear/#fastforward.nn.linear.QuantizedLinear">QuantizedLinear</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.linear.QuantizedLinear&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedLinear&lt;/code&gt;)" href="../../nn/linear/#fastforward.nn.linear.QuantizedLinear">QuantizedLinear</a> | <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.conv.QuantizedConv2d&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedConv2d&lt;/code&gt;)" href="../../nn/conv/#fastforward.nn.conv.QuantizedConv2d">QuantizedConv2d</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>QuantizedLinear layer to quantize.</p>
+                <p>QuantizedLinear or QuantizedConv2d layer to quantize.</p>
               </div>
             </td>
             <td>
@@ -3253,7 +3253,7 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Input activations flowing from the previous layer., an iterable.
+                <p>Input activations flowing from the previous layer, an iterable.
 Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
               </div>
             </td>
@@ -3280,7 +3280,17 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Hessian matrix of shape [in_features, in_features] in float32</p>
+                <p>Hessian matrix of shape [in_features, in_features] in float32, where</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>in_features = weight.shape[1] for Linear and in_channels/groups * kH * kW for Conv2d.</p>
               </div>
             </td>
           </tr>
@@ -3290,28 +3300,7 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/gptq.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">206</span>
 <span class="normal">207</span>
 <span class="normal">208</span>
 <span class="normal">209</span>
@@ -3325,34 +3314,55 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
 <span class="normal">217</span>
 <span class="normal">218</span>
 <span class="normal">219</span>
-<span class="normal">220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_hessian</span><span class="p">(</span>
-    <span class="n">layer</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedLinear</span><span class="p">,</span> <span class="n">activations</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_hessian</span><span class="p">(</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedLinear</span> <span class="o">|</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedConv2d</span><span class="p">,</span>
+    <span class="n">activations</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate approximate Hessian matrix from layer activations.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        layer: QuantizedLinear layer to quantize.</span>
-<span class="sd">        activations: Input activations flowing from the previous layer., an iterable.</span>
+<span class="sd">        layer: QuantizedLinear or QuantizedConv2d layer to quantize.</span>
+<span class="sd">        activations: Input activations flowing from the previous layer, an iterable.</span>
 <span class="sd">            Each entry is a tuple of args (tuple of obj) and kwargs (dict).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Hessian matrix of shape [in_features, in_features] in float32</span>
+<span class="sd">        Hessian matrix of shape [in_features, in_features] in float32, where</span>
+<span class="sd">        in_features = weight.shape[1] for Linear and in_channels/groups * kH * kW for Conv2d.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">in_features</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">device</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">device</span>
+    <span class="n">in_features</span> <span class="o">=</span> <span class="n">_hessian_in_features</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
+    <span class="n">flatten_input</span> <span class="o">=</span> <span class="n">_input_flattener</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
 
     <span class="n">hessian</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">in_features</span><span class="p">,</span> <span class="n">in_features</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="k">for</span> <span class="p">(</span><span class="n">activation</span><span class="p">,),</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">activations</span><span class="p">:</span>
         <span class="n">activation</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">activation</span><span class="p">)</span>
-        <span class="n">bsz</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">hidden</span> <span class="o">=</span> <span class="n">activation</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">flatten_input</span><span class="p">(</span><span class="n">activation</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
 
-        <span class="n">activation</span> <span class="o">=</span> <span class="n">activation</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">bsz</span> <span class="o">*</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">activation</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-
-        <span class="n">hessian</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">n_samples</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_samples</span> <span class="o">+</span> <span class="p">(</span><span class="n">bsz</span> <span class="o">*</span> <span class="n">seq_len</span><span class="p">)))</span>
-        <span class="n">n_samples</span> <span class="o">+=</span> <span class="n">bsz</span> <span class="o">*</span> <span class="n">seq_len</span>
+        <span class="n">hessian</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">n_samples</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_samples</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">n_samples</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
         <span class="n">x</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="n">n_samples</span><span class="p">))</span>
         <span class="n">hessian</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">x</span> <span class="o">@</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
@@ -3472,25 +3482,7 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/gptq.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
 <span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
@@ -3555,7 +3547,28 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
 <span class="normal">179</span>
 <span class="normal">180</span>
 <span class="normal">181</span>
-<span class="normal">182</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">column_quantizer</span><span class="p">(</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">column_quantizer</span><span class="p">(</span>
     <span class="n">weight_quantizer</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">,</span> <span class="n">weight_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">,</span> <span class="n">col_index</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a quantize-dequantize operator for a single column.</span>
@@ -3583,7 +3596,10 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
             <span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">out_features</span><span class="p">)</span> <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 
         <span class="k">case</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">(</span><span class="n">channel_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,)):</span>
-            <span class="k">pass</span>  <span class="c1"># Already one scale per row.</span>
+            <span class="c1"># Linear: scale.shape == (out_features,) — reshape is a no-op.</span>
+            <span class="c1"># Conv2d: scale.shape == (out_channels, 1, 1, 1) — reshape flattens to (out_channels,).</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">out_features</span><span class="p">)</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">out_features</span><span class="p">)</span> <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 
         <span class="k">case</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">(</span><span class="n">channel_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)):</span>
             <span class="c1"># One scale for the entire column.</span>
@@ -3656,7 +3672,9 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
 
     <div class="doc doc-contents ">
 
-        <p>Quantize a QuantizedLinear layer in-place using GPTQ.</p>
+        <p>Quantize a QuantizedLinear or QuantizedConv2d layer in-place using GPTQ.</p>
+<p>Only <code>PerTensor</code> and <code>PerChannel(channel_dim=0)</code> weight quantizer granularities
+are supported on Conv2d.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3675,11 +3693,11 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
                 <code>module</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.linear.QuantizedLinear&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedLinear&lt;/code&gt;)" href="../../nn/linear/#fastforward.nn.linear.QuantizedLinear">QuantizedLinear</a></code>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.linear.QuantizedLinear&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedLinear&lt;/code&gt;)" href="../../nn/linear/#fastforward.nn.linear.QuantizedLinear">QuantizedLinear</a> | <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.conv.QuantizedConv2d&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedConv2d&lt;/code&gt;)" href="../../nn/conv/#fastforward.nn.conv.QuantizedConv2d">QuantizedConv2d</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A QuantizedLinear layer whose weight_quantizer is a LinearQuantizer.</p>
+                <p>A QuantizedLinear or QuantizedConv2d layer whose weight_quantizer is a LinearQuantizer.</p>
               </div>
             </td>
             <td>
@@ -3773,90 +3791,111 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/gptq.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">gptq</span><span class="p">(</span>
-    <span class="n">module</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedLinear</span><span class="p">,</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">gptq</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedLinear</span> <span class="o">|</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedConv2d</span><span class="p">,</span>
     <span class="n">dataset</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
     <span class="n">block_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
     <span class="n">perc_damp</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
     <span class="n">actorder</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">layer_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantize a QuantizedLinear layer in-place using GPTQ.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantize a QuantizedLinear or QuantizedConv2d layer in-place using GPTQ.</span>
+
+<span class="sd">    Only `PerTensor` and `PerChannel(channel_dim=0)` weight quantizer granularities</span>
+<span class="sd">    are supported on Conv2d.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        module: A QuantizedLinear layer whose weight_quantizer is a LinearQuantizer.</span>
+<span class="sd">        module: A QuantizedLinear or QuantizedConv2d layer whose weight_quantizer is a LinearQuantizer.</span>
 <span class="sd">        dataset: Input activations flowing from the previous layer, an iterable.</span>
 <span class="sd">            Each entry is a tuple of args (tuple of obj) and kwargs (dict).</span>
 <span class="sd">        block_size: Number of columns to process per block.</span>
@@ -3868,8 +3907,23 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
         <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;weight_quantizer must be a LinearQuantizer, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-    <span class="n">columns</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">original_weight_shape</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span>
     <span class="n">weights</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">QuantizedConv2d</span><span class="p">):</span>
+        <span class="k">match</span> <span class="n">module</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="o">.</span><span class="n">granularity</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span> <span class="o">|</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">(</span><span class="n">channel_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,)):</span>
+                <span class="k">pass</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span> <span class="k">as</span> <span class="n">g</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;GPTQ on QuantizedConv2d currently supports only PerTensor and &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;PerChannel(channel_dim=0) granularities. Got: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="c1"># (out_channels, in_channels/groups, kH, kW) -&gt; (out_channels, in_channels/groups * kH * kW)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
     <span class="n">weight_quantizer</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight_quantizer</span>
 
@@ -3913,7 +3967,7 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
     <span class="n">quantized_weights</span> <span class="o">=</span> <span class="n">quantized_weights</span><span class="p">[:,</span> <span class="n">restore_order</span><span class="p">]</span>
     <span class="n">errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[:,</span> <span class="n">restore_order</span><span class="p">]</span>
 
-    <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">quantized_weights</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+    <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">quantized_weights</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">original_weight_shape</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
 
     <span class="n">loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">errors</span><span class="p">))</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
     <span class="n">num_bits</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="o">.</span><span class="n">num_bits</span>
@@ -4010,25 +4064,25 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/gptq.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">invert_hessian</span><span class="p">(</span><span class="n">hessian</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">perc_damp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">invert_hessian</span><span class="p">(</span><span class="n">hessian</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">perc_damp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Invert Hessian matrix using Cholesky decomposition with dampening.</span>
 
 <span class="sd">    Args:</span>
