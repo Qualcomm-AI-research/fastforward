@@ -26,6 +26,7 @@ from fastforward._orchestration.instruction_engine import (
     optimization_only_pass,
 )
 from fastforward._orchestration.registry import Algorithm as Algorithm
+from fastforward._orchestration.registry import AlgorithmSpec as AlgorithmSpec
 from fastforward._orchestration.registry import Selector as Selector
 from fastforward._orchestration.registry import register as register
 from fastforward._orchestration.registry import resolve as resolve
@@ -56,7 +57,7 @@ class _ExecutionContext(_GraphExecutionContext):
 def layerwise_optimize(
     model: torch.nn.Module,
     data: Any,
-    algorithm: registry.Algorithm,
+    algorithm: registry.Algorithm | registry.AlgorithmSpec | list[registry.AlgorithmSpec],
     *,
     targets: registry.TargetType | None = None,
     graph: GraphModule | None = None,
@@ -71,14 +72,10 @@ def layerwise_optimize(
     Args:
         model: The model to optimize.
         data: Calibration data to run through the model.
-        algorithm: The optimization algorithm to apply. It is invoked once per
-            target region as ``algorithm(module, dataset)``, where ``dataset`` is
-            an `ActivationBundle` of that module's captured calibration inputs.
-            Iterating ``dataset`` yields one `(args, kwargs)` pair per batch,
-            ready to replay as ``module(*args, **kwargs)``. Note that ``args`` is
-            often a singleton tuple (e.g. ``(x,)``) and ``kwargs`` is often empty
-            (``{}``); see `ActivationBundle` for the full contract.
+        algorithm: The optimization algorithm. Accepts a callable (looked up in the
+            registry), a single `AlgorithmSpec`, or a list of specs.
         targets: Override which modules to target (uses registry default if None).
+            Cannot be combined with explicit AlgorithmSpec(s).
         graph: Pre-built GraphModule (traces model if None).
         offloading: Optional strategy for device offloading during execution.
         **kwargs: Additional arguments forwarded to trace.
@@ -89,8 +86,21 @@ def layerwise_optimize(
         graph = trace(model, example_input, **kwargs)
 
     # (2) Resolve targets and reduce graph
-    with registry.override(algorithm, targets):
-        optimization_specs = registry.resolve(model, algorithm)
+    match algorithm:
+        case registry.AlgorithmSpec() | [*_] if targets is not None:
+            msg = "Cannot combine targets= with explicit AlgorithmSpec(s)."
+            raise TypeError(msg)
+        case [*specs]:
+            optimization_specs = registry.resolve(model, specs=specs)
+        case registry.AlgorithmSpec():
+            optimization_specs = registry.resolve(model, specs=[algorithm])
+        case algorithm if callable(algorithm):
+            with registry.override(algorithm, targets):
+                optimization_specs = registry.resolve(model, algorithm=algorithm)
+        case _:
+            msg = f"Expected an Algorithm, AlgorithmSpec, or list of AlgorithmSpec; got {type(algorithm).__name__}."
+            raise TypeError(msg)
+
     graph = reduce_resolution(graph, optimization_specs)
 
     # (3) Schedule instruction program

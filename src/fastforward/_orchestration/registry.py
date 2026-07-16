@@ -143,9 +143,20 @@ class NoTargetsFound(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class AlgorithmSpec:
-    """The configuration registered for an algorithm."""
+    """The configuration registered for an algorithm.
 
-    target: Selector
+    Args:
+        fn: The algorithm to run on the resolved regions.
+        selector: The (normalized) selector resolving which modules to target.
+    """
+
+    fn: Algorithm
+    selector: Selector
+
+    @classmethod
+    def from_target(cls, fn: Algorithm, target: TargetType | Selector) -> "AlgorithmSpec":
+        """Build a spec from any `TargetType` (or `Selector`), normalizing the target."""
+        return cls(fn=fn, selector=normalize(target))
 
 
 class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
@@ -177,27 +188,60 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         If the algorithm was previously registered, the existing spec is **overwritten**.
 
         Args:
-            algorithm: The algorithm that runs on 'target'.
-            target: A Selector, Module type, Module instance, parsed mpath query, or sequence thereof.
+            algorithm: The algorithm to register.
+            target: A target specification or Selector indicating which modules to match.
         """
-        self._specs[algorithm] = AlgorithmSpec(target=normalize(target))
+        self._specs[algorithm] = AlgorithmSpec.from_target(algorithm, target)
 
-    def resolve(self, model: torch.nn.Module, algorithm: Algorithm) -> list[SubgraphSpec]:
-        """Return specs for each region in a model that the given algorithm targets.
+    def resolve(
+        self,
+        model: torch.nn.Module,
+        *,
+        algorithm: Algorithm | None = None,
+        specs: list[AlgorithmSpec] | None = None,
+    ) -> list[SubgraphSpec]:
+        """Return SubgraphSpecs for each region matched by the algorithm or explicit specs.
+
+        Provide either `algorithm` (looks up the registry) or `specs` (used directly).
+
+        Args:
+            model: The model to resolve targets against.
+            algorithm: An algorithm previously registered in this registry.
+            specs: Explicit AlgorithmSpec instances to resolve directly.
 
         Raises:
-            NoTargetsFound: If no target is registered for the algorithm, or if the
-                registered target matched no modules on the model.
+            TypeError: If both or neither of `algorithm` and `specs` are provided.
+            NoTargetsFound: If no targets match any modules on the model.
         """
-        if algorithm not in self._specs:
-            msg = f"No target registered for algorithm {algorithm.__name__!r}."
+        if algorithm is not None and specs is not None:
+            raise TypeError("Provide either 'algorithm' or 'specs', not both.")
+        if algorithm is None and specs is None:
+            raise TypeError("Provide either 'algorithm' or 'specs'.")
+        if specs is not None and not specs:
+            raise ValueError("'specs' must not be empty.")
+
+        if specs is not None:
+            spec_list = specs
+        else:
+            assert algorithm is not None
+            if algorithm not in self._specs:
+                msg = f"No target registered for algorithm {algorithm.__name__!r}."
+                raise NoTargetsFound(msg)
+            spec_list = [self._specs[algorithm]]
+
+        result: list[SubgraphSpec] = []
+        for spec in spec_list:
+            regions = spec.selector.resolve(model)
+            result.extend(SubgraphSpec(region=region, fn=spec.fn) for region in regions)
+
+        if not result:
+            if algorithm:
+                msg = f"Target for {algorithm.__name__!r} matched no modules on {type(model).__name__}."
+            else:
+                msg = f"Provided specs matched no modules on {type(model).__name__}."
             raise NoTargetsFound(msg)
 
-        if not (regions := self._specs[algorithm].target.resolve(model)):
-            msg = f"Target for {algorithm.__name__!r} matched no modules on {type(model).__name__}."
-            raise NoTargetsFound(msg)
-
-        return [SubgraphSpec(region=region, fn=algorithm) for region in regions]
+        return result
 
 
 _registry = _AlgorithmRegistry()
@@ -215,18 +259,20 @@ def register(algorithm: Algorithm, targets: TargetType | Selector) -> None:
     _registry.register(algorithm, targets)
 
 
-def resolve(model: torch.nn.Module, algorithm: Algorithm) -> list[SubgraphSpec]:
-    """Resolve which regions in a model an algorithm targets.
+def resolve(
+    model: torch.nn.Module,
+    *,
+    algorithm: Algorithm | None = None,
+    specs: list[AlgorithmSpec] | None = None,
+) -> list[SubgraphSpec]:
+    """Resolve which regions in a model to optimize.
 
-    Args:
-        model: The model to resolve targets against.
-        algorithm: The algorithm whose targets to resolve.
+    Provide either `algorithm` (uses the registry) or explicit `specs`.
 
     Raises:
-        NoTargetsFound: If no target is registered for the algorithm, or if the
-            registered target matched no modules on the model.
+        NoTargetsFound: If no targets match any modules on the model.
     """
-    return _registry.resolve(model, algorithm)
+    return _registry.resolve(model, algorithm=algorithm, specs=specs)
 
 
 @contextlib.contextmanager

@@ -10,6 +10,7 @@ import torch
 
 from fastforward._orchestration import registry
 from fastforward._orchestration.instruction_engine import ActivationBundle, OffloadEverything
+from fastforward._orchestration.registry import AlgorithmSpec
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 from torch import nn
@@ -121,3 +122,38 @@ def test_layerwise_optimize_override_restores_registry_state(two_linear: TwoLine
         assert registry._registry[algorithm] == spec_before
     finally:
         registry._registry._specs.pop(algorithm, None)
+
+
+def test_layerwise_optimize_with_explicit_spec(two_linear: TwoLinear) -> None:
+    # GIVEN a model and an explicit AlgorithmSpec targeting fc1
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(3)]
+    initial_w1 = model.fc1.weight.data.clone()
+    initial_w2 = model.fc2.weight.data.clone()
+
+    spec = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.1), model.fc1)
+
+    # WHEN we pass the spec directly (no register() needed)
+    ff.layerwise_optimize(model, calibration, spec)
+
+    # THEN fc1's weights changed and fc2's did not
+    assert not torch.allclose(initial_w1, model.fc1.weight.data)
+    assert torch.allclose(initial_w2, model.fc2.weight.data)
+
+
+def test_layerwise_optimize_with_multiple_specs(two_linear: TwoLinear) -> None:
+    # GIVEN two specs with different algorithms targeting different modules
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(3)]
+    initial_w1 = model.fc1.weight.data.clone()
+    initial_w2 = model.fc2.weight.data.clone()
+
+    spec_fc1 = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.1), model.fc1)
+    spec_fc2 = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.05), model.fc2)
+
+    # WHEN we pass both specs as a list
+    ff.layerwise_optimize(model, calibration, [spec_fc1, spec_fc2])
+
+    # THEN both modules were optimized
+    assert not torch.allclose(initial_w1, model.fc1.weight.data)
+    assert not torch.allclose(initial_w2, model.fc2.weight.data)

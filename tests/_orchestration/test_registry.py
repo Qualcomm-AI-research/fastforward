@@ -6,6 +6,7 @@ import torch
 
 from fastforward import mpath
 from fastforward._orchestration.registry import (
+    AlgorithmSpec,
     CompositeSelector,
     ModuleInstanceSelector,
     ModuleTypeSelector,
@@ -134,7 +135,7 @@ def test_register_and_resolve(
     registry.register(_dummy_algorithm, target)
 
     # WHEN resolving
-    result = registry.resolve(model, _dummy_algorithm)
+    result = registry.resolve(model, algorithm=_dummy_algorithm)
 
     # THEN the expected modules are returned
     expected = [getattr(model, attr) for attr in expected_modules_attr]
@@ -149,7 +150,7 @@ def test_register_overwrites_previous(tiny_model: TinyModel) -> None:
     registry.register(_dummy_algorithm, torch.nn.Conv2d)
 
     # WHEN resolving
-    result = registry.resolve(model, _dummy_algorithm)
+    result = registry.resolve(model, algorithm=_dummy_algorithm)
 
     # THEN only Conv2d is returned (overwritten, not appended)
     assert [s.region for s in result] == [model.conv]
@@ -163,7 +164,7 @@ def test_resolve_unregistered_algorithm_raises(tiny_model: TinyModel) -> None:
     # WHEN resolving an unregistered algorithm
     # THEN NoTargetsFound is raised
     with pytest.raises(NoTargetsFound, match="No target registered"):
-        registry.resolve(model, _dummy_algorithm)
+        registry.resolve(model, algorithm=_dummy_algorithm)
 
 
 def test_resolve_empty_match_raises(tiny_model: TinyModel) -> None:
@@ -175,7 +176,7 @@ def test_resolve_empty_match_raises(tiny_model: TinyModel) -> None:
     # WHEN resolving
     # THEN NoTargetsFound is raised
     with pytest.raises(NoTargetsFound, match="matched no modules"):
-        registry.resolve(model, _dummy_algorithm)
+        registry.resolve(model, algorithm=_dummy_algorithm)
 
 
 def test_register_and_resolve_heterogeneous_target(tiny_model: TinyModel) -> None:
@@ -187,7 +188,7 @@ def test_register_and_resolve_heterogeneous_target(tiny_model: TinyModel) -> Non
     registry.register(_dummy_algorithm, [torch.nn.Linear, model.conv])
 
     # THEN resolving returns all Linear layers and the conv instance
-    result = registry.resolve(model, _dummy_algorithm)
+    result = registry.resolve(model, algorithm=_dummy_algorithm)
     assert {s.region for s in result} == {model.linear1, model.linear2, model.conv}
 
 
@@ -212,4 +213,23 @@ def test_algorithm_registry_mapping_protocol() -> None:
     # THEN it reflects the single registration
     assert len(registry) == 1
     assert list(registry) == [_dummy_algorithm]
-    assert registry[_dummy_algorithm].target == ModuleTypeSelector(types=(torch.nn.Linear,))
+    spec = registry[_dummy_algorithm]
+    assert spec.fn is _dummy_algorithm
+    assert spec.selector == ModuleTypeSelector(types=(torch.nn.Linear,))
+
+
+def test_resolve_with_explicit_specs(tiny_model: TinyModel) -> None:
+    # GIVEN an empty registry and a spec built from a raw target via from_target
+    registry = _AlgorithmRegistry()
+    model = tiny_model
+    spec = AlgorithmSpec.from_target(_dummy_algorithm, torch.nn.Conv2d)
+
+    # THEN from_target normalized the raw target to a Selector
+    assert spec.selector == ModuleTypeSelector(types=(torch.nn.Conv2d,))
+
+    # WHEN resolving with explicit specs (bypassing registration)
+    result = registry.resolve(model, specs=[spec])
+
+    # THEN the spec's target is resolved against the model
+    assert [s.region for s in result] == [model.conv]
+    assert all(s.delegate.fn is _dummy_algorithm for s in result)
