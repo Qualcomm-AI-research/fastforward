@@ -3,7 +3,6 @@
 
 import random
 
-import numpy as np
 import torch
 
 from . import autoquant as autoquant
@@ -24,5 +23,11 @@ def seed_prngs(random_seed: int) -> None:
     """Seeds the common PRNGs."""
     assert 0 <= random_seed <= 2**64
     torch.manual_seed(random_seed)
-    np.random.seed(random_seed % 2**32)
     random.seed(random_seed)
+
+    try:
+        import numpy as np
+
+        np.random.seed(random_seed % 2**32)
+    except ImportError:
+        pass

@@ -5,12 +5,12 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "fastforward"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 dependencies = [
+  "torch>=2.4",
   "importlib-metadata",
   "libcst",
   "mypy<1.17",
-  "numpy>=2",
   "onnx",
   "onnxruntime",
   "onnxscript",
@@ -36,6 +36,7 @@ test = [
   "pytest-cov>=3",
   "types-PyYAML",
   "syrupy",
+  "numpy>=2"
 ]
 docs = [
   "datasets",

@@ -62,14 +62,14 @@ RUN export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \
     && uv pip install --no-cache torch==${VER_TORCH}+cu${VER_CUDA_SHORT} \
         --extra-index-url="https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}"
 
+WORKDIR /workspace
 COPY pyproject.toml /workspace/
 
-# --inexact keeps the torch installed above out of the sync.
+# Install dependencies without syncing with uv to avoid force-installing latest
+# version of all dependencies (so that latest torch is not installed on top).
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --inexact \
-        --project /workspace \
-        --no-default-groups --group dev --group test --group docs
+    uv pip install -e . --group dev --group test --group docs
 
 ENV PYTHONPYCACHEPREFIX=/tmp
-ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") ; ./scripts/rebuild && exec $0 "$@"
+ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") && exec $0 "$@"
 CMD bash
