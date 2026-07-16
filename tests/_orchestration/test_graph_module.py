@@ -19,8 +19,9 @@ from fastforward._orchestration.graph_module import (
     Span,
     SubgraphSpec,
     _BaseRef,
+    ancestors,
     create_subgraph,
-    find_nodes_on_path,
+    find_cycle,
     inference_mode,
     local_optimize,
     reduce_resolution,
@@ -41,6 +42,7 @@ from ._models import (
     Model,
     MultiOutputModel,
     ProbeModule,
+    Residual,
     RNGTensor,
     TwoLayerModel,
 )
@@ -135,10 +137,11 @@ def test_create_subgraph_functional_equivalence(model: Model) -> None:
 
     # GIVEN the minimal node set lying in the GraphModule
     sigmoid = graph.get_submodule("sigmoid")
-    path_nodes = find_nodes_on_path(
+    path_nodes, _ = ancestors(
         graph,
-        graph.node_ref(model.residual_1.linear),
         graph.node_ref(sigmoid),
+        stop=graph.node_ref(model.residual_1.linear),
+        strict=True,
     )
 
     # WHEN we materialise that path as a standalone GraphModule
@@ -1186,40 +1189,70 @@ def test_add_subgraph_duplicate_binding_raises() -> None:
         graph.add_subgraph("add", Add().to_graph_module(), [inp], {"x": Const(1.0)})
 
 
-def test_find_nodes_on_path_start_not_in_graph_raises(model: Model) -> None:
-    # GIVEN a graph and a NodeRef that is not part of it
-    graph = model.to_graph_module()
-    sigmoid = graph.node_ref(graph.get_submodule("sigmoid"))
-    foreign = NodeRef(id=uuid.uuid4(), name="foreign")
-
-    # WHEN start is unknown
-    # THEN find_nodes_on_path raises
-    with pytest.raises(ValueError, match="Start node .* not found"):
-        find_nodes_on_path(graph, foreign, sigmoid)
-
-
-def test_find_nodes_on_path_end_not_in_graph_raises(model: Model) -> None:
-    # GIVEN a graph with a valid start but an unknown end
-    graph = model.to_graph_module()
-    start = graph.node_ref(model.residual_1.linear)
-    foreign = NodeRef(id=uuid.uuid4(), name="foreign")
-
-    # WHEN end is unknown
-    # THEN find_nodes_on_path raises
-    with pytest.raises(ValueError, match="End node .* not found"):
-        find_nodes_on_path(graph, start, foreign)
-
-
-def test_find_nodes_on_path_no_path_raises(model: Model) -> None:
-    # GIVEN two real nodes where `end` lies upstream of `start` (no forward path)
+def test_ancestors_strict_no_path_reports_not_reached(model: Model) -> None:
+    # GIVEN two real nodes where the stop lies downstream of the target
     graph = model.to_graph_module()
     sigmoid = graph.node_ref(graph.get_submodule("sigmoid"))
     residual_1_linear = graph.node_ref(model.residual_1.linear)
 
-    # WHEN we search from the downstream sigmoid back toward residual_1.linear
-    # THEN no directed path exists and it raises
-    with pytest.raises(ValueError, match="not reachable"):
-        find_nodes_on_path(graph, sigmoid, residual_1_linear)
+    # WHEN we ask for the strict path with stop downstream of target
+    nodes, reached = ancestors(graph, residual_1_linear, stop=sigmoid, strict=True)
+
+    # THEN no path exists
+    assert reached is False
+    assert nodes == set()
+
+
+def test_ancestors_strict_and_nonstrict() -> None:
+    # GIVEN a join node fed by two branches: src -> mid -> dst, and other -> dst
+    graph = GraphModule()
+    x = graph.add_input("x")
+    y = graph.add_input("y")
+    src = graph.add_node("src", torch.nn.Identity(), [x])
+    mid = graph.add_node("mid", torch.nn.Identity(), [src])
+    other = graph.add_node("other", torch.nn.Identity(), [y])
+    dst = graph.add_node("dst", Add(), [mid, other])
+    graph.add_output(dst)
+
+    # WHEN non-strict: full closure includes the off-path branch
+    closure, _ = ancestors(graph, dst, stop=src)
+    assert closure == {src, mid, dst, other}
+
+    # WHEN strict: only nodes on a src -> dst path
+    on_path, reached = ancestors(graph, dst, stop=src, strict=True)
+    assert reached is True
+    assert on_path == {src, mid, dst}
+
+
+def test_topological_sort_with_closure() -> None:
+    # GIVEN a chain a -> b -> c -> d
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    a = graph.add_node("a", torch.nn.Identity(), [inp])
+    b = graph.add_node("b", torch.nn.Identity(), [a])
+    c = graph.add_node("c", torch.nn.Identity(), [b])
+    d = graph.add_node("d", torch.nn.Identity(), [c])
+    graph.add_output(d)
+
+    # WHEN we sort a closed subset
+    result = topological_sort(graph, {d, b, c})
+    assert result == [b, c, d]
+
+
+def test_topological_sort_closure_rejects_non_leaf_nodes() -> None:
+    # GIVEN a graph holding a fold (non-leaf) node alongside its leaves
+    residual = Residual()
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    (out,) = graph.add_subgraph("res", residual.to_graph_module(), [inp], original_module=residual)
+    assert isinstance(out, NodeRef)
+    graph.add_output(out)
+    (fold,) = (graph._node_refs[fold_id] for fold_id in graph._fold_ids)
+
+    # WHEN the closure contains the fold node
+    # THEN topological_sort rejects it
+    with pytest.raises(ValueError, match="non-leaf nodes"):
+        topological_sort(graph, {out, fold})
 
 
 def test_topological_sort_circular_dependency_raises() -> None:
@@ -1235,6 +1268,19 @@ def test_topological_sort_circular_dependency_raises() -> None:
     # THEN the cycle is detected
     with pytest.raises(ValueError, match="Circular dependency"):
         topological_sort(graph)
+
+
+def test_find_cycle() -> None:
+    # GIVEN an acyclic graph
+    a, b, c = (NodeRef(id=uuid.uuid4(), name=n) for n in ("a", "b", "c"))
+    assert find_cycle({a: {b}, b: {c}, c: set()}) is None
+
+    # GIVEN a cyclic graph a -> b -> c -> a
+    edges = {a: {b}, b: {c}, c: {a}}
+    cycle = find_cycle(edges)
+    assert cycle is not None
+    assert cycle[0] == cycle[-1]
+    assert set(cycle) == {a, b, c}
 
 
 def test_remap_subgraph_reference_unknown_ref_type_raises() -> None:

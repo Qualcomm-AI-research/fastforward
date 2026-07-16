@@ -751,61 +751,6 @@ class GraphModule(torch.nn.Module):
         return outputs
 
 
-def find_nodes_on_path(graph: GraphModule, start: NodeRef, end: NodeRef) -> set[NodeRef]:
-    """Return the set of nodes on the path from `start` to `end` (inclusive).
-
-    Args:
-        graph: GraphModule to analyze.
-        start: Reference to the first node on the path.
-        end: Reference to the last node on the path.
-
-    Returns:
-        A set with the NodeRefs of all nodes that participate in at least one
-        direct dependency path from `start` to `end`.
-
-    Raises:
-        ValueError: If either node is missing or if no path exists.
-    """
-    if start not in graph._node_refs.values():
-        msg = f"Start node '{start.name}' not found in graph"
-        raise ValueError(msg)
-
-    if end not in graph._node_refs.values():
-        msg = f"End node '{end.name}' not found in graph"
-        raise ValueError(msg)
-
-    nodes_on_path: set[NodeRef] = set()
-    visited: set[NodeRef] = set()
-
-    def _can_reach_end(current: NodeRef, target: NodeRef, visited: set[NodeRef]) -> bool:
-        """Depth-First recursive search that returns True if `target` is reachable from `current`."""
-        if current == target:
-            nodes_on_path.add(current)
-            return True
-
-        if current in visited:
-            return False
-
-        visited.add(current)
-        found_path = False
-
-        for dependent in graph.node_outputs(current):
-            if _can_reach_end(dependent, target, visited):
-                found_path = True
-
-        if found_path:
-            nodes_on_path.add(current)
-
-        visited.remove(current)
-        return found_path
-
-    if not _can_reach_end(start, end, visited):
-        msg = f"Node {start.name} is not reachable from {end.name}"
-        raise ValueError(msg)
-
-    return nodes_on_path
-
-
 def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule:
     """Build and return a standalone GraphModule that contains exactly `path_nodes`.
 
@@ -906,11 +851,17 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
     return subgraph
 
 
-def topological_sort(graph: GraphModule) -> list[NodeRef]:
-    """Return leaf (non-fold) nodes from a GraphModule in topological order.
+def topological_sort(
+    graph: GraphModule, closure: Collection[NodeRef] | None = None
+) -> list[NodeRef]:
+    """Topologically order leaf (non-fold) nodes: each node after its inputs.
+
+    When `closure` is given, only those nodes are returned (in their relative
+    topological position). The set must be closed under graph edges (e.g. an
+    `ancestors` result). `None` sorts all leaf nodes.
 
     Raises:
-        ValueError: If graph contains circular dependencies among leaf nodes.
+        ValueError: If `closure` contains non-leaf nodes, or a cycle exists.
     """
     leaf_refs = {nid: ref for nid, ref in graph._node_refs.items() if nid not in graph._fold_ids}
 
@@ -932,10 +883,94 @@ def topological_sort(graph: GraphModule) -> list[NodeRef]:
                     queue.append(dependent)
 
     if len(order) != len(leaf_refs):
-        msg = "Circular dependency detected in graph!"
+        ordered = set(order)
+        stuck = sorted(ref.name for ref in leaf_refs.values() if ref not in ordered)
+        msg = f"Circular dependency detected among nodes: {stuck}"
         raise ValueError(msg)
 
-    return order
+    if closure is None:
+        return order
+    non_leaf = sorted(ref.name for ref in closure if ref.id not in leaf_refs)
+    if non_leaf:
+        msg = f"topological_sort received non-leaf nodes: {non_leaf}"
+        raise ValueError(msg)
+    wanted = {ref.id for ref in closure}
+    return [ref for ref in order if ref.id in wanted]
+
+
+def ancestors(
+    graph: GraphModule, node: NodeRef, *, stop: NodeRef | None = None, strict: bool = False
+) -> tuple[set[NodeRef], bool]:
+    """Collect the transitive input-closure of `node`, optionally bounded at `stop`.
+
+    Walks `node_inputs` backward from `node`. When `stop` is given the walk does
+    not recurse past it. `strict=False` (default) returns the full closure needed
+    to *run* `node` (including off-path branches). `strict=True` (requires `stop`)
+    keeps only nodes on a directed `stop -> node` path.
+
+    Returns `(nodes, reached)` where `reached` reports whether `stop` was actually
+    encountered. When `stop is None`, `reached` is always True.
+    """
+    if strict and stop is None:
+        msg = "ancestors(strict=True) requires a stop node to bound the path."
+        raise ValueError(msg)
+
+    collected: set[NodeRef] = set()
+    reached = stop is None
+    frontier = [node]
+    while frontier:
+        current = frontier.pop()
+        if current in collected:
+            continue
+        collected.add(current)
+        if current == stop:
+            reached = True
+            continue
+        frontier.extend(graph.node_inputs(current))
+
+    if not strict:
+        return collected, reached
+    if not reached:
+        return set(), False
+
+    on_path: set[NodeRef] = set()
+    frontier = [stop] if stop is not None else []
+    while frontier:
+        current = frontier.pop()
+        if current in on_path:
+            continue
+        on_path.add(current)
+        frontier.extend(out for out in graph.node_outputs(current) if out in collected)
+    return on_path, reached
+
+
+def find_cycle(edges: dict[NodeRef, set[NodeRef]]) -> list[NodeRef] | None:
+    """Return one cycle as a closed node path (`a -> ... -> a`), or None if acyclic.
+
+    Operates on an explicit adjacency mapping rather than a GraphModule, so it
+    serves any caller-built dependency graph. Every node must appear as a key.
+    """
+    UNVISITED, VISITING, VISITED = 0, 1, 2
+    state: dict[NodeRef, int] = {node: UNVISITED for node in edges}
+
+    for root in edges:
+        if state[root] != UNVISITED:
+            continue
+        stack: list[tuple[NodeRef, list[NodeRef]]] = [(root, [root])]
+        while stack:
+            node, path = stack.pop()
+            if state[node] == VISITING:
+                state[node] = VISITED
+                continue
+            state[node] = VISITING
+            stack.append((node, path))
+            for successor in edges[node]:
+                if state[successor] == VISITING:
+                    start = path.index(successor)
+                    return [*path[start:], successor]
+                if state[successor] == UNVISITED:
+                    stack.append((successor, [*path, successor]))
+    return None
 
 
 DEFAULT_CONTEXT = nullcontext()
@@ -1021,7 +1056,10 @@ class SubgraphSpec:
         match self.region:
             case Span(start=start, end=end):
                 in_ref, out_ref = graph.node_ref(start), graph.node_ref(end)
-                path_nodes = find_nodes_on_path(graph, in_ref, out_ref)
+                path_nodes, reached = ancestors(graph, out_ref, stop=in_ref, strict=True)
+                if not reached:
+                    msg = f"Node {in_ref.name} is not reachable from {out_ref.name}"
+                    raise ValueError(msg)
                 return ResolvedRegion(path_nodes, create_subgraph(graph, path_nodes))
             case Group(modules=modules):
                 group_refs = [graph.node_ref(m) for m in modules]
