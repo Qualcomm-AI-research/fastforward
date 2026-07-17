@@ -81,7 +81,7 @@ logging.getLogger("torch.onnx._internal.exporter").setLevel(logging.ERROR)
 torch.set_grad_enabled(False);  # fmt: skip  # noqa: E703
 
 # %% [markdown]
-# ### A small quantized ConvNet
+# ## A small quantized ConvNet
 #
 # We define a 4-layer ConvNet using FastForward's quantized building blocks (`QuantizedConv2d`,
 # `QuantizedRelu`, `QuantizedLinear`). Then we use `ff.QuantizationConfig` to attach `LinearQuantizer`s
@@ -156,7 +156,7 @@ sample_input = torch.randn(1, 3, 32, 32)
 # We now have a quantized, calibrated `SimpleConvNet` and a `sample_input` we can trace through it.
 
 # %% [markdown]
-# ## 1. Anatomy of a `Pipeline`
+# ## 1. Anatomy of a Pipeline
 #
 # A `Pipeline` is a DAG of stages. Each stage is a callable with the signature:
 #
@@ -363,7 +363,7 @@ list_artifacts(out_dir_qdq)
 # We will demonstrate each on a fresh `qnn_onnx_pipeline`.
 
 # %% [markdown]
-# ### 3.1 Insert before
+# ### Insert before
 #
 # Suppose we want to log the size of the ONNX proto right before it is written to disk. The natural place
 # is *before* the `save_onnx_proto` stage. The default behavior of `insert_stage_before` is to inherit the
@@ -403,7 +403,7 @@ with ff.export_mode(True):
 # dependencies and the target's own dependencies are left untouched (useful for side-branch stages).
 
 # %% [markdown]
-# ### 3.2 Insert after
+# ### Insert after
 #
 # `insert_stage_after` is the mirror image: every stage that previously depended on `target` is rewired
 # to depend on the new stage. This is the right primitive when you want every downstream consumer to see
@@ -449,7 +449,7 @@ for name in ("onnx_program_to_proto", "copy_metadata_props_from_ir_to_proto"):
 # `add_dependency` instead.
 
 # %% [markdown]
-# ### 3.3 Replace a stage in place
+# ### Replace a stage in place
 #
 # `replace_stage` swaps a stage's callable while preserving its position in the graph: the replacement
 # inherits the original's dependencies, every existing dependent is rewired to the replacement, and the
@@ -493,7 +493,7 @@ list_artifacts(out_dir_replace)
 # `save_onnx_proto` was rewired transparently to the replacement.
 
 # %% [markdown]
-# ### 3.4 Add and remove dependency edges
+# ### Add and remove dependency edges
 #
 # When you need finer control than insert/replace, `add_dependency` and `remove_dependency` edit
 # individual edges. Adding an edge that would introduce a cycle is rejected immediately:

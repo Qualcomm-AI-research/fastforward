@@ -1,5 +1,6 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
+"""Common utility functions."""
 
 from typing import Any, Callable, Sequence, TypeVar, overload
 

@@ -11,9 +11,13 @@ MANIFEST
 .dmypy.json
 dmypy.json
 .ruff_cache
+.mkdocs_cache
 
 .vscode/*
 .idea/*
 build/*
 .cache/clangd/index
 .agents-output/
+
+# ignore autoquant output
+**/_autoquantized*.py

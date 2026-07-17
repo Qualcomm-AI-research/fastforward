@@ -1,7 +1,6 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
-"""Autoquant is a feature of FastForward that simplifies the
-process of integrating new models.
+"""Autoquant is a feature of FastForward that simplifies the process of integrating new models.
 
 !!! experimental
     Please be aware that autoquant is an experimental feature. Use it with caution and

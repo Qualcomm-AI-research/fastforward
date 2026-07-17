@@ -15,85 +15,95 @@
 # ---
 
 # %% [markdown]
-# # Overview
+# # FastForward: Getting Started
 #
-# In this notebook, we will go over the most important objects and classes in `fastforward`. At the end of the notebook, we will have covered how to quantize simple modules like a multi-layer perceptron as well as the large language model OPT. This is a great start if you want to familiarize yourself with fastforward.
+# This notebook introduces the core building blocks of `fastforward` and shows
+# how to quantize simple modules such as a multi-layer perceptron. It is a good
+# starting point if you want to familiarize yourself with the library.
 #
-# The notebook consists of five sections:
-# 1. **Quantized Tensors**: `QuantizedTensors`, a subclass of `torch.Tensors` which are the fundamental datatype in FastForward.
-# 2. **Quantizers**: `Quantizers` are `torch.nn.Modules` that turn floating point tensors into `QuantizedTensors` and can learn from data.
-# 3. **Quantized Modules**: Quantizing a module consists of three steps: 1) Changing the module to a `QuantizedModule`, 2. inserting desired quantizers, and 3. estimating the ranges for each quantizers.
-# 4. **Quantized Models**: How to automate the first steps described above using 1) the `quantize_model` function and 2) the `QuantizationConfig`. This section also shows how to manually quantize custom and 3rd party modules.
+# The tutorial is organized in four sections:
+#
+# 1. **Quantized Tensors** — `QuantizedTensor`, a subclass of `torch.Tensor`
+#    that is the fundamental datatype in FastForward.
+# 2. **Quantizers** — `torch.nn.Module`s that turn floating point tensors into
+#    `QuantizedTensor`s and can learn their parameters from data.
+# 3. **Quantized Modules** — how to turn an unquantized module into a quantized
+#    one by changing the module class, inserting quantizers, and estimating
+#    the range for each quantizer.
+# 4. **Quantized Models** — how to automate the steps above with
+#    `quantize_model` and `QuantizationConfig`, and how to handle custom or
+#    third-party modules.
+
+
+# %% [markdown]
+# ## 1. Quantized Tensors
+#
+# The `ff.quantized_tensor.QuantizedTensor` is a subclass of `torch.Tensor`
+# designed to hold quantized data. It supports any quantization scheme
+# (uniform, dynamic, vector, and so on), but in this tutorial we focus on
+# integer quantization on a fixed per-tensor or per-channel grid.
+#
+# You do not need to know the details of this scheme to follow along, but if
+# you are curious please refer to
+# [A White Paper on Neural Network Quantization (Nagel et al., 2021)](https://arxiv.org/abs/2106.08295).
+#
+# Let's start by creating some floating point data.
 
 # %%
-import copy
-
-from pprint import pprint
-
-import fastforward as ff
 import torch
 
-from typing_extensions import override
-
-# %% [markdown]
-# # 1. Quantized Tensors
-#
-# We start our tutorial with the `ff.quantized_tensor.QuantizedTensor`. This datatype is a subclass of a `torch.Tensor` designed to hold quantized data. A `QuantizedTensor` can be quantized using any type of quantization (uniform quantization, dynamic quantization, vector quantization, ...) but we will focus on linear / uniform quantization.
-#
-# There are many kinds of quantization, but in this notebook we focus on integer quantization on a fixed per-tensor or per-channel grid.
-#
-# It is not required that you know the details of this (very common) quantization scheme, but if you want to know more please refer to [A White Paper on Neural Network Quantization (Nagel et al. 2021)](https://arxiv.org/abs/2106.08295)
-#
-
-# %% [markdown]
-# ⏩ Let's start by creating some floating point data
-
-# %%
 in_features = 4
-
 data = torch.rand(1, in_features) - 0.5
 data
 
+
 # %% [markdown]
-# ⏩ Now, we quantize the data using 8-bit per-tensor quantization.
+# Now we quantize the data using 8-bit per-tensor quantization.
 
 # %%
+import fastforward as ff
+
 scale = torch.tensor([0.1])
 num_bits = 8
 quantized_data = ff.quantization.affine.quantize_per_tensor(data, num_bits=num_bits, scale=scale)
 
 quantized_data
 
+
 # %% [markdown]
-# ✅ We can see that `quantized_data` is now a `QuantizedTensor`.
-# This makes it very easy to see in FastForward if your data is actually quantized or not.
+# The result is a `QuantizedTensor`, which makes it easy to check whether a
+# tensor is quantized. It carries both the actual data (with the same shape
+# as the input) and the quantization parameters — in this case only the
+# scale, which we set manually.
 #
-# ✅ This tensor both holds the actual data (of same shape as `data`) as well as the hyperparameters of the quantizer. For this specific case the only hyperparameter is the quantization scale, which we have set manually.
-#
-# ❌ Because this data is transformed to a new coordinate system, it is not easy to see what floating point values they represent.
-#
-# ⏩ For this purpose, we can dequantize the tensor, which we do below.
+# Because the values live in a different coordinate system, they are not
+# directly comparable to the original floating point values. To recover the
+# floating point representation we dequantize the tensor.
 
 # %%
 quantized_data.dequantize()
 
+
 # %% [markdown]
-# # 2. Quantizers
+# ## 2. Quantizers
 #
-# In the previous paragraph, we saw above how a floating point tensor can be quantized.
+# In the previous section we quantized a floating point tensor by providing
+# the quantization parameters ourselves. In practice these parameters are rarely
+# known in advance.
 #
-# ❌ Quantization often involves hyperparameters which we do not know in advance.
-#
-# ✅ For this purpose, we can use `ff.nn.Quantizers`. These are `nn.Modules` that can quantize a data in their forward pass and can also be used to estimate or learn the quantization hyperparameters.
-#
-# ⏩ We create a `LinearQuantizer` now
+# A `ff.nn.Quantizer`s is a `nn.Module` that quantize data in it's forward
+# pass and can also estimate or learn the quantization parameters from
+# data. Let's create a `LinearQuantizer`:
 
 # %%
 quantizer = ff.nn.linear_quantizer.LinearQuantizer(num_bits=2)
 quantizer
 
+
 # %% [markdown]
-# ⏩ Next, we try to quantize our data with our quantizer.
+# If we try to quantize our data now, the call fails because the
+# quantization range has not been set yet, and consequently the
+# quantizer parameters are not initialized.
 
 # %%
 try:
@@ -102,16 +112,13 @@ except ValueError as e:
     print("[ERROR]", e, "\n")
 
 print(f"{quantizer.has_uninitialized_params=}")
-print(f"{quantizer.quantization_range=}")  # min, max values that quantizer can represent.
+print(f"{quantizer.quantization_range=}")  # min, max values the quantizer can represent
+
 
 # %% [markdown]
-# ❌ We can see that our quantizer will not quantize any data just yet.
-# The reason for this is that this specific quantizer has hyperparameters
-# that need to be fitted before we can quantize any data. As a result, the quantization range is not yet set.
-#
-# ⏩ We could set `quantizer.quantization_range` directly, but we would need to know the desired quantization range `(min, max)`.
-#
-# ⏩ A more common approach is to use _range estimation_ to find the optimal range based on data. We do this below.
+# We could set `quantizer.quantization_range` directly, but this requires us
+# to know the desired `(min, max)` up front. A more common approach is to use
+# *range estimation* to derive it from data.
 
 # %%
 with ff.range_setting.estimate_ranges(quantizer, ff.range_setting.smoothed_minmax):
@@ -121,25 +128,25 @@ print(f"{quantizer.has_uninitialized_params=}")
 print(f"{quantizer.quantization_range=}")
 print(f"{data.min()=} {data.max()=}")
 
+
 # %% [markdown]
-# ✅ We have now set the quantization range and the quantizer is initialized.
-#
-# ✅ We can see that the quantization range is the same as the range in the data batch.
-#
-# ⏩ We will now use our quantizer to quantize the data
+# The quantizer parameters are now initialized, and its range matches the
+# range of the data batch. We can use it to quantize the data.
 
 # %%
 quantized_data = quantizer(data)  # type: ignore[assignment]
-
 quantized_data
 
+
 # %% [markdown]
-# # 3. Quantized Modules
+# ## 3. Quantized Modules
 #
-# `Quantizers` typically don't exist in isolation. Instead, we would often like to quantize an entire model. In this section we show how to turn a module into a quantized module and what is happening under the hood. In the next section we show how to use convenience methods for easier quantization of bigger models.
+# Quantizers are rarely used in isolation — most of the time we want to
+# quantize a full model. This section walks through turning a single module
+# into a quantized module and explains what happens under the hood. The next
+# section introduces convenience methods for larger models.
 #
-#
-# ⏩ We start with a simple unquantized linear layer
+# We start with a simple unquantized linear layer.
 
 # %%
 out_features = 8
@@ -147,17 +154,23 @@ out_features = 8
 unquantized_linear = torch.nn.Linear(in_features, out_features)
 print(unquantized_linear)
 
+
 # %% [markdown]
-# ⏩ In FastForward we use `ff.nn.QuantizedModule`s, they are drop-in replacements of `torch.nn.Module`s but additionally take care of quantization.
+# FastForward provides `ff.nn.QuantizedModule` classes as drop-in
+# replacements for `torch.nn.Module`. Most modules in `torch.nn` have a
+# quantized counterpart in `ff.nn`. These modules:
 #
-# ⏩ Most modules in `torch.nn` are mirrored with their quantized counterpart in `ff.nn`
+# - behave exactly like their floating point counterparts, exposing the
+#   same methods with the same signatures;
+# - add quantizer children and override the forward pass so that operations
+#   run in quantized form.
 #
-#   - The goal of these quantized modules is that they behave exactly the same as their floating point counterparts, they have the same methods which have the same function signatures.
-#   - The only difference is that we add quantizer children to the modules and we change the forward pass s.t. it performs quantized operations instead of floating point operations.
-#   - ⚠️ If you do not find your desired module in `ff.nn`, you can either open an issue with us, or implement the layer yourself.
+# If a module you need is missing from `ff.nn`, you can either open an issue
+# or implement the quantized version yourself.
 #
-# ⏩ Let a closer look at the `ff.nn.QuantizedLinear` below.
-#   - For now, we manually copied the weight data s.t. the `quantized_linear` matches the `unquantized_linear`. In the next section we will show convenience methods to automatically quantize modules in-place.
+# Let's take a closer look at `ff.nn.QuantizedLinear`. For clarity we copy
+# the weights from the unquantized layer manually so that the two layers
+# start out identical.
 
 # %%
 quantized_linear = ff.nn.QuantizedLinear(in_features, out_features)
@@ -166,12 +179,13 @@ quantized_linear.bias.data = unquantized_linear.bias.data.clone()
 
 print(quantized_linear)
 
+
 # %% [markdown]
-# ⏩ We can see that our QuantizedLinear has the same representation as the Linear, but instead there are four quantizer children added.
+# The `QuantizedLinear` has the same structure as the `Linear`, plus four
+# quantizer children. All of them are initialized to `QuantizerStub`, a
+# no-op placeholder that can be replaced with a real quantizer when needed.
 #
-# ⏩ Observe that all quantizers are set to be `QuantizerStub`s. These are no-op placeholders that can be replaced with quantizers if desired.
-#
-# ⏩ Let's try to push data trough our `QuantizedLinear`.
+# Let's try to push data through the layer.
 
 # %%
 try:
@@ -179,13 +193,15 @@ try:
 except ff.exceptions.QuantizationError as e:
     print("[ERROR]", e, "\n")
 
+
 # %% [markdown]
-# ❌ We see we cannot push data trough our QuantizedLinear because `strict_quantization=True`.
+# The call fails because `strict_quantization=True` by default. This flag
+# guards against a common pitfall in simulated quantization: forgetting to
+# assign quantizers and unintentionally running the layer in floating point.
+# Since we have not assigned any quantizers yet, the layer would behave as
+# a floating point layer, which strict mode does not allow.
 #
-#   - This flag tries to catch a common error-case in simulated quantization where no quantization is taking place, and the user is not aware of this.
-#   - In our case, we have not assigned any quantizers, so the layer will behave as a floating point layer, which is not allowed if `strict_quantization=True`.
-#
-# ⏩ Let's temporarily disable the `strict_quantization` setting and see what happens when we call the `quantized_linear`.
+# Let's disable strict quantization temporarily and confirm the behavior.
 
 # %%
 with ff.strict_quantization(False):
@@ -196,10 +212,11 @@ unquantized_output = unquantized_linear(data)
 print(f"{unquantized_output=}")
 print(f"{quantized_output=}")
 
+
 # %% [markdown]
-# ✅ Indeed, the `quantized_linear` is behaving exactly as the `unquantized_linear` as we have not specified any quantizers.
-#
-# ⏩ We will now assign quantizers to all of the quantizer fields
+# As expected, `quantized_linear` behaves identically to `unquantized_linear`
+# because no quantizers are active. Let's now assign quantizers to each
+# quantizer field.
 
 # %%
 quantized_linear.input_quantizer = ff.nn.linear_quantizer.LinearQuantizer(num_bits=2)
@@ -207,8 +224,10 @@ quantized_linear.weight_quantizer = ff.nn.linear_quantizer.LinearQuantizer(num_b
 quantized_linear.output_quantizer = ff.nn.linear_quantizer.LinearQuantizer(num_bits=2)
 print(quantized_linear)
 
+
 # %% [markdown]
-# ⏩ As we know from the example above, we first need to initialize the quantizers by passing data trough. Let's do so.
+# Just as before, we need to initialize the quantizers by passing data
+# through them.
 
 # %%
 print("Before range estimation")
@@ -217,7 +236,6 @@ print(f"{quantized_linear.weight_quantizer.quantization_range=}")
 print(f"{quantized_linear.output_quantizer.quantization_range=}")
 print()
 
-
 with ff.range_setting.estimate_ranges(quantized_linear, ff.range_setting.smoothed_minmax):
     quantized_linear(data)
 
@@ -225,12 +243,10 @@ print("After range estimation")
 print(f"{quantized_linear.input_quantizer.quantization_range=}")
 print(f"{quantized_linear.weight_quantizer.quantization_range=}")
 print(f"{quantized_linear.output_quantizer.quantization_range=}")
-print()
+
 
 # %% [markdown]
-# ✅ We can see that all the quantizers in our layer are initialized now.
-#
-# ⏩ We should now be able to call our `quantized_linear`. Let's do that!
+# All quantizers are now initialized and we can call the layer.
 
 # %%
 unquantized_output = unquantized_linear(data)
@@ -242,22 +258,29 @@ print(f"{quantized_output=}")
 print()
 print(f"{quantized_output.dequantize()=}")
 
-# %% [markdown]
-# ✅ We can now see that our `quantized_linear` is behaving as expected:
-#   - The output is a `QuantizedTensor`
-#   - The dequantized output is close to the floating point output, but it is not identical due to quantization error.
 
 # %% [markdown]
-# # 4. Quantized Models
-# In the previous section we showed how to quantize a module:
-#   1. Turn an unquantized module into a quantized module
-#   2. Replace the desired QuantizerStubs with the desired Quantizers
-#   3. Estimate the quantizer ranges by passing data trough the model.
+# `quantized_linear` now behaves as expected:
 #
-# Performing step 1. and 2. were quite laborious in our above example. Since we have to repeat these steps for every layer in the model, we have created helper tools to automate these tasks. In the next section we will show how to use the `QuantizationConfig` to automatically insert quantizers into the model (step 2.).
+# - the output is a `QuantizedTensor`;
+# - the dequantized output is close to the floating point output, but
+#   differs slightly due to quantization error.
+
 
 # %% [markdown]
-# ⏩ We start by making a simple unquantized MLP model.
+# ## 4. Quantized Models
+#
+# The previous section showed the three steps needed to quantize a module:
+#
+# 1. Turn the unquantized module into a quantized module.
+# 2. Replace the desired `QuantizerStub`s with real `Quantizer`s.
+# 3. Estimate the quantizer ranges by passing data through the model.
+#
+# Doing this by hand is tedious for anything larger than a single layer.
+# FastForward provides helpers to automate steps 1 and 2, which we cover
+# next.
+#
+# Let's start with a small MLP.
 
 # %%
 hidden_features = 3
@@ -273,34 +296,35 @@ unquantized_model = torch.nn.Sequential(
 
 unquantized_model
 
+
 # %% [markdown]
-# ### 4.1 Automatically replace `torch.nn.Modules` with their `ff.nn.QuantizedModule` counterparts
+# ### Replacing modules with their quantized counterparts
 #
-# ⏩ The `quantize_model` function can change a model in-place, recursively replacing all modules with their `QuantizedModule` counterparts.
-#
-#  - The way this function works is pretty simple. It just uses a dict that maps `torch.nn.Module` types to `ff.nn.QuantizedModule` types.
-#
-# ⏩ Let's have a look at this dictionary
+# `ff.quantize_model` walks a model in place and replaces every module with
+# its `QuantizedModule` counterpart. Internally it uses a dictionary that
+# maps `torch.nn.Module` subclasses to their `ff.nn.QuantizedModule`
+# equivalents. Let's inspect it.
 
 # %%
 ff.quantized_module_map()
 
+
 # %% [markdown]
-# ⏩ We will now run the `quantize_model` function.
-#
-# ⚠️ Note that the `ff.nn.quantize_model` changes the module classes in-place!
-#
-#   - Because we want to keep access to the full precision network for our comparison we first deepcopy the floating point model.
+# Because `ff.quantize_model` mutates the model in place, we deepcopy the
+# floating point model first so we can still compare against it later.
 
 # %%
+import copy
+
 quantized_model = copy.deepcopy(unquantized_model)
 ff.quantize_model(quantized_model)
 quantized_model
 
+
 # %% [markdown]
-# ✅ We see that all modules in the model are now replaced with their quantized counterpart.
-#
-# ⏩ Since no quantizers are inserted yet, let's confirm that the `quantized_model` still behaves the same as the `unquantized_model`.
+# All modules have been replaced with their quantized counterparts. Since
+# no quantizers are inserted yet, the quantized model should still behave
+# like the unquantized one.
 
 # %%
 with ff.strict_quantization(False):
@@ -311,24 +335,29 @@ unquantized_output = unquantized_model(data)
 print(f"{unquantized_output=}")
 print(f"{quantized_output=}")
 
+
 # %% [markdown]
-# ### 4.2 Automatically inserting `ff.nn.Quantizer`s in the right place in the model.
+# ### Inserting quantizers with `QuantizationConfig`
 #
-# The `ff.QuantizationConfig` is a tool to automatically replace `QuantizerStubs` with `Quantizers`. It works by adding quantization rules.
+# `ff.QuantizationConfig` automates the replacement of `QuantizerStub`s with
+# real `Quantizer`s through a set of rules. Each rule has two parts:
 #
-# A quantization rule consists of two components:
+# 1. A **query** that selects the layers the rule applies to. Filtering
+#    uses the `ff.mpath` library — see the [MPath tutorial](/examples/mpath.nb) for details.
+# 2. A **quantizer class or factory**. When given a class, a new quantizer
+#    of that class is created for each match using the provided keyword
+#    arguments. When given a factory function, the function receives the
+#    full name of the quantizer and the current quantizer at that location,
+#    and is expected to return an initialized quantizer.
 #
-#  1. A `query` determines to which layers the rule should be applied. Filtering is done using the `ff.mpath` library. Please see the tutorial on MPath for more information.
-#  2. A quantizer class or factory. This determines how the quantizer is created. In the case of a Quantizer class, for each match a quantizer of that class is initialized using the provided kwargs. In the case of a factory function, the function receives the full name of the quantizer and the current quantizer at that location. This function is expected to return an initialized quantizer.
+# When multiple rules match the same quantizer, the rule added last wins.
 #
-# If multiple rules match a single quantizer, the rule that was added last takes priority.
-#
-# ⏩ We create our `QuantizationConfig` below, see if you can understand all the rules!
+# Let's build a configuration.
 
 # %%
 config = ff.QuantizationConfig()
 
-# We want to quantize all weights in the model.
+# Quantize all weights in the model.
 config.add_rule(
     "**/[quantizer:parameter/weight]",
     ff.nn.LinearQuantizer,
@@ -337,7 +366,7 @@ config.add_rule(
     granularity=ff.PerChannel(),
 )
 
-# We want to quantize all the outputs in the model, too.
+# Quantize all outputs in the model.
 config.add_rule(
     "**/[quantizer:activation/output]",
     ff.nn.LinearQuantizer,
@@ -347,8 +376,9 @@ config.add_rule(
 )
 
 
-# We only want to enable the input quantizer of the first layer, so that we can turn a floating point input into a quantized input.
-# For the subsequent layers, the input will already be quantized because there will be an output quantizer in the layer before that.
+# Enable the input quantizer only on the first layer, so that a floating
+# point input can be turned into a quantized input. Subsequent layers
+# already receive quantized inputs from the previous output quantizer.
 def input_factory(name: str, current_quantizer: ff.nn.Quantizer) -> ff.nn.Quantizer:  # noqa: ARG001
     return ff.nn.LinearQuantizer(num_bits=8, symmetric=False, granularity=ff.PerTensor())
 
@@ -357,21 +387,23 @@ config.add_rule("0/[quantizer:activation/input]", input_factory)
 
 config
 
+
 # %% [markdown]
-# ✅ Note that in the rule for input quantizers we could have directly specified the quantizer class, but we instead show an example
-# of using a factory function. This function receives both the name and the current quantizer at the given location. This
-# can be an initialized quantizer or a QuantizerStub.
+# For the input quantizer rule we could have passed the quantizer class
+# directly. We used a factory function instead to illustrate how it works:
+# the function receives both the name and the current quantizer at that
+# location (either an initialized quantizer or a `QuantizerStub`).
 #
-# ⏩ Applying the QuantizationConfig to the model is very simple:
+# Applying the configuration to the model is a single call.
 
 # %%
 config.initialize(quantized_model)
 quantized_model
 
+
 # %% [markdown]
-# ✅ Observe that the quantizers in our quantized model are now setup as expected.
-#
-# ⏩ All we have to do now is estimate the ranges for the quantizers, and we can use the quantized model!
+# The quantizers are wired up as expected. All that is left is estimating
+# their ranges, and the model is ready to use.
 
 # %%
 with ff.range_setting.estimate_ranges(quantized_model, ff.range_setting.smoothed_minmax):
@@ -381,14 +413,22 @@ quantized_model(data)
 
 
 # %% [markdown]
-# # 4.3 Quantizing Custom Modules: Manual Quantization
+# ### Quantizing custom modules
 #
-# Your model might not only consist of standard torch modules defined in `torch.nn.*`, but also contain 3rd party or custom modules. `quantize_model` only knows how to convert modules registered in its module map, so it cannot handle a custom layer out of the box. Let us build such a custom module:
+# Real-world models often contain third-party or custom modules on top of
+# the standard `torch.nn` ones. `quantize_model` only knows how to convert
+# modules registered in its module map, so it cannot handle a custom layer
+# out of the box.
 #
-# > 💡 **Tip:** You can also try [`ff.autoquantize`](autoquant.md) (experimental) for this step.
-
+# > **Tip:** [`ff.autoquantize`](autoquant.md) (experimental) can also handle
+# > this step for you.
+#
+# Let's define a custom self-attention layer.
 
 # %%
+from typing_extensions import override
+
+
 class MySelfAttentionLayer(torch.nn.Module):
     def __init__(self, feature_size) -> None:
         print("Calling MySelfAttentionLayer.__init__")
@@ -423,12 +463,17 @@ class MySelfAttentionLayer(torch.nn.Module):
 
 # %%
 num_features = 8
-
 my_unquantized_layer = MySelfAttentionLayer(num_features)
-
 my_unquantized_layer
 
+
+# %% [markdown]
+# If we try to convert it with `ff.quantize_model` as is, the call fails
+# because there is no mapping for `MySelfAttentionLayer`.
+
 # %%
+from pprint import pprint
+
 my_quantized_layer = copy.deepcopy(my_unquantized_layer)
 try:
     ff.quantize_model(my_quantized_layer)
@@ -440,9 +485,8 @@ pprint(ff.quantized_module_map())
 
 
 # %% [markdown]
-# ❌ Observe that `ff.quantize_model` does not work, because it does not know which class `MySelfAttentionLayer` should be mapped to.
-#
-# ⏩ For now, we have to manually define the quantized equivalent of `MySelfAttentionLayer`, we will show how to do so in the next section:
+# To make it work we manually define the quantized equivalent of
+# `MySelfAttentionLayer`.
 
 
 # %%
@@ -491,43 +535,62 @@ class MyQuantizedSelfAttentionLayer(MySelfAttentionLayer, ff.nn.quantized_module
 
 
 # %% [markdown]
-# ⏩ Notice that we made two changes to the model:
-#   1. We have re-implemented the forward pass, replacing all operations from torch.nn.functional with their FastForward quantized equivalent.
-#      1. ❌ Doing this by hand means duplicating the forward-pass code.
-#      2. ⚠️ NOTE: Some of the functionals might be hidden inside a function that is called in your forward pass, make sure to also rewrite those cases.
-#      3. ⚠️ If you are adopting a 3rd party class, you will need to copy-paste the code from the forward pass. Make sure to also freeze the dependency so that your rewritten module will not diverge once the package is updated!
-#      4. In order to use the quantized functionals, we have added Quantizers to the model:
+# We made two changes relative to the unquantized layer:
 #
-#   2.  We added an `__init_quantization__` method that adds the `QuantizerStubs` which could be used later for quantization.
-#       1. ✅ We do not have to copy-paste any code from the `__init__` function
-#       2. ✅ As we will see below, `__init_quantization__` can be used both for initializing a `QuantizedModule` from scratch, or to convert a `Module` to a `QuantizedModule`
+# 1. We re-implemented the forward pass, replacing every operation from
+#    `torch.nn.functional` with its FastForward quantized equivalent.
+#    - This means duplicating the forward-pass code, which is a real
+#      downside.
+#    - Watch out for functionals hidden inside helper functions called
+#      from the forward pass; they need to be rewritten too.
+#    - If you are adapting a third-party class, freeze the dependency so
+#      that your rewritten module does not silently drift when the
+#      upstream implementation changes.
+#    - Using the quantized functionals requires quantizers on the module,
+#      which brings us to the second change.
+# 2. We added an `__init_quantization__` method that inserts the
+#    `QuantizerStub`s used later for quantization.
+#    - No code from the original `__init__` needs to be duplicated.
+#    - As we will see below, `__init_quantization__` can be used both to
+#      initialize a `QuantizedModule` from scratch and to convert an
+#      existing `Module` into a `QuantizedModule`.
 #
-# ⏩ Let's have a look to see how our `MyQuantizedSelfAttentionLayer` behaves when initialized from scratch:
+# Let's see how `MyQuantizedSelfAttentionLayer` behaves when initialized
+# from scratch.
 
 # %%
 new_quantized_layer = MyQuantizedSelfAttentionLayer(num_features)
 new_quantized_layer
 
+
 # %% [markdown]
-# ⏩ Observe that:
-#   1. `MySelfAttentionLayer.__init__` is first called, initializing the layer using the logic of the unquantized base layer.
-#   2. `MyQuantizedSelfAttentionLayer.__init_quantization__` is then called, inserting the quantizer stubs.
-#   3. The children modules are not converted to their quantized counterparts when initializing from scratch.
+# Observe that:
 #
-# ⏩ In practice, we will typically not initialize quantized modules from scratch, but we will rather take a floating point model and recursively convert all it's submodules.
+# 1. `MySelfAttentionLayer.__init__` is called first, initializing the
+#    layer through the unquantized base class.
+# 2. `MyQuantizedSelfAttentionLayer.__init_quantization__` is then called,
+#    inserting the quantizer stubs.
+# 3. When initialized from scratch, child modules are not converted to
+#    their quantized counterparts.
 #
-# ⏩ We will now look how `MyQuantizedSelfAttentionLayer` behaves when converted using the `quantize_model` function. First, let's look at the `quantized_module_map`:
+# In practice we rarely initialize quantized modules from scratch. It is
+# more common to take a floating point model and recursively convert its
+# submodules. Before doing so, let's look at the `quantized_module_map`
+# again.
 
 # %%
 print("ff.quantized_module_map():")
 pprint(ff.quantized_module_map()[MySelfAttentionLayer])
 
+
 # %% [markdown]
-# ✅ Note that `MySelfAttentionLayer` automatically appeared in the `quantized_module_map`!
+# `MySelfAttentionLayer` now appears in `quantized_module_map`. All
+# subclasses of `QuantizedModule` are picked up automatically, provided the
+# class has been imported. If your class does not show up, import it, or
+# use the `extra_conversion` argument to override entries in
+# `quantized_module_map`.
 #
-# ⚠️ All subclasses of `QuantizedModel` are automatically found in `fastforward.nn.quantized_module.quantized_module_map()`, but this requires the classes to be imported. If your class does not show up, make sure to import it, or use the `extra_conversion` argument if you want to override any mappings in the `quantized_module_map`.
-#
-# ⏩ We will now look how `MyQuantizedSelfAttentionLayer` behaves when converted using the `quantize_model` function.
+# Now let's convert an existing instance with `quantize_model`.
 
 # %%
 my_quantized_layer = copy.deepcopy(my_unquantized_layer)
@@ -535,12 +598,19 @@ ff.quantize_model(my_quantized_layer)
 
 my_quantized_layer
 
+
 # %% [markdown]
-# ⏩ Observe that:
-#   1. Since we convert an existing layer, `MySelfAttentionLayer.__init__` is not called again.
-#   2. The class of our module is changed from `MySelfAttentionLayer` to `MyQuantizedSelfAttentionLayer`.
-#   3. `MyQuantizedSelfAttentionLayer.__init_quantization__` is still called, inserting the quantizer stubs into the previously unquantized layer.
-#   4. The children modules are also converted to their quantized counterparts by calling `MyQuantizedSelfAttentionLayer.quantize_children`.
+# Observe that:
+#
+# 1. Because we are converting an existing layer,
+#    `MySelfAttentionLayer.__init__` is not called again.
+# 2. The module's class changes from `MySelfAttentionLayer` to
+#    `MyQuantizedSelfAttentionLayer`.
+# 3. `MyQuantizedSelfAttentionLayer.__init_quantization__` is still called,
+#    which inserts the quantizer stubs into the previously unquantized
+#    layer.
+# 4. Child modules are also converted to their quantized counterparts via
+#    `MyQuantizedSelfAttentionLayer.quantize_children`.
 #
 #
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.

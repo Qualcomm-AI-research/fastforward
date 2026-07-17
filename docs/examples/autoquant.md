@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # FastForward Autoquant Tutorial
 
 `ff.autoquantize` (Autoquant) automatically rewrites a PyTorch module into a

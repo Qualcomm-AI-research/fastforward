@@ -16,3 +16,473 @@
   -webkit-mask-image: var(--md-admonition-icon--experimental);
           mask-image: var(--md-admonition-icon--experimental);
 }
+
+/* -------------------------------------------------------------------------
+ * Notebook cell styling (mkdocs-jupyter)
+ *
+ * Goals: hide In[]/Out[] execution-count prompts, enlarge the code font,
+ * give output blocks a distinct sphinx-gallery-style background, and add
+ * breathing room between cells.
+ *
+ * Covers both the JupyterLab HTML template (.jp-* classes) and the older
+ * nbconvert classic template (.input/.output/.prompt) so the rules apply
+ * regardless of which nbconvert template mkdocs-jupyter picks.
+ * ------------------------------------------------------------------------- */
+
+/* Hide execution-count prompts ("In [3]:", "Out[3]:") and the left collapsers. */
+.jp-InputPrompt,
+.jp-OutputPrompt,
+.jp-Cell-inputCollapser,
+.jp-Cell-outputCollapser,
+.jp-Collapser,
+.input_prompt,
+.output_prompt,
+div.prompt {
+  display: none !important;
+}
+
+/* Reclaim the horizontal space the prompts used to occupy. */
+.jp-Cell .jp-Cell-inputWrapper,
+.jp-Cell .jp-Cell-outputWrapper,
+.jp-InputArea,
+.jp-OutputArea {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* Extra room between cells. */
+.jp-Cell,
+div.cell {
+  margin: 1.5rem 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove JupyterLab's default notebook-level padding. Its stock
+ * `--jp-notebook-padding` is asymmetric (extra room on the left for the
+ * line-number gutter) and shifts notebook content rightward relative to
+ * the site header. Zeroing it aligns tutorial content with the header. */
+.jp-Notebook,
+.jupyter-notebook,
+article > .jupyter-notebook {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Notebook pages are excluded from the site nav (`not_in_nav`), so
+ * mkdocs-material can't figure out which tab they belong to and no tab
+ * link gets `--active`. Force the Tutorials tab to render as active
+ * whenever the page is a notebook.
+ *
+ * Tabs use RELATIVE hrefs (from an /examples/foo/ page the Tutorials
+ * tab's href is `../`, not `examples/`), so href-substring matching
+ * doesn't work. Targeting by nav order instead — Tutorials is the 2nd
+ * top-level entry in `mkdocs.yml` (Home, Tutorials, API reference).
+ * If that order changes, update the `nth-child` index. */
+body:has(.jp-Cell) .md-tabs__item:nth-child(2) > .md-tabs__link {
+  color: var(--md-primary-bg-color, #fff);
+  font-weight: 700;
+  opacity: 1;
+}
+
+/* Larger, more readable code font inside notebook cells. */
+.jp-CodeMirrorEditor pre,
+.jp-InputArea pre,
+.jp-InputArea code,
+.jp-RenderedText,
+.jp-RenderedText pre,
+.jp-OutputArea-output pre,
+.jp-OutputArea-output code,
+.highlight pre,
+.highlight code {
+  font-size: 0.60rem !important;
+  line-height: 1.5\ !important;
+}
+
+/* Sphinx-gallery-style output block: subtle grey background + accent bar.
+ *
+ * Styled on the OUTPUT-AREA CONTAINER (parent), not the individual
+ * output children. A cell that emits multiple things (stream + result,
+ * stderr + stdout, or several `print()` calls) has several
+ * `.jp-OutputArea-output` siblings — styling each of them produces the
+ * stacked-boxes look. Boxing the parent instead gives a single block
+ * per cell regardless of how many outputs it contains. */
+.jp-Cell-outputArea,
+.jp-OutputArea,
+div.output_wrapper,
+div.output {
+  background-color: var(--md-code-bg-color, #f5f5f5);
+  border-left: 3px solid var(--md-primary-fg-color, #673ab7);
+  border-radius: 0 4px 4px 0;
+  padding: 0.75rem 1rem !important;
+  margin-top: 0.25rem;
+}
+
+/* Individual output children stay transparent and tightly packed so
+ * they visually merge into the single parent box above. */
+.jp-OutputArea-output,
+div.output_area {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Drop the trailing newline that pandoc/nbconvert emit after each
+ * stream chunk, which otherwise leaves a visible blank line between
+ * consecutive outputs. */
+.jp-OutputArea-output pre,
+div.output_area pre {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Keep the input code block visually distinct from output. */
+.jp-InputArea .highlight,
+.jp-InputArea pre {
+  border-radius: 4px;
+  padding: 0.75rem 1rem !important;
+}
+
+/* Markdown cells inside notebooks: match the site body prose sizing. */
+.jp-MarkdownCell .jp-RenderedMarkdown,
+div.text_cell_render {
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+/* Tighten header spacing inside notebook markdown so section breaks read
+ * as sections rather than as isolated titles. */
+.jp-MarkdownCell h1,
+.jp-MarkdownCell h2,
+.jp-MarkdownCell h3 {
+  margin-top: 2rem;
+}
+
+/* -------------------------------------------------------------------------
+ * API reference styling (mkdocstrings-python)
+ *
+ * mkdocstrings' `::: module` directive wraps the whole page in a
+ * `.doc-module` container. That outer container is stripped here so the
+ * page reads as a flat list of symbols rather than one enclosed div.
+ * Each documented class, function, or attribute gets its own boxed card
+ * so it is easy to see where one symbol ends and the next begins.
+ * ------------------------------------------------------------------------- */
+
+/* Remove the module-level card so the page doesn't feel enclosed. */
+.md-typeset .doc-module,
+.md-typeset .doc-module > .doc-contents {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Every documented class, function, and attribute becomes its own card. */
+.md-typeset .doc-class,
+.md-typeset .doc-function,
+.md-typeset .doc-attribute {
+  border-left: 3px solid var(--md-primary-fg-color);
+  background-color: var(--md-code-bg-color, rgba(0, 0, 0, 0.03));
+  border-radius: 0 6px 6px 0;
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  position: relative;
+}
+
+/* Nested cards (methods/attributes rendered inside a parent class's
+ * card) sit closer together — the wider margin is reserved for
+ * separating top-level module members from each other. Anchored on the
+ * parent card selectors (not on `.doc-contents`) because a module also
+ * has a `.doc-contents`, so a plain `.doc-contents .doc-*` descendant
+ * selector would incorrectly match top-level module members too. */
+.md-typeset :is(.doc-class, .doc-function, .doc-attribute) :is(.doc-class, .doc-function, .doc-attribute) {
+  margin: 0.4rem 0;
+}
+
+/* Card heading sits at the top of its card, no extra top or bottom
+ * margin so the signature hugs the card border and the docstring
+ * starts immediately below it. */
+.md-typeset .doc-class > .doc-heading,
+.md-typeset .doc-function > .doc-heading,
+.md-typeset .doc-attribute > .doc-heading {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* PyTorch-style body indent: the signature heading stays flush with the
+ * left of the card, while the docstring, parameter tables, attribute
+ * lists, and nested members are indented so they visibly "belong" to the
+ * heading above. */
+.md-typeset .doc-class > .doc-contents,
+.md-typeset .doc-function > .doc-contents,
+.md-typeset .doc-attribute > .doc-contents {
+  padding-left: 1.55rem;
+}
+
+/* Shrink the description text (paragraphs, parameter/attribute tables,
+ * "Returns"/"Raises" sections) so it reads as visually secondary to the
+ * signature. Scoped to direct non-card children (`:not(.doc-object)`) so
+ * nested method / attribute cards keep Material's base size — otherwise
+ * the class's reduced font would cascade into method headings (which use
+ * em-based sizing) and shrink them proportionally. */
+.md-typeset .doc-class > .doc-contents > *:not(.doc-object),
+.md-typeset .doc-function > .doc-contents > *:not(.doc-object),
+.md-typeset .doc-attribute > .doc-contents > *:not(.doc-object) {
+  font-size: 0.68rem;
+}
+
+/* Deep-level headings inside API reference cards (h6 shows up as method
+ * signatures nested several levels deep, or as docstring subsection
+ * labels like "Parameters:" / "Returns:"). Material's em-based heading
+ * sizing renders these very small because they cascade off the reduced
+ * description font above; set an absolute rem to keep them legible. */
+.md-typeset .doc-object h6 {
+  font-size: 0.75rem;
+}
+
+/* Wider layout for every page, capped so prose lines don't get
+ * uncomfortably long on ultra-wide monitors. `.md-grid` is the shared
+ * max-width helper used by the header, tabs, main content, and footer,
+ * so widening it on all of them keeps the header aligned with the
+ * widened content column. 80% leaves ~10% breathing room on each side;
+ * the 80rem cap keeps body text within a readable line length even on
+ * very wide viewports. */
+.md-grid {
+  max-width: min(80%, 70rem);
+}
+
+/* Let the repo/GitHub button size to its icon + label instead of the
+ * theme's fixed ~11.7rem width. With auto width the header's flex-grow
+ * slot expands, pushing the search bar and the button flush against the
+ * right edge of the header. */
+.md-header__source {
+  width: auto;
+  max-width: none;
+}
+.md-source__repository {
+  max-width: none;
+  overflow: visible;
+}
+
+/* Landing page: narrower article body than the rest of the site so the
+ * hero, feature cards, and code snippet feel centered rather than
+ * stretched. Only the content column is narrowed — the header, tabs,
+ * and footer keep the site-wide `.md-grid` width so the top bar still
+ * spans the same visual band as every other page.
+ *
+ * Keyed off a hidden marker div (`<div class="landing-page">`) placed
+ * at the top of `docs/index.md` so this rule doesn't accidentally apply
+ * to any other page. */
+body:has(.landing-page) .md-content__inner {
+  max-width: 55rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Landing page H1: the toc `permalink: "#"` extension appends a
+ * `<a class="headerlink">#</a>` inside every heading. It's normally hidden
+ * (revealed on hover), but it still occupies inline flow space, which
+ * shifts the visible "FastForward" text left of the centered container.
+ * Taking it out of the flow with `position: absolute` lets only the
+ * heading text participate in `text-align: center`. */
+body:has(.landing-page) .md-typeset h1 .headerlink {
+  position: absolute;
+}
+
+
+/* Tutorials page: hover feedback for the fully-clickable cards. The
+ * click behavior itself is wired up by `docs/javascripts/clickable-cards.js`
+ * — CSS overlay tricks were unreliable here because Material's card
+ * children introduce their own stacking contexts. */
+body:has(.tutorial-cards) .md-typeset .grid.cards > ul > li {
+  transition: border-color 125ms, box-shadow 125ms;
+}
+body:has(.tutorial-cards) .md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Category labels in the sidebar TOC (Attributes / Classes / Functions /
+ * Methods / Type Aliases / Modules / Submodules) are styled as small
+ * uppercase section headers so they visibly differ from the code symbols
+ * listed underneath. Most suffixes are set by mkdocstrings' children
+ * template (`html_id ~ "-attributes"` etc.), which is stable enough to
+ * key off. `#submodules` is the odd one out — it comes from the plain
+ * `## Submodules` markdown heading emitted by `docs/hooks/gen_reference.py`
+ * on package pages, so its anchor has no dash prefix.
+ *
+ * Scoped to `body:has(.doc-object)` — i.e., only on API reference pages.
+ * Tutorial section headings can legitimately produce IDs ending in
+ * `-modules` (e.g. "Quantized Modules"), which would otherwise be
+ * miscategorized as an API "Modules" section label and rendered in the
+ * tiny uppercase style. */
+body:has(.doc-object) .md-nav__link[href$="-attributes"],
+body:has(.doc-object) .md-nav__link[href$="-classes"],
+body:has(.doc-object) .md-nav__link[href$="-functions"],
+body:has(.doc-object) .md-nav__link[href$="-methods"],
+body:has(.doc-object) .md-nav__link[href$="-type_aliases"],
+body:has(.doc-object) .md-nav__link[href$="-modules"],
+body:has(.doc-object) .md-nav__link[href$="#submodules"] {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--md-default-fg-color--lighter, #888);
+}
+
+/* Breathing room under the right-hand TOC's "Table of contents" title on
+ * API reference pages. The first entry underneath is a category label
+ * (Attributes / Classes / Functions / ... / Submodules) rendered small
+ * and uppercase by the rule above, which otherwise sits flush against
+ * the title text and reads as visually crammed. */
+body:has(.doc-object) .md-nav--secondary > .md-nav__title {
+  margin-bottom: 0.8rem;
+}
+
+/* Extra top margin on each category `<li>` so the label visually belongs
+ * to the symbols underneath it rather than trailing the previous
+ * category. Uniform inter-item spacing would leave every category label
+ * equidistant from the tail of the previous group and its own children;
+ * pushing the entire `<li>` (label + children) down keeps the label
+ * anchored to its own list. `:not(:first-child)` skips the leading
+ * category so no extra gap opens under the "Table of contents" title
+ * (already handled by the rule above). */
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-attributes"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-classes"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-functions"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-methods"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-type_aliases"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="-modules"]),
+body:has(.doc-object) .md-nav__item:not(:first-child):has(> .md-nav__link[href$="#submodules"]) {
+  margin-top: 0.75rem;
+}
+
+/* "[source]" link that replaces the mkdocstrings <details> block —
+ * injected by `docs/source_link_hook.py`. Positioned at the top-right of
+ * each documented card so it sits at the same visual level as the
+ * class/function signature heading. */
+.md-typeset .doc-source-link {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* Reserve horizontal space in the heading so a long signature doesn't
+ * run under the "[source]" link. Only applied when the card actually
+ * has a source link. */
+.md-typeset .doc-class:has(> .doc-contents > .doc-source-link) > .doc-heading,
+.md-typeset .doc-function:has(> .doc-contents > .doc-source-link) > .doc-heading {
+  padding-right: 6.5rem;
+}
+
+.md-typeset .doc-source-link a {
+  color: var(--md-primary-fg-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.md-typeset .doc-source-link a:hover {
+  text-decoration: underline;
+}
+
+.md-typeset .doc-source-link a::after {
+  content: " ↗";
+  font-size: 0.75em;
+  vertical-align: baseline;
+}
+
+/* Submodule list on package pages: the docstring summary next to each
+ * child module link is muted and slightly smaller so the module name
+ * remains the primary anchor for the eye. Injected by
+ * `docs/gen_reference.py`. */
+.md-typeset .doc-submodule-summary {
+  font-size: 0.70rem;
+  color: var(--md-default-fg-color--light, #888);
+}
+
+/* -------------------------------------------------------------------------
+ * API reference heading — name emphasis and signature de-bolding.
+ *
+ * mkdocstrings-python passes the whole "path.to.Symbol(args)" through
+ * Pygments so it comes out as syntax-highlighted code inside an <h3>.
+ * The <h3>'s default bold flattens Pygments' token colors and makes
+ * argument names / defaults visually indistinguishable from the symbol
+ * name itself. This block:
+ *   1. Un-bolds all tokens inside the heading code.
+ *   2. Re-bolds the last dotted segment (the actual symbol name) and
+ *      colors it with the primary accent. The `.doc-heading-name` /
+ *      `.doc-heading-qualifier` classes are added client-side by
+ *      docs/javascripts/api-heading-styling.js.
+ *   3. Explicitly colors literal tokens (booleans/None, numbers,
+ *      strings, builtins) against Material's --md-code-hl-* variables
+ *      in case the theme's default rules don't reach inside headings.
+ * ------------------------------------------------------------------------- */
+
+.md-typeset .doc-heading code {
+  font-weight: normal;
+}
+
+.md-typeset .doc-heading .doc-heading-name {
+  color: var(--md-primary-fg-color);
+  font-weight: 700;
+}
+
+.md-typeset .doc-heading .doc-heading-qualifier {
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+}
+
+/* Argument names inside the signature — bold, so they stand out from
+ * annotations and default values. Excludes the leading dotted name
+ * tokens which already carry .doc-heading-name / .doc-heading-qualifier
+ * (client-side by api-heading-styling.js). */
+.md-typeset .doc-heading code .n:not(.doc-heading-name):not(.doc-heading-qualifier) {
+  font-weight: 700;
+}
+
+/* Default argument values — booleans/None, numbers, and strings — get
+ * italic on top of their Pygments token color so they read as literals
+ * rather than as identifiers. */
+.md-typeset .doc-heading code .kc,
+.md-typeset .doc-heading code .mi,
+.md-typeset .doc-heading code .mf,
+.md-typeset .doc-heading code .mh,
+.md-typeset .doc-heading code .mo,
+.md-typeset .doc-heading code .il,
+.md-typeset .doc-heading code .s,
+.md-typeset .doc-heading code .s1,
+.md-typeset .doc-heading code .s2,
+.md-typeset .doc-heading code .sa,
+.md-typeset .doc-heading code .sb,
+.md-typeset .doc-heading code .sh {
+  font-style: italic;
+}
+
+.md-typeset .doc-heading code .kc {
+  color: var(--md-code-hl-keyword-color, #c678dd);
+}
+
+.md-typeset .doc-heading code .mi,
+.md-typeset .doc-heading code .mf,
+.md-typeset .doc-heading code .mh,
+.md-typeset .doc-heading code .mo,
+.md-typeset .doc-heading code .il {
+  color: var(--md-code-hl-number-color, #d19a66);
+}
+
+.md-typeset .doc-heading code .s,
+.md-typeset .doc-heading code .s1,
+.md-typeset .doc-heading code .s2,
+.md-typeset .doc-heading code .sa,
+.md-typeset .doc-heading code .sb,
+.md-typeset .doc-heading code .sh {
+  color: var(--md-code-hl-string-color, #98c379);
+}
+
+.md-typeset .doc-heading code .nb {
+  color: var(--md-code-hl-name-color, #56b6c2);
+}

@@ -14,10 +14,10 @@
 
 # %% [markdown]
 # ---
-# # AutoQuant: Quantizing Llama 3.2
+# # AutoQuant: Quantizing Qwen-3 0.6B
 #
 # This tutorial walks through `ff.autoquantize`, FastForward's automated quantization workflow,
-# applied to Meta's Llama 3.2 1B Instruct model pulled from HuggingFace.
+# applied to Qwen-3 0.6B model pulled from HuggingFace.
 #
 # We will:
 #
@@ -36,15 +36,22 @@ import fastforward as ff
 import torch
 
 from datasets import load_dataset
-from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
+from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator
 
-model_name_or_path = os.environ.get("FF_QUICKSTART_MODEL", "meta-llama/Llama-3.2-1B-Instruct")
-model_dtype = torch.bfloat16
+# Any model from Qwen3 family can be used:
+# - "Qwen/Qwen3-0.6B"
+# - "Qwen/Qwen3-1.7B"
+# - "Qwen/Qwen3-4B"
+# - "Qwen/Qwen3-8B"
+# - ...
+model_name_or_path = os.environ.get("FF_AUTOQUANT_QWEN_MODEL", "Qwen/Qwen3-0.6B")
+
+model_dtype = torch.float16
 device = "cuda"
 
-model = LlamaForCausalLM.from_pretrained(
+model = AutoModelForCausalLM.from_pretrained(
     pretrained_model_name_or_path=model_name_or_path,
-    torch_dtype=model_dtype,
+    dtype=model_dtype,
     attn_implementation="eager",
     from_tf=False,
 )
@@ -84,7 +91,7 @@ train_loader = DataLoader(tokenized_trainset, batch_size, collate_fn=default_dat
 
 # %% [markdown]
 # ---
-# # Evaluate the FP Model
+# ## Evaluate the FP Model
 #
 # Before quantizing anything, we measure the floating-point model's perplexity on the validation split.
 # This is the reference number that the quantized model will be compared against.
@@ -121,7 +128,7 @@ print(fp_task_results)
 
 # %% [markdown]
 # ---
-# # AutoQuant: Generate the Quantization-Ready Source Code
+# ## AutoQuant: Generate Model Source
 #
 # A single call to `ff.autoquantize` inspects the model and emits a Python file containing
 # quantization-ready versions of every module it encounters.
@@ -135,7 +142,7 @@ print(f"Autoquantize model {type(model).__name__}")
 
 code = ff.autoquantize(
     model,
-    output_path="_autoquantized_llama.py",
+    output_path="_autoquantized_qwen.py",
     force_overwrite=True,
     auto_import=True,  # immediately import the generated code
 )
@@ -143,7 +150,7 @@ code = ff.autoquantize(
 
 # %% [markdown]
 # ---
-# # Create the Quantization-Ready Model
+# ## Create the Quantization-Ready Model
 #
 # With the generated module imported, `ff.quantize_model` rewrites the original model in place:
 # every layer that has a quantized counterpart is swapped in.
@@ -156,7 +163,7 @@ code = ff.autoquantize(
 #  - If you just run `ff.autoquantize` with `auto_import=True`, you don't need to explicitly import.
 
 # %%
-from _autoquantized_llama import QuantizedLlamaForCausalLM
+from _autoquantized_qwen import QuantizedQwen3ForCausalLM
 
 # Transform the original model into a quantized-ready using the imported quantized-modules
 ff.quantize_model(model, skip_quantized_modules=True)
@@ -165,12 +172,12 @@ ff.quantize_model(model, skip_quantized_modules=True)
 # OPTIONAL: you can cast the model to QuantizedLlamaForCausalLM to help LSP or IDE
 from typing import cast
 
-model: QuantizedLlamaForCausalLM = cast(QuantizedLlamaForCausalLM, model)
+model: QuantizedQwen3ForCausalLM = cast(QuantizedQwen3ForCausalLM, model)
 
 
 # %% [markdown]
 # ---
-# # Initialize the Quantizers
+# ## Initialize the Quantizers
 #
 # The model now contains placeholder quantizer stubs at every site where a quantizer could be inserted.
 # We decide which stubs to activate, and with what configuration.
@@ -187,7 +194,7 @@ model: QuantizedLlamaForCausalLM = cast(QuantizedLlamaForCausalLM, model)
 # Tweaking these settings is how the accuracy / efficiency trade-off is dialed in.
 
 # %%
-from fastforward.nn import DynamicLinearQuantizer, LinearQuantizer
+from fastforward.nn import LinearQuantizer
 
 # Granularities
 per_block_32 = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -210,7 +217,7 @@ print(f"Embedding wegiht quantizers: {len(embed_w_quants)}")
 
 # %% [markdown]
 # ---
-# # Calibrate the Quantizers
+# ## Calibrate the Quantizers
 #
 # Static quantizers like `LinearQuantizer` need to observe real activations to choose appropriate quantization ranges.
 # We run a few batches from the training split through the model inside the `ff.estimate_ranges` context manager,
@@ -222,20 +229,22 @@ print(f"Embedding wegiht quantizers: {len(embed_w_quants)}")
 
 model.to(device)
 
-with ff.estimate_ranges(model, ff.range_setting.running_minmax), ff.strict_quantization(False):
-    for batch in sliced_tqdm(valid_loader, limit=4):
-        batch = prepare_batch(batch, device)
-        outputs = model(**batch)
+with ff.strict_quantization(False):
+    with torch.no_grad(), ff.estimate_ranges(model, ff.range_setting.smoothed_minmax):
+        for batch in sliced_tqdm(valid_loader, limit=4):
+            model(**prepare_batch(batch, device))
 
 # %% [markdown]
 # ---
-# # Initialize Dynamic Quantizers
+# ## Initialize Dynamic Quantizers
 # Dynamic quantizers do not need calibration, so we initialize them after we already
 # calibrated all the static quantizers.
 
 # %%
 
 # Granularity
+from fastforward.nn import DynamicLinearQuantizer
+
 per_token = ff.granularity.PerChannel(channel_dim=1)
 
 # Model activation quantizers: find and initialize
@@ -253,7 +262,7 @@ print(f"Activation quantizers: {len(a_quants)}")
 
 # %% [markdown]
 # ---
-# # Evaluate the Quantized Model
+# ## Evaluate the Quantized Model
 #
 # Finally, we recompute perplexity on the validation split and compare against the FP baseline.
 # The gap reflects the cost of the quantization configuration we picked above;
@@ -265,7 +274,7 @@ model.to(device)
 with ff.strict_quantization(False):
     q_task_results = evaluate_model(model, valid_loader, limit=8, device=device)
 
-print("Quantized LLaMA performance:")
+print("Quantized Qwen performance:")
 print(f"---> FP perplexity:    {fp_task_results}")
 print(f"---> Quant perplexity: {q_task_results}")
 

@@ -1,0 +1,1 @@
+PYTHONPATH="$PYTHONPATH:$PWD/docs/examples" mkdocs serve --config-file mkdocs.yml -a 0.0.0.0:8888 -v

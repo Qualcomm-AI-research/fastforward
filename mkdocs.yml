@@ -14,6 +14,8 @@ validation:
 
 theme:
   name: material
+  logo: assets/ff-logo-white.png
+  favicon: assets/ff-logo-purple.png
   palette:
     primary: deep purple
   features:
@@ -22,17 +24,19 @@ theme:
   - content.tooltips
   - navigation.tabs
   - toc.follow
-  - toc.integrate
+  # - toc.integrate # enable page-level TOC in the left-hand navigation sidebar
+
 
 nav:
-  - Home: 
-    - Overview: index.md
+  - Home: index.md
   - Tutorials: examples/index.md
   - API reference: reference/
 
 exclude_docs: |
   gen_reference.py
   no_sitemap_plugin.py
+  source_link_hook.py
+  notebook_meta_hook.py
 
 not_in_nav: |
   examples/**/*.nb.py
@@ -50,6 +54,7 @@ plugins:
       include: ["*.nb.py"]
       include_source: True
       allow_errors: false
+      cache_dir: !ENV [MKDOCS_JUPYTER_CACHE_DIR, ".mkdocs_cache/mkdocs-jupyter"] #, ".cache/mkdocs-jupyter"]
 
   # https://squidfunk.github.io/mkdocs-material/plugins/search/
   - search
@@ -57,11 +62,12 @@ plugins:
   # Generate files for Reference API dynamically
   - gen-files:
       scripts:
-        - docs/gen_reference.py
+        - docs/hooks/gen_reference.py
   # https://github.com/oprypin/mkdocs-literate-nav
   - literate-nav:
       nav_file: summary.md
   - mkdocstrings:
+      custom_templates: docs/_templates
       handlers:
         python:
           paths: [src/fastforward]
@@ -76,6 +82,10 @@ plugins:
             show_root_members_full_path: true
             show_symbol_type_heading: true
             show_root_toc_entry: false
+            group_by_category: true
+            show_category_heading: true
+            filters:
+              - "!^_"
   - section-index
   # https://github.com/jimporter/mike
   # Generate doc for each version
@@ -83,11 +93,18 @@ plugins:
       version_selector: True
 
 hooks:
-  - docs/no_sitemap_plugin.py
+  - docs/hooks/no_sitemap_hook.py
+  - docs/hooks/source_link_hook.py
+  - docs/hooks/notebook_meta_hook.py
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       use_pygments: true
   - pymdownx.superfences
@@ -97,6 +114,11 @@ markdown_extensions:
       check_paths: true
   - toc:
       permalink: "#"
+      toc_depth: 4
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/clickable-cards.js
+  - javascripts/api-heading-styling.js

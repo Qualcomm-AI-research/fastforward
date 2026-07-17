@@ -19,6 +19,7 @@ env:
   HF_HUB_OFFLINE: ${{ vars.HF_HUB_OFFLINE }}
   HF_HUB_CACHE: ${{ vars.HF_HUB_CACHE }}
   HF_DATASETS_CACHE: ${{ vars.HF_DATASETS_CACHE }}
+  MKDOCS_JUPYTER_CACHE_DIR: ${{ vars.MKDOCS_JUPYTER_CACHE_DIR }}
 
 concurrency:
   group: ${{ github.workflow }}
