@@ -727,17 +727,14 @@ def test_helper_public_api_refs_follow_renamed_helpers() -> None:
     code = autoquant_with_defaults(_IssueAHelperRefModule(), use_type_inference=False)
     code = codeformat_with_defaults(code)
 
-    # THEN unquantized helper names do not appear as dispatch targets inside the
-    # generated handle_torch_function calls
-    assert "quantized_handle_torch_function(\n            multi_head_attention_forward," not in code
-    assert "quantized_handle_torch_function(\n            relu," not in code
-    assert "quantized_handle_torch_function(\n            group_norm," not in code
+    # THEN handle_torch_function is preserved as-is (bypass policy) and never
+    # rewritten to a quantized_* wrapper
+    assert "quantized_handle_torch_function" not in code
+    assert "handle_torch_function(" in code
 
-    # THEN the renamed helper is used as the dispatch target
-    assert (
-        "quantized_handle_torch_function(\n            quantized_multi_head_attention_forward,"
-        in code
-    )
+    # THEN the callsite argument that references the surrounding helper still
+    # follows the rename (multi_head_attention_forward -> quantized_...)
+    assert "handle_torch_function(\n            quantized_multi_head_attention_forward," in code
 
     # THEN softmax is dispatched directly as a leaf op via the alias-aware optable
     assert "fastforward.nn.functional.softmax(" in code
@@ -1413,3 +1410,134 @@ def test_autoquant_rewrites_torch_and_functional_relu_to_same_dispatch() -> None
     expected_call = "fastforward.nn.functional.relu("
     assert expected_call in rewritten_torch
     assert expected_call in rewritten_functional
+
+
+# --------------------------------------------------------------------------------
+# Bypass policy tests
+#
+# The AutoQuant bypass policy preserves control/override-style torch ops as-is:
+# they are never wrapped as `quantized_*`, they generate no quantizer params,
+# and AutoQuant does not descend into their implementation as a helper.
+
+
+class _BypassCheckpointModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        def inner(t: torch.Tensor) -> torch.Tensor:
+            return t + t
+
+        return torch.utils.checkpoint.checkpoint(inner, x, use_reentrant=False)  # type: ignore[no-any-return]
+
+
+class _BypassCheckpointWithImportModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        from torch.utils.checkpoint import checkpoint
+
+        def inner(t: torch.Tensor) -> torch.Tensor:
+            return t + t
+
+        return checkpoint(inner, x, use_reentrant=False)  # type: ignore[no-any-return]
+
+
+class _BypassIsExportingModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if torch.compiler.is_exporting():
+            return x
+        return x + x
+
+
+class _BypassCheckWithModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        torch._check_with(RuntimeError, x.numel() > 0, lambda: "x must not be empty")
+        return x + x
+
+
+class _BypassHandleTorchFunctionModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if torch.overrides.has_torch_function((x,)):
+            out = torch.overrides.handle_torch_function(
+                _BypassHandleTorchFunctionModule.forward, (x,), self, x
+            )
+            assert isinstance(out, torch.Tensor)
+            return out
+        return x + x
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("input_module", "callsite"),
+    [
+        pytest.param(
+            _BypassCheckpointModule(),
+            "torch.utils.checkpoint.checkpoint(",
+            id="checkpoint",
+        ),
+        pytest.param(
+            _BypassCheckpointWithImportModule(),
+            "checkpoint(",
+            id="checkpoint",
+        ),
+        pytest.param(
+            _BypassIsExportingModule(),
+            "torch.compiler.is_exporting(",
+            id="is_exporting",
+        ),
+        pytest.param(
+            _BypassCheckWithModule(),
+            "torch._check_with(",
+            id="_check_with",
+        ),
+        pytest.param(
+            _BypassHandleTorchFunctionModule(),
+            "torch.overrides.handle_torch_function(",
+            id="handle_torch_function",
+        ),
+    ],
+)
+def test_autoquant_bypass_preserves_direct_callsites(
+    input_module: torch.nn.Module, callsite: str
+) -> None:
+    # GIVEN a module whose forward invokes a bypass op as a fully qualified callsite
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(input_module, use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the bypass callsite is preserved as-is
+    assert callsite in code
+
+    # THEN no quantized_* wrapper was generated for the bypass op
+    bypass_leaf = callsite.rsplit(".", 1)[-1].rstrip("(")
+    assert f"quantized_{bypass_leaf}(" not in code
+    assert f"def quantized_{bypass_leaf}(" not in code
+
+
+class _BypassNestedHelperModule(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return _bypass_helper_using_checkpoint(x)
+
+
+def _bypass_helper_using_checkpoint(x: torch.Tensor) -> torch.Tensor:
+    def inner(t: torch.Tensor) -> torch.Tensor:
+        return t * 2
+
+    return torch.utils.checkpoint.checkpoint(inner, x, use_reentrant=False)  # type: ignore[no-any-return]
+
+
+@pytest.mark.slow
+def test_autoquant_bypass_in_nested_helper_context() -> None:
+    # GIVEN a module whose forward calls a helper that itself invokes a bypass op
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(_BypassNestedHelperModule(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the bypass callsite inside the helper is preserved as-is
+    assert "torch.utils.checkpoint.checkpoint(" in code
+
+    # THEN no quantized_checkpoint wrapper is generated
+    assert "quantized_checkpoint(" not in code
+    assert "def quantized_checkpoint(" not in code
+
+    # THEN no quantizer parameter is generated for the bypass op — the helper's
+    # signature contains no parameter that mentions checkpoint.
+    assert "quantizer_checkpoint" not in code

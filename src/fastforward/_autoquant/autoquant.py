@@ -22,6 +22,7 @@ import fastforward as ff
 import fastforward._autoquant.cst.nodes as nodes
 
 from fastforward._autoquant import pybuilder, pysource
+from fastforward._autoquant.bypass import is_bypassed_callable
 from fastforward._autoquant.convert import convert_function
 from fastforward._autoquant.cst import node_creation, node_processing, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
@@ -1139,6 +1140,9 @@ def _find_dependent_functions(
                 ref = scope_vars.get(func_name)
                 module = sys.modules.get(ref.__module__) if ref is not None else None
                 if ref is not None and module is not None:
+                    # Bypass ops must be preserved as-is and never descended into.
+                    if is_bypassed_callable(ref):
+                        continue
                     # Only queue Python functions that have regular source files.
                     # Skip builtins, extension-backed, and frozen functions.
                     if inspect.isbuiltin(ref) or not inspect.isfunction(ref):
@@ -1163,6 +1167,10 @@ def _find_dependent_functions(
                 try:
                     module, ref = _resolve_attribute(scope_vars, call_expr.func)
                 except AttributeError:
+                    continue
+
+                # Bypass ops must be preserved as-is and never descended into.
+                if is_bypassed_callable(ref):
                     continue
 
                 alias = None

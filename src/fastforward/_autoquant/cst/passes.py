@@ -17,6 +17,7 @@ from libcst.metadata import ParentNodeProvider
 from libcst.metadata.scope_provider import Scope
 from typing_extensions import override
 
+from fastforward._autoquant.bypass import is_bypassed_call_syntax, is_bypassed_callable
 from fastforward._autoquant.cst.node_creation import (
     get_keyword_argument_node,
     get_quantized_function_counterpart,
@@ -285,6 +286,8 @@ class MarkReplacementCandidates(libcst.CSTTransformer):
         self, original_node: libcst.Call, updated_node: libcst.Call
     ) -> libcst.BaseExpression:
         if m.matches(original_node.func, m.Name("super")):
+            return updated_node
+        if is_bypassed_call_syntax(original_node.func):
             return updated_node
         return ReplacementCandidate(updated_node)
 
@@ -760,6 +763,8 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
                 original_func_name = libcst.helpers.get_full_name_for_node(orig)
                 original_args = orig.args
                 original_func = _resolve_reference(original_func_name, self._func_ctx)
+                if is_bypassed_callable(original_func):
+                    return orig
             case _:
                 return updated_node
 
@@ -798,6 +803,9 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
         func_ref = _resolve_reference(fn_name, self._func_ctx)
 
         if fn_name is None or func_ref is None:
+            return updated_node
+
+        if is_bypassed_callable(func_ref):
             return updated_node
 
         # Restrict to inspectable Python callables only.
