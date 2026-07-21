@@ -178,19 +178,16 @@ _set_no_dispatch("get_device")
 _set_no_dispatch("device")
 _set_no_dispatch("grad")
 _set_no_dispatch("grad_fn")
-_set_no_dispatch("has_names")
 _set_no_dispatch("indices")
 _set_no_dispatch("indices")
 _set_no_dispatch("layout")
 _set_no_dispatch("name")
-_set_no_dispatch("names")
 _set_no_dispatch("ndimension")
 _set_no_dispatch("nelement")
 _set_no_dispatch("numel")
 _set_no_dispatch("output_nr")
 _set_no_dispatch("pin_memory")
 _set_no_dispatch("record_stream")
-_set_no_dispatch("refine_names")
 _set_no_dispatch("register_hook")
 _set_no_dispatch("requires_grad")
 _set_no_dispatch("requires_grad_")
@@ -203,6 +200,12 @@ _set_no_dispatch("storage")
 _set_no_dispatch("storage_offset")
 _set_no_dispatch("storage_type")
 _set_no_dispatch("__dir__")
+
+if torch.__version__ < "2.13":
+    # NB: torch 2.13 removed these attributes from torch.Tensor
+    _set_no_dispatch("has_names")
+    _set_no_dispatch("names")
+    _set_no_dispatch("refine_names")
 
 
 # fmt: off
