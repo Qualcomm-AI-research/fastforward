@@ -203,9 +203,7 @@ class _MinAvgErrorGridEstimator(SimpleEstimatorStep[SupportsRangeBasedOperator],
         self.min_threshold, self.max_threshold = self.search_grid_generator(
             tiled_data, self._quantizer.symmetric, parameter_dimensionality, self.num_candidates
         )
-        self.cumulative_error = torch.zeros(
-            self.min_threshold.shape, device=data.device, dtype=data.dtype
-        )
+        self.cumulative_error = torch.zeros_like(self.min_threshold)
 
     def _update_quantizer_ranges(self, quantizer: SupportsRangeBasedOperator) -> None:
         best_grid = self.cumulative_error.min(dim=0).indices

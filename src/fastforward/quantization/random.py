@@ -44,7 +44,7 @@ def random_quantized(
     granularity = granularity or granularities.PerTensor()
     if isinstance(scale, torch.Tensor) and scale.numel() > 1:
         if not isinstance(offset, torch.Tensor):
-            offset = torch.ones(scale.shape) * (offset if offset else 0)
+            offset = torch.ones_like(scale) * (offset if offset else 0)
         elif offset.numel() != scale.numel():
             raise ValueError(
                 "scale and offset must contain the same number of elements. "

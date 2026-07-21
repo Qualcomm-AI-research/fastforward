@@ -225,8 +225,8 @@ def quant_dequant_by_tile_grad_impl(
         doffset = doffset.sum(1).reshape(param_shape)
 
     dscale = torch.empty(quantized.shape, dtype=scale.dtype, device=scale.device)
-    min_thresh = torch.tensor([min_threshold], dtype=scale.dtype, device=scale.device)
-    max_thresh = torch.tensor([max_threshold], dtype=scale.dtype, device=scale.device)
+    min_thresh = scale.new_tensor([min_threshold])
+    max_thresh = scale.new_tensor([max_threshold])
     torch.where(quantized < min_threshold, min_thresh, max_thresh, out=dscale)
     dscale.add_(offset[:, None].to(dscale.dtype))
     torch.where(clip_mask, dscale, (quantized - pre_round).to(dscale.dtype), out=dscale)
@@ -295,7 +295,7 @@ def quantize_by_tile_meta(
     offset: torch.Tensor | None = None,
 ) -> torch.Tensor:
     del scale, tile_size, num_bits, output_dtype, offset
-    return torch.empty(input.shape)
+    return torch.empty_like(input)
 
 
 @register_fake("fastforward::dequantize_by_tile")  # type: ignore[misc]
@@ -307,7 +307,7 @@ def dequantize_by_tile_meta(
     output_dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
     del scale, tile_size, offset, output_dtype
-    return torch.empty(input.shape)
+    return torch.empty_like(input)
 
 
 @register_fake("fastforward::quantize_by_tile_backward")  # type: ignore[misc]
@@ -320,7 +320,7 @@ def quantize_by_tile_backward_meta(
     offset: torch.Tensor | None = None,
 ) -> List[torch.Tensor]:  # noqa: UP006
     del output_grad, tile_size, num_bits, offset
-    return [torch.empty(input.shape), torch.empty(scale.shape), torch.empty(scale.shape)]
+    return [torch.empty_like(input), torch.empty_like(scale), torch.empty_like(scale)]
 
 
 @register_fake("fastforward::quantize_dynamic_by_tile")  # type: ignore[misc]
@@ -336,4 +336,4 @@ def quantize_dynamic_by_tile_meta(
     num_params = int(input.numel() / torch.Size(tile_size).numel())
     scale = torch.empty(num_params)
     offset = torch.empty(num_params)
-    return torch.empty(input.shape), scale, offset
+    return torch.empty_like(input), scale, offset

@@ -165,9 +165,7 @@ class LPBQProcessor:
         # Compute per-group scale factor
         group_axes = tuple(range(1, len(grouped_scale.shape), 2))
         max_scale = torch.amax(grouped_scale, dim=group_axes, keepdim=True)
-        dynamic_scale = max_scale / torch.tensor(
-            2**bitwidth, dtype=max_scale.dtype, device=max_scale.device
-        )
+        dynamic_scale = max_scale / max_scale.new_tensor(2**bitwidth)
 
         # Quantize the grouped scale
         quantized_input = torch.clamp(

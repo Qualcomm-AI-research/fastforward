@@ -60,9 +60,9 @@ class SmoothedMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Modul
         """
         shape = (quantizer.granularity.parameter_dimensionality(data.shape),)
         if self.min is None:
-            self.min = torch.full(shape, float("inf"), dtype=data.dtype, device=data.device)
+            self.min = data.new_full(shape, float("inf"))
         if self.max is None:
-            self.max = torch.full(shape, float("-inf"), dtype=data.dtype, device=data.device)
+            self.max = data.new_full(shape, float("-inf"))
 
     def estimate_step(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
         """Perform a single estimation step.
@@ -208,9 +208,9 @@ class RunningMinMaxEstimator(SimpleEstimatorStep[RangeSettable], torch.nn.Module
         """
         shape = (quantizer.granularity.parameter_dimensionality(data.shape),)
         if self.min is None:
-            self.min = torch.full(shape, float("inf"), dtype=data.dtype, device=data.device)
+            self.min = data.new_full(shape, float("inf"))
         if self.max is None:
-            self.max = torch.full(shape, float("-inf"), dtype=data.dtype, device=data.device)
+            self.max = data.new_full(shape, float("-inf"))
 
     def estimate_step(self, quantizer: RangeSettable, data: torch.Tensor) -> None:
         """Perform a single estimation step.

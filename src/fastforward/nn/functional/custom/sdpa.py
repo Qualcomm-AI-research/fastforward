@@ -319,7 +319,7 @@ def _quantized_safe_softmax(
         else:
             masked = t <= neg_inf
         masked_rows = torch.all(masked, dim=dim, keepdim=True)
-        zero = torch.tensor(0.0, dtype=out.dtype, device=out.device)
+        zero = out.new_tensor(0.0)
         torch.where(condition=masked_rows, input=zero, other=out, out=out)
         if output_quantizer:
             out = output_quantizer(out)
