@@ -2,14 +2,18 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import importlib
+import io
+import math
 
-from typing import Iterator
+from typing import Iterator, Sequence
 
 import fastforward as ff
 import pytest
 import syrupy
+import torch
 
 from fastforward._autoquant.cst.pattern import PatternRule
+from fastforward._autoquant.pybuilder import TextIOWriter
 from fastforward._autoquant.pybuilder.writer import StdoutWriter
 from fastforward.testing.package_mock import PackageMock
 
@@ -92,3 +96,59 @@ def test_pattern_rule_robust_type_annotation_on_external_functions(
     # THEN: The generated quantized module matches the snapshot, with the
     #       type annotation injected only into the function targeted by `on`.
     assert autoquant_code.code == snapshot
+
+
+class BuiltinOpsModel(torch.nn.Module):
+    """Compact module using every op flagged in issue #563."""
+
+    def __init__(self, embedding_dim: int = 8) -> None:
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.weight = torch.nn.Parameter(torch.ones(embedding_dim))
+
+    def forward(self, timesteps: torch.Tensor) -> torch.Tensor:
+        """Runs each op flagged in the issue against a Tensor argument."""
+        half_dim = self.embedding_dim // 2
+        exponent = torch.arange(0, half_dim, dtype=torch.float32) * (-math.log(10000.0) / half_dim)
+        # torch.exp on a Tensor argument
+        emb = torch.exp(exponent)
+        emb = timesteps[:, None].float() * emb[None, :]
+        # torch.sin / torch.cos on a Tensor argument
+        sin_emb = torch.sin(emb)
+        cos_emb = torch.cos(emb)
+        # torch.cat on a list[Tensor]
+        emb = torch.cat([sin_emb, cos_emb], dim=-1)
+        # torch.rms_norm on a Tensor argument
+        emb = torch.rms_norm(emb, (self.embedding_dim,), self.weight)
+        return emb
+
+    TARGET_OPS: Sequence[str] = (
+        "torch.cat",
+        "torch.exp",
+        "torch.sin",
+        "torch.cos",
+        "torch.rms_norm",
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("use_type_inference", [False, True])
+def test_autoquant_replaces_builtin_ops(use_type_inference: bool) -> None:
+    """Runs autoquantize with and without type inference, reports remaining bugs."""
+    # GIVEN: a model with torch.cat, torch.exp, torch.sin, torch.cos, torch.rms_norm
+    #        ops in the forward pass
+    module = BuiltinOpsModel()
+
+    # WHEN: autoquant is applied to the model
+    buf = io.StringIO()
+    ff.autoquantize(
+        module,
+        code_writer=TextIOWriter("ReproIssue563", writer=buf),
+        auto_import=False,
+        use_type_inference=use_type_inference,
+    )
+    code = buf.getvalue()
+
+    # THEN: the original target torch ops are not present in the code
+    unreplaced = [op for op in BuiltinOpsModel.TARGET_OPS if op + "(" in code]
+    assert len(unreplaced) == 0

@@ -351,10 +351,13 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
             # If type information is missing, fall back to a non-type informed implementation.
             return None
 
-        if any(_is_subtype(info, "torch.Tensor") for info in type_info):
-            return ReplacementCandidate(updated_node)
-        else:
-            return updated_node
+        # Also mark `Sequence[Tensor]` args (e.g. `torch.cat`'s `tensors`
+        # parameter) — a bare `is_subtype` check against `Tensor` would
+        # reject `list[Tensor]` and leave the call unquantized.
+        for info in type_info:
+            if _is_subtype(info, "torch.Tensor") or _is_sequence_of_subtype(info, "torch.Tensor"):
+                return ReplacementCandidate(updated_node)
+        return updated_node
 
     @override
     def leave_Call(
@@ -395,6 +398,10 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
 
 def _is_subtype(type_info: TypeInfo | None, type_name: str) -> bool:
     return False if type_info is None else type_info.is_subtype(type_name)
+
+
+def _is_sequence_of_subtype(type_info: TypeInfo | None, type_name: str) -> bool:
+    return False if type_info is None else type_info.is_sequence_of_subtype(type_name)
 
 
 @dataclasses.dataclass
@@ -807,20 +814,20 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
 
         if is_bypassed_callable(func_ref):
             return updated_node
-        
+
         # If a quantized counterpart is not present in the optable:
         #  > Then, the non-inspectable python callables are not auto-quantized.
-        if func_ref not in self._optable: 
+        if func_ref not in self._optable:
             if inspect.isbuiltin(func_ref) or not inspect.isfunction(func_ref):
                 return updated_node
             source_file = inspect.getsourcefile(func_ref)
             if source_file is None or source_file.startswith("<frozen "):
                 return updated_node
-        # else: 
+        # else:
         #  > Even for non-inspectable C-implemented ops like `torch.cat` where
-        #    inspect.isbuiltin` is True and `inspect.getsourcefile` returns 
-        #    `None`, if a registered quantized counterpart is present in the 
-        #    optable we replace it with the corresponding quantized call.   
+        #    inspect.isbuiltin` is True and `inspect.getsourcefile` returns
+        #    `None`, if a registered quantized counterpart is present in the
+        #    optable we replace it with the corresponding quantized call.
 
         return self._create_quantized_call(
             node=ReplacementCandidate(updated_node),

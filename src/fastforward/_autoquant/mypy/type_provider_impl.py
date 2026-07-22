@@ -52,6 +52,43 @@ class TypeInfo:
         except KeyError:
             return False
 
+    def is_sequence_of_subtype(self, qualified_name: str) -> bool:
+        """Check if this type is a subtype of `Sequence[<qualified_name>]`.
+
+        Callers that accept collections of a given element type (e.g.
+        `torch.cat` takes `Sequence[Tensor]`) need to recognise
+        `list[Tensor]` / `tuple[Tensor, ...]` arguments alongside a bare
+        `Tensor`. `is_subtype` alone rejects those because a `list` is
+        not a `Tensor`.
+
+        In practice mypy often infers `list[Any]` for expressions like
+        `[torch.exp(x), torch.sin(x)]` because the underlying C ops return
+        `Any`. A Sequence whose element types are all `Any` is accepted too —
+        a strict `Sequence[Tensor]` check would otherwise leave the call
+        unquantized when mypy has partial information.
+        """
+        if isinstance(self.typ, mypy.types.AnyType):
+            return True
+
+        try:
+            elem_type = self._checker.named_type(qualified_name)
+            seq_type = self._checker.named_generic_type("typing.Sequence", [elem_type])
+            if mypy.subtypes.is_subtype(self.typ, seq_type):
+                return True
+        except KeyError:
+            pass
+
+        if isinstance(self.typ, mypy.types.Instance) and self.typ.args:
+            if all(isinstance(arg, mypy.types.AnyType) for arg in self.typ.args):
+                try:
+                    any_elem = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
+                    seq_of_any = self._checker.named_generic_type("typing.Sequence", [any_elem])
+                    return mypy.subtypes.is_subtype(self.typ, seq_of_any)
+                except KeyError:
+                    return False
+
+        return False
+
 
 _ProvidedType: TypeAlias = TypeInfo
 
