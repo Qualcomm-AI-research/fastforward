@@ -66,6 +66,10 @@ __all__ = [
     "zeros_like",
     "full_like",
     "empty_like",
+    "exp",
+    "sin",
+    "cos",
+    "rms_norm",
 ]
 
 
@@ -1817,6 +1821,120 @@ def empty_like(
         device=device,
         requires_grad=requires_grad,
         memory_format=memory_format,
+    )
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:168
+def exp(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.exp(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:171
+def sin(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.sin(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:174
+def cos(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    output = torch.cos(input=input)
+    if output_quantizer is not None:
+        output = output_quantizer(output)
+    return output
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:177
+def rms_norm(
+    input: torch.Tensor,
+    normalized_shape: tuple[int, ...],
+    weight: torch.Tensor | None = None,
+    eps: float | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool = True,
+) -> torch.Tensor:
+
+    if strict_quantization and output_quantizer is None:
+        raise QuantizationError("'output_quantizer' must be provided if strict_quantization=True")
+
+    if strict_quantization and not isinstance(input, QuantizedTensor):
+        raise QuantizationError(
+            "Expected 'input' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+        )
+
+    if isinstance(input, QuantizedTensor):
+        input = input.dequantize()
+
+    if weight is not None:
+        if strict_quantization and not isinstance(weight, QuantizedTensor):
+            raise QuantizationError(
+                "Expected 'weight' to be an instance of 'QuantizedTensor' because strict_quantization=True."
+            )
+
+        if isinstance(weight, QuantizedTensor):
+            weight = weight.dequantize()
+
+    output = torch.nn.functional.rms_norm(
+        input=input, normalized_shape=normalized_shape, weight=weight, eps=eps
     )
     if output_quantizer is not None:
         output = output_quantizer(output)

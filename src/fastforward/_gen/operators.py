@@ -68,6 +68,10 @@ __all__ = [
     "zeros_like",
     "full_like",
     "empty_like",
+    "exp",
+    "sin",
+    "cos",
+    "rms_norm",
 ]
 
 
@@ -1687,6 +1691,109 @@ def empty_like(
         device=device,
         requires_grad=requires_grad,
         memory_format=memory_format,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:168
+def exp(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "exp",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.exp
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:171
+def sin(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "sin",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.sin
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:174
+def cos(
+    input: torch.Tensor,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "cos",
+        input=input,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.cos
+    return selected_op(
+        input=input, output_quantizer=output_quantizer, strict_quantization=strict_quantization
+    )
+
+
+# Automatically generated based on src/fastforward/_quantops/quantized_operators.yaml:177
+def rms_norm(
+    input: torch.Tensor,
+    normalized_shape: tuple[int, ...],
+    weight: torch.Tensor | None = None,
+    eps: float | None = None,
+    *,
+    output_quantizer: Optional["Quantizer"] = None,
+    strict_quantization: bool | None = None,
+) -> torch.Tensor:
+
+    if strict_quantization is None:
+        strict_quantization = fastforward.get_strict_quantization()
+
+    dispatch_op = dispatch(
+        "rms_norm",
+        input=input,
+        normalized_shape=normalized_shape,
+        weight=weight,
+        eps=eps,
+        output_quantizer=output_quantizer,
+        strict_quantization=strict_quantization,
+    )
+    selected_op = dispatch_op or fallback.rms_norm
+    return selected_op(
+        input=input,
+        normalized_shape=normalized_shape,
+        weight=weight,
+        eps=eps,
         output_quantizer=output_quantizer,
         strict_quantization=strict_quantization,
     )

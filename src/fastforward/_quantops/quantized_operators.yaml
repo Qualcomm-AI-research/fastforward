@@ -162,3 +162,19 @@
 
 - op: "empty_like(input: Quantized, dtype: Optional[DType] = None, layout: Optional[Layout] = None, device: Optional[Device] = None, requires_grad: Bool = False, memory_format: Optional[MemoryFormat] = None) -> Quantized"
   fallback: torch.empty_like
+
+# Element-wise transcendentals. Registered so autoquant replaces the C-builtin
+# ``torch.exp``/``sin``/``cos`` calls with quantized counterparts.
+- op: "exp(input: Quantized) -> Quantized"
+  fallback: torch.exp
+
+- op: "sin(input: Quantized) -> Quantized"
+  fallback: torch.sin
+
+- op: "cos(input: Quantized) -> Quantized"
+  fallback: torch.cos
+
+- op: "rms_norm(input: Quantized, normalized_shape: tuple[int, ...], weight: Optional[Quantized] = None, eps: Optional[float] = None) -> Quantized"
+  fallback: torch.nn.functional.rms_norm
+  aliases:
+    - torch.rms_norm
