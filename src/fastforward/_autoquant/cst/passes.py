@@ -807,14 +807,20 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
 
         if is_bypassed_callable(func_ref):
             return updated_node
-
-        # Restrict to inspectable Python callables only.
-        if inspect.isbuiltin(func_ref) or not inspect.isfunction(func_ref):
-            return updated_node
-
-        source_file = inspect.getsourcefile(func_ref)
-        if source_file is None or source_file.startswith("<frozen "):
-            return updated_node
+        
+        # If a quantized counterpart is not present in the optable:
+        #  > Then, the non-inspectable python callables are not auto-quantized.
+        if func_ref not in self._optable: 
+            if inspect.isbuiltin(func_ref) or not inspect.isfunction(func_ref):
+                return updated_node
+            source_file = inspect.getsourcefile(func_ref)
+            if source_file is None or source_file.startswith("<frozen "):
+                return updated_node
+        # else: 
+        #  > Even for non-inspectable C-implemented ops like `torch.cat` where
+        #    inspect.isbuiltin` is True and `inspect.getsourcefile` returns 
+        #    `None`, if a registered quantized counterpart is present in the 
+        #    optable we replace it with the corresponding quantized call.   
 
         return self._create_quantized_call(
             node=ReplacementCandidate(updated_node),

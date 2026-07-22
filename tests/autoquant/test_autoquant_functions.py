@@ -213,3 +213,41 @@ def test_autoquant_translates_like_ops_and_creates_output_quantizers() -> None:
     assert "torch.zeros_like" not in result
     assert "torch.full_like" not in result
     assert "torch.empty_like" not in result
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("use_type_inference", [False, True])
+def test_autoquant_replaces_cat_exp_sin_cos_rms_norm(use_type_inference: bool) -> None:
+    # Regression test for issue #563: autoquant left torch.cat / torch.exp /
+    # torch.sin / torch.cos / torch.rms_norm unreplaced.  torch.exp/sin/cos/
+    # rms_norm were missing from the operator registry; torch.cat was present
+    # but not marked as a replacement candidate under type inference because
+    # its first argument is `list[Tensor]` (not `Tensor`) and the second-chance
+    # pass filtered out C-implemented builtins.
+    #
+    # GIVEN a function that uses each of these ops on tensor(-like) arguments
+    input = """
+    def forward(self, x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
+        a = torch.exp(x)
+        b = torch.sin(x)
+        c = torch.cos(x)
+        d = torch.cat([a, b, c], dim=-1)
+        return torch.rms_norm(d, (4,), w)
+    """
+
+    # WHEN autoquant processes the function
+    result = _autoquantize_str(input, use_type_inference=use_type_inference)
+    ast.parse(result)
+
+    # THEN each call is rewritten to its ff.nn.functional equivalent with a
+    # freshly created output_quantizer, and no bare torch.<op> call remains.
+    for op in ("exp", "sin", "cos", "cat", "rms_norm"):
+        expected_call = f"fastforward.nn.functional.{op}("
+        expected_kwarg = f"output_quantizer=self.quantizer_{op}"
+        assert expected_call in result, f"{op!r} was not replaced. Full output:\n{result}"
+        assert expected_kwarg in result, (
+            f"{op!r} was replaced without an output_quantizer. Full output:\n{result}"
+        )
+        assert f"torch.{op}(" not in result, (
+            f"bare torch.{op} call still present. Full output:\n{result}"
+        )
