@@ -8,6 +8,7 @@ dynamic = ["version"]
 requires-python = ">=3.10,<3.14"
 dependencies = [
   "torch>=2.4",
+  "gguf",
   "importlib-metadata",
   "libcst",
   "mypy",
@@ -118,6 +119,10 @@ disallow_incomplete_defs = false
 module = ["torch.*"]
 ignore_missing_imports = true
 implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = ["gguf.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
