@@ -4,6 +4,7 @@
 from typing import Any, Callable, TypeAlias
 
 from fastforward.export.pipeline.core import Pipeline
+from fastforward.export.pipeline.gguf_llama_cpp_pipeline import gguf_llama_cpp_pipeline
 from fastforward.export.pipeline.qnn_onnx_pipeline import qnn_onnx_pipeline
 from fastforward.export.pipeline.qnn_onnx_qdq_pipeline import qnn_onnx_qdq_pipeline
 
@@ -61,4 +62,5 @@ def build_default_registry() -> PipelineRegistry:
     registry = PipelineRegistry()
     registry.register("qnn", "onnx", qnn_onnx_pipeline)
     registry.register("qnn", "onnx_qdq", qnn_onnx_qdq_pipeline)
+    registry.register("gguf", "llama_cpp", gguf_llama_cpp_pipeline)
     return registry

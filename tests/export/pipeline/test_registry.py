@@ -59,3 +59,11 @@ def test_build_default_registry_registers_qnn_onnx_qdq_pipeline() -> None:
     registry = build_default_registry()
     assert registry.has("qnn", "onnx")
     assert registry.has("qnn", "onnx_qdq")
+
+
+def test_build_default_registry_registers_gguf_llama_cpp_pipeline() -> None:
+    from fastforward.export.pipeline.gguf_llama_cpp_pipeline import gguf_llama_cpp_pipeline
+
+    registry = build_default_registry()
+    assert registry.has("gguf", "llama_cpp")
+    assert registry.get("gguf", "llama_cpp") is gguf_llama_cpp_pipeline

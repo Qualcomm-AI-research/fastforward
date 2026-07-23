@@ -6,6 +6,7 @@ from .core import StageReference as StageReference
 from .orchestrator import ExportArtifacts as ExportArtifacts
 from .orchestrator import ExportOrchestrator as ExportOrchestrator
 from .orchestrator import ExportRequest as ExportRequest
+from .orchestrator import GgufLlamaCppOptions as GgufLlamaCppOptions
 from .orchestrator import QnnOnnxOptions as QnnOnnxOptions
 from .orchestrator import export_with_pipeline as export_with_pipeline
 from .registry import PipelineRegistry as PipelineRegistry

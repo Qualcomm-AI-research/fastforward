@@ -11,6 +11,7 @@ import torch
 from fastforward.export._export_schemas import EncodingSchemaHandler, V1SchemaHandler
 from fastforward.export.pipeline.core import Pipeline, StageReference
 from fastforward.export.pipeline.registry import PipelineRegistry, build_default_registry
+from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufQuantFormat
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 _PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Pipeline]
@@ -69,6 +70,56 @@ class QnnOnnxOptions:
             "verbose": self.verbose,
             "store_weights_as_qdq": self.store_weights_as_qdq,
         }
+
+
+@dataclass(slots=True)
+class GgufLlamaCppOptions:
+    """Options for the GGUF -> llama.cpp export pipeline.
+
+    This typed container is optional and can be converted to stage context with
+    `to_context()`. The pipeline expects an already-quantized model.
+
+    Attributes:
+        arch_adapter: :class:`ArchAdapter` carrying all HF-to-GGUF assumptions
+            for the target architecture: parameter-name map, RoPE permute,
+            metadata writer, and tokenizer discriminators. Built-in adapters
+            ``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, and ``QWEN3_ADAPTER`` are
+            importable from :mod:`fastforward.export.stages.gguf`. For a model
+            whose module tree differs from the standard HuggingFace layout,
+            construct your own ``ArchAdapter``.
+        quant_format: :class:`GgufQuantFormat` selecting the target block type,
+            block size, and packing function. Built-in formats ``GGUF_Q4_0``
+            and ``GGUF_Q8_0`` are importable from
+            :mod:`fastforward.export.stages.gguf`.
+        model_config: Source model config satisfying
+            :class:`~fastforward.export.stages.gguf.GgufSourceConfig`. Required
+            attributes: ``hidden_size``, ``num_attention_heads``,
+            ``num_hidden_layers``, ``intermediate_size``,
+            ``max_position_embeddings``, ``rms_norm_eps``, ``vocab_size``.
+            Optional (accessed via ``getattr`` with defaults):
+            ``num_key_value_heads``, ``rope_theta``, ``head_dim``,
+            ``rope_scaling``, ``tie_word_embeddings``. A HuggingFace
+            ``PretrainedConfig`` or a ``SimpleNamespace`` carrying these fields
+            both work.
+        tokenizer: Optional HuggingFace tokenizer; when provided, its vocabulary
+            is written into the GGUF.
+    """
+
+    arch_adapter: ArchAdapter
+    quant_format: GgufQuantFormat | None = None
+    model_config: Any = None
+    tokenizer: Any = None
+
+    def to_context(self) -> dict[str, Any]:
+        """Convert options to pipeline context values."""
+        context: dict[str, Any] = {
+            "arch_adapter": self.arch_adapter,
+            "model_config": self.model_config,
+            "tokenizer": self.tokenizer,
+        }
+        if self.quant_format is not None:
+            context["quant_format"] = self.quant_format
+        return context
 
 
 @dataclass(slots=True)
