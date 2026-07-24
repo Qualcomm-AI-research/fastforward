@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3232,17 +3232,12 @@ schedules an instruction program, applies passes, and executes with optional off
                 <code>algorithm</code>
             </td>
             <td>
-                  <code><span title="fastforward._orchestration.registry.Algorithm">Algorithm</span></code>
+                  <code><span title="fastforward._orchestration.registry.Algorithm">Algorithm</span> | <span title="fastforward._orchestration.registry.AlgorithmSpec">AlgorithmSpec</span> | <span title="list">list</span>[<span title="fastforward._orchestration.registry.AlgorithmSpec">AlgorithmSpec</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The optimization algorithm to apply. It is invoked once per
-target region as <code>algorithm(module, dataset)</code>, where <code>dataset</code> is
-an <code>ActivationBundle</code> of that module's captured calibration inputs.
-Iterating <code>dataset</code> yields one <code>(args, kwargs)</code> pair per batch,
-ready to replay as <code>module(*args, **kwargs)</code>. Note that <code>args</code> is
-often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is often empty
-(<code>{}</code>); see <code>ActivationBundle</code> for the full contract.</p>
+                <p>The optimization algorithm. Accepts a callable (looked up in the
+registry), a single <code>AlgorithmSpec</code>, or a list of specs.</p>
               </div>
             </td>
             <td>
@@ -3258,7 +3253,8 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Override which modules to target (uses registry default if None).</p>
+                <p>Override which modules to target (uses registry default if None).
+Cannot be combined with explicit AlgorithmSpec(s).</p>
               </div>
             </td>
             <td>
@@ -3319,8 +3315,7 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/orchestration.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 56</span>
-<span class="normal"> 57</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 57</span>
 <span class="normal"> 58</span>
 <span class="normal"> 59</span>
 <span class="normal"> 60</span>
@@ -3366,10 +3361,20 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
-<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">layerwise_optimize</span><span class="p">(</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">layerwise_optimize</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="n">algorithm</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">Algorithm</span><span class="p">,</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">Algorithm</span> <span class="o">|</span> <span class="n">registry</span><span class="o">.</span><span class="n">AlgorithmSpec</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">registry</span><span class="o">.</span><span class="n">AlgorithmSpec</span><span class="p">],</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">targets</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">TargetType</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">graph</span><span class="p">:</span> <span class="n">GraphModule</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -3384,14 +3389,10 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
 <span class="sd">    Args:</span>
 <span class="sd">        model: The model to optimize.</span>
 <span class="sd">        data: Calibration data to run through the model.</span>
-<span class="sd">        algorithm: The optimization algorithm to apply. It is invoked once per</span>
-<span class="sd">            target region as ``algorithm(module, dataset)``, where ``dataset`` is</span>
-<span class="sd">            an `ActivationBundle` of that module&#39;s captured calibration inputs.</span>
-<span class="sd">            Iterating ``dataset`` yields one `(args, kwargs)` pair per batch,</span>
-<span class="sd">            ready to replay as ``module(*args, **kwargs)``. Note that ``args`` is</span>
-<span class="sd">            often a singleton tuple (e.g. ``(x,)``) and ``kwargs`` is often empty</span>
-<span class="sd">            (``{}``); see `ActivationBundle` for the full contract.</span>
+<span class="sd">        algorithm: The optimization algorithm. Accepts a callable (looked up in the</span>
+<span class="sd">            registry), a single `AlgorithmSpec`, or a list of specs.</span>
 <span class="sd">        targets: Override which modules to target (uses registry default if None).</span>
+<span class="sd">            Cannot be combined with explicit AlgorithmSpec(s).</span>
 <span class="sd">        graph: Pre-built GraphModule (traces model if None).</span>
 <span class="sd">        offloading: Optional strategy for device offloading during execution.</span>
 <span class="sd">        **kwargs: Additional arguments forwarded to trace.</span>
@@ -3402,8 +3403,21 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
         <span class="n">graph</span> <span class="o">=</span> <span class="n">trace</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">example_input</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="c1"># (2) Resolve targets and reduce graph</span>
-    <span class="k">with</span> <span class="n">registry</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
-        <span class="n">optimization_specs</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">)</span>
+    <span class="k">match</span> <span class="n">algorithm</span><span class="p">:</span>
+        <span class="k">case</span><span class="w"> </span><span class="n">registry</span><span class="o">.</span><span class="n">AlgorithmSpec</span><span class="p">()</span> <span class="o">|</span> <span class="p">[</span><span class="o">*</span><span class="k">_</span><span class="p">]</span> <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Cannot combine targets= with explicit AlgorithmSpec(s).&quot;</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">case</span> <span class="p">[</span><span class="o">*</span><span class="n">specs</span><span class="p">]:</span>
+            <span class="n">optimization_specs</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">specs</span><span class="o">=</span><span class="n">specs</span><span class="p">)</span>
+        <span class="k">case</span> <span class="n">registry</span><span class="o">.</span><span class="n">AlgorithmSpec</span><span class="p">():</span>
+            <span class="n">optimization_specs</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">specs</span><span class="o">=</span><span class="p">[</span><span class="n">algorithm</span><span class="p">])</span>
+        <span class="k">case</span> <span class="n">algorithm</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">algorithm</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">registry</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+                <span class="n">optimization_specs</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">algorithm</span><span class="p">)</span>
+        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected an Algorithm, AlgorithmSpec, or list of AlgorithmSpec; got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">algorithm</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
     <span class="n">graph</span> <span class="o">=</span> <span class="n">reduce_resolution</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">optimization_specs</span><span class="p">)</span>
 
     <span class="c1"># (3) Schedule instruction program</span>
@@ -3479,7 +3493,7 @@ often a singleton tuple (e.g. <code>(x,)</code>) and <code>kwargs</code> is ofte
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
