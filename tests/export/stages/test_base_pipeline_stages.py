@@ -15,6 +15,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     stage_convert_captured_impl_ff,
     stage_convert_captured_impl_ff_qdq,
     stage_fp_eval,
+    stage_fuse_qdq_weights,
     stage_passthrough_ff_module,
     stage_quantized_eval,
 )
@@ -467,3 +468,65 @@ def test_stage_quantized_eval_dequantizes_outputs() -> None:
     assert len(outputs) == 2
     assert torch.equal(outputs[0], torch.tensor([3.0]))
     assert torch.equal(outputs[1], torch.tensor([5.0]))
+
+
+def _quantized_linear_model() -> ff.nn.QuantizedSequential:
+    """Build a small initialized quantized Sequential for fuse-stage tests."""
+    model = torch.nn.Sequential(
+        torch.nn.Linear(4, 4),
+        torch.nn.Linear(4, 4),
+    )
+    ff.quantize_model(model)
+    assert isinstance(model, ff.nn.QuantizedSequential)
+    ff.find_quantizers(model, "**/[quantizer:parameter/weight]").initialize(
+        ff.nn.LinearQuantizer, num_bits=4, granularity=ff.PerTensor()
+    )
+    with ff.estimate_ranges(model, ff.range_setting.smoothed_minmax), ff.strict_quantization(False):
+        model(torch.randn(4, 4))
+    return model
+
+
+def _expected_qdq(layer: ff.nn.QuantizedLinear) -> torch.Tensor:
+    with ff.strict_quantization(False):
+        return layer.weight_quantizer(layer.weight).dequantize()
+
+
+def _quantized_layers(model: ff.nn.QuantizedSequential) -> list[ff.nn.QuantizedLinear]:
+    layers: list[ff.nn.QuantizedLinear] = []
+    for layer in model:
+        assert isinstance(layer, ff.nn.QuantizedLinear)
+        layers.append(layer)
+    return layers
+
+
+def test_stage_fuse_qdq_weights_passes_through_when_flag_absent() -> None:
+    # GIVEN: An initialized quantized model.
+    module = _quantized_linear_model()
+
+    # WHEN: The fuse stage runs with no context flag.
+    result = stage_fuse_qdq_weights((module,), sample_inputs=[], context={})
+
+    # THEN: The original module is returned unchanged (same identity).
+    assert result is module
+
+
+def test_stage_fuse_qdq_weights_fuses_in_place_when_flag_set() -> None:
+    # GIVEN: An initialized quantized model.
+    module = _quantized_linear_model()
+    layers = _quantized_layers(module)
+    expected_weights = [_expected_qdq(layer) for layer in layers]
+
+    # WHEN: The fuse stage runs with the flag set.
+    result = stage_fuse_qdq_weights(
+        (module,), sample_inputs=[], context={"store_weights_as_qdq": True}
+    )
+
+    # THEN: The same model object is returned with grid-snapped weights.
+    assert result is module
+    for layer, expected in zip(_quantized_layers(result), expected_weights):
+        torch.testing.assert_close(layer.weight, expected)
+
+    # THEN: Weight quantizers remain active LinearQuantizers.
+    for layer in _quantized_layers(result):
+        assert isinstance(layer.weight_quantizer, ff.nn.LinearQuantizer)
+        assert not layer.weight_quantizer.is_stub()

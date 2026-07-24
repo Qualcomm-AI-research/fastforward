@@ -594,3 +594,41 @@ def test_qnn_onnx_pipeline_supports_user_inserted_stage() -> None:
     # Ensure fx_to_onnx_program now sees the rewrite as its only dep.
     fx_stage = pipeline.get_stage("fx_to_onnx_program")
     assert tuple(s.name for s in fx_stage.dependencies) == ("fx_rewrite",)
+
+
+def test_qnn_onnx_pipeline_registers_fuse_qdq_weights_stage_as_shared_root() -> None:
+    """The pre-capture fuse stage is registered and precedes every model-consumer."""
+    from fastforward.export.pipeline.qnn_onnx_pipeline import qnn_onnx_pipeline
+
+    # GIVEN the built-in qnn_onnx_pipeline
+    pipeline = qnn_onnx_pipeline(pipeline_kwargs={})
+    built = pipeline._build_pipeline()
+    names = [stage.name for stage in built]
+
+    # THEN the fuse stage is registered ahead of all model-consuming root stages
+    assert "fuse_qdq_weights" in names
+    fuse_idx = names.index("fuse_qdq_weights")
+    for consumer in ("source_ff_module", "capture_model_io", "capture_ff"):
+        assert fuse_idx < names.index(consumer)
+        assert tuple(s.name for s in pipeline.get_stage(consumer).dependencies) == (
+            "fuse_qdq_weights",
+        )
+
+
+def test_qnn_onnx_qdq_pipeline_registers_fuse_qdq_weights_stage_as_shared_root() -> None:
+    """The pre-capture fuse stage is registered and precedes every model-consumer."""
+    from fastforward.export.pipeline.qnn_onnx_qdq_pipeline import qnn_onnx_qdq_pipeline
+
+    # GIVEN the built-in qnn_onnx_qdq_pipeline
+    pipeline = qnn_onnx_qdq_pipeline(pipeline_kwargs={})
+    built = pipeline._build_pipeline()
+    names = [stage.name for stage in built]
+
+    # THEN the fuse stage is registered ahead of all model-consuming root stages
+    assert "fuse_qdq_weights" in names
+    fuse_idx = names.index("fuse_qdq_weights")
+    for consumer in ("capture_model_io", "capture_ff"):
+        assert fuse_idx < names.index(consumer)
+        assert tuple(s.name for s in pipeline.get_stage(consumer).dependencies) == (
+            "fuse_qdq_weights",
+        )

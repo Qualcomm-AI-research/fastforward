@@ -16,6 +16,7 @@ import fastforward as ff
 
 from fastforward.export._io_capture import ModuleIORecorder
 from fastforward.export.stages.passes import AnnotateFFQuantSpecs, PropagateFFQuantSpecs
+from fastforward.quantization.fuse import fuse_qdq_weights
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 _EvaluableModuleT: TypeAlias = torch.nn.Module | torch.fx.GraphModule
@@ -207,6 +208,28 @@ def stage_passthrough_ff_module(
     del sample_inputs, context
     (module,) = modules
     return module
+
+
+def stage_fuse_qdq_weights(
+    modules: tuple[ff.nn.QuantizedModule, ...],
+    sample_inputs: _SampleInputsT,
+    context: dict[str, Any],
+) -> ff.nn.QuantizedModule:
+    """Optionally replace weights with their QDQ (grid-snapped) values pre-capture.
+
+    Gates downstream capture on the ``store_weights_as_qdq`` context flag.
+    When enabled, the model's weights are snapped to the quantization grid
+    in-place via :func:`fastforward.quantization.fuse_qdq_weights` (with
+    ``stub_quantizers=False``, so the weight quantizers stay active and the
+    exported graph still carries their quantization params). When disabled,
+    the model is returned unchanged and the export path behaves as before.
+    """
+    del sample_inputs
+    (model,) = modules
+    if not context.get("store_weights_as_qdq", False):
+        return model
+    fuse_qdq_weights(model, stub_quantizers=False)
+    return model
 
 
 def stage_capture_model_io(

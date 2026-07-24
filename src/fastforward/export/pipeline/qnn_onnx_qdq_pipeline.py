@@ -8,6 +8,7 @@ from fastforward.export.stages.base_pipeline_stages import (
     stage_capture_impl_ff,
     stage_capture_model_io,
     stage_convert_captured_impl_ff_qdq,
+    stage_fuse_qdq_weights,
 )
 from fastforward.export.stages.onnx.onnx_export_stages import (
     stage_onnx_program_to_proto,
@@ -31,6 +32,9 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     ```text
     ff_model (pipeline input)
         |
+        v
+    fuse_qdq_weights (no-op unless store_weights_as_qdq=True)
+        |
         | +--> capture_model_io (branch; golden I/O reference, no downstream)
         |
         v
@@ -51,6 +55,10 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
 
     Why each stage exists:
 
+    - `fuse_qdq_weights`:
+      When the ``store_weights_as_qdq`` context flag is set, snaps the model's
+      weights to the quantization grid in-place (weight quantizers kept active).
+      Otherwise passes the model through unchanged.
     - `capture_model_io`:
       Runs an eager forward and pickles the model's dequantized input/output/kwargs to
       `<model_name>_input_output.pickle` as a golden reference. Runs on its own branch.
@@ -88,10 +96,15 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     """
     onnx_pipeline = Pipeline(pipeline_kwargs)
 
+    fuse_qdq_weights_stage = onnx_pipeline.register_stage(
+        stage_fuse_qdq_weights, "fuse_qdq_weights"
+    )
     onnx_pipeline.register_stage(
         stage_capture_model_io, "capture_model_io", capture_stage_output=True
+    ).depends_on(fuse_qdq_weights_stage)
+    capture_ff_stage = onnx_pipeline.register_stage(stage_capture_impl_ff, "capture_ff").depends_on(
+        fuse_qdq_weights_stage
     )
-    capture_ff_stage = onnx_pipeline.register_stage(stage_capture_impl_ff, "capture_ff")
     convert_captured_ff_qdq_stage = onnx_pipeline.register_stage(
         stage_convert_captured_impl_ff_qdq, "convert_captured_ff_qdq"
     ).depends_on(capture_ff_stage)

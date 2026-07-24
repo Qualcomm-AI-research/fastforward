@@ -54,6 +54,7 @@ class QnnOnnxOptions:
     onnx_export_options: dict[str, Any] = field(default_factory=dict)
     onnx_save_kwargs: dict[str, Any] = field(default_factory=dict)
     verbose: bool | None = None
+    store_weights_as_qdq: bool = True
 
     def to_context(self) -> dict[str, Any]:
         """Convert options to pipeline context values."""
@@ -66,6 +67,7 @@ class QnnOnnxOptions:
             "onnx_export_options": dict(self.onnx_export_options),
             "onnx_save_kwargs": dict(self.onnx_save_kwargs),
             "verbose": self.verbose,
+            "store_weights_as_qdq": self.store_weights_as_qdq,
         }
 
 

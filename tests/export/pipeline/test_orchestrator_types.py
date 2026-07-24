@@ -48,6 +48,7 @@ def test_qnn_onnx_options_to_context() -> None:
         onnx_export_options={"opset_version": 17},
         onnx_save_kwargs={"save_as_external_data": False},
         verbose=True,
+        store_weights_as_qdq=True,
     )
 
     context = options.to_context()
@@ -60,6 +61,12 @@ def test_qnn_onnx_options_to_context() -> None:
     assert context["onnx_export_options"] == {"opset_version": 17}
     assert context["onnx_save_kwargs"] == {"save_as_external_data": False}
     assert context["verbose"] is True
+    assert context["store_weights_as_qdq"] is True
+
+
+def test_qnn_onnx_options_store_weights_as_qdq_defaults_true() -> None:
+    context = QnnOnnxOptions().to_context()
+    assert context["store_weights_as_qdq"] is True
 
 
 def test_qnn_onnx_options_to_context_copies_mutable_dictionaries() -> None:
