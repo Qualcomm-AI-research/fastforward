@@ -61,6 +61,34 @@ def test_dtype_methods(dtype: str, _seed_prngs: int) -> None:
 
 
 @pytest.mark.parametrize(
+    "name",
+    [
+        "is_floating_point",
+        "is_complex",
+        "is_signed",
+        "is_conj",
+        "is_neg",
+        "is_inference",
+        "numel",
+    ],
+)
+def test_module_level_query_does_not_dequantize(name: str, _seed_prngs: int) -> None:
+    # Module-level `torch.<name>` is a distinct callable from the `Tensor.<name>`
+    # method descriptor, so it must be independently allowlisted or it triggers
+    # the dequantization fallback.
+    torch.manual_seed(7480)
+    data = torch.randn(4, 4)
+    params = StaticAffineQuantParams(scale=1.0, offset=None, num_bits=3, granularity=ff.PerTensor())
+    quantized_data = _MockQuantizationFunction.quantize(data, params)
+
+    module_fn = getattr(torch, name)
+    with ff.strict_quantization(True):
+        module_result = module_fn(quantized_data)
+    method_result = getattr(quantized_data, name)()
+    assert module_result == method_result
+
+
+@pytest.mark.parametrize(
     "dtype",
     [
         torch.bfloat16,

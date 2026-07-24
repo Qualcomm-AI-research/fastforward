@@ -154,6 +154,16 @@ def _set_no_dispatch(attr_name: str, silent: bool = False) -> None:
     else:
         _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(attr)
 
+    # The module-level `torch.<attr_name>` (e.g. `torch.is_floating_point`) is a
+    # distinct callable object from the `Tensor.<attr_name>` method descriptor and
+    # dispatches through `__torch_function__` under its own identity. Registering
+    # only the method descriptor leaves the functional form falling through to the
+    # dequantization fallback, so any caller reaching for `torch.<attr_name>(t)`
+    # instead of `t.<attr_name>()` triggers an unintended dequantization.
+    module_attr = getattr(torch, attr_name, None)
+    if callable(module_attr) and module_attr is not attr:
+        _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(module_attr)
+
 
 _set_no_dispatch("__cuda_array_interface__")
 _set_no_dispatch("__repr__")
