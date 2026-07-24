@@ -10,7 +10,7 @@ and optionally converts the corresponding weight quantizers into stubs.
 The transform is used directly by algorithms and export paths that need
 grid-snapped weights without persisting anything to disk (e.g. GPTQ,
 orchestration, export). It is also the primitive on top of which
-`QuantizedModule.save_quantized_model` is built.
+`fastforward.quantization.save_load.save_quantized_model` is built.
 
 Discovery of which quantizer snaps which weight is factored behind the
 `WeightQuantizerDiscovery` protocol. The default `ConventionDiscovery` relies on
@@ -20,12 +20,14 @@ forward-pass-based strategy can be substituted without changing this module's
 callers.
 """
 
+from collections import defaultdict
 from typing import Iterator, Protocol, runtime_checkable
 
 import torch
 
 import fastforward as ff
 
+from fastforward.exceptions import QuantizationError
 from fastforward.nn.quantizer import Quantizer, QuantizerStub
 
 # A single weight-fuse target: the module owning the weight, the attribute name
@@ -116,10 +118,82 @@ def _fuse_target(
         weight.copy_(qdq_weight)
 
     if stub_quantizer:
-        for name, sibling in module.named_children():
-            if sibling is quantizer:
-                setattr(module, name, QuantizerStub(_metadata=quantizer.quant_metadata))
-                break
+        _stub_target(module, quantizer)
+
+
+def _stub_target(module: torch.nn.Module, quantizer: Quantizer) -> None:
+    """Replace `quantizer` on `module` with an equivalent `QuantizerStub`.
+
+    The stub inherits the original quantizer's metadata, so tags and shape
+    information survive the replacement.
+
+    Args:
+        module: The module owning the quantizer.
+        quantizer: The quantizer instance to replace.
+    """
+    for name, sibling in module.named_children():
+        if sibling is quantizer:
+            setattr(module, name, QuantizerStub(_metadata=quantizer.quant_metadata))
+            break
+
+
+def _check_tied_weight_targets(
+    model: torch.nn.Module, targets: list[WeightQuantizerTarget]
+) -> None:
+    """Reject tied weights whose quantizers would snap them to different grids.
+
+    Fusing walks each target independently and writes into the weight in place.
+    When two modules share one weight `Parameter` (e.g. a tied
+    `lm_head.weight`/`embed_tokens.weight` pair) but own separately configured
+    quantizers, the second write silently overwrites the first, leaving the
+    weight on whichever grid happened to be fused last. The result is wrong for
+    at least one of the two modules, so refuse rather than corrupt the weight.
+
+    Tied weights sharing a single quantizer instance, or quantizers that produce
+    identical QDQ values, are fused normally: the repeated write is a no-op.
+
+    Args:
+        model: The model being fused, used to report qualified module names.
+        targets: The `(module, weight_attr, quantizer)` triples about to be fused.
+
+    Raises:
+        QuantizationError: If a tied weight is snapped by quantizers that
+            disagree on the grid.
+    """
+    by_storage: dict[tuple[int, torch.Size], list[WeightQuantizerTarget]] = defaultdict(list)
+    for module, weight_attr, quantizer in targets:
+        weight = getattr(module, weight_attr)
+        by_storage[(weight.data_ptr(), weight.shape)].append((module, weight_attr, quantizer))
+
+    module_names = {id(submodule): name for name, submodule in model.named_modules()}
+
+    for group in by_storage.values():
+        if len(group) == 1:
+            continue
+
+        # Compare the actual QDQ output rather than the quantizer configuration:
+        # differently-configured quantizers may still agree on the grid, and only
+        # a disagreement corrupts the weight.
+        weight = getattr(group[0][0], group[0][1])
+        reference: torch.Tensor | None = None
+        for module, weight_attr, quantizer in group:
+            with ff.strict_quantization(False):
+                qdq_weight = quantizer(weight).dequantize()
+            if reference is None:
+                reference = qdq_weight
+            elif not torch.equal(reference, qdq_weight):
+                names = ", ".join(
+                    f"{module_names.get(id(module), type(module).__name__)}.{weight_attr}"
+                    for module, weight_attr, _ in group
+                )
+                msg = (
+                    f"Cannot fuse QDQ weights: the weight shared by [{names}] is tied "
+                    "across modules whose weight quantizers snap it to different grids, "
+                    "so fusing would leave it correct for at most one of them. Untie the "
+                    "weights (assign each module its own copy of the parameter), or share "
+                    "a single quantizer instance between them so both agree on the grid."
+                )
+                raise QuantizationError(msg)
 
 
 def fuse_qdq_weights(
@@ -135,7 +209,7 @@ def fuse_qdq_weights(
     in float but matches its quantized numerics. No files are written; this is a
     pure in-memory transform intended for use by algorithms (e.g. GPTQ),
     orchestration, and export paths, as well as by
-    `QuantizedModule.save_quantized_model`.
+    `fastforward.quantization.save_load.save_quantized_model`.
 
     Args:
         model: The (quantized) model whose weights should be fused.
@@ -155,7 +229,66 @@ def fuse_qdq_weights(
         Weights retain their original floating-point dtype but hold grid-snapped
         values. Only weights whose quantizer is discovered are affected;
         activation quantizers are left untouched.
+
+    Raises:
+        QuantizationError: If a weight is tied across modules whose quantizers
+            would snap it to different grids. See `_check_tied_weight_targets`.
     """
     discovery = ConventionDiscovery() if discovery is None else discovery
-    for module, weight_attr, quantizer in list(discovery(model)):
+    targets = list(discovery(model))
+    _check_tied_weight_targets(model, targets)
+    for module, weight_attr, quantizer in targets:
         _fuse_target(module, weight_attr, quantizer, stub_quantizer=stub_quantizers)
+
+
+def find_weight_quantizers(
+    model: torch.nn.Module,
+    *,
+    discovery: WeightQuantizerDiscovery | None = None,
+) -> list[WeightQuantizerTarget]:
+    """Return the weight-quantizer targets `fuse_qdq_weights` would act on.
+
+    Exposes the discovery step on its own, so callers can inspect which weight
+    quantizers a fuse or stub pass would affect without performing it (e.g. to
+    apply an overwrite policy before stubbing).
+
+    Args:
+        model: The (quantized) model to inspect.
+        discovery: Strategy used to find the weight quantizers. Defaults to
+            `ConventionDiscovery`.
+
+    Returns:
+        The discovered `(module, weight_attr, quantizer)` triples.
+    """
+    discovery = ConventionDiscovery() if discovery is None else discovery
+    return list(discovery(model))
+
+
+def stub_weight_quantizers(
+    model: torch.nn.Module,
+    *,
+    discovery: WeightQuantizerDiscovery | None = None,
+) -> None:
+    """Replace a model's weight quantizers with stubs, leaving weights untouched.
+
+    This is the stubbing half of `fuse_qdq_weights` without the fusing: weights
+    are not modified, only the discovered weight quantizers are replaced by
+    equivalent `QuantizerStub`s (preserving their metadata).
+
+    The primary use is loading an already-fused artifact: when weights were
+    persisted as QDQ (grid-snapped) values, the weight quantizers must be
+    stubbed so a subsequent forward pass does not re-quantize them.
+
+    Args:
+        model: The (quantized) model whose weight quantizers should be stubbed.
+        discovery: Strategy used to find the weight quantizers. Defaults to
+            `ConventionDiscovery`, which uses the FastForward naming/tagging
+            convention.
+
+    Note:
+        Only weight quantizers are affected; activation quantizers are left
+        untouched. Weights are never read or written by this function.
+    """
+    discovery = ConventionDiscovery() if discovery is None else discovery
+    for module, _, quantizer in list(discovery(model)):
+        _stub_target(module, quantizer)

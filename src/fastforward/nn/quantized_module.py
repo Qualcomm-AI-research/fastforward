@@ -8,24 +8,17 @@ import logging
 import textwrap
 import warnings
 
-from collections import defaultdict
 from io import TextIOBase
-from operator import attrgetter
-from pathlib import Path
 from types import ModuleType as PyModuleType
-from typing import Any, Iterator, Literal, Sequence, TypeAlias, Union, cast
+from typing import Any, Iterator, Sequence, TypeAlias, Union, cast
 
 import torch
-import yaml
-
-from safetensors import safe_open
-from safetensors.torch import save_file
 
 import fastforward as ff
 
-from fastforward.cache import get_assets_path
 from fastforward.exceptions import QuantizationError
 from fastforward.nn import Quantizer, QuantizerMetadata, QuantizerStub
+from fastforward.quantization import save_load as _save_load
 
 ModuleType: TypeAlias = type[torch.nn.Module]
 QuantizedModuleType: TypeAlias = type["QuantizedModule"]
@@ -132,9 +125,6 @@ def _record_quantized_module(cls: type["QuantizedModule"]) -> None:
 
     module = module_bases[0]
     _QUANTIZED_MODULE_MAP.setdefault(module, []).append(cls)
-
-
-_OverwriteOptions: TypeAlias = Literal["overwrite"] | Literal["skip"] | Literal["error"]
 
 
 class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylint: disable=abstract-method
@@ -360,296 +350,17 @@ class QuantizedModule(torch.nn.Module, metaclass=_QuantizedModuleMeta):  # pylin
         """Return a summary container, optionally writing to a provided text stream."""
         return summarize_quantizers(self, writer=writer)
 
-    def save_quantization_state(
-        self,
-        *,
-        tag: str = "main",
-        name_or_path: str | Path | None = None,
-        cache_dir: Path | None = None,
-        allow_lazy_params: bool = False,
-    ) -> Path:
-        """Save quantization state to disk for later restoration.
-
-        Saves the quantization state of all quantizers in this module to disk,
-        including quantizer parameters, metadata, and configuration information.
-        The state is saved as a SafeTensors file with accompanying YAML configuration.
-
-        Args:
-            tag: Tag to identify this particular save. Used to organize multiple
-                saves of the same model. Defaults to "main".
-            name_or_path: Model identifier or path. If None, attempts to extract
-                from the model's config.name_or_path attribute. Used to determine
-                the save location and validate consistency during loading.
-            cache_dir: Directory where quantization state should be cached. If None,
-                uses the default cache directory from get_assets_path().
-            allow_lazy_params:  If False, a ValueError will be raised when trying
-                to save uninitialized parameters in the quantization state.
-                If True, a warning will be raised instead and the uninitialized
-                parameters will be decorated as `lazy` in the quantization state
-                metadata.
-
-        Returns:
-            Path to the saved configuration file (config.yaml).
-
-        Raises:
-            RuntimeError: If the model identifier cannot be determined.
-            ValueError: If the cache directory cannot be created due to an
-                existing file with the same name.
-
-        Note:
-            The quantization state is saved in a directory structure:
-            {cache_dir}/quantization-state/{name_or_path}/{tag}/
-            containing 'model.safetensors' and 'config.yaml' files.
-        """
-        if name_or_path is None:
-            name_or_path = getattr(getattr(self, "config", None), "name_or_path", None)
-        if name_or_path is None:
-            raise RuntimeError(
-                "Unable to detect the model identifier. Please provide it manually "
-                "if there is no `config.name_or_path` property in the model"
-            )
-        assets_path = get_assets_path(
-            f"quantization-state/{name_or_path}", tag, cache_dir=cache_dir
-        )
-        try:
-            assets_path.mkdir(exist_ok=True, parents=True, mode=0o775)
-        except (FileExistsError, NotADirectoryError):
-            msg = f"Cannot create directory {assets_path} because of an existing file."
-            raise ValueError(msg)
-        transformers_version = getattr(getattr(self, "config", None), "transformers_version", None)
-        fastforward_version = ff.__version__
-        quantizers = defaultdict(list)
-        for name, quantizer in self.named_quantizers(remove_duplicate=False):
-            quantizers[quantizer].append(name)
-
-        # State dictionary containing quantizer parameters keyed by
-        # "first_quantizer_name.param_name". For shared quantizers (same quantizer instance used
-        # in multiple locations), parameters are stored only once using the lexicographically first
-        # quantizer name to avoid duplication.
-        # Example: {
-        #     "layer1.weight_quantizer.scale": tensor([1.0]),
-        #     "layer1.weight_quantizer.offset": tensor([0])
-        # }
-        state = {}
-
-        # Metadata mapping each quantizer name to its parameter keys in the format
-        # "param=tensor_key". This enables reconstruction of individual quantizer state_dicts during
-        # loading by mapping parameter names to their corresponding tensor keys in the SafeTensors
-        # file.
-        # Example: {
-        #     "layer1.weight_quantizer":
-        #         "scale=layer1.weight_quantizer.scale,offset=layer1.weight_quantizer.offset",
-        #     "layer2.weight_quantizer":
-        #         "scale=layer1.weight_quantizer.scale,offset=layer1.weight_quantizer.offset",
-        # }
-        #
-        # If lazy parameters are allowed, uninitialized parameters/buffers will be decorated
-        # with a `::lazy` tag after the name.
-        # Example: {
-        #     "layer1.weight_quantizer":
-        #         "scale=layer1.weight_quantizer.scale::lazy,offset=layer1.weight_quantizer.offset::lazy",
-        # }
-        metadata = {}
-
-        for quantizer, names in quantizers.items():
-            first_name = min(names)
-            state_dict = quantizer.state_dict(keep_vars=True)
-            lazy_param = set()
-            for key, param in state_dict.items():
-                if torch.nn.parameter.is_lazy(param):
-                    lazy_param.add(key)
-                else:
-                    state[f"{first_name}.{key}"] = param.detach()
-
-            if len(lazy_param) > 0:
-                msg = (
-                    f"A quantizer having lazy parameters (UninitializedParameter "
-                    f"or UninitializedBuffer) was found. Parameters: {lazy_param}.\n"
-                    f"Tip: quantizers normally materialize the uninitialized "
-                    f"parameters during range estimation."
-                )
-                if allow_lazy_params:
-                    logger.warning(msg)
-                else:
-                    logger.error(msg)
-                    raise ValueError(msg)
-
-            for name in names:
-                params_metadata = [
-                    f"{param}={first_name}.{param}" + ("::lazy" if param in lazy_param else "")
-                    for param in state_dict.keys()
-                ]
-                metadata[name] = ",".join(params_metadata)
-
-        config = {
-            "version": "1.0",
-            "name_or_path": str(name_or_path),
-            "transformers_version": str(transformers_version),
-            "fastforward_version": str(fastforward_version),
-            "quantizers": {
-                name: quantizer for quantizer, names in quantizers.items() for name in names
-            },
-        }
-        save_file(state, assets_path / "model.safetensors", metadata=metadata)
-        config_path = assets_path / "config.yaml"
-        with open(config_path, "w") as f:
-            yaml.dump(config, f, sort_keys=False)
-        return config_path
-
-    def load_quantization_state(
-        self,
-        *,
-        tag: str = "main",
-        name_or_path: str | Path | None = None,
-        cache_dir: Path | None = None,
-        overwrite_policy: _OverwriteOptions = "error",
-        allow_lazy_params: bool = False,
-    ) -> None:
-        """Load quantization state from saved files.
-
-        Args:
-            tag: Tag used when saving the quantization state. Defaults to "main".
-            name_or_path: Model identifier used when saving. If None, attempts to get from config.
-            cache_dir: Directory where the quantization state was cached. If None, uses
-                default cache.
-            overwrite_policy: The policy to use when a loader quantizer is already present
-                in the model. Options are 'skip', 'overwrite' and 'error'.
-            allow_lazy_params: If False, uninitialized parameters encountered in the
-                quantization state metadata will raise a ValueError.
-                if True, uninitialized parameters will just print a warning message instead.
-
-
-        Raises:
-            RuntimeError: If the model identifier cannot be determined.
-            FileNotFoundError: If the quantization state files are not found.
-            ValueError: If the loaded configuration is incompatible.
-        """
-        name: str | None = getattr(getattr(self, "config", None), "name_or_path", None)
-        if name_or_path is not None and not Path(name_or_path).exists():
-            name = str(name_or_path)
-        if name is None:
-            raise RuntimeError(
-                "Unable to detect the model identifier. Please provide it manually "
-                "if there is no `config.name_or_path` property in the model"
-            )
-        if name_or_path is not None and Path(name_or_path).exists():
-            config_path = Path(name_or_path)
-        else:
-            config_path = (
-                get_assets_path(f"quantization-state/{name}", tag, cache_dir=cache_dir)
-                / "config.yaml"
-            )
-        model_path = config_path.parent / "model.safetensors"
-
-        # Check if files exist
-        if not config_path.exists():
-            msg = f"Quantization state config not found at {config_path}"
-            raise FileNotFoundError(msg)
-        if not model_path.exists():
-            msg = f"Quantization state model not found at {model_path}"
-            raise FileNotFoundError(msg)
-
-        # Load configuration
-        with open(config_path, "r") as f:
-            config = yaml.load(f, yaml.Loader)
-
-        # Validate configuration
-        if config.get("version") != "1.0":
-            msg = f"Unsupported quantization state version: {config.get('version')}"
-            raise ValueError(msg)
-
-        # if user provides a fill path to the config, we assume he knows what he is doing
-        if str(config.get("name_or_path")) != str(name):
-            msg = (
-                f"Model identifier mismatch: expected '{name_or_path}', "
-                f"found '{config.get('name_or_path')}' in saved state"
-            )
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-        quantizers: dict[str, Quantizer] = config.get("quantizers", {})
-        # Reconstruct quantizer state_dict by parsing metadata to map parameter names to tensor keys.
-        # The metadata format "param=tensor_key" allows to load the correct tensors for each
-        # parameter. For shared quantizers, multiple quantizer names may reference the same tensor
-        # keys.
-        with safe_open(model_path, framework="pt") as f:
-            metadata = f.metadata()
-
-            for name, quantizer in quantizers.items():
-                state_tensor_keys = {}
-                lazy_params = []
-                for key in metadata[f"{name}"].split(","):
-                    state_key, tensor_key = key.split("=")
-
-                    if "::" in tensor_key:
-                        tensor_key, decorators = tensor_key.split("::")
-                    else:
-                        decorators = ""
-
-                    if "lazy" in decorators:
-                        lazy_params.append(state_key)
-                    else:
-                        state_tensor_keys[state_key] = tensor_key
-
-                missing_keys, unexpected_keys = quantizer.load_state_dict(
-                    {
-                        state_key: f.get_tensor(tensor_key)
-                        for state_key, tensor_key in state_tensor_keys.items()
-                    },
-                    strict=False,
-                )
-
-                if len(lazy_params) > 0:
-                    msg = (
-                        f"Lazy parameters were found in quantization state "
-                        f"and cannot be loaded. Parameters: {lazy_params}."
-                    )
-                    if allow_lazy_params:
-                        logger.warning(msg)
-                    else:
-                        logger.error(msg)
-                        raise ValueError(msg)
-
-                missing_keys = sorted(set(missing_keys) - set(lazy_params))
-                if missing_keys or unexpected_keys:
-                    msg = (
-                        f"There are some missing ({missing_keys}) or unexpected "
-                        f"({unexpected_keys}) keys during loading state_dict"
-                    )
-                    logger.error(msg)
-                    raise RuntimeError(msg)
-
-        for name, quantizer in quantizers.items():
-            parts = name.rsplit(".", 1)
-            parent = self if len(parts) == 1 else attrgetter(parts[0])(self)
-            parent_attribute = parts[-1]
-            current_quantizer = getattr(parent, parent_attribute, None)
-
-            is_quantizer = isinstance(current_quantizer, Quantizer)
-            is_quantizer_stub = isinstance(current_quantizer, QuantizerStub)
-            if is_quantizer and not is_quantizer_stub:
-                if overwrite_policy == "error":
-                    msg = (
-                        f"'{name}' is a quantizer, but is already initialized. If "
-                        + 'you want to overwrite the existing quantizer, use overwrite_policy="overwrite" '
-                        + "or if you want to skip loading existing quantizers use "
-                        + 'overwrite_policy="skip"'
-                    )
-                    raise QuantizationError(msg)
-                elif overwrite_policy == "skip":
-                    continue
-                elif overwrite_policy != "overwrite":
-                    msg = (  # type: ignore[unreachable]
-                        "Encountered a quantizer that was already initialized. Since "
-                        + f"overwrite_policy={overwrite_policy} is illegal cannot resolve conflict."
-                        + "please use 'error', 'skip', or 'overwrite"
-                    )
-                    raise QuantizationError(msg)
-            if not is_quantizer:
-                msg = f"'{name}' is not a quantizer or was overwritten by a non-quantizer object"
-                raise ValueError(msg)
-
-            setattr(parent, parent_attribute, quantizer)
+    # Save/load are implemented as free functions in
+    # `fastforward.quantization.save_load` (taking the model as their first
+    # argument) and exposed here as methods by binding those functions directly.
+    # Python's descriptor protocol binds `self` as the leading `model` argument,
+    # so `model.save_quantized_model(...)` and
+    # `ff.quantization.save_quantized_model(model, ...)` are the same call. The
+    # docstrings and signatures live on the free functions.
+    save_quantization_state = _save_load.save_quantization_state
+    load_quantization_state = _save_load.load_quantization_state
+    save_quantized_model = _save_load.save_quantized_model
+    load_quantized_model = _save_load.load_quantized_model
 
 
 class SkipQuantization:
