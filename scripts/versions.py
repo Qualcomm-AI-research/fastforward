@@ -17,6 +17,7 @@ import os
 import sys
 
 VERSIONS = [
+    {"VER_TORCH": "2.13.0", "VER_CUDA": "13.0", "VER_PYTHON": "3.12"},
     {"VER_TORCH": "2.12.0", "VER_CUDA": "13.0", "VER_PYTHON": "3.12"},
     {"VER_TORCH": "2.11.0", "VER_CUDA": "12.6", "VER_PYTHON": "3.12"},
     {"VER_TORCH": "2.10.0", "VER_CUDA": "12.6", "VER_PYTHON": "3.12"},
