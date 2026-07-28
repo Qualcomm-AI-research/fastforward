@@ -2358,6 +2358,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../fuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    fuse
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../gptq/" class="md-nav__link">
         
   
@@ -3431,7 +3459,7 @@ subsequently quantized using the provided quantization parameters.</p>
     <span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> <span class="ow">or</span> <span class="n">granularities</span><span class="o">.</span><span class="n">PerTensor</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="ow">and</span> <span class="n">scale</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-            <span class="n">offset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">scale</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">offset</span> <span class="k">if</span> <span class="n">offset</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">offset</span> <span class="k">if</span> <span class="n">offset</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">offset</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">!=</span> <span class="n">scale</span><span class="o">.</span><span class="n">numel</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;scale and offset must contain the same number of elements. &quot;</span>
