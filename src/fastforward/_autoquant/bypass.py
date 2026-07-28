@@ -8,7 +8,7 @@ code: they are not tensor operations, they do not have a quantized counterpart,
 and descending into their implementation produces noisy wrappers that obscure
 the user's original code.
 
-Extending the policy is a one-line addition to `_BYPASS_QUALIFIED_NAMES`.
+Extending the policy is a one-line addition to `_BYPASS_MIN_TORCH_VERSION`.
 """
 
 import importlib
@@ -18,34 +18,61 @@ from typing import Any
 
 import libcst
 import libcst.helpers
+import torch
 
-# Fully qualified names of callables that AutoQuant must leave untouched. The
-# leaf function is resolved lazily at import time so that missing attributes on
-# older torch versions do not break AutoQuant.
-_BYPASS_QUALIFIED_NAMES: frozenset[str] = frozenset({
-    "torch.utils.checkpoint.checkpoint",
-    "torch.overrides.handle_torch_function",
-    "torch.compiler.is_exporting",
-    "torch._check_with",
-})
+from packaging.version import Version
+
+# Fully qualified names of callables that AutoQuant must leave untouched, mapped
+# to the first torch version that provides them. An entry that the installed
+# torch predates is skipped: it cannot appear in user code on that version.
+_BYPASS_MIN_TORCH_VERSION: dict[str, str] = {
+    "torch.utils.checkpoint.checkpoint": "2.4",
+    "torch.overrides.handle_torch_function": "2.4",
+    "torch.compiler.is_exporting": "2.7",
+    "torch._check_with": "2.4",
+}
+
+_BYPASS_QUALIFIED_NAMES: frozenset[str] = frozenset(_BYPASS_MIN_TORCH_VERSION)
+
+
+def _resolve_qualified_name(qualified_name: str) -> Any:
+    """Resolve a dotted name to the object it denotes.
+
+    Imports the longest importable prefix before attribute access, because a
+    submodule (e.g. `torch.utils.checkpoint`) only becomes an attribute of its
+    parent package once something imports it.
+
+    Raises:
+        ImportError: if no prefix of `qualified_name` is an importable module.
+        AttributeError: if a prefix imports but the remaining attributes are absent.
+    """
+    parts = qualified_name.split(".")
+    for split in range(len(parts), 0, -1):
+        try:
+            obj: Any = importlib.import_module(".".join(parts[:split]))
+        except ModuleNotFoundError:
+            continue
+        for part in parts[split:]:
+            obj = getattr(obj, part)
+        return obj
+    msg = f"No prefix of {qualified_name!r} is an importable module"
+    raise ImportError(msg)
 
 
 def _resolve_bypass_callables() -> frozenset[Any]:
+    installed_torch = Version(torch.__version__.split("+", 1)[0])
     resolved: set[Any] = set()
-    for qualified_name in _BYPASS_QUALIFIED_NAMES:
-        root, *parts = qualified_name.split(".")
+    for qualified_name, min_torch_version in _BYPASS_MIN_TORCH_VERSION.items():
+        if installed_torch.release < Version(min_torch_version).release:
+            continue
         try:
-            obj: Any = importlib.import_module(root)
-            for part in parts:
-                obj = getattr(obj, part)
+            resolved.add(_resolve_qualified_name(qualified_name))
         except (ImportError, AttributeError) as e:
             warnings.warn(
                 f"AutoQuant bypass entry {qualified_name!r} could not be resolved "
                 f"({type(e).__name__}: {e}); calls to this op will not be bypassed "
                 f"via callable identity."
             )
-            continue
-        resolved.add(obj)
     return frozenset(resolved)
 
 

@@ -4,6 +4,7 @@
 
 import contextlib
 import functools
+import importlib
 import logging
 import multiprocessing as mp
 import operator
@@ -12,6 +13,7 @@ import re
 import subprocess
 import sys
 import types
+import warnings
 
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Iterator, TypeAlias, cast
@@ -25,7 +27,7 @@ import pytest
 import syrupy
 import torch
 
-from fastforward._autoquant import pybuilder, pysource
+from fastforward._autoquant import bypass, pybuilder, pysource
 from fastforward._autoquant.autoquant import (
     _find_known_quantized_modules,
     _propagate_quantizers,
@@ -47,7 +49,7 @@ from fastforward.testing.string import assert_strings_match_verbose
 from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
 
-from tests._core_package_version_utils import TORCH_VERSION
+from tests._core_package_version_utils import TORCH_VERSION, is_torch_version_at_least
 
 Tensor: TypeAlias = torch.Tensor  # Required for tests, do not remove
 
@@ -1418,6 +1420,80 @@ def test_autoquant_rewrites_torch_and_functional_relu_to_same_dispatch() -> None
 # The AutoQuant bypass policy preserves control/override-style torch ops as-is:
 # they are never wrapped as `quantized_*`, they generate no quantizer params,
 # and AutoQuant does not descend into their implementation as a helper.
+
+
+@contextlib.contextmanager
+def _hidden_submodule_attribute(module_name: str) -> Iterator[None]:
+    """Remove a submodule attribute from its parent package, and restore it after.
+
+    Reproduces the state of a submodule that nothing has imported yet. The
+    `sys.modules` entry is deliberately kept: removing it would make the import
+    machinery build a second copy of the module, whose separate global state
+    then leaks into later tests in the same process.
+    """
+    parent_name, _, attr_name = module_name.rpartition(".")
+    parent = importlib.import_module(parent_name)
+    module = importlib.import_module(module_name)
+    delattr(parent, attr_name)
+    try:
+        yield
+    finally:
+        setattr(parent, attr_name, module)
+
+
+@pytest.mark.parametrize("qualified_name", sorted(bypass._BYPASS_MIN_TORCH_VERSION))
+def test_bypass_entries_resolve_on_supported_torch(qualified_name: str) -> None:
+    # GIVEN a bypass entry that the installed torch is new enough to provide
+    min_torch_version = bypass._BYPASS_MIN_TORCH_VERSION[qualified_name]
+    if not is_torch_version_at_least(min_torch_version):
+        pytest.skip(f"{qualified_name} requires torch >= {min_torch_version}")
+
+    # WHEN the entry is resolved
+    resolved = bypass._resolve_qualified_name(qualified_name)
+
+    # THEN it resolves to a callable that the bypass policy recognises
+    assert callable(resolved)
+    assert bypass.is_bypassed_callable(resolved)
+
+
+def test_bypass_resolves_submodule_not_yet_imported() -> None:
+    # GIVEN a submodule that is not an attribute of its parent package because
+    # nothing imported it. torch imports `torch.utils.checkpoint` by chance from
+    # torch 2.8, so hide it to reproduce torch 2.4 and 2.6.
+    with _hidden_submodule_attribute("torch.utils.checkpoint"):
+        assert not hasattr(torch.utils, "checkpoint")
+
+        # WHEN the dotted name is resolved
+        resolved = bypass._resolve_qualified_name("torch.utils.checkpoint.checkpoint")
+
+        # THEN resolution imports the submodule instead of failing
+        assert resolved is sys.modules["torch.utils.checkpoint"].checkpoint
+
+
+def test_bypass_resolution_is_warning_free() -> None:
+    # GIVEN an installed torch for which entries that are too new are gated out
+
+    # WHEN the bypass callables are resolved with warnings as errors
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        resolved = bypass._resolve_bypass_callables()
+
+    # THEN resolution raises no warning, and each applicable entry is resolved
+    applicable = [
+        name
+        for name, min_version in bypass._BYPASS_MIN_TORCH_VERSION.items()
+        if is_torch_version_at_least(min_version)
+    ]
+    assert len(resolved) == len(applicable)
+
+
+def test_bypass_resolution_reports_unresolvable_entry() -> None:
+    # GIVEN a dotted name that no module provides
+    # WHEN it is resolved
+    # THEN resolution raises, and `_resolve_bypass_callables` turns this into a
+    # warning so that a stale entry cannot break `import fastforward`.
+    with pytest.raises((ImportError, AttributeError)):
+        bypass._resolve_qualified_name("torch.does_not_exist")
 
 
 class _BypassCheckpointModule(torch.nn.Module):
