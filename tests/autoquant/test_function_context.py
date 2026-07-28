@@ -162,12 +162,11 @@ def test_from_function_reference_with_none_values(
     assert context.torch_module == expected_torch_module  # type: ignore[comparison-overlap]
     assert context.py_module == expected_py_module
     assert context.method_type == expected_method_type
-    # GIVEN a function refrence and module
     # WHEN creating FunctionContext
     context = FunctionContext.from_function_reference(func_ref, module)
 
     # THEN context has expected values
     assert context.func == expected_func
-    assert context.torch_module == expected_torch_module  # type: ignore[comparison-overlap]
+    assert context.torch_module == expected_torch_module
     assert context.py_module == expected_py_module
     assert context.method_type == expected_method_type

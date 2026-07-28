@@ -587,7 +587,7 @@ class IsolateReplacementCandidates(libcst.CSTTransformer):
         if isinstance(original_node, _LineStatement) and isinstance(result_node, _LineStatement):
             self._insertions.update_position(original_node, result_node)
 
-        return cast(libcst.CSTNodeT, result_node)
+        return result_node
 
     def _resolve_insertions(
         self,

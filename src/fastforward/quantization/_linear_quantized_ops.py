@@ -153,7 +153,7 @@ no_output_quantizer_predicate = Predicate(_no_output_quantizer)
 @register(
     "mul",
     affine_per_tensor_predicate & scalar_other_predicate & no_output_quantizer_predicate,
-    # type: ignore[misc, call-overload]
+    # type: ignore[call-overload, untyped-decorator]
 )
 def scalar_multiply(
     input: QuantizedTensor, other: float, *_args: Any, **_kwargs: Any

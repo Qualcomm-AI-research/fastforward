@@ -10,7 +10,7 @@ dependencies = [
   "torch>=2.4",
   "importlib-metadata",
   "libcst",
-  "mypy<1.17",
+  "mypy",
   "onnx",
   "onnxruntime",
   "onnxscript",

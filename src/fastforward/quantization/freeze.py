@@ -4,7 +4,7 @@
 import contextlib
 
 from collections.abc import Iterator, Sequence
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import torch
 
@@ -45,7 +45,7 @@ class _FreezeParametersOverride:
             # the quantizer is disabled), freezing has no effect. In this case,
             # we skip both the quantizer removal and the in-place parameter update
             # since they would be no-ops.
-            return input_data
+            return cast(torch.Tensor, input_data)
 
         # Update parameter in-place if input is a Parameter
         if isinstance(input_data, torch.nn.Parameter):

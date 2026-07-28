@@ -173,7 +173,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def __or__(self, other: "MPathCollection") -> Self:
         if not isinstance(other, MPathCollection):
-            return NotImplemented  # type: ignore[unreachable]
+            return NotImplemented
         return self.union(other)
 
     def intersection(self, other: "MPathCollection") -> Self:
@@ -187,7 +187,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def __and__(self, other: "MPathCollection") -> Self:
         if not isinstance(other, MPathCollection):
-            return NotImplemented  # type: ignore[unreachable]
+            return NotImplemented
         return self.intersection(other)
 
     def difference(self, other: "MPathCollection") -> Self:
@@ -201,7 +201,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def __sub__(self, other: "MPathCollection") -> Self:
         if not isinstance(other, MPathCollection):
-            return NotImplemented  # type: ignore[unreachable]
+            return NotImplemented
         return self.difference(other)
 
     def symmetric_difference(self, other: "MPathCollection") -> Self:
@@ -215,7 +215,7 @@ class MPathCollection(abc.Sequence[FilterResult]):
 
     def __xor__(self, other: "MPathCollection") -> Self:
         if not isinstance(other, MPathCollection):
-            return NotImplemented  # type: ignore[unreachable]
+            return NotImplemented
         return self.symmetric_difference(other)
 
     def __delitem__(self, idx: int) -> None:

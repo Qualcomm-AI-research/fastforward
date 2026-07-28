@@ -1162,6 +1162,7 @@ def _find_dependent_functions(
                     alias = None
                     if getattr(module, func_name, None) is ref:
                         alias = func_name
+                    assert ref is not None
                     yield _AqTask(module=module, function=ref, alias=alias)
 
             # Attribute access: `module.submodule.func(args)`

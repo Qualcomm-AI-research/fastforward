@@ -84,12 +84,12 @@ class Tag:
             rhs = rhs._symbol
         if isinstance(rhs, str):
             return type(self)(f"{self._symbol}/{rhs}")
-        return NotImplemented  # type: ignore[unreachable]
+        return NotImplemented
 
     def __rtruediv__(self, lhs: str) -> Self:
         if isinstance(lhs, str):
             return type(self)(lhs) / self
-        return NotImplemented  # type: ignore[unreachable]
+        return NotImplemented
 
 
 # Define a set of default tags

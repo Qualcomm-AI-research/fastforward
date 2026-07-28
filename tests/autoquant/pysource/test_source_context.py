@@ -130,7 +130,7 @@ def test_pysource_module() -> None:
     assert module_cst_from_function is module_source.cst()
 
     # WHEN the module of module source object is obtained
-    module_of_module = module_source.module()
+    module_of_module = module_source.module()  # type: ignore[unreachable]
 
     # THEN the result is the same object
     assert module_of_module is module_source

@@ -211,14 +211,14 @@ def test_context_manager_behavior() -> None:
         assert collection._quantization_context == context
 
         # Test nested context
-        other_context = FunctionContext.from_method(ExampleTorchModule, "static_method")
+        other_context = FunctionContext.from_method(ExampleTorchModule, "static_method")  # type: ignore[unreachable]
         with collection.push_context(other_context):
             assert collection._quantization_context == other_context
 
         assert collection._quantization_context == context
 
     # THEN context is properly restored
-    assert collection._quantization_context is None
+    assert collection._quantization_context is None  # type: ignore[unreachable]
 
 
 def test_custom_prefix() -> None:

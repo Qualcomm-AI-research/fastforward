@@ -161,7 +161,7 @@ class _Assignments(Generic[_MetadataT]):
                     msg = f"({var}, {type(producer)}) was not recorded as assignment"
                     raise KeyError(msg) from e
             case _:
-                msg = "Got unsupported key"
+                msg = "Got unsupported key"  # type: ignore[unreachable]
                 raise KeyError(msg)
 
     def __contains__(self, key: tuple[str, libcst.CSTNode] | str) -> bool:
@@ -172,7 +172,7 @@ class _Assignments(Generic[_MetadataT]):
                 var, producer = key
                 return var in self._assignments and producer in self._assignments[var]
             case _:
-                return False
+                return False  # type: ignore[unreachable]
 
     def __iter__(self) -> Iterator[_Assignment[_MetadataT]]:
         for producers in self._assignments.values():

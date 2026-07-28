@@ -149,8 +149,9 @@ def _set_no_dispatch(attr_name: str, silent: bool = False) -> None:
 
     get_set_descriptor_type = type(torch.Tensor.grad)
     if isinstance(attr, get_set_descriptor_type):
-        _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(attr.__get__)
-        _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(attr.__set__)
+        descriptor = cast(Any, attr)
+        _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(descriptor.__get__)
+        _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(descriptor.__set__)
     else:
         _EXCLUDE_FROM_DISPATCH_OR_FALLBACK.add(attr)
 

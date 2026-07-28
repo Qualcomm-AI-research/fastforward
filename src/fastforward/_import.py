@@ -23,8 +23,9 @@ def fully_qualified_name(obj: Any) -> str:
     # exposed at the top-level torch namespace. Normalize to the public API
     # names for consistency.
     if qualified_name.startswith("torch._VariableFunctionsClass"):
-        if getattr(torch, obj.__name__, None) is obj:
-            qualified_name = f"torch.{obj.__name__}"
+        obj_name = obj.__name__
+        if getattr(torch, obj_name, None) is obj:
+            qualified_name = f"torch.{obj_name}"
     return qualified_name
 
 

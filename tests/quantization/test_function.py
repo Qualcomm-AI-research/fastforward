@@ -147,7 +147,7 @@ def test_create_quantization_function() -> None:
     assert quantized.quant_func is CustomQuantizerFunction  # type: ignore[comparison-overlap]
 
     # THEN the quantization arguments must be represented in the tensor's quant_args
-    quant_args = quantized.quant_args()
+    quant_args = quantized.quant_args()  # type: ignore[unreachable]
     assert isinstance(quantized.quant_args(), CustomQuantizerParams)
-    assert quant_args.scale == scale  # type: ignore[attr-defined]
-    assert quant_args.rescale == rescale  # type: ignore[attr-defined]
+    assert quant_args.scale == scale
+    assert quant_args.rescale == rescale

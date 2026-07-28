@@ -285,7 +285,7 @@ def quantize_dynamic_by_tile_impl(
     return result, scale, offset
 
 
-@register_fake("fastforward::quantize_by_tile")  # type: ignore[misc]
+@register_fake("fastforward::quantize_by_tile")  # type: ignore[untyped-decorator]
 def quantize_by_tile_meta(
     input: torch.Tensor,
     scale: torch.Tensor,
@@ -298,7 +298,7 @@ def quantize_by_tile_meta(
     return torch.empty_like(input)
 
 
-@register_fake("fastforward::dequantize_by_tile")  # type: ignore[misc]
+@register_fake("fastforward::dequantize_by_tile")  # type: ignore[untyped-decorator]
 def dequantize_by_tile_meta(
     input: torch.Tensor,
     scale: torch.Tensor,
@@ -310,7 +310,7 @@ def dequantize_by_tile_meta(
     return torch.empty_like(input)
 
 
-@register_fake("fastforward::quantize_by_tile_backward")  # type: ignore[misc]
+@register_fake("fastforward::quantize_by_tile_backward")  # type: ignore[untyped-decorator]
 def quantize_by_tile_backward_meta(
     input: torch.Tensor,
     output_grad: torch.Tensor,
@@ -323,7 +323,7 @@ def quantize_by_tile_backward_meta(
     return [torch.empty_like(input), torch.empty_like(scale), torch.empty_like(scale)]
 
 
-@register_fake("fastforward::quantize_dynamic_by_tile")  # type: ignore[misc]
+@register_fake("fastforward::quantize_dynamic_by_tile")  # type: ignore[untyped-decorator]
 def quantize_dynamic_by_tile_meta(
     input: torch.Tensor,
     tile_size: SizeT,
