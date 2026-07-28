@@ -28,6 +28,7 @@ from fastforward._autoquant.cst import node_creation, node_processing, passes
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward._autoquant.cst.pattern import PatternRule
 from fastforward._autoquant.function_context import FunctionContext
+from fastforward._autoquant.mypy.type_provider import mypy_call_scoped_cache
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
@@ -411,14 +412,15 @@ def autoquant_with_defaults(
     use_type_inference: bool = True,
     replacement_patterns: Iterable[PatternRule] = (),
 ) -> str:
-    return autoquant(
-        module=module,
-        source_context=default_source_context(
-            use_type_inference=use_type_inference,
-            replacement_patterns=replacement_patterns,
-        ),
-        operator_table=operator_table or default_optable(),
-    )
+    with mypy_call_scoped_cache():
+        return autoquant(
+            module=module,
+            source_context=default_source_context(
+                use_type_inference=use_type_inference,
+                replacement_patterns=replacement_patterns,
+            ),
+            operator_table=operator_table or default_optable(),
+        )
 
 
 def codeformat_with_defaults(

@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import contextlib
+import contextvars
 import dataclasses
 import io
 
-from typing import TypeAlias
+from typing import Iterator, TypeAlias
 
 import libcst
 import libcst.metadata
@@ -338,6 +339,10 @@ def _get_mypy_tree_and_checker(
         A tuple containing the mypy AST and an expression checker, or None if
         the AST could not be built
     """
+    cache = _call_scoped_cache.get()
+    if cache is not None and (cached := cache.get(code)) is not None:
+        return cached
+
     eval_module_name = "_ff_evaluation_module__"
     src = mypy.build.BuildSource(
         path=None,
@@ -368,4 +373,31 @@ def _get_mypy_tree_and_checker(
         type_checker, type_checker.msg, type_checker.plugin, {}
     )
 
-    return state.tree, expr_checker
+    typed_result = (state.tree, expr_checker)
+    if cache is not None:
+        cache[code] = typed_result
+    return typed_result
+
+
+_CallScopedCache: TypeAlias = dict[
+    str, tuple[mypy.nodes.MypyFile, mypy.checkexpr.ExpressionChecker]
+]
+
+_call_scoped_cache: contextvars.ContextVar[_CallScopedCache | None] = contextvars.ContextVar(
+    "fastforward_autoquant_mypy_call_scoped_cache", default=None
+)
+
+
+@contextlib.contextmanager
+def mypy_call_scoped_cache() -> Iterator[None]:
+    """Activate an in-call cache of mypy build results keyed by source string.
+
+    While active, `_get_mypy_tree_and_checker(code)` returns a cached result on
+    repeated calls with the same `code`. The cache is created empty on enter
+    and discarded on exit, so it cannot outlive the surrounding call.
+    """
+    token = _call_scoped_cache.set({})
+    try:
+        yield
+    finally:
+        _call_scoped_cache.reset(token)
