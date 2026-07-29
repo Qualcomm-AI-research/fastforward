@@ -375,6 +375,47 @@ def test_load_quantization_existing_quantizer(tmp_path: Path) -> None:
         module.load_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
 
 
+@pytest.mark.parametrize(
+    "quant_param_dtype", [torch.float32, torch.float16, torch.bfloat16], ids=str
+)
+def test_loading_saved_quantization_state_retaining_params_precision(
+    tmp_path: Path, quant_param_dtype: torch.dtype
+) -> None:
+    # Given: A quantized linear module with an existing weight quantizer
+    name_or_path = "load_saved_quant_state_retaining_bitexact_params_test_model"
+    module: ff.nn.QuantizedLinear = ff.nn.QuantizedLinear(10, 10)
+    module.weight_quantizer = ff.nn.LinearQuantizer(num_bits=8, param_dtype=quant_param_dtype)
+    module.weight_quantizer.quantization_range = (
+        -float(torch.rand(1)[0]),
+        float(torch.rand(1)[0]) + 1e-5,
+    )
+    saved_params = {k: v.clone() for k, v in module.weight_quantizer.named_parameters()}
+
+    # When: Saving the quantization state and then modifying the range
+    module.save_quantization_state(name_or_path=name_or_path, cache_dir=tmp_path)
+    module.weight_quantizer.quantization_range = (-15.0, 15.0)
+    new_params = {k: v.clone() for k, v in module.weight_quantizer.named_parameters()}
+
+    # When: Loading with skip policy
+    module.load_quantization_state(
+        name_or_path=name_or_path, cache_dir=tmp_path, overwrite_policy="skip"
+    )
+    # Then: The parameters will be different from the saved ones, and equal to the new ones
+    for k, param in module.weight_quantizer.named_parameters():
+        assert torch.not_equal(param, saved_params[k])
+        assert torch.equal(param, new_params[k])
+
+    # When: Loading with overwrite policy
+    module.load_quantization_state(
+        name_or_path=name_or_path, cache_dir=tmp_path, overwrite_policy="overwrite"
+    )
+    # Then: The quantization parameters should be identical to the saved ones (value and dtype)
+    for k, param in module.weight_quantizer.named_parameters():
+        assert torch.equal(param, saved_params[k])
+        assert param.dtype == saved_params[k].dtype
+
+
+# ------------------------------------------------------------------------------
 # Testing uninitialized parameters in quantization state
 
 
