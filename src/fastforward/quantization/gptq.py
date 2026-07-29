@@ -47,19 +47,25 @@ def gptq(
         msg = f"weight_quantizer must be a LinearQuantizer, got {type(module.weight_quantizer).__name__}."
         raise ValueError(msg)
 
+    match module.weight_quantizer.granularity:
+        case granularities.PerTensor() | granularities.PerChannel(channel_dims=(0,)):
+            pass
+        case _ as g if isinstance(module, ff.nn.QuantizedConv2d):
+            msg = (
+                "GPTQ on QuantizedConv2d currently supports only PerTensor and "
+                f"PerChannel(channel_dim=0) granularities. Got: {type(g).__name__}."
+            )
+            raise NotImplementedError(msg)
+        case granularities.PerBlock(strict_blocks=False):
+            msg = "GPTQ does not support PerBlock with strict_blocks=False."
+            raise ValueError(msg)
+        case _:
+            pass
+
     original_weight_shape = module.weight.shape
     weights = module.weight.data.clone().float()
 
     if isinstance(module, ff.nn.QuantizedConv2d):
-        match module.weight_quantizer.granularity:
-            case granularities.PerTensor() | granularities.PerChannel(channel_dims=(0,)):
-                pass
-            case _ as g:
-                msg = (
-                    "GPTQ on QuantizedConv2d currently supports only PerTensor and "
-                    f"PerChannel(channel_dim=0) granularities. Got: {type(g).__name__}."
-                )
-                raise NotImplementedError(msg)
         # (out_channels, in_channels/groups, kH, kW) -> (out_channels, in_channels/groups * kH * kW)
         weights = weights.flatten(1)
 
@@ -82,6 +88,16 @@ def gptq(
     errors = torch.zeros_like(weights)
     hessian_inverse = invert_hessian(hessian, perc_damp)
 
+    # For grouped quantization only: recompute each group's scale on its error-corrected weights.
+    recompute_scales = False
+    col_block_size = num_row_blocks = num_col_blocks = 0
+    granularity = weight_quantizer.granularity
+    if isinstance(granularity, granularities.PerBlock | granularities.PerTile):
+        row_block_size, col_block_size = granularity.tile_size(weights.shape)
+        num_row_blocks = weights.shape[0] // row_block_size
+        num_col_blocks = weights.shape[1] // col_block_size
+        recompute_scales = num_col_blocks > 1 and not actorder
+
     for i in range(0, columns, block_size):
         block_end = min(i + block_size, columns)
 
@@ -89,6 +105,22 @@ def gptq(
         hessinv_block = hessian_inverse[i:block_end, i:block_end]
 
         for j in range(block_end - i):
+            global_col = i + j
+            if recompute_scales and global_col % col_block_size == 0:
+                col_block_idx = global_col // col_block_size
+                group_weights = weights[:, global_col : global_col + col_block_size]
+                # Rows are the outer dim, so reshape to `(num_row_blocks, -1)` groups each
+                # row-block's elements contiguously — matches the layout column_quantizer
+                # indexes into further down.
+                reshaped = group_weights.reshape(num_row_blocks, -1)
+                update_partial_range(
+                    weight_quantizer,
+                    reshaped.min(dim=-1).values,
+                    reshaped.max(dim=-1).values,
+                    param_view_shape=(num_row_blocks, num_col_blocks),
+                    param_view_index=(slice(None), col_block_idx),
+                )
+
             orig_col = int(column_order[i + j].item())
             quant_deq = column_quantizer(weight_quantizer, weights.shape, orig_col)
             quantized_weights[:, i + j] = quant_deq(weights_block[:, j])
@@ -201,6 +233,48 @@ def column_quantizer(
         return q.dequantize().flatten()
 
     return _quant_fn
+
+
+def update_partial_range(
+    weight_quantizer: ff.nn.LinearQuantizer,
+    min_range: torch.Tensor,
+    max_range: torch.Tensor,
+    *,
+    param_view_shape: tuple[int, ...],
+    param_view_index: Any,
+) -> None:
+    """Write scale/offset for a subset of parameter positions from a min/max range.
+
+    Partial counterpart to the `quantization_range` setter on `LinearQuantizer`: instead
+    of overwriting the whole scale/offset tensors, this writes only the entries selected
+    by `param_view_index` after reshaping the flat tensors to `param_view_shape`. The
+    caller is responsible for describing the layout via the shape/index pair, and for
+    ensuring parameters are already materialized.
+
+    Args:
+        weight_quantizer: The LinearQuantizer whose scale/offset are updated in-place.
+        min_range: Per-position min values for the selected positions.
+        max_range: Per-position max values for the selected positions.
+        param_view_shape: Shape used to reshape the flat scale/offset tensors before
+            indexing (e.g. `(num_row_blocks, num_col_blocks)` for a PerBlock layout).
+        param_view_index: Index into the reshaped tensor selecting the positions to
+            write (e.g. `(slice(None), col_block_idx)` to write one column group).
+    """
+    scale, offset = affine_quant.parameters_for_range(
+        min_range,
+        max_range,
+        num_bits=weight_quantizer.num_bits,
+        symmetric=weight_quantizer.symmetric,
+        allow_one_sided=weight_quantizer.allow_one_sided,
+    )
+    scale_view = weight_quantizer.scale.data.view(param_view_shape)
+    scale_view[param_view_index] = scale.to(scale_view.dtype)
+    if weight_quantizer.offset is not None:
+        offset_view = weight_quantizer.offset.data.view(param_view_shape)
+        if offset is not None:
+            offset_view[param_view_index] = offset.to(offset_view.dtype)
+        else:
+            offset_view[param_view_index] = 0.0
 
 
 def calculate_hessian(
