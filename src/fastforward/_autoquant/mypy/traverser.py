@@ -25,9 +25,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# ruff: noqa: D102, ARG002, E741, D415, CPY001
+# ruff: noqa: D101, D102, ARG002, E741, D415, CPY001
 
-"""Generic node traverser visitor"""
 
 from __future__ import annotations
 
@@ -95,6 +94,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -103,6 +103,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -125,14 +126,6 @@ from mypy.patterns import (
 
 
 class TraverserVisitor:
-    """A parse tree visitor that traverses the parse tree during visiting.
-
-    It does not perform any actions outside the traversal. Subclasses
-    should override visit methods to perform actions during
-    traversal. Calling the superclass method allows reusing the
-    traversal implementation.
-    """
-
     def __init__(self) -> None:
         pass
 
@@ -322,6 +315,9 @@ class TraverserVisitor:
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         _visit(o.expr, self)
 
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        pass
+
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         _visit(o.expr, self)
 
@@ -353,6 +349,15 @@ class TraverserVisitor:
             if k is not None:
                 _visit(k, self)
             _visit(v, self)
+
+    def visit_template_str_expr(self, o: TemplateStrExpr, /) -> None:
+        for item in o.items:
+            if isinstance(item, tuple):
+                _visit(item[0], self)
+                if item[3] is not None:
+                    _visit(item[3], self)
+            else:
+                _visit(item, self)
 
     def visit_set_expr(self, o: SetExpr, /) -> None:
         for item in o.items:
@@ -741,6 +746,13 @@ def _(node: CastExpr, visitor: TraverserVisitor, /) -> None:
 
 
 @_visit.register
+def _(node: TypeFormExpr, visitor: TraverserVisitor, /) -> None:
+    if visitor.enter_node(node):
+        visitor.visit_type_form_expr(node)
+        visitor.leave_node(node)
+
+
+@_visit.register
 def _(node: AssertTypeExpr, visitor: TraverserVisitor, /) -> None:
     if visitor.enter_node(node):
         visitor.visit_assert_type_expr(node)
@@ -786,6 +798,13 @@ def _(node: TupleExpr, visitor: TraverserVisitor, /) -> None:
 def _(node: DictExpr, visitor: TraverserVisitor, /) -> None:
     if visitor.enter_node(node):
         visitor.visit_dict_expr(node)
+        visitor.leave_node(node)
+
+
+@_visit.register
+def _(node: TemplateStrExpr, visitor: TraverserVisitor, /) -> None:
+    if visitor.enter_node(node):
+        visitor.visit_template_str_expr(node)
         visitor.leave_node(node)
 
 
