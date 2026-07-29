@@ -177,3 +177,101 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
     # THEN the perplexity is expected to be around 36.
     print(f"Wiki2 PPL 4bit-GPTQ Llama-3.2-1B-Instruct: {perplexity:.4f} (expected ~36)")
     assert perplexity < 50, f"Perplexity {perplexity:.4f} exceeds threshold (expected < 50)"
+
+
+@skip_without_datasets_and_transformers
+def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
+    """W4 min-max and GPTQ perplexity for Qwen3-1.7B via ff.autoquantize.
+
+    Uses the on-device quantization group size (32) and the reference GPTQ recipe
+    (block_size=128, perc_damp=0.05, act_order=False). No hand-written quantized
+    modules — autoquant generates them from the FP model. The min-max baseline runs
+    at the same granularity so the GPTQ improvement can be read directly.
+
+    Prints, in order: FP32 baseline, W4 min-max, W4 GPTQ.
+    """
+    from transformers import Qwen3ForCausalLM
+
+    model_name = "Qwen/Qwen3-1.7B"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    num_bits = 4
+    symmetric = True
+    granularity: ff.granularity.Granularity = ff.granularity.PerBlock(
+        block_dims=1, block_sizes=32, per_channel_dims=0
+    )
+    block_size = 128
+    perc_damp = 0.05
+    act_order = False
+
+    validation_set = _get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
+    calibration_set = _get_c4(model_name, sequence_length=2048, seed=0)
+
+    # FP32 baseline
+    fp_model = Qwen3ForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.float32, use_cache=False
+    )
+    fp_model.eval()
+    fp_perplexity = _evaluate(fp_model, validation_set, device)
+    del fp_model
+
+    # W4 min-max — same autoquant path and granularity as GPTQ below so the two are
+    # directly comparable
+    minmax_model: torch.nn.Module = Qwen3ForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.float32, use_cache=False
+    )
+    minmax_model.eval()
+    ff.autoquantize(
+        minmax_model,
+        output_path="_autoquantized_qwen_benchmark.py",
+        force_overwrite=True,
+        auto_import=True,
+    )
+    ff.quantize_model(minmax_model, skip_quantized_modules=True)
+    minmax_targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
+    minmax_w_quantizers = ff.find_quantizers(
+        minmax_model, minmax_targets / "[quantizer:parameter/weight]"
+    )
+    minmax_w_quantizers.initialize(
+        ff.nn.LinearQuantizer, num_bits=num_bits, granularity=granularity, symmetric=symmetric
+    )
+    with torch.inference_mode(), ff.strict_quantization(False):
+        minmax_model.to(device)
+        with ff.estimate_ranges(minmax_model, ff.range_setting.smoothed_minmax):
+            for batch in calibration_set:
+                minmax_model(batch.to(device), use_cache=False)
+        minmax_perplexity = _evaluate(minmax_model, validation_set, device)
+    del minmax_model
+
+    # W4 GPTQ
+    gptq_model = Qwen3ForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.float32, use_cache=False
+    )
+    gptq_model.eval()
+    ff.autoquantize(
+        gptq_model,
+        output_path="_autoquantized_qwen_benchmark.py",
+        force_overwrite=True,
+        auto_import=True,
+    )
+    ff.quantize_model(gptq_model, skip_quantized_modules=True)
+    gptq_targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
+    gptq_w_quantizers = ff.find_quantizers(
+        gptq_model, gptq_targets / "[quantizer:parameter/weight]"
+    )
+    gptq_w_quantizers.initialize(
+        ff.nn.LinearQuantizer, num_bits=num_bits, granularity=granularity, symmetric=symmetric
+    )
+    with torch.inference_mode(), ff.strict_quantization(False):
+        gptq_fn = functools.partial(
+            ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
+        )
+        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        ff.layerwise_optimize(
+            gptq_model, calibration_set, gptq_fn, targets=gptq_targets, offloading=offloading
+        )
+    with ff.strict_quantization(False):
+        gptq_perplexity = _evaluate(gptq_model, validation_set, device)
+
+    print(f"Wiki2 PPL Qwen3-1.7B FP32 baseline:           {fp_perplexity:.4f}")
+    print(f"Wiki2 PPL Qwen3-1.7B W4 min-max  (qgroup=32): {minmax_perplexity:.4f}")
+    print(f"Wiki2 PPL Qwen3-1.7B W4 GPTQ     (qgroup=32): {gptq_perplexity:.4f}")
