@@ -15,8 +15,11 @@ from ._version import version
 from .autoquant import autoquantize as autoquantize
 from .flags import export_mode as export_mode
 from .flags import get_export_mode as get_export_mode
+from .flags import get_sdpa_torch_fallback_allowed as get_sdpa_torch_fallback_allowed
 from .flags import get_strict_quantization as get_strict_quantization
+from .flags import sdpa_torch_fallback_allowed as sdpa_torch_fallback_allowed
 from .flags import set_export_mode as set_export_mode
+from .flags import set_sdpa_torch_fallback_allowed as set_sdpa_torch_fallback_allowed
 from .flags import set_strict_quantization as set_strict_quantization
 from .flags import strict_quantization as strict_quantization
 from .nn.functional.custom import sdpa_upcast as sdpa_upcast

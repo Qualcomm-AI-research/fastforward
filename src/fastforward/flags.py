@@ -99,6 +99,12 @@ get_compiled_quant_funcs = _compiled_quant_funcs.getter
 compiled_quant_funcs = _compiled_quant_funcs.context
 del _compiled_quant_funcs
 
+_sdpa_torch_fallback_allowed = _context_flag("sdpa_torch_fallback_allowed", False)
+set_sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.setter
+get_sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.getter
+sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.context
+del _sdpa_torch_fallback_allowed
+
 # remove _context_flag as we want to collect created flags in this file and not
 # add them left and right.
 del _context_flag

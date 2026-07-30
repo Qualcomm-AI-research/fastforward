@@ -1,6 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import logging
 import math
 
 from types import TracebackType
@@ -10,9 +11,12 @@ import torch
 from fastforward._utils import classproperty
 from fastforward.dispatcher import dispatch, register
 from fastforward.exceptions import QuantizationError
-from fastforward.flags import get_strict_quantization, set_strict_quantization
+from fastforward.flags import get_sdpa_torch_fallback_allowed, get_strict_quantization
+from fastforward.flags import strict_quantization as strict_quantization_ctx
 from fastforward.nn import functional as functional
-from fastforward.nn.quantizer import Quantizer
+from fastforward.nn.quantizer import Quantizer, QuantizerStub
+
+logger = logging.getLogger(__name__)
 
 
 def scaled_dot_product_attention(
@@ -35,11 +39,41 @@ def scaled_dot_product_attention(
     dropout_quantizer: Quantizer | None = None,
     output_quantizer: Quantizer | None = None,
     strict_quantization: bool | None = None,
+    sdpa_torch_fallback: bool | None = None,
     **kwargs: Quantizer | None,
 ) -> torch.Tensor:
     """Quantized version of torch.nn.functional.scaled_dot_product_attention."""
     if strict_quantization is None:
         strict_quantization = get_strict_quantization()
+    if sdpa_torch_fallback is None:
+        sdpa_torch_fallback = get_sdpa_torch_fallback_allowed()
+
+    if not strict_quantization and sdpa_torch_fallback:
+        # If the sdpa_torch_fallback_allowed flag is True and no quantizers are active
+        # we will just run torch scaled_dot_product_attention function (faster).
+        all_quantizers = [
+            attn_scores_quantizer,
+            attn_mask_quantizer,
+            masked_scores_quantizer,
+            attn_weights_quantizer,
+            scaled_query_quantizer,
+            scaled_key_quantizer,
+            dropout_quantizer,
+            output_quantizer,
+        ] + [q for q in kwargs.values() if isinstance(q, Quantizer)]
+
+        is_any_quantizer_active = any([_is_quantizer_active(q) for q in all_quantizers])
+        if not is_any_quantizer_active:
+            _torch_sdpa_fallback(
+                query=query,
+                key=key,
+                value=value,
+                attn_mask=attn_mask,
+                dropout_p=dropout_p,
+                is_causal=is_causal,
+                scale=scale,
+                enable_gqa=enable_gqa,
+            )
 
     dispatch_op = dispatch(
         "scaled_dot_product_attention",
@@ -196,7 +230,7 @@ def scaled_dot_product_attention_math(
         if strict_quantization:
             msg = "Strict quantization currently not supported when enable_gqa=True"
             raise QuantizationError(msg)
-        with set_strict_quantization(False):
+        with strict_quantization_ctx(False):
             key = key.repeat_interleave(query.size(-3) // key.size(-3), -3)
             value = value.repeat_interleave(query.size(-3) // value.size(-3), -3)
 
@@ -312,7 +346,7 @@ def _quantized_safe_softmax(
     Reference:
         https://github.com/pytorch/pytorch/blob/a177d1852953f460cc0f0d412f311875f77dd4de/aten/src/ATen/native/transformers/attention.cpp#L672
     """
-    with set_strict_quantization(False):
+    with strict_quantization_ctx(False):
         out = functional.softmax(t, dim, dtype)
         if neg_inf == float("-inf"):
             masked = t.isneginf()
@@ -324,6 +358,63 @@ def _quantized_safe_softmax(
         if output_quantizer:
             out = output_quantizer(out)
     return out
+
+
+def _is_quantizer_active(quantizer: Quantizer | None) -> bool:
+    """Return true only if the quantizer is not None and is not a Stub."""
+    return quantizer is not None and not isinstance(quantizer, QuantizerStub)
+
+
+def _torch_sdpa_fallback(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    attn_mask: torch.Tensor | None = None,
+    dropout_p: float = 0.0,
+    is_causal: bool = False,
+    scale: float | None = None,
+    enable_gqa: bool = False,
+) -> torch.Tensor:
+
+    # torch < 2.5 does not support enable_gqa argument
+    if torch.__version__ < "2.5":
+        if enable_gqa:
+            msg = (
+                "Cannot fallback to Torch scaled_dot_product_attention because the installed "
+                "version of torch does not support argument `enable_gqa` that was set to true. "
+                "Fastforward scaled_dot_product_attention will be used instead."
+            )
+            logger.warning(msg)
+            return scaled_dot_product_attention_math(
+                query=query,
+                key=key,
+                value=value,
+                attn_mask=attn_mask,
+                dropout_p=dropout_p,
+                is_causal=is_causal,
+                scale=scale,
+                enable_gqa=enable_gqa,
+            )
+        return torch.nn.functional.scaled_dot_product_attention(
+            query=query,
+            key=key,
+            value=value,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            is_causal=is_causal,
+            scale=scale,
+        )
+
+    return torch.nn.functional.scaled_dot_product_attention(
+        query=query,
+        key=key,
+        value=value,
+        attn_mask=attn_mask,
+        dropout_p=dropout_p,
+        is_causal=is_causal,
+        scale=scale,
+        enable_gqa=enable_gqa,
+    )
 
 
 class _SDPAUpcast:
