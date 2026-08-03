@@ -9,7 +9,7 @@ ARG VER_TORCH \
 RUN --mount=type=bind,rw,target=/docker-ctx \
     export VER_CUDA_SHORT=$(echo "${VER_CUDA}" | tr -d .) \
     && uv pip install --system --no-cache torch==${VER_TORCH}+cu${VER_CUDA_SHORT} --index "https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}"  \
-    && uv pip install --system --no-cache /docker-ctx --group /docker-ctx/pyproject.toml:test \
+    && uv pip install --system --no-cache /docker-ctx --group /docker-ctx/pyproject.toml:test-regression \
     && uv pip uninstall --system fastforward
-
+    
 CMD ["/bin/bash"]

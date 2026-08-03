@@ -18,6 +18,4 @@ dmypy.json
 build/*
 .cache/clangd/index
 .agents-output/
-
-# ignore autoquant output
-**/_autoquantized*.py
+uv.lock

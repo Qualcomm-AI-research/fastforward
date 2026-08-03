@@ -33,6 +33,8 @@ dev = [
   "isort",
   "notebook",
 ]
+
+
 test = [
   "pytest>=6",
   "pytest-cov>=3",
@@ -40,17 +42,18 @@ test = [
   "syrupy",
   "numpy>=2",
 ]
-shared-deps = [
+models-deps = [
   "datasets>=2.20",
   "transformers==5.9.0",
+  "tokenizers",
   "tqdm",
-]
-test-regression = [
-  {include-group = "shared-deps"},
   "types-tqdm",
 ]
+test-regression = [
+  {include-group = "models-deps"},
+]
 docs = [
-  {include-group = "shared-deps"},
+  {include-group = "models-deps"},
   "ipywidgets",
   "jupytext",
   "mike",
@@ -82,7 +85,7 @@ fallback_version = "0.1.0.dev0"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-testpaths = ["tests", "tests_regression"]
+testpaths = ["tests"]
 xfail_strict = true
 addopts = [
   "-ra",

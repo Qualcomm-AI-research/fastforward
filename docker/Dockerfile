@@ -59,8 +59,7 @@ RUN uv python install ${VER_PYTHON} \
 ENV PATH=${VIRTUAL_ENV}/bin:$PATH
 
 RUN export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \
-    && uv pip install --no-cache torch==${VER_TORCH}+cu${VER_CUDA_SHORT} \
-        --extra-index-url="https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}"
+    && uv pip install --no-cache torch==${VER_TORCH}+cu${VER_CUDA_SHORT} --index "https://download.pytorch.org/whl/cu${VER_CUDA_SHORT}"
 
 WORKDIR /workspace
 COPY pyproject.toml /workspace/
@@ -68,7 +67,7 @@ COPY pyproject.toml /workspace/
 # Install dependencies without syncing with uv to avoid force-installing latest
 # version of all dependencies (so that latest torch is not installed on top).
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install -e . --group dev --group test --group docs
+    uv pip install -e . --group dev --group docs --group test
 
 ENV PYTHONPYCACHEPREFIX=/tmp
 ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") && exec $0 "$@"

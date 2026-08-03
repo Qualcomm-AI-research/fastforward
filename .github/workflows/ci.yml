@@ -151,7 +151,7 @@ jobs:
       - if: env.RUN_TESTS == 'true'
         run: uv pip install --system --no-cache --no-deps "$(find wheelhouse -name '*.whl')"
       - if: env.RUN_TESTS == 'true'
-        run: python3 -m pytest --include-slow
+        run: python3 -m pytest --include-slow ./tests
 
   verify:
     if: github.server_url != 'https://github.com'
