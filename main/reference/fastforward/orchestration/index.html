@@ -2589,6 +2589,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../quantization/save_load/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    save_load
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quantization/ste/" class="md-nav__link">
         
   
@@ -3443,7 +3471,7 @@ Cannot be combined with explicit AlgorithmSpec(s).</p>
             <span class="k">with</span> <span class="n">registry</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
                 <span class="n">optimization_specs</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">algorithm</span><span class="p">)</span>
         <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected an Algorithm, AlgorithmSpec, or list of AlgorithmSpec; got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">algorithm</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected an Algorithm, AlgorithmSpec, or list of AlgorithmSpec; got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">algorithm</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>  <span class="c1"># type: ignore[unreachable]</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="n">graph</span> <span class="o">=</span> <span class="n">reduce_resolution</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">optimization_specs</span><span class="p">)</span>

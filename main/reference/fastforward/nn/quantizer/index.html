@@ -3110,6 +3110,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../quantization/save_load/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    save_load
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../quantization/ste/" class="md-nav__link">
         
   
@@ -6250,7 +6278,7 @@ a new tag.</p>
 <span class="normal">92</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__rtruediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lhs</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lhs</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">lhs</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span>
-    <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># type: ignore[unreachable]</span>
+    <span class="k">return</span> <span class="bp">NotImplemented</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6306,7 +6334,7 @@ a new tag.</p>
         <span class="n">rhs</span> <span class="o">=</span> <span class="n">rhs</span><span class="o">.</span><span class="n">_symbol</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_symbol</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">rhs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># type: ignore[unreachable]</span>
+    <span class="k">return</span> <span class="bp">NotImplemented</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

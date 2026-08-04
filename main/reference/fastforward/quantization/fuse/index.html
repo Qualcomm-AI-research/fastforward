@@ -2481,10 +2481,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#fastforward.quantization.fuse.find_weight_quantizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_weight_quantizers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#fastforward.quantization.fuse.fuse_qdq_weights" class="md-nav__link">
     <span class="md-ellipsis">
       
         fuse_qdq_weights
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.quantization.fuse.stub_weight_quantizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stub_weight_quantizers
       
     </span>
   </a>
@@ -2627,6 +2649,34 @@
     
   
     random
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../save_load/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    save_load
   
 
     
@@ -3221,7 +3271,7 @@ and optionally converts the corresponding weight quantizers into stubs.</p>
 <p>The transform is used directly by algorithms and export paths that need
 grid-snapped weights without persisting anything to disk (e.g. GPTQ,
 orchestration, export). It is also the primitive on top of which
-<code>QuantizedModule.save_quantized_model</code> is built.</p>
+<code>fastforward.quantization.save_load.save_quantized_model</code> is built.</p>
 <p>Discovery of which quantizer snaps which weight is factored behind the
 <code>WeightQuantizerDiscovery</code> protocol. The default <code>ConventionDiscovery</code> relies on
 the FastForward naming/tagging convention (a module exposing a <code>weight</code>
@@ -3347,9 +3397,9 @@ weight quantizers.</p>
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight_attr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;weight&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;parameter/weight&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weight_attr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;weight&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;parameter/weight&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_weight_attr</span> <span class="o">=</span> <span class="n">weight_attr</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_tag</span> <span class="o">=</span> <span class="n">tag</span>
 </code></pre></div></td></tr></table></div>
@@ -3384,9 +3434,7 @@ weight quantizers.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
@@ -3398,7 +3446,9 @@ weight quantizers.</p>
 <span class="normal">83</span>
 <span class="normal">84</span>
 <span class="normal">85</span>
-<span class="normal">86</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">WeightQuantizerTarget</span><span class="p">]:</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">WeightQuantizerTarget</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield weight-quantizer targets discovered in `model`.&quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">ff</span><span class="o">.</span><span class="n">find_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;**/[quantizer:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_tag</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">):</span>
         <span class="n">quantizer</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">module</span>
@@ -3509,9 +3559,9 @@ produces those values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">WeightQuantizerTarget</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">WeightQuantizerTarget</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield `(module, weight_attr, quantizer)` targets for `model`.&quot;&quot;&quot;</span>
     <span class="o">...</span>
 </code></pre></div></td></tr></table></div>
@@ -3532,6 +3582,147 @@ produces those values.</p>
 <div class="doc doc-object doc-function">
 
 
+<h3 id="fastforward.quantization.fuse.find_weight_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">fuse</span><span class="o">.</span><span class="n">find_weight_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">discovery</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.fuse.find_weight_quantizers" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the weight-quantizer targets <code>fuse_qdq_weights</code> would act on.</p>
+<p>Exposes the discovery step on its own, so callers can inspect which weight
+quantizers a fuse or stub pass would affect without performing it (e.g. to
+apply an overwrite policy before stubbing).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The (quantized) model to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>discovery</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.fuse.WeightQuantizerDiscovery&lt;/code&gt;" href="#fastforward.quantization.fuse.WeightQuantizerDiscovery">WeightQuantizerDiscovery</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Strategy used to find the weight quantizers. Defaults to
+<code>ConventionDiscovery</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fuse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;WeightQuantizerTarget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;tuple&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;torch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Module&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Quantizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.fuse.WeightQuantizerTarget&lt;/code&gt;)" href="#fastforward.quantization.fuse.WeightQuantizerTarget">WeightQuantizerTarget</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The discovered <code>(module, weight_attr, quantizer)</code> triples.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_weight_quantizers</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">discovery</span><span class="p">:</span> <span class="n">WeightQuantizerDiscovery</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">WeightQuantizerTarget</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the weight-quantizer targets `fuse_qdq_weights` would act on.</span>
+
+<span class="sd">    Exposes the discovery step on its own, so callers can inspect which weight</span>
+<span class="sd">    quantizers a fuse or stub pass would affect without performing it (e.g. to</span>
+<span class="sd">    apply an overwrite policy before stubbing).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model: The (quantized) model to inspect.</span>
+<span class="sd">        discovery: Strategy used to find the weight quantizers. Defaults to</span>
+<span class="sd">            `ConventionDiscovery`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The discovered `(module, weight_attr, quantizer)` triples.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">discovery</span> <span class="o">=</span> <span class="n">ConventionDiscovery</span><span class="p">()</span> <span class="k">if</span> <span class="n">discovery</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">discovery</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">discovery</span><span class="p">(</span><span class="n">model</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="fastforward.quantization.fuse.fuse_qdq_weights" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">fuse</span><span class="o">.</span><span class="n">fuse_qdq_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">stub_quantizers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">discovery</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
@@ -3546,7 +3737,7 @@ overwritten in-place with its quantize-dequantize value, so the model runs
 in float but matches its quantized numerics. No files are written; this is a
 pure in-memory transform intended for use by algorithms (e.g. GPTQ),
 orchestration, and export paths, as well as by
-<code>QuantizedModule.save_quantized_model</code>.</p>
+<code>fastforward.quantization.save_load.save_quantized_model</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3628,45 +3819,75 @@ values. Only weights whose quantizer is discovered are affected;
 activation quantizers are left untouched.</p>
 </details>
 
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.exceptions.QuantizationError&lt;/code&gt;" href="../../exceptions/#fastforward.exceptions.QuantizationError">QuantizationError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If a weight is tied across modules whose quantizers
+would snap it to different grids. See <code>_check_tied_weight_targets</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fuse_qdq_weights</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fuse_qdq_weights</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">stub_quantizers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -3679,7 +3900,7 @@ activation quantizers are left untouched.</p>
 <span class="sd">    in float but matches its quantized numerics. No files are written; this is a</span>
 <span class="sd">    pure in-memory transform intended for use by algorithms (e.g. GPTQ),</span>
 <span class="sd">    orchestration, and export paths, as well as by</span>
-<span class="sd">    `QuantizedModule.save_quantized_model`.</span>
+<span class="sd">    `fastforward.quantization.save_load.save_quantized_model`.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        model: The (quantized) model whose weights should be fused.</span>
@@ -3699,10 +3920,154 @@ activation quantizers are left untouched.</p>
 <span class="sd">        Weights retain their original floating-point dtype but hold grid-snapped</span>
 <span class="sd">        values. Only weights whose quantizer is discovered are affected;</span>
 <span class="sd">        activation quantizers are left untouched.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        QuantizationError: If a weight is tied across modules whose quantizers</span>
+<span class="sd">            would snap it to different grids. See `_check_tied_weight_targets`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">discovery</span> <span class="o">=</span> <span class="n">ConventionDiscovery</span><span class="p">()</span> <span class="k">if</span> <span class="n">discovery</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">discovery</span>
-    <span class="k">for</span> <span class="n">module</span><span class="p">,</span> <span class="n">weight_attr</span><span class="p">,</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">discovery</span><span class="p">(</span><span class="n">model</span><span class="p">)):</span>
+    <span class="n">targets</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">discovery</span><span class="p">(</span><span class="n">model</span><span class="p">))</span>
+    <span class="n">_check_tied_weight_targets</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">module</span><span class="p">,</span> <span class="n">weight_attr</span><span class="p">,</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
         <span class="n">_fuse_target</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">weight_attr</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">,</span> <span class="n">stub_quantizer</span><span class="o">=</span><span class="n">stub_quantizers</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="fastforward.quantization.fuse.stub_weight_quantizers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">fuse</span><span class="o">.</span><span class="n">stub_weight_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">discovery</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#fastforward.quantization.fuse.stub_weight_quantizers" class="headerlink" title="Permanent link">#</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Replace a model's weight quantizers with stubs, leaving weights untouched.</p>
+<p>This is the stubbing half of <code>fuse_qdq_weights</code> without the fusing: weights
+are not modified, only the discovered weight quantizers are replaced by
+equivalent <code>QuantizerStub</code>s (preserving their metadata).</p>
+<p>The primary use is loading an already-fused artifact: when weights were
+persisted as QDQ (grid-snapped) values, the weight quantizers must be
+stubbed so a subsequent forward pass does not re-quantize them.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The (quantized) model whose weight quantizers should be stubbed.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>discovery</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.fuse.WeightQuantizerDiscovery&lt;/code&gt;" href="#fastforward.quantization.fuse.WeightQuantizerDiscovery">WeightQuantizerDiscovery</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Strategy used to find the weight quantizers. Defaults to
+<code>ConventionDiscovery</code>, which uses the FastForward naming/tagging
+convention.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>Only weight quantizers are affected; activation quantizers are left
+untouched. Weights are never read or written by this function.</p>
+</details>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>fastforward/quantization/fuse.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">stub_weight_quantizers</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">discovery</span><span class="p">:</span> <span class="n">WeightQuantizerDiscovery</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Replace a model&#39;s weight quantizers with stubs, leaving weights untouched.</span>
+
+<span class="sd">    This is the stubbing half of `fuse_qdq_weights` without the fusing: weights</span>
+<span class="sd">    are not modified, only the discovered weight quantizers are replaced by</span>
+<span class="sd">    equivalent `QuantizerStub`s (preserving their metadata).</span>
+
+<span class="sd">    The primary use is loading an already-fused artifact: when weights were</span>
+<span class="sd">    persisted as QDQ (grid-snapped) values, the weight quantizers must be</span>
+<span class="sd">    stubbed so a subsequent forward pass does not re-quantize them.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model: The (quantized) model whose weight quantizers should be stubbed.</span>
+<span class="sd">        discovery: Strategy used to find the weight quantizers. Defaults to</span>
+<span class="sd">            `ConventionDiscovery`, which uses the FastForward naming/tagging</span>
+<span class="sd">            convention.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Only weight quantizers are affected; activation quantizers are left</span>
+<span class="sd">        untouched. Weights are never read or written by this function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">discovery</span> <span class="o">=</span> <span class="n">ConventionDiscovery</span><span class="p">()</span> <span class="k">if</span> <span class="n">discovery</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">discovery</span>
+    <span class="k">for</span> <span class="n">module</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">quantizer</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">discovery</span><span class="p">(</span><span class="n">model</span><span class="p">)):</span>
+        <span class="n">_stub_target</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">quantizer</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
