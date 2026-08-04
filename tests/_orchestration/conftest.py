@@ -80,7 +80,7 @@ def make_flows() -> list[DataFlow]:
     Returns a fresh list per call, so a test that mutates it cannot affect
     another. Tests that assert on flows should spell them out instead.
     """
-    return [InputActivations.make("original")]
+    return [InputActivations("original")]
 
 
 def make_spec(region: Region, fn: Callable[..., None] = noop, **kwargs: Any) -> SubgraphSpec:

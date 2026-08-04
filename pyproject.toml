@@ -20,6 +20,7 @@ dependencies = [
   "safetensors",
   "setuptools",
   "typing-extensions",
+  "attrs",
 ]
 
 [dependency-groups]

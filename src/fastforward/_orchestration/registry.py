@@ -319,5 +319,5 @@ def override(
 register(
     ff.quantization.gptq,
     (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
-    flows=[InputActivations.make("original")],
+    flows=[InputActivations("original")],
 )

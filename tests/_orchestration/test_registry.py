@@ -242,7 +242,7 @@ def test_resolve_with_explicit_specs(tiny_model: TinyModel) -> None:
 
 def test_override_inherits_flows_from_registration(tiny_model: TinyModel) -> None:
     # GIVEN an algorithm registered with specific flows and a target
-    flows = [InputActivations.make("original")]
+    flows = [InputActivations("original")]
     registry.register(_dummy_algorithm, torch.nn.Linear, flows=flows)
     try:
         model = tiny_model

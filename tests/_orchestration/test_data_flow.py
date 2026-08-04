@@ -18,7 +18,7 @@ def test_invalid_mode_raises_listing_valid_spellings() -> None:
     # WHEN building a flow with it
     # THEN a ValueError names both valid spellings
     with pytest.raises(ValueError, match="'original'") as excinfo:
-        InputActivations.make("quantised")
+        InputActivations("quantised")
     assert "'quantized'" in str(excinfo.value)
 
 
@@ -26,8 +26,8 @@ def test_invalid_mode_raises_listing_valid_spellings() -> None:
 def test_mode_accepts_string_and_enum_equivalently(flow_cls: type[ActivationsFlow]) -> None:
     # GIVEN a flow mode expressed as a string and as the equivalent enum member
     # WHEN building a flow with each
-    from_string = flow_cls.make("original")
-    from_enum = flow_cls.make(FlowMode.ORIGINAL)
+    from_string = flow_cls("original")
+    from_enum = flow_cls(FlowMode.ORIGINAL)
 
     # THEN both are equal and resolve to the same enum member
     assert from_string == from_enum
@@ -46,7 +46,7 @@ def test_invalid_source_raises(source: object) -> None:
     # WHEN building a flow with it
     # THEN a TypeError is raised
     with pytest.raises(TypeError, match="Invalid flow source"):
-        InputActivations.make("original", source=source)
+        InputActivations("original", source=source)
 
 
 def test_callable_source_is_accepted_and_kept() -> None:
@@ -56,7 +56,7 @@ def test_callable_source_is_accepted_and_kept() -> None:
         return region
 
     # WHEN building a flow with it
-    flow = InputActivations.make("original", source=source)
+    flow = InputActivations("original", source=source)
 
     # THEN the resolver is kept on the flow unchanged, next to the normalized mode
     assert flow.source is source
@@ -66,7 +66,7 @@ def test_callable_source_is_accepted_and_kept() -> None:
 def test_source_defaults_to_none_meaning_unbounded() -> None:
     # GIVEN no source
     # WHEN building a flow
-    flow = InputActivations.make("original")
+    flow = InputActivations("original")
 
     # THEN the source is None: execution is not bounded by a starting module
     assert flow.source is None
@@ -76,7 +76,7 @@ def test_source_defaults_to_none_meaning_unbounded() -> None:
 def test_cache_is_carried_through_make(cache: bool) -> None:
     # GIVEN an explicit cache choice
     # WHEN building a flow with it
-    flow = InputActivations.make("original", cache=cache)
+    flow = InputActivations("original", cache=cache)
 
     # THEN the flow reports that choice
     assert flow.cache is cache

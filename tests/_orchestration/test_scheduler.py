@@ -29,7 +29,7 @@ def test_input_activations_nodes_exclude_region(two_linear: TwoLinear) -> None:
     region = graph.node_ref(two_linear.fc2)
 
     # WHEN binding an InputActivations flow on that region
-    [plan] = bind_flows(graph, region, [InputActivations.make("original")])
+    [plan] = bind_flows(graph, region, [InputActivations("original")])
 
     # THEN the bound nodes cover the predecessors but not the region itself
     assert region not in plan.nodes
@@ -42,7 +42,7 @@ def test_output_activations_nodes_end_at_region(two_linear: TwoLinear) -> None:
     region = graph.node_ref(two_linear.fc2)
 
     # WHEN binding an OutputActivations flow on that region
-    [plan] = bind_flows(graph, region, [OutputActivations.make("original")])
+    [plan] = bind_flows(graph, region, [OutputActivations("original")])
 
     # THEN the last of the bound nodes is the region
     assert plan.nodes[-1] == region
@@ -58,7 +58,7 @@ def test_input_nodes_are_output_nodes_without_region(two_linear: TwoLinear) -> N
     input_plan, output_plan = bind_flows(
         graph,
         region,
-        [InputActivations.make("original"), OutputActivations.make("original")],
+        [InputActivations("original"), OutputActivations("original")],
     )
 
     # THEN the input plan's nodes are the output plan's nodes minus the last one
@@ -73,7 +73,7 @@ def test_input_activations_on_first_layer_runs_nothing(two_linear: TwoLinear) ->
     region = graph.node_ref(two_linear.fc1)
 
     # WHEN binding an InputActivations flow on that region
-    [plan] = bind_flows(graph, region, [InputActivations.make("original")])
+    [plan] = bind_flows(graph, region, [InputActivations("original")])
 
     # THEN nothing has to run (the data is the graph's own input)
     assert plan.nodes == ()
@@ -91,4 +91,4 @@ def test_non_ancestor_source_raises(two_linear: TwoLinear) -> None:
     # WHEN binding a flow with that source
     # THEN a ValueError is raised mentioning it is not an ancestor
     with pytest.raises(ValueError, match="not an ancestor"):
-        bind_flows(graph, region, [InputActivations.make("original", source=source)])
+        bind_flows(graph, region, [InputActivations("original", source=source)])
