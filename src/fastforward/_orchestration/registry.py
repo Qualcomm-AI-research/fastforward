@@ -11,7 +11,7 @@ import abc
 import contextlib
 import dataclasses
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 from typing import Any, Iterable, Iterator, Mapping, TypeAlias, cast
 
 import torch
@@ -19,6 +19,7 @@ import torch
 import fastforward as ff
 
 from fastforward import mpath
+from fastforward._orchestration.data_flow import DataFlow, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 
 Algorithm: TypeAlias = Callable[..., Any]
@@ -148,15 +149,12 @@ class AlgorithmSpec:
     Args:
         fn: The algorithm to run on the resolved regions.
         selector: The (normalized) selector resolving which modules to target.
+        flows: The data-flow requirements the algorithm needs at each region.
     """
 
     fn: Algorithm
     selector: Selector
-
-    @classmethod
-    def from_target(cls, fn: Algorithm, target: TargetType | Selector) -> "AlgorithmSpec":
-        """Build a spec from any `TargetType` (or `Selector`), normalizing the target."""
-        return cls(fn=fn, selector=normalize(target))
+    flows: Sequence[DataFlow]
 
 
 class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
@@ -179,8 +177,10 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
     def __len__(self) -> int:
         return len(self._specs)
 
-    def register(self, algorithm: Algorithm, target: TargetType | Selector) -> None:
-        """Register an algorithm, target pair.
+    def register(
+        self, algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[DataFlow]
+    ) -> None:
+        """Register an algorithm with its target and data-flow requirements.
 
         Accepts a target specification (see `TargetType`) or a Selector, validates it
         and stores it as a `Selector`, which can be used at resolve time.
@@ -190,8 +190,11 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         Args:
             algorithm: The algorithm to register.
             target: A target specification or Selector indicating which modules to match.
+            flows: The data-flow requirements the algorithm needs at each region.
         """
-        self._specs[algorithm] = AlgorithmSpec.from_target(algorithm, target)
+        self._specs[algorithm] = AlgorithmSpec(
+            fn=algorithm, selector=normalize(target), flows=flows
+        )
 
     def resolve(
         self,
@@ -232,7 +235,9 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         result: list[SubgraphSpec] = []
         for spec in spec_list:
             regions = spec.selector.resolve(model)
-            result.extend(SubgraphSpec(region=region, fn=spec.fn) for region in regions)
+            result.extend(
+                SubgraphSpec(region=region, fn=spec.fn, flows=spec.flows) for region in regions
+            )
 
         if not result:
             if algorithm:
@@ -247,16 +252,19 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
 _registry = _AlgorithmRegistry()
 
 
-def register(algorithm: Algorithm, targets: TargetType | Selector) -> None:
-    """Declare which modules an algorithm should target.
+def register(
+    algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[DataFlow]
+) -> None:
+    """Declare which modules an algorithm should target and what data it needs.
 
     Re-registering the same algorithm overwrites the previous target.
 
     Args:
-        algorithm: The algorithm to register targets for.
-        targets: A Selector, module type, tuple of types, parsed mpath query, or list of module instances.
+        algorithm: The algorithm to register a target for.
+        target: A Selector, module type, tuple of types, parsed mpath query, or list of module instances.
+        flows: The data-flow requirements the algorithm needs at each region.
     """
-    _registry.register(algorithm, targets)
+    _registry.register(algorithm, target, flows)
 
 
 def resolve(
@@ -279,28 +287,37 @@ def resolve(
 def override(
     algorithm: Algorithm, targets: TargetType | Selector | None
 ) -> Generator[None, None, None]:
-    """Temporarily override the registered target for an algorithm.
+    """Temporarily retarget an already-registered algorithm.
 
     If *targets* is None the existing registration is used unchanged.
 
-    Args:
-        algorithm: The algorithm whose targets to override.
-        targets: The temporary target specification, or None to keep the current one.
+    Flows are inherited from the existing registration -- they cannot be inferred
+    for an unregistered algorithm, so an override on one raises.
     """
     if targets is None:
         yield
         return
 
     previous = _registry._specs.get(algorithm)
-    _registry.register(algorithm, targets)
+    if previous is None:
+        name = getattr(algorithm, "__name__", repr(algorithm))
+        msg = (
+            f"Cannot override unregistered algorithm {name!r}: No data flow "
+            "requirements were found. Register it first, or pass an AlgorithmSpec "
+            "with explicit data flow requirements to layerwise_optimize."
+        )
+        raise ValueError(msg)
+
+    _registry.register(algorithm, targets, previous.flows)
     try:
         yield
     finally:
-        if previous is None:
-            _registry._specs.pop(algorithm, None)
-        else:
-            _registry._specs[algorithm] = previous
+        _registry._specs[algorithm] = previous
 
 
-# We pre-register baseline methods with expected Algorithm-Target pairs.
-register(ff.quantization.gptq, (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d))
+# We pre-register baseline methods with expected Algorithm-Target-Flow triples.
+register(
+    ff.quantization.gptq,
+    (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
+    flows=[InputActivations.make("original")],
+)

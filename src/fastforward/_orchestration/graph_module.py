@@ -24,6 +24,7 @@ from typing import (
 import torch
 
 if TYPE_CHECKING:
+    from fastforward._orchestration.data_flow import DataFlow
     from fastforward._orchestration.instruction_engine import (
         InstructionEngine,
         InstructionProgram,
@@ -1038,18 +1039,20 @@ class SubgraphSpec:
     Args:
         region: The region to turn into a subgraph.
         fn: Function to execute on the subgraph.
+        flows: The region's data-flow requirements.
         contexts: Sequence of ContextManagers that generate input activations. If
             not specified, inputs are computed in a single default execution context.
     """
 
     region: Region
 
-    fn: dataclasses.InitVar[Callable[..., None]]
+    fn: Callable[..., None]
+    flows: Sequence[DataFlow]
     contexts: dataclasses.InitVar[Contexts | None] = None
     delegate: Delegate = dataclasses.field(init=False)
 
-    def __post_init__(self, fn: Callable[..., None], contexts: Contexts | None = None) -> None:
-        self.delegate = Delegate(fn, contexts or (DEFAULT_CONTEXT,))
+    def __post_init__(self, contexts: Contexts | None = None) -> None:
+        self.delegate = Delegate(self.fn, contexts or (DEFAULT_CONTEXT,))
 
     def resolve(self, graph: GraphModule) -> ResolvedRegion:
         """Resolve this spec's region into concrete graph nodes and an optional wrapper subgraph."""

@@ -11,7 +11,6 @@ import torch
 from fastforward._orchestration.graph_module import (
     GraphModule,
     Op,
-    SubgraphSpec,
     inference_mode,
     local_optimize,
 )
@@ -41,7 +40,7 @@ from ._models import (
     TupleOut,
     WithBuffer,
 )
-from .conftest import sgd_step
+from .conftest import make_spec, sgd_step
 
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
@@ -443,7 +442,7 @@ def test_trace_then_local_optimize_only_targets_specified_module(tiny_mlp: TinyM
     initial_w2 = model.fc2.weight.data.clone()
 
     specs = [
-        SubgraphSpec(region=model.fc1, fn=functools.partial(sgd_step, lr=0.1)),
+        make_spec(region=model.fc1, fn=functools.partial(sgd_step, lr=0.1)),
     ]
     calibration = [torch.randn(1, 8) for _ in range(4)]
 
@@ -474,7 +473,7 @@ def test_trace_then_local_optimize_fn_receives_original_module_and_dataset(
         received["batches"] = list(bundle)
 
     # WHEN we run local_optimize with the spy fn
-    specs = [SubgraphSpec(region=model.fc1, fn=spy)]
+    specs = [make_spec(region=model.fc1, fn=spy)]
     with local_optimize(graph, specs):
         graph(calibration)
 
@@ -517,8 +516,8 @@ def test_trace_then_local_optimize_multiple_specs_each_targets_its_module(
         call_log.append(name)
 
     specs = [
-        SubgraphSpec(region=model.fc1, fn=functools.partial(record, "fc1")),
-        SubgraphSpec(region=model.fc2, fn=functools.partial(record, "fc2")),
+        make_spec(region=model.fc1, fn=functools.partial(record, "fc1")),
+        make_spec(region=model.fc2, fn=functools.partial(record, "fc2")),
     ]
     calibration = [torch.randn(1, 8) for _ in range(2)]
 

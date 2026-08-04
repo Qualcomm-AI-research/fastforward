@@ -5,14 +5,18 @@
 
 Model classes live in `_models.py`; this module wraps them in function-scoped
 fixtures (fresh instances per test, since several tests mutate weights) and
-provides the canonical `sgd_step` / `noop` optimization delegates.
+provides the canonical `sgd_step` / `noop` optimization delegates plus the
+`make_spec` / `make_flows` helpers for tests that need a spec but do not assert
+on its data flows.
 """
 
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 import torch
 
+from fastforward._orchestration.data_flow import DataFlow, InputActivations
+from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward._orchestration.instruction_engine import ActivationBundle
 
 from ._models import (
@@ -63,6 +67,32 @@ def sgd_step(module: torch.nn.Module, bundle: ActivationBundle, lr: float = 0.1)
 def noop(*_args: Any, **_kwargs: Any) -> None:
     """Delegate that does nothing; used for partitioning-only specs."""
     return None
+
+
+def make_flows() -> list[DataFlow]:
+    """Placeholder data flows for tests that do not assert on them.
+
+    `flows` is required wherever it appears -- there is deliberately no default,
+    because an algorithm silently receiving the wrong activations is worse than
+    one that fails to construct. Tests about partitioning, execution or tracing
+    still need *a* value; they use this to keep the declaration out of the way.
+
+    Returns a fresh list per call, so a test that mutates it cannot affect
+    another. Tests that assert on flows should spell them out instead.
+    """
+    return [InputActivations.make("original")]
+
+
+def make_spec(region: Region, fn: Callable[..., None] = noop, **kwargs: Any) -> SubgraphSpec:
+    """A `SubgraphSpec` with placeholder flows, for tests not about data flows.
+
+    Defaults `fn` to `noop` (the common case in partitioning tests) and forwards
+    `**kwargs` for the rest, notably `contexts`. Pass `flows=` explicitly to
+    override the placeholder. See `make_flows` for why there is no default on
+    `SubgraphSpec` itself.
+    """
+    kwargs.setdefault("flows", make_flows())
+    return SubgraphSpec(region=region, fn=fn, **kwargs)
 
 
 @pytest.fixture(name="model")

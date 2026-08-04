@@ -45,7 +45,7 @@ from fastforward._orchestration.instruction_engine import (
 )
 
 from ._models import Add, AddConstant, Model, ReturnTuple
-from .conftest import sgd_step
+from .conftest import make_spec, sgd_step
 
 
 def test_merge_zips_datasets_together() -> None:
@@ -528,7 +528,7 @@ def test_move_activations_moves_register_entry_and_reports_ref() -> None:
 
 def _make_optimizer_specs(model: Model) -> list[SubgraphSpec]:
     return [
-        SubgraphSpec(
+        make_spec(
             region=model.residual_1.linear,
             fn=functools.partial(sgd_step, lr=0.1),
         )

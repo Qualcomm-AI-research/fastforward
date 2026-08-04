@@ -46,7 +46,7 @@ from ._models import (
     RNGTensor,
     TwoLayerModel,
 )
-from .conftest import noop, sgd_step
+from .conftest import make_spec, noop, sgd_step
 
 
 def test_graph_module_forward_pass(model: Model) -> None:
@@ -286,7 +286,7 @@ def test_local_error_opt(model: Model) -> None:
 
     # GIVEN a SubgraphSpec that targets only the first residual's linear layer
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=model.residual_1.linear,
             fn=functools.partial(sgd_step, lr=0.1),
         )
@@ -308,11 +308,11 @@ def test_local_optimization_overlapping_specs_raises(model: Model) -> None:
     residual_1_linear = graph.get_submodule("residual_1.linear")
     residual_1_relu = graph.get_submodule("residual_1.relu")
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=Span(start=residual_1_linear, end=residual_1_relu),
             fn=noop,
         ),
-        SubgraphSpec(
+        make_spec(
             region=Span(start=residual_1_linear, end=residual_1_relu),
             fn=noop,
         ),
@@ -373,7 +373,7 @@ def test_local_optimization_with_attribute_refs(multi_output_model: MultiOutputM
     linear1 = graph.get_submodule("linear1")
     relu = graph.get_submodule("relu")
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=Span(start=linear1, end=relu),
             fn=sgd_step,
         )
@@ -405,11 +405,11 @@ def test_local_optimization_multiple_non_overlapping_specs(model: Model) -> None
     residual_1_linear = graph.get_submodule("residual_1.linear")
     residual_2_linear = graph.get_submodule("residual_2.linear")
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=residual_1_linear,
             fn=sgd_step,
         ),
-        SubgraphSpec(
+        make_spec(
             region=residual_2_linear,
             fn=sgd_step,
         ),
@@ -440,7 +440,7 @@ def test_local_optimization_entire_graph(model: Model) -> None:
     residual_1_linear = graph.get_submodule("residual_1.linear")
     sigmoid = graph.get_submodule("sigmoid")
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=Span(start=residual_1_linear, end=sigmoid),
             fn=sgd_step,
         )
@@ -474,7 +474,7 @@ def test_local_optimization_with_const_inputs() -> None:
 
     # GIVEN a spec targeting the linear layer
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=linear,
             fn=sgd_step,
         )
@@ -517,50 +517,50 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
         ("no specs", [], 2),
         (
             "fold target (layer_0)",
-            [SubgraphSpec(region=model.layer_0, fn=noop)],
+            [make_spec(region=model.layer_0, fn=noop)],
             2,
         ),
         (
             "both top-level folds",
             [
-                SubgraphSpec(region=model.layer_0, fn=noop),
-                SubgraphSpec(region=model.layer_1, fn=noop),
+                make_spec(region=model.layer_0, fn=noop),
+                make_spec(region=model.layer_1, fn=noop),
             ],
             2,
         ),
         (
             "leaf target (q_proj_0)",
-            [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop)],
+            [make_spec(region=model.layer_0.attn.q_proj, fn=noop)],
             7,
         ),
         (
             "two leaves same fold (q_proj_0 + k_proj_0)",
             [
-                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop),
-                SubgraphSpec(region=model.layer_0.attn.k_proj, fn=noop),
+                make_spec(region=model.layer_0.attn.q_proj, fn=noop),
+                make_spec(region=model.layer_0.attn.k_proj, fn=noop),
             ],
             7,
         ),
         (
             "symmetric leaves across layers",
             [
-                SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop),
-                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=noop),
+                make_spec(region=model.layer_0.attn.q_proj, fn=noop),
+                make_spec(region=model.layer_1.attn.q_proj, fn=noop),
             ],
             12,
         ),
         (
             "mixed fold + leaf (attn_0 fold, q_proj_1 leaf)",
             [
-                SubgraphSpec(region=model.layer_0.attn, fn=noop),
-                SubgraphSpec(region=model.layer_1.attn.q_proj, fn=noop),
+                make_spec(region=model.layer_0.attn, fn=noop),
+                make_spec(region=model.layer_1.attn.q_proj, fn=noop),
             ],
             8,
         ),
         (
             "path within single fold (q_proj_0 -> out_proj_0)",
             [
-                SubgraphSpec(
+                make_spec(
                     region=Span(start=model.layer_0.attn.q_proj, end=model.layer_0.attn.out_proj),
                     fn=noop,
                 )
@@ -570,7 +570,7 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
         (
             "path across layers (mlp_0.down -> q_proj_1)",
             [
-                SubgraphSpec(
+                make_spec(
                     region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj),
                     fn=noop,
                 )
@@ -580,7 +580,7 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
         (
             "group of Q/K/V siblings in layer_0.attn",
             [
-                SubgraphSpec(
+                make_spec(
                     region=Group((
                         model.layer_0.attn.q_proj,
                         model.layer_0.attn.k_proj,
@@ -594,7 +594,7 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
         (
             "group of Q/K/V + adjacent out_proj singleton",
             [
-                SubgraphSpec(
+                make_spec(
                     region=Group((
                         model.layer_0.attn.q_proj,
                         model.layer_0.attn.k_proj,
@@ -602,14 +602,14 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
                     )),
                     fn=noop,
                 ),
-                SubgraphSpec(region=model.layer_0.attn.out_proj, fn=noop),
+                make_spec(region=model.layer_0.attn.out_proj, fn=noop),
             ],
             5,
         ),
         (
             "group of Q/K/V in each of layer_0 and layer_1",
             [
-                SubgraphSpec(
+                make_spec(
                     region=Group((
                         model.layer_0.attn.q_proj,
                         model.layer_0.attn.k_proj,
@@ -617,7 +617,7 @@ def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int
                     )),
                     fn=noop,
                 ),
-                SubgraphSpec(
+                make_spec(
                     region=Group((
                         model.layer_1.attn.q_proj,
                         model.layer_1.attn.k_proj,
@@ -676,7 +676,7 @@ def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse(
     # GIVEN a 2-layer model with a leaf target inside layer_0.attn
     model = two_layer_model
     graph = model.to_graph_module()
-    specs = [SubgraphSpec(region=model.layer_0.attn.q_proj, fn=noop)]
+    specs = [make_spec(region=model.layer_0.attn.q_proj, fn=noop)]
 
     # WHEN we reduce with that spec
     reduced = reduce_resolution(graph, specs)
@@ -706,9 +706,7 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node(two_layer_model: TwoL
     model = two_layer_model
     graph = model.to_graph_module()
     specs = [
-        SubgraphSpec(
-            region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj), fn=noop
-        )
+        make_spec(region=Span(start=model.layer_0.mlp.down, end=model.layer_1.attn.q_proj), fn=noop)
     ]
 
     # WHEN we reduce with that path spec
@@ -732,7 +730,7 @@ def test_group_non_siblings_raises(two_layer_model: TwoLayerModel) -> None:
     model = two_layer_model
     graph = model.to_graph_module()
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=Group((model.layer_0.attn.q_proj, model.layer_1.attn.q_proj)),
             fn=noop,
         )
@@ -751,7 +749,7 @@ def test_group_single_module(two_layer_model: TwoLayerModel) -> None:
     x = torch.randn(1, 8)
     expected = model(x)
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=Group((model.layer_0.attn.q_proj,)),
             fn=noop,
         )
@@ -823,7 +821,7 @@ def test_local_optimization_with_kwargs() -> None:
 
     # GIVEN a spec targeting the linear layer
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=linear,
             fn=sgd_step,
         )
@@ -858,7 +856,7 @@ def test_local_optimization_with_multiple_inputs() -> None:
 
     # GIVEN a spec targeting the linear layer
     specs = [
-        SubgraphSpec(
+        make_spec(
             region=linear,
             fn=sgd_step,
         )

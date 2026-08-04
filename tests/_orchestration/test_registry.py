@@ -5,6 +5,8 @@ import pytest
 import torch
 
 from fastforward import mpath
+from fastforward._orchestration import registry
+from fastforward._orchestration.data_flow import InputActivations
 from fastforward._orchestration.registry import (
     AlgorithmSpec,
     CompositeSelector,
@@ -16,9 +18,11 @@ from fastforward._orchestration.registry import (
     TargetType,
     _AlgorithmRegistry,
     normalize,
+    override,
 )
 
 from ._models import TinyModel
+from .conftest import make_flows
 
 # mpath selectors compare by fragment identity, init them here once.
 _ATTENTION_QUERY = mpath.query("layers/*/attention")
@@ -132,7 +136,7 @@ def test_register_and_resolve(
         target = [model.conv]
     assert not isinstance(target, str)  # "explicit" is the only str and is swapped above
 
-    registry.register(_dummy_algorithm, target)
+    registry.register(_dummy_algorithm, target, flows=make_flows())
 
     # WHEN resolving
     result = registry.resolve(model, algorithm=_dummy_algorithm)
@@ -146,8 +150,8 @@ def test_register_overwrites_previous(tiny_model: TinyModel) -> None:
     # GIVEN a registry with Linear registered, then overwritten with Conv2d
     registry = _AlgorithmRegistry()
     model = tiny_model
-    registry.register(_dummy_algorithm, torch.nn.Linear)
-    registry.register(_dummy_algorithm, torch.nn.Conv2d)
+    registry.register(_dummy_algorithm, torch.nn.Linear, flows=make_flows())
+    registry.register(_dummy_algorithm, torch.nn.Conv2d, flows=make_flows())
 
     # WHEN resolving
     result = registry.resolve(model, algorithm=_dummy_algorithm)
@@ -171,7 +175,7 @@ def test_resolve_empty_match_raises(tiny_model: TinyModel) -> None:
     # GIVEN a registry with BatchNorm2d registered (not present in model)
     registry = _AlgorithmRegistry()
     model = tiny_model
-    registry.register(_dummy_algorithm, torch.nn.BatchNorm2d)
+    registry.register(_dummy_algorithm, torch.nn.BatchNorm2d, flows=make_flows())
 
     # WHEN resolving
     # THEN NoTargetsFound is raised
@@ -185,7 +189,7 @@ def test_register_and_resolve_heterogeneous_target(tiny_model: TinyModel) -> Non
     model = tiny_model
 
     # WHEN registering a heterogeneous target (type + specific instance)
-    registry.register(_dummy_algorithm, [torch.nn.Linear, model.conv])
+    registry.register(_dummy_algorithm, [torch.nn.Linear, model.conv], flows=make_flows())
 
     # THEN resolving returns all Linear layers and the conv instance
     result = registry.resolve(model, algorithm=_dummy_algorithm)
@@ -207,7 +211,7 @@ def test_module_instance_selector_missing_module_raises(tiny_model: TinyModel) -
 def test_algorithm_registry_mapping_protocol() -> None:
     # GIVEN a registry with one algorithm registered
     registry = _AlgorithmRegistry()
-    registry.register(_dummy_algorithm, torch.nn.Linear)
+    registry.register(_dummy_algorithm, torch.nn.Linear, flows=make_flows())
 
     # WHEN we use the Mapping protocol (__len__, __iter__, __getitem__)
     # THEN it reflects the single registration
@@ -219,13 +223,11 @@ def test_algorithm_registry_mapping_protocol() -> None:
 
 
 def test_resolve_with_explicit_specs(tiny_model: TinyModel) -> None:
-    # GIVEN an empty registry and a spec built from a raw target via from_target
+    # GIVEN an empty registry and an explicitly constructed spec
     registry = _AlgorithmRegistry()
     model = tiny_model
-    spec = AlgorithmSpec.from_target(_dummy_algorithm, torch.nn.Conv2d)
-
-    # THEN from_target normalized the raw target to a Selector
-    assert spec.selector == ModuleTypeSelector(types=(torch.nn.Conv2d,))
+    flows = make_flows()
+    spec = AlgorithmSpec(fn=_dummy_algorithm, selector=normalize(torch.nn.Conv2d), flows=flows)
 
     # WHEN resolving with explicit specs (bypassing registration)
     result = registry.resolve(model, specs=[spec])
@@ -233,3 +235,33 @@ def test_resolve_with_explicit_specs(tiny_model: TinyModel) -> None:
     # THEN the spec's target is resolved against the model
     assert [s.region for s in result] == [model.conv]
     assert all(s.delegate.fn is _dummy_algorithm for s in result)
+
+    # THEN the spec's flows are carried through to the resolved region
+    assert [s.flows for s in result] == [flows]
+
+
+def test_override_inherits_flows_from_registration(tiny_model: TinyModel) -> None:
+    # GIVEN an algorithm registered with specific flows and a target
+    flows = [InputActivations.make("original")]
+    registry.register(_dummy_algorithm, torch.nn.Linear, flows=flows)
+    try:
+        model = tiny_model
+
+        # WHEN overriding the algorithm with a different target
+        with override(_dummy_algorithm, model.conv):
+            spec = registry._registry[_dummy_algorithm]
+
+            # THEN the spec has the new target but the original flows
+            assert spec.selector == ModuleInstanceSelector(modules=frozenset([model.conv]))
+            assert spec.flows == flows
+    finally:
+        registry._registry._specs.pop(_dummy_algorithm, None)
+
+
+def test_override_unregistered_algorithm_raises() -> None:
+    # GIVEN an algorithm that was never registered
+    # WHEN overriding it
+    # THEN a ValueError is raised mentioning data flow requirements
+    with pytest.raises(ValueError, match="data flow"):
+        with override(_dummy_algorithm, torch.nn.Linear):
+            pass

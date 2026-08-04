@@ -10,13 +10,13 @@ import torch
 
 from fastforward._orchestration import registry
 from fastforward._orchestration.instruction_engine import ActivationBundle, OffloadEverything
-from fastforward._orchestration.registry import AlgorithmSpec
+from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 from torch import nn
 
 from ._models import TwoLinear
-from .conftest import sgd_step
+from .conftest import make_flows, sgd_step
 
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
@@ -32,13 +32,15 @@ def test_layerwise_optimize_targets_only_selected_module(two_linear: TwoLinear) 
     initial_w1 = model.fc1.weight.data.clone()
     initial_w2 = model.fc2.weight.data.clone()
 
-    # WHEN we run the public layerwise_optimize, targeting only fc1 via `targets`
-    ff.layerwise_optimize(
-        model,
-        calibration,
-        functools.partial(sgd_step, lr=0.1),
-        targets=[model.fc1],
+    # GIVEN a spec that targets only fc1
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc1]),
+        flows=make_flows(),
     )
+
+    # WHEN we run the public layerwise_optimize
+    ff.layerwise_optimize(model, calibration, spec)
 
     # THEN fc1's weights changed and fc2's did not (target resolution + reduction)
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -52,14 +54,15 @@ def test_layerwise_optimize_with_prebuilt_graph_skips_tracing(two_linear: TwoLin
     graph = trace(model, calibration[0])
     initial_w1 = model.fc1.weight.data.clone()
 
-    # WHEN we pass the prebuilt graph (so layerwise_optimize does not trace again)
-    ff.layerwise_optimize(
-        model,
-        calibration,
-        functools.partial(sgd_step, lr=0.1),
-        targets=[model.fc1],
-        graph=graph,
+    # GIVEN a spec targeting fc1
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc1]),
+        flows=make_flows(),
     )
+
+    # WHEN we pass the prebuilt graph (so layerwise_optimize does not trace again)
+    ff.layerwise_optimize(model, calibration, spec, graph=graph)
 
     # THEN the targeted layer was still optimized through the supplied graph
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -73,12 +76,18 @@ def test_layerwise_optimize_with_offloading_runs_execution_context(two_linear: T
     initial_w1 = model.fc1.weight.data.clone()
     initial_w2 = model.fc2.weight.data.clone()
 
+    # GIVEN a spec targeting fc1
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc1]),
+        flows=make_flows(),
+    )
+
     # WHEN we run with an offloading strategy (exercises _ExecutionContext's pass wiring)
     ff.layerwise_optimize(
         model,
         calibration,
-        functools.partial(sgd_step, lr=0.1),
-        targets=[model.fc1],
+        spec,
         offloading=OffloadEverything(compute_device=cpu, storage_device=cpu),
     )
 
@@ -97,8 +106,11 @@ def test_layerwise_optimize_calls_algorithm_once_per_target(two_linear: TwoLinea
         del bundle
         seen.append(module)
 
-    # WHEN we target both Linear layers
-    ff.layerwise_optimize(model, calibration, spy, targets=[model.fc1, model.fc2])
+    # GIVEN a spec targeting both Linear layers
+    spec = AlgorithmSpec(fn=spy, selector=normalize([model.fc1, model.fc2]), flows=make_flows())
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, spec)
 
     # THEN the algorithm ran exactly once per targeted module
     assert seen == [model.fc1, model.fc2]
@@ -109,7 +121,7 @@ def test_layerwise_optimize_override_restores_registry_state(two_linear: TwoLine
     def algorithm(module: nn.Module, bundle: ActivationBundle) -> None:
         del module, bundle
 
-    registry.register(algorithm, torch.nn.Conv2d)
+    registry.register(algorithm, torch.nn.Conv2d, flows=make_flows())
     spec_before = registry._registry[algorithm]
     try:
         model = two_linear.eval()
@@ -131,7 +143,11 @@ def test_layerwise_optimize_with_explicit_spec(two_linear: TwoLinear) -> None:
     initial_w1 = model.fc1.weight.data.clone()
     initial_w2 = model.fc2.weight.data.clone()
 
-    spec = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.1), model.fc1)
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc1]),
+        flows=make_flows(),
+    )
 
     # WHEN we pass the spec directly (no register() needed)
     ff.layerwise_optimize(model, calibration, spec)
@@ -148,8 +164,16 @@ def test_layerwise_optimize_with_multiple_specs(two_linear: TwoLinear) -> None:
     initial_w1 = model.fc1.weight.data.clone()
     initial_w2 = model.fc2.weight.data.clone()
 
-    spec_fc1 = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.1), model.fc1)
-    spec_fc2 = AlgorithmSpec.from_target(functools.partial(sgd_step, lr=0.05), model.fc2)
+    spec_fc1 = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc1]),
+        flows=make_flows(),
+    )
+    spec_fc2 = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.05),
+        selector=normalize([model.fc2]),
+        flows=make_flows(),
+    )
 
     # WHEN we pass both specs as a list
     ff.layerwise_optimize(model, calibration, [spec_fc1, spec_fc2])
