@@ -212,10 +212,19 @@ def register(
 ) -> DispatcherRegistrationHook: ...
 
 
-@typing.overload  # Usage as a decorator
+@typing.overload  # Usage as a decorator with a predicate
 def register(
     op_name: str,
-    predicate: Predicate[P] | None,
+    predicate: Predicate[P],
+    kernel: None = None,
+    priority: DispatcherPriority = DispatcherPriority.DEFAULT,
+) -> Callable[[KernelType[P]], KernelType[P]]: ...
+
+
+@typing.overload  # Usage as a decorator without a predicate
+def register(
+    op_name: str,
+    predicate: None = None,
     kernel: None = None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]]: ...
@@ -223,7 +232,7 @@ def register(
 
 def register(
     op_name: str,
-    predicate: Predicate[P] | None,
+    predicate: Predicate[P] | None = None,
     kernel: KernelType[P] | None = None,
     priority: DispatcherPriority = DispatcherPriority.DEFAULT,
 ) -> Callable[[KernelType[P]], KernelType[P]] | DispatcherRegistrationHook:

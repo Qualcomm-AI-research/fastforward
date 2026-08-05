@@ -89,7 +89,7 @@ def _is_affine(input: QuantizedTensor, *_args: Any, **_kwargs: Any) -> bool:
 affine_predicate = Predicate(_is_affine)
 
 
-@register("contiguous", None)  # type: ignore[arg-type]
+@register("contiguous")
 def contiguous(input: QuantizedTensor) -> QuantizedTensor:
     return apply_and_reattach(lambda x: x.contiguous(), input)
 

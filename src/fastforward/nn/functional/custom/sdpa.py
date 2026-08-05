@@ -123,7 +123,7 @@ def scaled_dot_product_attention(
     )
 
 
-@register("scaled_dot_product_attention", None)  # type: ignore[arg-type]
+@register("scaled_dot_product_attention")
 def scaled_dot_product_attention_math(
     query: torch.Tensor,
     key: torch.Tensor,
