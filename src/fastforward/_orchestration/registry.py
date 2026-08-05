@@ -10,6 +10,7 @@ from __future__ import annotations
 import abc
 import contextlib
 import dataclasses
+import functools
 
 from collections.abc import Callable, Generator, Sequence
 from typing import Any, Iterable, Iterator, Mapping, TypeAlias, cast
@@ -23,6 +24,19 @@ from fastforward._orchestration.data_flow import DataFlow, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 
 Algorithm: TypeAlias = Callable[..., Any]
+
+
+def _algorithm_key(algorithm: Algorithm) -> Algorithm:
+    """Unwrap an algorithm to the object it is registered under."""
+    while isinstance(algorithm, functools.partial):
+        algorithm = algorithm.func
+    return algorithm
+
+
+def _algorithm_name(algorithm: Algorithm) -> str:
+    """A readable name for error messages, seeing through `functools.partial`."""
+    return getattr(_algorithm_key(algorithm), "__name__", repr(algorithm))
+
 
 TargetType: TypeAlias = (
     type[torch.nn.Module]
@@ -169,7 +183,7 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         self._specs: dict[Algorithm, AlgorithmSpec] = {}
 
     def __getitem__(self, algorithm: Algorithm) -> AlgorithmSpec:
-        return self._specs[algorithm]
+        return self._specs[_algorithm_key(algorithm)]
 
     def __iter__(self) -> Iterator[Algorithm]:
         return iter(self._specs)
@@ -192,7 +206,7 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
             target: A target specification or Selector indicating which modules to match.
             flows: The data-flow requirements the algorithm needs at each region.
         """
-        self._specs[algorithm] = AlgorithmSpec(
+        self._specs[_algorithm_key(algorithm)] = AlgorithmSpec(
             fn=algorithm, selector=normalize(target), flows=flows
         )
 
@@ -227,10 +241,11 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
             spec_list = specs
         else:
             assert algorithm is not None
-            if algorithm not in self._specs:
-                msg = f"No target registered for algorithm {algorithm.__name__!r}."
+            key = _algorithm_key(algorithm)
+            if key not in self._specs:
+                msg = f"No target registered for algorithm {_algorithm_name(algorithm)!r}."
                 raise NoTargetsFound(msg)
-            spec_list = [self._specs[algorithm]]
+            spec_list = [self._specs[key]]
 
         result: list[SubgraphSpec] = []
         for spec in spec_list:
@@ -241,7 +256,7 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
 
         if not result:
             if algorithm:
-                msg = f"Target for {algorithm.__name__!r} matched no modules on {type(model).__name__}."
+                msg = f"Target for {_algorithm_name(algorithm)!r} matched no modules on {type(model).__name__}."
             else:
                 msg = f"Provided specs matched no modules on {type(model).__name__}."
             raise NoTargetsFound(msg)
@@ -298,11 +313,11 @@ def override(
         yield
         return
 
-    previous = _registry._specs.get(algorithm)
+    key = _algorithm_key(algorithm)
+    previous = _registry._specs.get(key)
     if previous is None:
-        name = getattr(algorithm, "__name__", repr(algorithm))
         msg = (
-            f"Cannot override unregistered algorithm {name!r}: No data flow "
+            f"Cannot override unregistered algorithm {_algorithm_name(algorithm)!r}: No data flow "
             "requirements were found. Register it first, or pass an AlgorithmSpec "
             "with explicit data flow requirements to layerwise_optimize."
         )
@@ -312,7 +327,7 @@ def override(
     try:
         yield
     finally:
-        _registry._specs[algorithm] = previous
+        _registry._specs[key] = previous
 
 
 # We pre-register baseline methods with expected Algorithm-Target-Flow triples.

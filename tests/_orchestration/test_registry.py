@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import functools
+
 import pytest
 import torch
 
@@ -265,3 +267,21 @@ def test_override_unregistered_algorithm_raises() -> None:
     with pytest.raises(ValueError, match="data flow"):
         with override(_dummy_algorithm, torch.nn.Linear):
             pass
+
+
+def _dummy_algorithm_with_args(_arg: int = 0) -> None:
+    pass
+
+
+def test_register_by_partial_keys_on_base_function() -> None:
+    # GIVEN an algorithm registered *by* a partial
+    registry_ = _AlgorithmRegistry()
+    bound = functools.partial(_dummy_algorithm_with_args, _arg=1)
+    registry_.register(bound, torch.nn.Linear, flows=make_flows())
+
+    # WHEN looking it up by the bare base function
+    # THEN it is found -- the key is the base function, so partial and base share
+    # one registration -- and the stored fn is the partial, with its args intact.
+    spec = registry_[_dummy_algorithm_with_args]
+    assert spec.fn is bound
+    assert spec.fn.keywords == {"_arg": 1}
