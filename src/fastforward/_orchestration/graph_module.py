@@ -1143,13 +1143,19 @@ def _resolve_subgraph_input(name: str, context: dict[str, _BaseRef]) -> _BaseRef
         return attr_ref
 
 
-def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphModule:
+def reduce_resolution(
+    graph: GraphModule, specs: list[SubgraphSpec]
+) -> tuple[GraphModule, list[SubgraphSpec]]:
     """Reduce the multi-resolution `graph` to the minimal resolution required by `specs`.
 
     Specs define functions to run on subgraphs. These subgraphs in turn define the most
     granular resolution we need to traverse through the multi-resolution graph. Here we
     extract this resolution, and return a new GraphModule specifically created to run the most
     efficient path through the graph given the subgraph specs.
+
+    Returns the reduced graph and remapped specs with regions anchored on concrete
+    modules in the reduced graph (original modules for leaves, wrapping subgraphs
+    for Span/Group).
     """
     targets: set[NodeRef] = set()
     subgraphs: list[tuple[set[NodeRef], GraphModule]] = []
@@ -1233,7 +1239,18 @@ def reduce_resolution(graph: GraphModule, specs: list[SubgraphSpec]) -> GraphMod
             new_graph._nodes[base_ref.id], delegate=spec.delegate
         )
 
-    return new_graph
+    # Re-anchor specs: leaf regions stay unchanged, Span/Group regions become the wrapping subgraph.
+    remapped_specs = [
+        SubgraphSpec(
+            region=target,
+            fn=spec.fn,
+            flows=spec.flows,
+            contexts=spec.delegate.contexts,
+        )
+        for target, spec in zip(spec_targets, specs)
+    ]
+
+    return new_graph, remapped_specs
 
 
 class _GraphExecutionContext:
@@ -1342,7 +1359,7 @@ def local_optimize(
     if offloading_strategy is not None:
         passes.append(offloading_strategy.create_instruction_pass(graph))
 
-    single_resolution_graph = reduce_resolution(graph, specs)
+    single_resolution_graph, specs = reduce_resolution(graph, specs)
     program = InstructionScheduler().schedule(single_resolution_graph)
     program = InstructionPasses.apply(program, passes)
     return _GraphExecutionContext(graph, program, InstructionEngine())

@@ -640,7 +640,7 @@ def test_reduce_resolution_forward_pass_correctness(two_layer_model: TwoLayerMod
 
     # WHEN each spec configuration is reduced and executed
     for desc, specs, expected_node_count in _spec_cases(model):
-        reduced = reduce_resolution(graph, specs)
+        reduced, _ = reduce_resolution(graph, specs)
 
         # THEN forward output matches the original model at every resolution
         torch.testing.assert_close(reduced(x), expected, msg=f"forward mismatch for case: {desc}")
@@ -659,7 +659,7 @@ def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse(
     graph = model.to_graph_module()
 
     # WHEN we reduce with no specs
-    reduced = reduce_resolution(graph, [])
+    reduced, _ = reduce_resolution(graph, [])
     modules = [n.target for n in reduced._nodes.values()]
 
     # THEN only the top-level folds appear, not their internals
@@ -679,7 +679,7 @@ def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse(
     specs = [make_spec(region=model.layer_0.attn.q_proj, fn=noop)]
 
     # WHEN we reduce with that spec
-    reduced = reduce_resolution(graph, specs)
+    reduced, _ = reduce_resolution(graph, specs)
     modules = [n.target for n in reduced._nodes.values()]
 
     # THEN the target's siblings inside layer_0.attn are exposed as leaves
@@ -710,7 +710,7 @@ def test_reduce_resolution_path_spec_inserts_subgraph_node(two_layer_model: TwoL
     ]
 
     # WHEN we reduce with that path spec
-    reduced = reduce_resolution(graph, specs)
+    reduced, _ = reduce_resolution(graph, specs)
     modules = [n.target for n in reduced._nodes.values()]
 
     # THEN a synthesized GraphModule replaces the path leaves
@@ -756,7 +756,7 @@ def test_group_single_module(two_layer_model: TwoLayerModel) -> None:
     ]
 
     # WHEN we reduce with a single-member group
-    reduced = reduce_resolution(graph, specs)
+    reduced, _ = reduce_resolution(graph, specs)
 
     # THEN forward output still matches
     torch.testing.assert_close(reduced(x), expected)
@@ -772,7 +772,7 @@ def test_reduce_resolution_multi_output_fold_unwraps_first_output(
     expected = model(x)
 
     # WHEN we reduce with no specs, leaving the multi-output fold coarse
-    reduced = reduce_resolution(graph, [])
+    reduced, _ = reduce_resolution(graph, [])
 
     # THEN forward execution must unwrap output 0 (not pass the whole tuple downstream)
     torch.testing.assert_close(reduced(x), expected)
@@ -791,7 +791,7 @@ def test_reduce_resolution_repeated_input_binding_to_fold() -> None:
     expected = add_module(x, x)
 
     # WHEN we reduce with no specs (fold stays coarse, must be called as add(x, x))
-    reduced = reduce_resolution(graph, [])
+    reduced, _ = reduce_resolution(graph, [])
 
     # THEN forward must preserve the duplicate binding rather than deduping to add(x)
     torch.testing.assert_close(reduced(x), expected)

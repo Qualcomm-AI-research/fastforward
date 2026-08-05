@@ -101,7 +101,7 @@ def layerwise_optimize(
             msg = f"Expected an Algorithm, AlgorithmSpec, or list of AlgorithmSpec; got {type(algorithm).__name__}."  # type: ignore[unreachable]
             raise TypeError(msg)
 
-    graph = reduce_resolution(graph, optimization_specs)
+    graph, optimization_specs = reduce_resolution(graph, optimization_specs)
 
     # (3) Schedule instruction program
     program = InstructionScheduler().schedule(graph)
