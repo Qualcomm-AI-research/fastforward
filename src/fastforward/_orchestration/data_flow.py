@@ -45,7 +45,7 @@ import torch
 from fastforward._orchestration.graph_module import Region
 
 
-class FlowMode(enum.StrEnum):
+class FlowMode(str, enum.Enum):
     """Which model runs the pass that produces the data.
 
     The mode is also a signal to the scheduler. Data produced by a model that
@@ -64,7 +64,7 @@ class FlowMode(enum.StrEnum):
     def _missing_(cls, value: object) -> NoReturn:
         # Catch spelling mistakes. 'quantised' vs 'quantized', etc. and
         # return the actual enum options (default error does not).
-        modes = ", ".join(repr(str(m)) for m in cls)
+        modes = ", ".join(repr(m.value) for m in cls)
         msg = f"Invalid flow mode {value!r}; expected one of {modes}."
         raise ValueError(msg)
 
