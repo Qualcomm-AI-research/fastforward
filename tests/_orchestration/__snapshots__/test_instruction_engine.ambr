@@ -1,0 +1,50 @@
+# serializer version: 1
+# name: test_cancel_pass_preserves_necessary_moves_for_non_module_callables
+  '''
+  CallModule(module=<lambda>, args=[], kwargs={}, target=NodeRef(arange_out), contexts=[nullcontext])
+  MoveActivations(device=device(type='cuda', index=0), register_ref=NodeRef(linear_out))
+  CallModule(module=transpose, args=[NodeRef(linear_out)], kwargs={}, target=NodeRef(aten_a_out), contexts=[nullcontext])
+  CallModule(module=transpose, args=[NodeRef(aten_a_out)], kwargs={}, target=NodeRef(aten_b_out), contexts=[nullcontext])
+  MoveActivations(device=device(type='cuda', index=0), register_ref=NodeRef(arange_out))
+  '''
+# ---
+# name: test_instruction_generator_linear_layers
+  '''
+  CallModule(module=Identity, args=[InputRef(inputs)], kwargs={}, target=NodeRef(node_1), contexts=[nullcontext])
+  CallModule(module=Identity, args=[NodeRef(node_1)], kwargs={}, target=NodeRef(node_1), contexts=[nullcontext])
+  ReturnOutputs(outputs=[NodeRef(node_1)])
+  '''
+# ---
+# name: test_instruction_generator_with_attribute_ref
+  '''
+  CallModule(module=ReturnTuple, args=[InputRef(x)], kwargs={}, target=NodeRef(tuple_node), contexts=[nullcontext])
+  LoadAttribute(source=NodeRef(tuple_node), target=AttributeRef(reference=NodeRef(tuple_node), attribute=0), attribute=0)
+  CallModule(module=Identity, args=[AttributeRef(reference=NodeRef(tuple_node), attribute=0)], kwargs={}, target=NodeRef(identity), contexts=[nullcontext])
+  ReturnOutputs(outputs=[NodeRef(identity)])
+  '''
+# ---
+# name: test_instruction_generator_with_optimization_spec
+  '''
+  OptimizeModule(module=Identity, args=[InputRef(x)], kwargs={}, delegate=Delegate(fn=dummy_optimize, contexts=[nullcontext]))
+  CallModule(module=Identity, args=[InputRef(x)], kwargs={}, target=NodeRef(node_1), contexts=[nullcontext])
+  CallModule(module=Identity, args=[NodeRef(node_1)], kwargs={}, target=NodeRef(node_2), contexts=[nullcontext])
+  ReturnOutputs(outputs=[NodeRef(node_2)])
+  '''
+# ---
+# name: test_lifetime_management_pass
+  '''
+  CallModule(module=Identity, args=[InputRef(x)], kwargs={}, target=NodeRef(node_1), contexts=[nullcontext])
+  DeleteRegisterEntries(targets=[InputRef(x)])
+  CallModule(module=Identity, args=[NodeRef(node_1)], kwargs={}, target=NodeRef(node_2), contexts=[nullcontext])
+  DeleteRegisterEntries(targets=[NodeRef(node_1)])
+  ReturnOutputs(outputs=[NodeRef(node_2)])
+  '''
+# ---
+# name: test_optimization_only_pass
+  '''
+  OptimizeModule(module=Identity, args=[InputRef(x)], kwargs={}, delegate=Delegate(fn=dummy_optimize, contexts=[nullcontext]))
+  CallModule(module=Identity, args=[InputRef(x)], kwargs={}, target=NodeRef(node_1), contexts=[nullcontext, nullcontext])
+  CallModule(module=Identity, args=[NodeRef(node_1)], kwargs={}, target=NodeRef(node_2), contexts=[nullcontext, nullcontext])
+  OptimizeModule(module=Identity, args=[NodeRef(node_2)], kwargs={}, delegate=Delegate(fn=dummy_optimize, contexts=[nullcontext]))
+  '''
+# ---

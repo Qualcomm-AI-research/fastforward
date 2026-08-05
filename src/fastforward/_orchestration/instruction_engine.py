@@ -37,6 +37,30 @@ from fastforward._orchestration.graph_module import (
 )
 
 
+def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
+    """Format a module/callable target without dumping parameters or a memory address."""
+    if isinstance(module, torch.nn.Module):
+        return type(module).__name__
+    return _fmt_callable(module)
+
+
+def _fmt_callable(fn: Callable[..., Any]) -> str:
+    """Format a callable by name, without its memory address."""
+    return getattr(fn, "__name__", type(fn).__name__)
+
+
+def _fmt_contexts(contexts: Contexts) -> str:
+    """Format execution contexts by class name, without their memory addresses."""
+    return "[" + ", ".join(type(context).__name__ for context in contexts) + "]"
+
+
+def _fmt_value(value: Any) -> str:
+    """Format a register value, showing shape/dtype instead of tensor contents."""
+    if isinstance(value, torch.Tensor):
+        return f"Tensor(shape={tuple(value.shape)}, dtype={value.dtype})"
+    return repr(value)
+
+
 @dataclasses.dataclass(frozen=True)
 class ActivationDataset(Collection[Any]):
     """A batched collection that wraps all data flowing through the InstructionEngine."""
@@ -257,6 +281,12 @@ class StoreValue(Instruction):
     value: Any
     contexts: Contexts
 
+    def __repr__(self) -> str:
+        return (
+            f"StoreValue(target={self.target!r}, value={_fmt_value(self.value)}, "
+            f"contexts={_fmt_contexts(self.contexts)})"
+        )
+
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         register[self.target] = {context: self.value for context in self.contexts}
 
@@ -316,6 +346,13 @@ class CallModule(Instruction):
     target: _BaseRef
     contexts: Contexts
 
+    def __repr__(self) -> str:
+        return (
+            f"CallModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
+            f"kwargs={self.kwargs!r}, target={self.target!r}, "
+            f"contexts={_fmt_contexts(self.contexts)})"
+        )
+
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         results: dict[ContextManager[None], ActivationDataset] = {}
 
@@ -354,6 +391,16 @@ class OptimizeModule(Instruction):
     args: Sequence[_BaseRef]
     kwargs: Mapping[str, _BaseRef]
     delegate: Delegate
+
+    def __repr__(self) -> str:
+        delegate = (
+            f"Delegate(fn={_fmt_callable(self.delegate.fn)}, "
+            f"contexts={_fmt_contexts(self.delegate.contexts)})"
+        )
+        return (
+            f"OptimizeModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
+            f"kwargs={dict(self.kwargs)!r}, delegate={delegate})"
+        )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         bundles = [
@@ -421,6 +468,9 @@ class MoveModule(Instruction):
 
     device: torch.device | dict[str, torch.device]
     module: torch.nn.Module
+
+    def __repr__(self) -> str:
+        return f"MoveModule(device={self.device!r}, module={_fmt_module(self.module)})"
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102, ARG002
         if isinstance(self.device, dict):

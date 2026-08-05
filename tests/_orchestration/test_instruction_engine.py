@@ -9,6 +9,7 @@ from contextlib import nullcontext
 from typing import Any, Collection
 
 import pytest
+import syrupy
 import torch
 
 from fastforward._orchestration.graph_module import (
@@ -26,7 +27,6 @@ from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
     ActivationRegister,
     CallModule,
-    DeleteRegisterEntries,
     InstructionEngine,
     InstructionPasses,
     InstructionScheduler,
@@ -237,7 +237,7 @@ def test_return_outputs_unpacking() -> None:
     assert result[context] == ((1, 3), (2, 4))
 
 
-def test_instruction_generator_linear_layers() -> None:
+def test_instruction_generator_linear_layers(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
     """Test instruction generation for simple linear chain: input -> node1 -> node2."""
     # GIVEN an execution plan with two nodes in sequence
     graph = GraphModule()
@@ -251,20 +251,12 @@ def test_instruction_generator_linear_layers() -> None:
     engine = scheduler.schedule(graph)
 
     # THEN the engine contains: CallModule(node1), CallModule(node2), ReturnOutputs
-    assert len(engine.instructions) == 3
-    assert isinstance(engine.instructions[0], CallModule)
-    assert engine.instructions[0].args == [inputs]
-    assert engine.instructions[0].target == node_1
-
-    assert isinstance(engine.instructions[1], CallModule)
-    assert engine.instructions[1].args == [node_1]
-    assert engine.instructions[1].target == node_2
-
-    assert isinstance(engine.instructions[2], ReturnOutputs)
-    assert engine.instructions[2].outputs == [node_2]
+    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
 
 
-def test_instruction_generator_with_attribute_ref() -> None:
+def test_instruction_generator_with_attribute_ref(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
     """Test instruction generation when AttributeRef is used."""
     # GIVEN a graph where a node returns a tuple and we extract an element for next node
     graph = GraphModule()
@@ -278,23 +270,14 @@ def test_instruction_generator_with_attribute_ref() -> None:
     scheduler = InstructionScheduler()
     engine = scheduler.schedule(graph)
 
-    # THEN the engine contains: CallModule(tuple_node), LoadAttribute(extract [0]), CallModule(identity), ReturnOutputs
-    assert len(engine.instructions) == 4
-    assert isinstance(engine.instructions[0], CallModule)
-    assert engine.instructions[0].target == tuple_node
-
-    assert isinstance(engine.instructions[1], LoadAttribute)
-    assert engine.instructions[1].source == tuple_node
-    assert engine.instructions[1].attribute == 0
-
-    assert isinstance(engine.instructions[2], CallModule)
-    assert engine.instructions[2].args == [engine.instructions[1].target]
-    assert engine.instructions[2].target == identity_node
-
-    assert isinstance(engine.instructions[3], ReturnOutputs)
+    # THEN the engine contains: CallModule(tuple_node), LoadAttribute(extract [0]),
+    # CallModule(identity), ReturnOutputs
+    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
 
 
-def test_instruction_generator_with_optimization_spec() -> None:
+def test_instruction_generator_with_optimization_spec(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
     """Test that SubgraphSpec with optimization function injects OptimizeModule instruction."""
     # GIVEN a simple graph with two nodes
     graph = GraphModule()
@@ -314,23 +297,15 @@ def test_instruction_generator_with_optimization_spec() -> None:
     scheduler = InstructionScheduler()
     engine = scheduler.schedule(graph)
 
-    # THEN the engine contains: OptimizeModule(node_1), CallModule(node_1), CallModule(node_2), ReturnOutputs
-    assert len(engine.instructions) == 4
-
+    # THEN the engine contains: OptimizeModule(node_1), CallModule(node_1), CallModule(node_2),
+    # ReturnOutputs, and the OptimizeModule delegate is the one we injected (repr can't prove
+    # identity, so that part stays a plain assertion)
     assert isinstance(engine.instructions[0], OptimizeModule)
-    assert engine.instructions[0].module is graph._nodes[node_1.id].target
     assert engine.instructions[0].delegate.fn is dummy_optimize
-
-    assert isinstance(engine.instructions[1], CallModule)
-    assert engine.instructions[1].target == node_1
-
-    assert isinstance(engine.instructions[2], CallModule)
-    assert engine.instructions[2].target == node_2
-
-    assert isinstance(engine.instructions[3], ReturnOutputs)
+    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
 
 
-def test_optimization_only_pass() -> None:
+def test_optimization_only_pass(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
     """Test that optimization_only_pass keeps only instructions needed for optimization."""
     # GIVEN a graph with optimization on node_1 and node_3, but not node_2
     graph = GraphModule()
@@ -352,22 +327,14 @@ def test_optimization_only_pass() -> None:
     program = InstructionPasses.apply(program, [optimization_only_pass])
     instructions = program.instructions
 
-    # THEN the resulting instructions should be exactly 4,
+    # THEN the resulting instructions should be:
     # OptimizeModule(node_1) -> CallModule(node_1) -> CallModule(node_2) -> OptimizeModule(node_3)
     # CallModule(node_3) is removed since nothing downstream depends on it, and because of that
     # ReturnOutputs is also removed.
-    assert len(instructions) == 4
-    assert isinstance(instructions[0], OptimizeModule)
-    assert instructions[0].module is graph._nodes[node_1.id].target
-    assert isinstance(instructions[1], CallModule)
-    assert instructions[1].module is graph._nodes[node_1.id].target
-    assert isinstance(instructions[2], CallModule)
-    assert instructions[2].module is graph._nodes[node_2.id].target
-    assert isinstance(instructions[3], OptimizeModule)
-    assert instructions[3].module is graph._nodes[node_3.id].target
+    assert snapshot == "\n".join(repr(instruction) for instruction in instructions)
 
 
-def test_lifetime_management_pass() -> None:
+def test_lifetime_management_pass(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
     """Test that lifetime_management_pass inserts ClearRegister after last use."""
     # GIVEN a sequential graph x -> node_1 -> node_2 -> out
     graph = GraphModule()
@@ -381,18 +348,9 @@ def test_lifetime_management_pass() -> None:
     program = InstructionPasses.apply(program, [lifetime_management_pass])
     instructions = program.instructions
 
-    # THEN the resulting instructions should be exactly 5,
+    # THEN the resulting instructions should be exactly
     # CallM(node_1) -> Del(inp) -> CallM(node_2) -> Del(node_1) -> Ret(node_2)
-    assert len(instructions) == 5
-    assert isinstance(instructions[0], CallModule)
-    assert (
-        isinstance(instructions[1], DeleteRegisterEntries) and instructions[1].targets[0] == inputs
-    )
-    assert isinstance(instructions[2], CallModule)
-    assert (
-        isinstance(instructions[3], DeleteRegisterEntries) and instructions[3].targets[0] == node_1
-    )
-    assert isinstance(instructions[4], ReturnOutputs)
+    assert snapshot == "\n".join(repr(instruction) for instruction in instructions)
 
 
 def test_instruction_passes_no_passes() -> None:
@@ -665,7 +623,9 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
     assert module_moves == []
 
 
-def test_cancel_pass_preserves_necessary_moves_for_non_module_callables() -> None:
+def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
     # GIVEN a mixed instruction stream:
     #   (a) an aten op with no inputs — output device is unknown
     #   (b) an aten op chain where inputs are on compute — state propagates
@@ -716,20 +676,9 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables() -> Non
     # WHEN the cancellation pass runs
     result = _cancel_redundant_activation_moves(instructions, compute)
 
-    # THEN the compute move for the unknown producer survives (can't prove it's on compute)
-    arange_moves = [
-        i for i in result if isinstance(i, MoveActivations) and i.register_ref == arange_out
-    ]
-    assert len(arange_moves) == 1
-    assert arange_moves[0].device == compute
-
-    # AND the aten chain's round-trips are all eliminated (state is known to be compute)
-    chain_moves = [
-        i
-        for i in result
-        if isinstance(i, MoveActivations) and i.register_ref in (aten_a_out, aten_b_out)
-    ]
-    assert chain_moves == []
+    # THEN the compute move for the unknown producer survives (can't prove it's on compute),
+    # and the aten chain's round-trips are all eliminated (state is known to be compute)
+    assert snapshot == "\n".join(repr(instruction) for instruction in result)
 
 
 def test_move_to_device_preserves_dict_subclass_type() -> None:

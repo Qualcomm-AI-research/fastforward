@@ -125,13 +125,17 @@ class ActivationsFlow(DataFlow):
     source: FlowSource | None = attrs.field(default=None, converter=_checked_source, kw_only=True)
     cache: bool = True
 
+    def __repr__(self) -> str:
+        source = None if self.source is None else getattr(self.source, "__name__", "<resolver>")
+        return f"{type(self).__name__}(mode={self.mode!r}, source={source}, cache={self.cache!r})"
 
-@attrs.define(frozen=True)
+
+@attrs.define(frozen=True, repr=False)
 class InputActivations(ActivationsFlow):
     """The activations arriving at the region's input boundary."""
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=True, repr=False)
 class OutputActivations(ActivationsFlow):
     """The activations leaving the region's output boundary."""
 
