@@ -1617,3 +1617,300 @@ def test_autoquant_bypass_in_nested_helper_context() -> None:
     # THEN no quantizer parameter is generated for the bypass op — the helper's
     # signature contains no parameter that mentions checkpoint.
     assert "quantizer_checkpoint" not in code
+
+
+# --------------------------------------------------------------------------------
+# Testing super()
+
+
+class _LinearChild(torch.nn.Linear):
+    """Subclasses a module with a hand-written QuantizedModule counterpart."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super().forward(x)
+
+
+@pytest.mark.slow
+def test_autoquant_super_call_to_hand_written_counterpart_reaches_quantized_impl() -> None:
+    # GIVEN a module that subclasses torch.nn.Linear -- which has a hand-written
+    # QuantizedLinear counterpart -- and delegates forward() to super()
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(_LinearChild(4, 4), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the generated class inherits from QuantizedLinear so that super()
+    # resolves to the quantized implementation, instead of re-implementing or
+    # bypassing quantization for the inherited forward()
+    assert "class Quantized_LinearChild(QuantizedLinear, _LinearChild):" in code
+
+    # THEN the super() call is anchored to the generated class, not the
+    # original _LinearChild -- anchoring to _LinearChild would skip
+    # QuantizedLinear in the MRO and reach the unquantized nn.Linear.forward
+    assert "super(Quantized_LinearChild, self).forward(x)" in code
+
+
+class _SuperBase(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.relu(x)
+
+
+class _SuperDerived(_SuperBase):
+    """Subclasses a plain (non-hand-written) module and delegates via super()."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super().forward(x) * 2
+
+
+class _ExplicitSuperDerived(_SuperBase):
+    """Same as `_SuperDerived`, but with an explicit super(Class, self) call."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super(_ExplicitSuperDerived, self).forward(x) * 2  # noqa: UP008
+
+
+@pytest.mark.slow
+def test_autoquant_super_call_to_user_defined_base_quantizes_base_class() -> None:
+    # GIVEN a subclass of a plain user-defined module (no hand-written
+    # counterpart) that delegates forward() to super()
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(_SuperDerived(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the base class is quantized from source and the derived class
+    # inherits from it, so super() reaches the quantized base implementation
+    assert "class Quantized_SuperBase(fastforward.nn.QuantizedModule, _SuperBase):" in code
+    assert "class Quantized_SuperDerived(Quantized_SuperBase, _SuperDerived):" in code
+    assert "super(Quantized_SuperDerived, self).forward(x)" in code
+
+    # THEN the quantized base class is emitted before the derived class that
+    # inherits from it, so the generated module is valid on import
+    assert code.index("class Quantized_SuperBase") < code.index("class Quantized_SuperDerived")
+
+    # THEN the super() delegation's result is not quantized a second time --
+    # Quantized_SuperDerived introduces exactly one quantizer, for the `* 2`
+    # multiplication. (Quantized_SuperBase has its own, unrelated quantizers.)
+    derived_class = code[code.index("class Quantized_SuperDerived") :]
+    assert derived_class.count("QuantizerStub()") == 1
+
+
+@pytest.mark.slow
+def test_autoquant_explicit_super_call_is_reanchored_to_generated_class() -> None:
+    # GIVEN a subclass whose forward() uses the explicit two-argument
+    # super(OwnerClass, self) form rather than a bare super()
+
+    # WHEN autoquant processes the module
+    code = autoquant_with_defaults(_ExplicitSuperDerived(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the explicit call is re-anchored to the generated class -- anchoring
+    # to the original _ExplicitSuperDerived would skip the quantized base
+    # in the MRO
+    assert "super(Quantized_ExplicitSuperDerived, self).forward(x)" in code
+
+
+class _MroSkipBase(torch.nn.Module):
+    """Root of a four-level chain: Base <- A <- B <- C."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + 1
+
+
+class _MroSkipA(_MroSkipBase):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + 1
+
+
+class _MroSkipB(_MroSkipA):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super().forward(x) + 2
+
+
+class _MroSkipC1(_MroSkipB):
+    """Skips one level: `super(B, self)` resolves to A, not B."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super(_MroSkipB, self).forward(x) + 3  # noqa: UP008
+
+
+class _MroSkipC01(_MroSkipB):
+    """Call both super() and `super(B, self)` (no skip and skips one level)."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # do not skip, call _MroSkipB.forward()
+        b = super().forward(x)
+        # skip _MroSkipB, call _MroSkipA.forward()
+        a = super(_MroSkipB, self).forward(x)
+        return a + b  # noqa: UP008
+
+
+class _MroSkipC2(_MroSkipB):
+    """Skips two levels: `super(A, self)` resolves to Base, not A, not B."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # skip _MroSkipB and _MroSkipA and call _MroSkipBase.forward()
+        return super(_MroSkipA, self).forward(x) + 3
+
+
+@pytest.mark.slow
+def test_autoquant_mro_skip_quantize_anchestor_chain() -> None:
+    # GIVEN a four-level chain Base <- A <- B <- C1, where C1's forward()
+    # deliberately skips B via `super(B, self)`, reaching A's implementation
+    # directly. B delegates to its own immediate super(); A does not delegate.
+
+    # WHEN autoquant processes the leaf of the chain
+    code = autoquant_with_defaults(_MroSkipC1(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN a quantized module is generated for B, mirroring the original MRO,
+    # so that C1's generated class -- and the re-anchored `super(B, self)` call
+    # inside it -- still skip B, but land on a quantized A rather than the
+    # original unquantized implementation.
+    assert "class Quantized_MroSkipC1(Quantized_MroSkipB, _MroSkipC1):" in code
+    assert "class Quantized_MroSkipB(Quantized_MroSkipA, _MroSkipB):" in code
+    assert "class Quantized_MroSkipA(fastforward.nn.QuantizedModule, _MroSkipA):" in code
+    assert "super(Quantized_MroSkipB, self).forward(x)" in code
+
+    # THEN Base gets no counterpart at all: A does not delegate to super(), so
+    # nothing in the generated hierarchy ever reaches Base's implementation.
+    assert "class Quantized_MroSkipBase" not in code
+
+    # THEN C1's own forward() is quantized
+    quantized_c = code.split("class Quantized_MroSkipC1(")[1]
+    assert "output_quantizer=self.quantizer_add" in quantized_c
+
+    # THEN B's own forward() is quantized too, even though C1's skip bypasses it
+    quantized_b = code.split("class Quantized_MroSkipB(")[1].split("class Quantized_MroSkipC1")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_b
+
+    # THEN A's own forward() is quantized -- it is what C1's skip resolves to
+    quantized_a = code.split("class Quantized_MroSkipA(")[1].split("class Quantized_MroSkipB")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_a
+
+
+@pytest.mark.slow
+def test_autoquant_mro_skip_with_extra_inplicit_super_call() -> None:
+    # GIVEN a four-level chain Base <- A <- B <- C01, where C01's forward()
+    # calls both `super(B, self).forward()` and `super().forward()``, reaching
+    # both A's and B's implementation.
+
+    # WHEN autoquant processes the leaf of the chain
+    code = autoquant_with_defaults(_MroSkipC01(), use_type_inference=False, ignore_exceptions=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN a quantized module is generated for B, mirroring the original MRO,
+    # so that C01's generated class and:
+    # - The re-anchored `super(B, self)` call still skip B, but land
+    #   on a quantized A rather than the original unquantized implementation.
+    # - The re-anchored `super()` call doesn't skip B.
+    assert "class Quantized_MroSkipC01(Quantized_MroSkipB, _MroSkipC01):" in code
+    assert "class Quantized_MroSkipB(Quantized_MroSkipA, _MroSkipB):" in code
+    assert "class Quantized_MroSkipA(fastforward.nn.QuantizedModule, _MroSkipA):" in code
+    assert "super(Quantized_MroSkipC01, self).forward(x)" in code
+    assert "super(Quantized_MroSkipB, self).forward(x)" in code
+
+    # THEN Base gets no counterpart at all: A does not delegate to super(), so
+    # nothing in the generated hierarchy ever reaches Base's implementation.
+    assert "class Quantized_MroSkipBase" not in code
+
+    # THEN C01's own forward() is quantized
+    quantized_c = code.split("class Quantized_MroSkipC01(")[1]
+    assert "output_quantizer=self.quantizer_add" in quantized_c
+
+    # THEN B's own forward() is quantized too
+    quantized_b = code.split("class Quantized_MroSkipB(")[1].split("class Quantized_MroSkipC01")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_b
+
+    # THEN A's own forward() is quantized too
+    quantized_a = code.split("class Quantized_MroSkipA(")[1].split("class Quantized_MroSkipB")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_a
+
+
+@pytest.mark.slow
+def test_autoquant_mro_double_skip_quantize_anchestor_chain() -> None:
+    # GIVEN a four-level chain Base <- A <- B <- C2, where C2's forward()
+    # deliberately skips B and A via `super(A, self)`, reaching Base's
+    # implementation directly. B delegates to its own immediate super();
+    # A does not delegate.
+
+    # WHEN autoquant processes the leaf of the chain
+    code = autoquant_with_defaults(_MroSkipC2(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN a quantized module is generated for B and A, mirroring the original
+    # MRO, so that C2's generated class -- and the re-anchored `super(A, self)`
+    # call inside it -- still skip B and A, but land on a quantized Base rather
+    # than the original unquantized implementation.
+    assert "class Quantized_MroSkipC2(Quantized_MroSkipB, _MroSkipC2):" in code
+    assert "class Quantized_MroSkipB(Quantized_MroSkipA, _MroSkipB):" in code
+    assert "class Quantized_MroSkipA(Quantized_MroSkipBase, _MroSkipA):" in code
+    assert "class Quantized_MroSkipBase(fastforward.nn.QuantizedModule, _MroSkipBase):" in code
+    assert "super(Quantized_MroSkipA, self).forward(x)" in code
+
+    # THEN C's own forward() is quantized
+    quantized_c = code.split("class Quantized_MroSkipC2(")[1]
+    assert "output_quantizer=self.quantizer_add" in quantized_c
+
+    # THEN B's own forward() is quantized too, even though C2's skip bypasses it
+    quantized_b = code.split("class Quantized_MroSkipB(")[1].split("class Quantized_MroSkipC")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_b
+
+    # THEN A's own forward() is quantized, even though C2's skip bypasses it
+    quantized_a = code.split("class Quantized_MroSkipA(")[1].split("class Quantized_MroSkipB")[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_a
+
+    # THEN Base's own forward() is quantized too -- it is the implementation
+    # that C2's skip resolves to, so the chain is extended to reach it
+    quantized_base = code.split("class Quantized_MroSkipBase(")[1].split(
+        "class Quantized_MroSkipA"
+    )[0]
+    assert "output_quantizer=self.quantizer_add" in quantized_base
+
+
+class _SkipAnchorBase(torch.nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * 2
+
+
+class _SkipAnchorMiddle(_SkipAnchorBase):
+    """Defines no forward of its own -- inherits `_SkipAnchorBase.forward`."""
+
+
+class _SkipAnchorChild(_SkipAnchorMiddle):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super().forward(x) + 1
+
+
+class _SkipAnchorLeaf(_SkipAnchorChild):
+    """Skips the child, anchored at a class that does not define forward."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super(_SkipAnchorMiddle, self).forward(x) + 3
+
+
+@pytest.mark.slow
+def test_autoquant_mro_skip_anchored_at_class_without_own_method() -> None:
+    # GIVEN a chain Base <- Middle <- Child <- Leaf where Leaf's forward()
+    # anchors its skip at Middle, which does not define forward itself, so the
+    # call resolves past Middle to Base's implementation
+
+    # WHEN autoquant processes the leaf of the chain
+    code = autoquant_with_defaults(_SkipAnchorLeaf(), use_type_inference=False)
+    code = codeformat_with_defaults(code)
+
+    # THEN the chain reaches past the anchor to Base, the class that actually
+    # provides forward(). Were Quantized_SkipAnchorMiddle left without a
+    # quantized base, `super(Quantized_SkipAnchorMiddle, self)` would resolve
+    # past QuantizedModule into the original `_SkipAnchorLeaf.forward`, running
+    # the leaf body a second time and unquantized.
+    assert "class Quantized_SkipAnchorMiddle(Quantized_SkipAnchorBase, _SkipAnchorMiddle):" in code
+    assert (
+        "class Quantized_SkipAnchorBase(fastforward.nn.QuantizedModule, _SkipAnchorBase):" in code
+    )
+    assert "super(Quantized_SkipAnchorMiddle, self).forward(x)" in code
+
+    # THEN Base's forward() -- the implementation the skip resolves to -- is
+    # quantized, so the re-anchored call reaches a quantized `* 2`
+    quantized_base = code.split("class Quantized_SkipAnchorBase(")[1].split("class Quantized_")[0]
+    assert "output_quantizer=self.quantizer_mul" in quantized_base

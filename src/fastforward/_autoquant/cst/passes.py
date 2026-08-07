@@ -39,6 +39,7 @@ from .nodes import (
     AbstractClassReference,
     GeneralAssignment,
     QuantizedCall,
+    QuantizedSuperCall,
     ReplacementCandidate,
     UnresolvedQuantizedCall,
     is_simple_literal,
@@ -760,6 +761,12 @@ class QuantizedCounterpartReplacer(libcst.CSTTransformer):
 
         original_args: Sequence[libcst.Arg]
         match orig := updated_node.original:
+            case QuantizedSuperCall():
+                # This must stay above `libcst.Call()` case to prevent shadowing.
+                # A super() delegation to a quantized implementation. Unwrap
+                # from ReplacementCandidate but keep the marker so quantizer
+                # analysis treats its result as already quantized.
+                return orig
             case libcst.UnaryOperation():
                 original_func, _, original_func_name = _get_name_and_torch_name_for_operation(orig)
                 original_args = (libcst.Arg(orig.expression),)

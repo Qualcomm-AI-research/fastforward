@@ -16,9 +16,10 @@ class SAM3SuperParent(nn.Module):
 class SAM3SuperChild(SAM3SuperParent):
     """Tests that a bare super() call is rewritten to super(ClassName, self).
 
-    In copied methods, bare super() must be anchored to the original class name
-    so that MRO resolution works correctly inside the generated quantized class,
-    which inherits from both the quantized mixin and SAM3SuperChild.
+    In copied methods, bare super() must be anchored to the generated class so
+    that MRO resolution reaches the quantized counterpart of SAM3SuperParent, 
+    which the generated class inherits from ahead of
+    SAM3SuperChild itself.
     """
 
     def forward(self, *, child_kw):
@@ -26,10 +27,11 @@ class SAM3SuperChild(SAM3SuperParent):
 
 
 class SAM3AlreadyExplicitSuper(SAM3SuperParent):
-    """Tests that an already-explicit super(ClassName, self) call is left unchanged.
+    """Tests that an already-explicit super(ClassName, self) call is re-anchored too.
 
-    If the source method already uses the two-argument form, the autoquant pass
-    must not double-rewrite it or otherwise alter it.
+    An explicit call that anchors to the owning class is equivalent to a bare
+    super() call once the method is copied, and must be re-anchored to the
+    generated class for the same reason.
     """
 
     def forward(self, *, child_kw):

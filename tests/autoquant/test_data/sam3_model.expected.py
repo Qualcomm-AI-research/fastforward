@@ -5,6 +5,7 @@ from tests.autoquant.test_data.sam3_model import (
     SAM3AlreadyExplicitSuper,
     SAM3ModelInspired,
     SAM3SuperChild,
+    SAM3SuperParent,
 )
 
 
@@ -18,17 +19,25 @@ class QuantizedSAM3ModelInspired(fastforward.nn.QuantizedModule, SAM3ModelInspir
         return x
 
 
-class QuantizedSAM3SuperChild(fastforward.nn.QuantizedModule, SAM3SuperChild):
+class QuantizedSAM3SuperParent(fastforward.nn.QuantizedModule, SAM3SuperParent):
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+
+    def forward(self, *, parent_kw):
+        return parent_kw
+
+
+class QuantizedSAM3SuperChild(QuantizedSAM3SuperParent, SAM3SuperChild):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
 
     def forward(self, *, child_kw):
-        return super(SAM3SuperChild, self).forward(parent_kw=child_kw)
+        return super(QuantizedSAM3SuperChild, self).forward(parent_kw=child_kw)
 
 
-class QuantizedSAM3AlreadyExplicitSuper(fastforward.nn.QuantizedModule, SAM3AlreadyExplicitSuper):
+class QuantizedSAM3AlreadyExplicitSuper(QuantizedSAM3SuperParent, SAM3AlreadyExplicitSuper):
     def __init_quantization__(self) -> None:
         super().__init_quantization__()
 
     def forward(self, *, child_kw):
-        return super(SAM3AlreadyExplicitSuper, self).forward(parent_kw=child_kw)
+        return super(QuantizedSAM3AlreadyExplicitSuper, self).forward(parent_kw=child_kw)

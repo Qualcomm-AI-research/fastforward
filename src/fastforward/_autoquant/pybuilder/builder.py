@@ -214,14 +214,49 @@ class QuantizedModuleBuilder(ClassBuilder):
         super().__init__(
             name=name, bases=bases, required_imports=tuple(required_imports_set), origin=origin
         )
+        self._quantized_base: str | None = None
 
     @property
     def origin(self) -> type:
         return self._origin
 
+    @property
+    def quantized_base(self) -> str | None:
+        """Name of the quantized base class this class inherits from, if any.
+
+        When set, the generated class inherits from this quantized superclass
+        instead of `fastforward.nn.QuantizedModule` directly.
+        """
+        return self._quantized_base
+
+    def set_quantized_base(
+        self, base_name: str, required_imports: Sequence[ImportSymbol] = ()
+    ) -> None:
+        """Inherit from a quantized superclass instead of `QuantizedModule`.
+
+        Methods that call `super()` must reach quantized superclass
+        implementations. This is achieved by placing the quantized counterpart
+        of the original superclass first in the bases, so it precedes the
+        original (unquantized) class in the MRO.
+
+        `fastforward.nn.QuantizedModule` is not added as an explicit base in
+        this case: it is already in `base_name`'s MRO, and listing it
+        explicitly makes the MRO inconsistent.
+
+        Args:
+            base_name: Name (as it appears in generated code) of the quantized
+                superclass to inherit from.
+            required_imports: `ImportSymbol`s required to resolve `base_name`.
+        """
+        self._quantized_base = base_name
+        self._required_imports = self._required_imports + tuple(required_imports)
+
     @override
     def build(self, quantizer_refs: QuantizerReferenceCollection) -> libcst.ClassDef:
-        bases = ("fastforward.nn.QuantizedModule",) + self._bases
+        if self._quantized_base is not None:
+            bases = (self._quantized_base,) + self._bases
+        else:
+            bases = ("fastforward.nn.QuantizedModule",) + self._bases
         init_quant_method = InitQuantizationMethod(counterpart_type=self.origin)
         methods = [init_quant_method] + self._methods
         module_tree = self.build_class(bases=bases, methods=methods, quantizer_refs=quantizer_refs)

@@ -12,6 +12,7 @@ MANIFEST
 dmypy.json
 .ruff_cache
 .mkdocs_cache
+**/uv.lock
 
 .vscode/*
 .idea/*

@@ -509,7 +509,11 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         Raises:
             NotImplementedError: If the quantized operator has multiple return values.
         """
-        if not isinstance(assign.value, nodes.QuantizedCall):
+        if isinstance(assign.value, nodes.QuantizedSuperCall):
+            # Avoid requantizing a QuantizedSuperCall (already quantized).
+            for target in assign.targets:
+                self.record_assignment(target, producer, is_quantized=True)
+        elif not isinstance(assign.value, nodes.QuantizedCall):
             for target in assign.targets:
                 self.record_assignment(target, producer, is_quantized=False)
         else:

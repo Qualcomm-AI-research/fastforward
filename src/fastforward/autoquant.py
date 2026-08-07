@@ -100,6 +100,7 @@ def autoquantize(
     auto_import: bool = False,
     use_type_inference: bool = True,
     replacement_patterns: Iterable[pattern.PatternRule] = (),
+    ignore_exceptions: bool = True,
 ) -> "AutoQuantizedCode":
     """Create Python source code for quantized version of `module`.
 
@@ -119,12 +120,15 @@ def autoquantize(
             runtime.
         replacement_patterns: Iterable of `PatternRule`s that are applied to the input
             before autoquant sees the input.
+        ignore_exceptions: if True, exception raised during the generation of quantized
+            methods/functions are not raised, but only logged as warnings.
     """
     autoquant_code = autoquant_with_defaults(
         module,
         operator_table,
         use_type_inference=use_type_inference,
         replacement_patterns=replacement_patterns,
+        ignore_exceptions=ignore_exceptions,
     )
     formatted_code = codeformat_with_defaults(autoquant_code, code_formatter=code_formatter)
     pymodule_name = emit_code_of_module(

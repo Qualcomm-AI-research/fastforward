@@ -13,7 +13,7 @@ import sys
 import types
 
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Callable, Iterable, TypeAlias, cast
+from typing import Any, Callable, Iterable, TypeAlias
 
 import libcst
 import torch
@@ -21,13 +21,22 @@ import torch
 import fastforward as ff
 import fastforward._autoquant.cst.nodes as nodes
 
-from fastforward._autoquant import pybuilder, pysource
+from fastforward._autoquant import pybuilder, pysource, superclass
 from fastforward._autoquant.bypass import is_bypassed_callable
+from fastforward._autoquant.class_builder import (
+    ClassBuilderStore,
+    QuantizedClassNameAllocator,
+    class_builders_in_definition_order,
+)
 from fastforward._autoquant.convert import convert_function
-from fastforward._autoquant.cst import node_creation, node_processing, passes
+from fastforward._autoquant.cst import node_creation, node_processing, passes, super_calls
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward._autoquant.cst.pattern import PatternRule
 from fastforward._autoquant.function_context import FunctionContext
+from fastforward._autoquant.function_utils import (
+    resolve_function_source_member_name,
+    resolve_method_owner_and_name,
+)
 from fastforward._autoquant.mypy.type_provider import mypy_call_scoped_cache
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
@@ -38,55 +47,26 @@ from fastforward.nn.quantized_module import QuantizedModule
 _FuncRef: TypeAlias = Callable[..., Any]
 MethodType = ff.type_common.MethodType
 
+# `__init__` and `__init_quantization__` are excluded from super() delegation discovery.
+_EXCLUDED_SUPER_METHODS = frozenset({"__init__", "__init_quantization__"})
+
 logger = logging.getLogger(__name__)
 
 
-class QuantizedClassNameAllocator:
-    """Allocates collision-safe base aliases and quantized class names."""
+@dataclasses.dataclass
+class _AqTask:
+    """Autoquant task element for task queue."""
 
-    def __init__(self, module_types: Sequence[type[torch.nn.Module]]) -> None:
-        self._type_name_totals = collections.Counter(mod_type.__name__ for mod_type in module_types)
-        self._type_name_next_index: collections.Counter[str] = collections.Counter()
-        self._used_quantized_class_names: set[str] = set()
-        self._used_base_import_aliases: set[str] = set()
-
-    @staticmethod
-    def _alloc_unique_name(preferred: str, used_names: set[str]) -> str:
-        if preferred not in used_names:
-            used_names.add(preferred)
-            return preferred
-
-        index = 1
-        while True:
-            candidate = f"{preferred}_{index}"
-            if candidate not in used_names:
-                used_names.add(candidate)
-                return candidate
-            index += 1
-
-    def for_module_type(self, mod_type: type[torch.nn.Module]) -> tuple[str, str]:
-        type_name = mod_type.__name__
-        total = self._type_name_totals[type_name]
-        index = self._type_name_next_index[type_name]
-        self._type_name_next_index[type_name] += 1
-
-        if total > 1:
-            preferred_base_alias = f"__ffaq_base_{type_name}_{index}"
-            preferred_quantized_name = f"Quantized{type_name}_{index}"
-        else:
-            preferred_base_alias = type_name
-            preferred_quantized_name = f"Quantized{type_name}"
-
-        return (
-            self._alloc_unique_name(preferred_base_alias, self._used_base_import_aliases),
-            self._alloc_unique_name(preferred_quantized_name, self._used_quantized_class_names),
-        )
+    function: Callable[..., Any]
+    module: type[torch.nn.Module] | types.ModuleType
+    alias: str | None = None
 
 
 def autoquant(
     module: torch.nn.Module,
     source_context: pysource.SourceContext,
     operator_table: optable.OperatorTable,
+    ignore_exceptions: bool = True,
 ) -> str:
     """Autoquantizes a torch.nn.Module and its submodules by quantizing all methods.
 
@@ -94,17 +74,20 @@ def autoquant(
         module: The PyTorch module to quantize
         source_context: Source code context for accessing module definitions
         operator_table: Table of quantization operators to use
+        ignore_exceptions: if True, exceptions raised during the generation of
+            quantized methods/functions are not re-raised, but only logged as
+            warnings
 
     Returns:
         Generated Python code for the quantized module
     """
     quantizer_refs = QuantizerReferenceCollection()
     module_builder = pybuilder.ModuleBuilder(origin=type(module))
-    class_builders: dict[type[torch.nn.Module], pybuilder.QuantizedModuleBuilder] = {}
 
     # Skip modules that are already quantized
     pre_quantized_modules = _find_known_quantized_modules()
 
+    # List of modules currently unquantized and that will be quantized later
     unquantized_module_types: list[type[torch.nn.Module]] = []
     for mod in _find_unquantized_submodules(module, pre_quantized_modules):
         mod_type = type(mod)
@@ -112,22 +95,12 @@ def autoquant(
             unquantized_module_types.append(mod_type)
 
     class_name_allocator = QuantizedClassNameAllocator(unquantized_module_types)
-
-    def _ensure_class_builder(mod_type: type[torch.nn.Module]) -> pybuilder.QuantizedModuleBuilder:
-        if mod_type in class_builders:
-            return class_builders[mod_type]
-
-        base_alias, quantized_name = class_name_allocator.for_module_type(mod_type)
-        class_builder = _cls_builder_for_module(
-            mod_type,
-            quantized_name=quantized_name,
-            base_alias=base_alias,
-        )
-        class_builders[mod_type] = class_builder
-        return class_builder
-
+    class_builder_store = ClassBuilderStore(class_name_allocator)
     for mod_type in unquantized_module_types:
-        _ensure_class_builder(mod_type)
+        class_builder_store.ensure_class_builder(mod_type)
+
+    # Cache superclass resolution
+    superclass_resolver = superclass.SuperclassResolver(pre_quantized_modules)
 
     # Queue all forward methods for processing
     func_queue = collections.deque[_AqTask]()
@@ -170,7 +143,7 @@ def autoquant(
                 # quantized version of the function in the quantized (Python)
                 # module.
 
-                source_member_name = _resolve_function_source_member_name(
+                source_member_name = resolve_function_source_member_name(
                     task.module, accessed_name=func_name, func=task.function
                 )
                 qualified_module_name = fully_qualified_name(task.module)
@@ -214,12 +187,12 @@ def autoquant(
                 # If task.module is a PyTorch module (in contrast to a Python module), create
                 # a new member function on the quantized module. This can be an instance, class, or
                 # static method.
-                cls_builder = _ensure_class_builder(task.module)
+                cls_builder = class_builder_store.ensure_class_builder(task.module)
                 if cls_builder.has_method(func_name):
                     continue
 
                 # Convert method to quantized version
-                source_module, source_name = _resolve_method_owner_and_name(
+                source_module, source_name = resolve_method_owner_and_name(
                     task.module, func_name, task.function
                 )
 
@@ -237,12 +210,36 @@ def autoquant(
                 # but quantizer ownership must stay on the concrete module method
                 # being converted (e.g., subclass `forward`).
                 method_ctx = FunctionContext.from_method(task.module, func_name)
+
+                # Looking for method calls delegating to super classes
+                super_methods: dict[str, str | None] = {}
+                if source_module is task.module and func_name not in _EXCLUDED_SUPER_METHODS:
+                    funcdef = method_src.cst(NodeType=libcst.FunctionDef)
+                    super_methods = super_calls.super_delegated_methods(
+                        funcdef, owner_class_name=task.module.__name__
+                    )
+
+                # Resolve super methods creating a new queue of functions that
+                # we have to process and get an association between the method
+                # names and the superclasses these methods are anchroed to.
+                super_func_queue, super_anchors = _resolve_super_methods(
+                    super_methods,
+                    task.module,
+                    superclass_resolver,
+                    class_builder_store,
+                )
+                func_queue.extend(super_func_queue)
+
+                # NB: during the current method re-write, `convert_function` is
+                # able to correctly re-write the `super()` calls targeting the
+                # correct superclass thanks to the `super_anchors` dict.
                 with quantizer_refs.push_context(method_ctx):
                     func_builder = convert_function(
                         src=method_src,
                         optable=operator_table,
                         func_ctx=method_ctx,
                         quantizer_refs=quantizer_refs,
+                        super_anchors=super_anchors,
                     )
                     # Methods on quantized classes must retain the accessed method name
                     # (e.g., `forward`) even when source is resolved through aliases.
@@ -278,8 +275,10 @@ def autoquant(
                 + f"{type(err).__name__} was raised: {err}"
             )
             logger.warning(msg, exc_info=err)
+            if not ignore_exceptions:
+                raise err
 
-    for class_builder in class_builders.values():
+    for class_builder in class_builders_in_definition_order(class_builder_store.builders):
         module_builder.add_class(class_builder)
 
     _resolve_all_quantized_calls(module_builder, quantizer_refs)
@@ -287,84 +286,128 @@ def autoquant(
     return module_builder.build(quantizer_refs).code
 
 
-@dataclasses.dataclass
-class _AqTask:
-    """Autoquant task element for task queue."""
+def _resolve_super_methods(
+    super_methods: Mapping[str, str | None],
+    module: type[torch.nn.Module],
+    superclass_resolver: superclass.SuperclassResolver,
+    class_builder_store: ClassBuilderStore,
+) -> tuple[collections.deque[_AqTask], dict[str, str | None]]:
+    """Wire the quantized bases a method's `super()` calls need, and report the callsites.
 
-    function: Callable[..., Any]
-    module: type[torch.nn.Module] | types.ModuleType
-    alias: str | None = None
+    Args:
+        super_methods: Maps each method invoked through `super()` to the
+            explicit anchor class name used, or `None` when the call targets
+            the immediate superclass, as returned by `super_calls.super_delegated_methods`.
+        module: The class that defines the method being converted.
+        superclass_resolver: Resolver for `module`'s quantizable superclass.
+        class_builder_store: Store used to create the counterpart builders
+            that the resolved bases refer to.
 
-
-def _unwrap_method_owner_member(member: Any) -> Any:
-    if isinstance(member, (classmethod, staticmethod)):
-        return member.__func__
-    return member
-
-
-def _resolve_method_owner_and_name(
-    module_type: type[torch.nn.Module],
-    accessed_name: str,
-    func: Callable[..., Any],
-) -> tuple[type[torch.nn.Module], str]:
-    """Resolve class scope/member name for source lookup of method tasks.
-
-    Methods can be inherited or aliased (for example ``forward = helper_func``),
-    where ``func.__name__`` differs from the call-site member name. Resolve by
-    member identity across the MRO so source is loaded from the defining scope.
+    Returns:
+        The tasks to append to the autoquant queue, and the anchors for the
+        methods whose `super()` result is quantized: the *generated* class name
+        to re-anchor a deliberate MRO skip to, or `None` when the call targets
+        the owning class and is anchored to the generated class the method is
+        copied into. This mirrors `super_methods`, mapping original anchors to
+        generated ones, and is passed on as `convert_function`'s
+        `super_anchors`.
     """
-    for owner in module_type.__mro__:
-        owner_member = _unwrap_method_owner_member(owner.__dict__.get(accessed_name, None))
-        if owner_member is func:
-            return owner, accessed_name
+    func_queue = collections.deque[_AqTask]()
+    super_anchors: dict[str, str | None] = {}
 
-    for owner in module_type.__mro__:
-        for name, member in owner.__dict__.items():
-            if _unwrap_method_owner_member(member) is func:
-                return owner, name
+    immediate_super = {name for name, anchor in super_methods.items() if anchor is None}
+    mro_skip_super = {name: anchor for name, anchor in super_methods.items() if anchor is not None}
 
-    return module_type, accessed_name
+    cls_builder = class_builder_store.ensure_class_builder(module)
 
+    def _add_super_method_to_queue(method_name: str, ancestor_type: type[torch.nn.Module]) -> None:
+        ancestor_method = getattr(ancestor_type, method_name, None)
+        if ancestor_method is not None:
+            func_queue.append(
+                _AqTask(module=ancestor_type, function=ancestor_method, alias=method_name)
+            )
 
-def _resolve_function_source_member_name(
-    module: types.ModuleType,
-    accessed_name: str,
-    func: Callable[..., Any],
-) -> str:
-    """Resolve module member name for source lookup of helper-function tasks.
+    # --------------------------------------------------------------------------
+    # Manage imediate super calls, i.e. `super()` or `super(SelfClass, self)`
+    # --------------------------------------------------------------------------
+    if immediate_super:
+        super_base = superclass_resolver.resolve_superclass(module)
+        if super_base is not None:
+            if cls_builder.quantized_base is None:
+                # If the class_builder has not a base class set yet we ensure
+                # to correctly handle the superclass autoquantization and
+                # we set the quantized_base class correctly.
 
-    Helpers can be referenced through aliases (e.g. ``mod.alias(...)`` where
-    ``mod.alias is mod.actual_func``). Source lookup should follow the canonical
-    defining name when available while preserving call-site alias separately.
-    """
-    module_dict = getattr(module, "__dict__", None)
-    if isinstance(module_dict, dict):
-        if module_dict.get(accessed_name, None) is func:
-            return accessed_name
+                base_type, quantized_type = super_base
+                if quantized_type is None:
+                    # Super's quantized_type None: we create one and we add to
+                    # the function conversion queue all the delegated methods.
+                    base_builder = class_builder_store.ensure_class_builder(base_type)
+                    cls_builder.set_quantized_base(base_builder.name)
+                    for method_name in immediate_super:
+                        _add_super_method_to_queue(method_name, base_type)
+                else:
+                    # super's quantized_type already exists, we just set the
+                    # correct quantized_base to the current class builder.
+                    base_qualified_name = fully_qualified_name(quantized_type)
+                    base_module_name, base_class_name = base_qualified_name.rsplit(".", 1)
+                    cls_builder.set_quantized_base(
+                        base_class_name,
+                        required_imports=(
+                            ImportSymbol(name=base_class_name, module=base_module_name),
+                        ),
+                    )
 
-        for name, member in module_dict.items():
-            if member is func:
-                return cast(str, name)
+            # Now the super's quantized class is correctly managed.
+            # We store each delegated methdos in the `super_anchors` dict as
+            # `{method_name: None}` (because anchored to first MRO anchestor).
+            super_anchors.update(dict.fromkeys(immediate_super))
 
-    return accessed_name
+        else:
+            # No quantizable superclass -- nothing is actually quantized,
+            # so these calls are left untouched.
+            pass
 
+    # --------------------------------------------------------------------------
+    # Manage deliberate MRO skips super calls, i.e. `super(Ancestor, self)`
+    # --------------------------------------------------------------------------
+    for method_name, anchor_name in mro_skip_super.items():
+        # Every class in the skipped segment gets a quantized counterpart,
+        # chained in the same order as the original MRO. The re-anchored call
+        # skips exactly the same classes and lands on the quantized counterpart.
+        chain = superclass.ancestor_chain(module, anchor_name)
+        if chain is None:
+            continue
+        anchor_type = chain[-1]
 
-def _cls_builder_for_module(
-    module_type: type[torch.nn.Module],
-    quantized_name: str,
-    base_alias: str,
-) -> pybuilder.QuantizedModuleBuilder:
-    qualified_class_name = fully_qualified_name(module_type)
-    base_module_name, base_class_name = qualified_class_name.rsplit(".", 1)
-    import_alias = base_alias if base_alias != base_class_name else None
-    return pybuilder.QuantizedModuleBuilder(
-        quantized_name,
-        bases=(base_alias,),
-        required_imports=(
-            ImportSymbol(name=base_class_name, module=base_module_name, asname=import_alias),
-        ),
-        origin=module_type,
-    )
+        # `super(Anchor, self)` resolves past `Anchor`, so extend the chain to
+        # the class that actually provides the method. Without it the counterpart
+        # of `Anchor` has no quantized base and the rewritten call falls through
+        # into the original implementations.
+        chain = chain + superclass.method_provider_chain(module, anchor_type, method_name)
+
+        prev_builder = cls_builder
+        for ancestor_type in chain:
+            ancestor_builder = class_builder_store.ensure_class_builder(ancestor_type)
+            if prev_builder.quantized_base is None:
+                prev_builder.set_quantized_base(ancestor_builder.name)
+            prev_builder = ancestor_builder
+
+            # Quantize each skipped class's own implementation too.
+            # This callsite bypasses it, but the chain is shared: a `super()`
+            # call elsewhere resolves through these classes and must reach a
+            # quantized implementation. Only classes that define the method
+            # themselves are queued, so an inherited implementation is not
+            # copied into a counterpart that would shadow it.
+            if method_name in vars(ancestor_type) and not ancestor_builder.has_method(method_name):
+                _add_super_method_to_queue(method_name, ancestor_type)
+
+        # We ensure that the anchor class will be quantized and we associate the
+        # name of the anchor's class to the method_name.
+        anchor_builder = class_builder_store.ensure_class_builder(anchor_type)
+        super_anchors[method_name] = anchor_builder.name
+
+    return func_queue, super_anchors
 
 
 def default_source_context(
@@ -411,6 +454,7 @@ def autoquant_with_defaults(
     operator_table: optable.OperatorTable | None = None,
     use_type_inference: bool = True,
     replacement_patterns: Iterable[PatternRule] = (),
+    ignore_exceptions: bool = True,
 ) -> str:
     with mypy_call_scoped_cache():
         return autoquant(
@@ -420,6 +464,7 @@ def autoquant_with_defaults(
                 replacement_patterns=replacement_patterns,
             ),
             operator_table=operator_table or default_optable(),
+            ignore_exceptions=ignore_exceptions,
         )
 
 
@@ -1028,7 +1073,6 @@ def _find_dependent_methods(func_src: pysource.PySource, ctx: FunctionContext) -
     Args:
         func_src: The source code representation of the function to analyze.
         ctx: The `FunctionContext` of `func_src`.
-        operator_table: Operator lookup table used to detect quantized leaf ops.
 
     Returns:
         An iterator of method names that are dependencies of the given function.

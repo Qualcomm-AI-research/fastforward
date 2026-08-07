@@ -149,6 +149,23 @@ class QuantizedCall(libcst.Call):
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
+class QuantizedSuperCall(libcst.Call):
+    """A `super()` delegation whose target is a quantized implementation.
+
+    Autoquant makes a generated class inherit from the quantized counterpart of
+    its superclass, so a `super()` call reaches a quantized method and therefore
+    yields an already-quantized value. This node marks such a callsite so that
+    quantizer analysis does not insert a redundant quantizer for its result.
+    """
+
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> "QuantizedSuperCall":
+        # This method must be implemented to prevent a 'downcast' to a
+        # libcst.Call node during arbitrary transformer application
+        visited_call = libcst.Call._visit_and_replace_children(self, visitor)
+        return QuantizedSuperCall(**node_asdict(visited_call))
+
+
+@dataclasses.dataclass(slots=True, frozen=True)
 class UnresolvedQuantizedCall(libcst.Call):
     """A metadata node that carries extra information and wraps a `libcst.Call`.
 
