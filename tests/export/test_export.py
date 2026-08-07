@@ -68,11 +68,9 @@ def test_export_quantized_model(simple_model: QuantizedModelFixture, _seed_prngs
 def test_ff_model_to_onnx_export(
     tmp_path: pathlib.Path, simple_model: QuantizedModelFixture, _seed_prngs: int
 ) -> None:
-    # GIVEN a model and its initial non-quantized result.
+    # GIVEN a quantized model with initialized ranges.
     data = torch.randn(32, 10)
     quant_model, activation_quantizers, parameter_quantizers = simple_model
-    with ff.strict_quantization(False):
-        non_quantized_result = quant_model(data)
 
     model_name = "test_ff_model_to_onnx_export"
     output_directory = tmp_path / model_name
@@ -98,6 +96,14 @@ def test_ff_model_to_onnx_export(
         onnx_export_options=ONNX_EXPORT_OPTIONS,
     )
 
+    # Compute the reference AFTER export: the pipeline fuses weights to the
+    # quantization grid in-place (store_weights_as_qdq=True by default), so
+    # the FP reference must use the same QDQ-snapped weights that ORT sees.
+    # Quantization is disabled so activations pass through in float, matching
+    # the exported ONNX graph which has all Q/DQ ops removed.
+    with ff.disable_quantization(quant_model):
+        non_quantized_result = quant_model(data)
+
     ort_session = onnxruntime.InferenceSession(
         onnx_artifact_location, providers=["CPUExecutionProvider"]
     )
@@ -106,10 +112,7 @@ def test_ff_model_to_onnx_export(
     ort_inputs = {ort_session.get_inputs()[0].name: data.detach().cpu().numpy()}
     ort_outs = ort_session.run(None, ort_inputs)
 
-    # THEN the results between the original non-quantized model inference
-    # and the ONNX inference should match (since the export pipeline removes
-    # all quantize_by_tile and dequantize_by_tile ops, the exported model is
-    # equivalent to the original model before its quantizers are activated)
+    # THEN the ONNX inference should match the model with QDQ-fused weights
     np.testing.assert_allclose(
         non_quantized_result.detach().cpu().numpy(), ort_outs[0], rtol=1e-03, atol=1e-05
     )
