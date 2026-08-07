@@ -6,5 +6,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ARG VER_TORCH \
     VER_CUDA
 
-RUN --mount=type=bind,rw,target=/docker-ctx export CUDA_VERSION_NO_DOT=$(echo "${VER_CUDA}" | tr -d .) && uv pip install --system --extra-index-url https://download.pytorch.org/whl/cu${CUDA_VERSION_NO_DOT} --no-cache torch==${VER_TORCH} /docker-ctx --group /docker-ctx/pyproject.toml:test && uv pip uninstall --system fastforward
+# Install torch separately so the PyTorch index does not poison resolution of other packages.
+RUN --mount=type=bind,rw,target=/docker-ctx export CUDA_VERSION_NO_DOT=$(echo "${VER_CUDA}" | tr -d .) \
+    && uv pip install --system --extra-index-url https://download.pytorch.org/whl/cu${CUDA_VERSION_NO_DOT} --no-cache torch==${VER_TORCH} \
+    && uv pip install --system --no-cache /docker-ctx --group /docker-ctx/pyproject.toml:test \
+    && uv pip uninstall --system fastforward
 CMD ["/bin/bash"]

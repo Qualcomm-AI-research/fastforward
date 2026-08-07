@@ -38,10 +38,19 @@ test = [
   "pytest-cov>=3",
   "types-PyYAML",
   "syrupy",
-  "numpy>=2"
+  "numpy>=2",
+]
+shared-deps = [
+  "datasets>=2.20",
+  "transformers==5.9.0",
+  "tqdm",
+]
+test-regression = [
+  {include-group = "shared-deps"},
+  "types-tqdm",
 ]
 docs = [
-  "datasets",
+  {include-group = "shared-deps"},
   "ipywidgets",
   "jupytext",
   "mike",
@@ -52,8 +61,6 @@ docs = [
   "mkdocs-section-index",
   "mkdocstrings-python",
   "sentencepiece",
-  "transformers==5.9.0",
-  "tqdm",
 ]
 
 [tool.scikit-build]
@@ -75,7 +82,7 @@ fallback_version = "0.1.0.dev0"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-testpaths = ["tests"]
+testpaths = ["tests", "tests_regression"]
 xfail_strict = true
 addopts = [
   "-ra",

@@ -1,0 +1,135 @@
+name: Regression Tests
+
+# on:
+#   workflow_dispatch:
+#   schedule:
+#     # Weekly on Monday at 03:17 UTC. Off-the-hour to reduce GitHub Actions
+#     # scheduling delays that peak on the hour.
+#     - cron: "17 3 * * 1"
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - "pages"
+  repository_dispatch:
+    types: [rebuild-images]
+
+jobs:
+  prepare:
+    if: github.server_url != 'https://github.com'
+    name: Compute Docker image matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.final.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set image tag (first 8 hex chars)
+        run: |
+          test $(git hash-object .dockerignore) = 33dafa6305deba799c6f414184eb723f07ef8c1d # Reminder: if .dockerignore changes, update the tag computation below.
+          echo "IMAGE_TAG=$(git ls-tree HEAD docker pyproject.toml | git hash-object --stdin | head -c 8)" >> $GITHUB_ENV
+      - name: Generate matrix
+        id: final
+        env:
+          DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+          DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE }}
+        run: python3 scripts/versions.py matrix
+
+  docker:
+    if: github.server_url != 'https://github.com'
+    name: Build Docker image (default versions)
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        # Regression only runs the default (first) matrix entry; broader
+        # torch/cuda/python coverage lives in the CI Pipeline.
+        include:
+          - ${{ fromJSON(needs.prepare.outputs.matrix)[0] }}
+    steps:
+      - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+      - run: |
+          echo IMAGE_TAG="${{ matrix.IMAGE_TAG }}" >> $GITHUB_ENV
+          echo IMAGE_NAME="${{ matrix.IMAGE_NAME }}" >> $GITHUB_ENV
+      - name: Check if image was already built before
+        run: |
+          IMAGE_REF=$(python3 -c "netloc, path = '${IMAGE_NAME}'.split('/',1); print(f'https://{netloc}/v2/{path}/manifests/${IMAGE_TAG}')")
+          echo "Checking if ${IMAGE_REF} was already built."
+          if curl --fail --silent --location --head --header "Authorization: Bearer ${{ secrets.DOCKER_CREDENTIALS }}" --header "Accept: application/vnd.docker.distribution.manifest.v2+json" "${IMAGE_REF}" ; then
+            echo "Image ref was already built, skipping build."
+            echo SKIP_BUILD=1 >> $GITHUB_ENV
+          else
+            echo "Image ref not yet available, proceeding to build."
+          fi
+      - if: ${{ !env.SKIP_BUILD }}
+        uses: actions/checkout@v4
+      - if: ${{ !env.SKIP_BUILD }}
+        run: |
+          docker build -f docker/Dockerfile.ci -t "${IMAGE_NAME}:${IMAGE_TAG}" --build-arg VER_PYTHON="${{ matrix.VER_PYTHON }}" --build-arg VER_CUDA="${{ matrix.VER_CUDA }}" --build-arg VER_TORCH="${{ matrix.VER_TORCH}}" .
+          echo '${{ secrets.DOCKER_CREDENTIALS }}' | docker login --username '${{ secrets.DOCKER_LOGIN }}' --password-stdin '${{ vars.DOCKER_REGISTRY }}'
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+
+  wheels:
+    if: github.server_url != 'https://github.com'
+    name: Build wheel
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.12
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m pip install build
+          python3 -m build --verbose --wheel --outdir=wheelhouse/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: "fastforward"
+          path: "wheelhouse/*.whl"
+          if-no-files-found: error
+          retention-days: 1
+
+  regression:
+    if: github.server_url != 'https://github.com'
+    name: "regression (py${{ matrix.VER_PYTHON }}, torch${{ matrix.VER_TORCH }}, cuda${{ matrix.VER_CUDA }})"
+    runs-on: k8s-gpu
+    needs: [prepare, wheels, docker]
+    # Downloads several multi-GB models checkpoints and runs perplexity eval on each.
+    # Give it generous headroom.
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ${{ fromJSON(needs.prepare.outputs.matrix)[0] }}
+    container:
+      image: "${{ matrix.IMAGE_NAME }}:${{ matrix.IMAGE_TAG }}"
+      credentials:
+        username: ${{ secrets.DOCKER_LOGIN }}
+        password: ${{ secrets.DOCKER_CREDENTIALS }}
+    env:
+      VER_CUDA: ${{ matrix.VER_CUDA }}
+      HF_HUB_OFFLINE: ${{ vars.HF_HUB_OFFLINE }}
+      HF_HUB_CACHE: ${{ vars.HF_HUB_CACHE }}
+      HF_DATASETS_CACHE: ${{ vars.HF_DATASETS_CACHE }}
+
+      # # Required for access to gated Llama checkpoints on HuggingFace. Add
+      # # `HF_TOKEN` under repo Settings → Secrets and variables → Actions.
+      # HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      # HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tests_regression
+            docs
+            pyproject.toml
+      - uses: actions/download-artifact@v3
+        with:
+          name: "fastforward"
+          path: "wheelhouse"
+      - name: Install fastforward wheel
+        run: python3 -m pip install --no-cache-dir --no-dependencies "$(find wheelhouse -name '*.whl')"
+      - name: Install regression test dependencies
+        run: python3 -m pip install --no-cache-dir datasets>=2.20 "transformers>=5.9,<5.10" tqdm
+      - name: Run regression suite
+        run: python3 -m pytest tests_regression
