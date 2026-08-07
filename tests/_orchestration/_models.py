@@ -200,19 +200,6 @@ class RNGTensor(torch.nn.Module):
         return torch.randn(5)
 
 
-class ProbeModule(torch.nn.Module):
-    """Records whether torch inference mode was enabled during forward."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.is_on_inference_mode = False
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Record the inference-mode flag and return the input unchanged."""
-        self.is_on_inference_mode = torch.is_inference_mode_enabled()
-        return x
-
-
 # ---------------------------------------------------------------------------
 # Small attention / MLP / decoder family (built via `to_graph_module()`).
 # ---------------------------------------------------------------------------

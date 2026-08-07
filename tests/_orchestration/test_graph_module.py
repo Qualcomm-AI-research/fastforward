@@ -3,14 +3,12 @@
 
 
 import dataclasses
-import functools
 import uuid
 
 import pytest
 import torch
 
 from fastforward._orchestration.graph_module import (
-    DEFAULT_CONTEXT,
     Const,
     GraphModule,
     Group,
@@ -22,16 +20,9 @@ from fastforward._orchestration.graph_module import (
     ancestors,
     create_subgraph,
     find_cycle,
-    inference_mode,
-    local_optimize,
     reduce_resolution,
     remap_subgraph_reference,
     topological_sort,
-)
-from fastforward._orchestration.instruction_engine import (
-    ActivationDataset,
-    ActivationRegister,
-    CallModule,
 )
 
 from ._models import (
@@ -41,12 +32,11 @@ from ._models import (
     DualOutModel,
     Model,
     MultiOutputModel,
-    ProbeModule,
     Residual,
     RNGTensor,
     TwoLayerModel,
 )
-from .conftest import make_spec, noop, sgd_step
+from .conftest import make_spec, noop
 
 
 def test_graph_module_forward_pass(model: Model) -> None:
@@ -270,246 +260,6 @@ def test_remap_subgraph_reference_attribute_ref() -> None:
 
     # THEN the two AttributeRefs should be unequal
     assert attribute_ref != alternative_attribute_ref
-
-
-def test_local_error_opt(model: Model) -> None:
-    """Integration test for Local Error Optimization."""
-    # GIVEN a Model with two residual blocks and its GraphModule representation
-    graph = model.to_graph_module()
-
-    # GIVEN we store initial weights for comparison
-    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
-    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
-
-    # GIVEN a simple calibration dataset
-    calibration_data = [torch.randn(1, 5) for _ in range(10)]
-
-    # GIVEN a SubgraphSpec that targets only the first residual's linear layer
-    specs = [
-        make_spec(
-            region=model.residual_1.linear,
-            fn=functools.partial(sgd_step, lr=0.1),
-        )
-    ]
-
-    # WHEN we run local_optimize on the calibration data
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN only residual_1's linear weights should have changed
-    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
-    assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
-
-
-def test_local_optimization_overlapping_specs_raises(model: Model) -> None:
-    """Test that local_optimize rejects overlapping specs."""
-    # GIVEN two SubgraphSpecs that overlap
-    graph = model.to_graph_module()
-    residual_1_linear = graph.get_submodule("residual_1.linear")
-    residual_1_relu = graph.get_submodule("residual_1.relu")
-    specs = [
-        make_spec(
-            region=Span(start=residual_1_linear, end=residual_1_relu),
-            fn=noop,
-        ),
-        make_spec(
-            region=Span(start=residual_1_linear, end=residual_1_relu),
-            fn=noop,
-        ),
-    ]
-
-    # WHEN we try to create a local_optimize context with overlapping specs
-    # THEN it should raise a ValueError
-    with pytest.raises(ValueError, match="Overlapping nodes"):
-        local_optimize(graph, specs)
-
-
-def test_call_module_single_tensor_arg() -> None:
-    """Test that CallModule correctly handles a single tensor argument without unpacking tensor elements."""
-    # GIVEN a simple linear module
-    module = torch.nn.Linear(5, 3)
-
-    # GIVEN a register with a single tensor batch in context-aware format
-    input_ref = InputRef(uuid.uuid4(), "input")
-    target_ref = NodeRef(uuid.uuid4(), "target")
-    register: ActivationRegister = {
-        input_ref: {DEFAULT_CONTEXT: ActivationDataset([torch.randn(2, 5)])}
-    }
-
-    # GIVEN a CallModule instruction with single arg and default context
-
-    instruction = CallModule(
-        module=module,
-        args=[input_ref],
-        kwargs={},
-        target=target_ref,
-        contexts=[DEFAULT_CONTEXT],
-    )
-
-    # WHEN we execute the instruction
-    instruction.execute(register)
-
-    # THEN the output should be computed correctly
-    assert target_ref in register
-    output_contexts = register[target_ref]
-    assert len(output_contexts[DEFAULT_CONTEXT]) == 1
-    assert output_contexts[DEFAULT_CONTEXT].batches[0].shape == (2, 3)
-
-
-def test_local_optimization_with_attribute_refs(multi_output_model: MultiOutputModel) -> None:
-    """Test local_optimize with AttributeRef outputs in subgraphs."""
-    # GIVEN a model that returns multiple outputs
-    model = multi_output_model
-    graph = model.to_graph_module()
-
-    # GIVEN we track initial weights
-    initial_linear1_weight = model.linear1.weight.data.clone()
-    initial_linear2_weight = model.linear2.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [torch.randn(1, 5) for _ in range(5)]
-
-    # GIVEN a spec targeting the first output path
-    linear1 = graph.get_submodule("linear1")
-    relu = graph.get_submodule("relu")
-    specs = [
-        make_spec(
-            region=Span(start=linear1, end=relu),
-            fn=sgd_step,
-        )
-    ]
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN linear1 should be optimized
-    assert not torch.allclose(initial_linear1_weight, model.linear1.weight.data)
-    # THEN linear2 should remain unchanged
-    assert torch.allclose(initial_linear2_weight, model.linear2.weight.data)
-
-
-def test_local_optimization_multiple_non_overlapping_specs(model: Model) -> None:
-    """Test local_optimize with multiple non-overlapping specs."""
-    # GIVEN a model with two residual blocks
-    graph = model.to_graph_module()
-
-    # GIVEN we track initial weights
-    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
-    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [torch.randn(1, 5) for _ in range(5)]
-
-    # GIVEN two non-overlapping specs
-    residual_1_linear = graph.get_submodule("residual_1.linear")
-    residual_2_linear = graph.get_submodule("residual_2.linear")
-    specs = [
-        make_spec(
-            region=residual_1_linear,
-            fn=sgd_step,
-        ),
-        make_spec(
-            region=residual_2_linear,
-            fn=sgd_step,
-        ),
-    ]
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN both residual blocks should be optimized
-    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
-    assert not torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
-
-
-def test_local_optimization_entire_graph(model: Model) -> None:
-    """Test local_optimize when spec covers entire graph."""
-    # GIVEN a model and its graph
-    graph = model.to_graph_module()
-
-    # GIVEN we track all weights
-    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
-    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [torch.randn(1, 5) for _ in range(5)]
-
-    # GIVEN a spec covering the entire graph
-    residual_1_linear = graph.get_submodule("residual_1.linear")
-    sigmoid = graph.get_submodule("sigmoid")
-    specs = [
-        make_spec(
-            region=Span(start=residual_1_linear, end=sigmoid),
-            fn=sgd_step,
-        )
-    ]
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN all weights should be optimized
-    assert not torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
-    assert not torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
-
-
-def test_local_optimization_with_const_inputs() -> None:
-    """Test local_optimize with Const inputs in the graph."""
-    # GIVEN a graph with a constant input
-    const_value = torch.randn(5)
-    graph = GraphModule()
-    input_ref = graph.add_input("input")
-    const_node = graph.add_node("const_node", ConstReturn(), args=[input_ref, Const(const_value)])
-    linear = torch.nn.Linear(5, 3)
-    linear_node = graph.add_node("linear", linear, args=[const_node])
-    graph.add_output(linear_node)
-
-    # GIVEN we track initial weights
-    initial_weight = linear.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [None for _ in range(5)]
-
-    # GIVEN a spec targeting the linear layer
-    specs = [
-        make_spec(
-            region=linear,
-            fn=sgd_step,
-        )
-    ]
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN the linear layer should be optimized
-    assert not torch.allclose(initial_weight, linear.weight.data)
-
-
-def test_local_optimization_no_specs(model: Model) -> None:
-    """Test local_optimize with no optimization specs (only partitioning)."""
-    # GIVEN a model and its graph
-    graph = model.to_graph_module()
-
-    # GIVEN we track initial weights
-    initial_residual1_weight = model.residual_1.linear.weight.data.clone()
-    initial_residual2_weight = model.residual_2.linear.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [torch.randn(1, 5) for _ in range(5)]
-
-    # GIVEN no optimization specs (empty list)
-    specs: list[SubgraphSpec] = []
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN no weights should change (only forward passes)
-    assert torch.allclose(initial_residual1_weight, model.residual_1.linear.weight.data)
-    assert torch.allclose(initial_residual2_weight, model.residual_2.linear.weight.data)
 
 
 def _spec_cases(model: TwoLayerModel) -> list[tuple[str, list[SubgraphSpec], int]]:
@@ -797,79 +547,6 @@ def test_reduce_resolution_repeated_input_binding_to_fold() -> None:
     torch.testing.assert_close(reduced(x), expected)
 
 
-def test_local_optimization_with_kwargs() -> None:
-    """Test local_optimize with modules that use keyword arguments."""
-    # GIVEN a graph with keyword arguments
-    graph = GraphModule()
-    input_ref = graph.add_input("input")
-    const_value = torch.randn(5)
-    const_node = graph.add_node(
-        "const_node",
-        ConstReturnKwargs(),
-        args=[input_ref],
-        kwargs={"const_kwarg": Const(const_value)},
-    )
-    linear = torch.nn.Linear(5, 3)
-    linear_node = graph.add_node("linear", linear, args=[const_node])
-    graph.add_output(linear_node)
-
-    # GIVEN we track initial weights
-    initial_weight = linear.weight.data.clone()
-
-    # GIVEN calibration data
-    calibration_data = [None for _ in range(5)]
-
-    # GIVEN a spec targeting the linear layer
-    specs = [
-        make_spec(
-            region=linear,
-            fn=sgd_step,
-        )
-    ]
-
-    # WHEN we run the optimizer
-    with local_optimize(graph, specs):
-        graph(calibration_data)
-
-    # THEN the linear layer should be optimized
-    assert not torch.allclose(initial_weight, linear.weight.data)
-
-
-def test_local_optimization_with_multiple_inputs() -> None:
-    """Test local_optimize with graph that has multiple inputs."""
-    # GIVEN a graph with multiple inputs
-    graph = GraphModule()
-    input1 = graph.add_input("input1")
-    input2 = graph.add_input("input2")
-
-    linear = torch.nn.Linear(5, 5)
-    (merged,) = graph.add_subgraph("add", Add().to_graph_module(), [input1, input2])
-    output = graph.add_node("linear", linear, args=[merged])
-    graph.add_output(output)
-
-    # GIVEN we track initial weights
-    initial_weight = linear.weight.data.clone()
-
-    # GIVEN calibration data with separate iterables for each input
-    calibration_data_input1 = [torch.randn(1, 5) for _ in range(5)]
-    calibration_data_input2 = [torch.randn(1, 5) for _ in range(5)]
-
-    # GIVEN a spec targeting the linear layer
-    specs = [
-        make_spec(
-            region=linear,
-            fn=sgd_step,
-        )
-    ]
-
-    # WHEN we run the optimizer with multiple input datasets
-    with local_optimize(graph, specs):
-        graph(calibration_data_input1, calibration_data_input2)
-
-    # THEN the linear layer should be optimized
-    assert not torch.allclose(initial_weight, linear.weight.data)
-
-
 def test_node_with_no_inputs_executes_once(rng_tensor: RNGTensor) -> None:
     """Test that nodes with no inputs execute once."""
     # GIVEN a GraphModule with a tensor generator that has no inputs
@@ -890,75 +567,6 @@ def test_node_with_no_inputs_executes_once(rng_tensor: RNGTensor) -> None:
     # THEN the output should be a valid tensor (x + y)
     assert output.shape == (5,)
     assert isinstance(output, torch.Tensor)
-
-
-def test_inference_mode_restores_state_on_exit(model: Model) -> None:
-    # GIVEN a fresh GraphModule (program and engine are None)
-    graph = model.to_graph_module()
-    original_program = graph._program
-    original_engine = graph._engine
-    assert original_program is None
-    assert original_engine is None
-
-    # WHEN we enter and exit inference_mode
-    with inference_mode(graph):
-        # THEN program and engine should be set inside the context
-        assert graph._program is not None
-        assert graph._engine is not None
-
-    # THEN program and engine should be restored to their original values
-    assert graph._program is original_program
-    assert graph._engine is original_engine
-
-
-def test_inference_mode_restores_previously_compiled_state(model: Model) -> None:
-    # GIVEN a GraphModule that has already been used (program/engine are set)
-    graph = model.to_graph_module()
-    x = torch.randn(1, 5)
-    graph(x)  # triggers compilation
-    original_program = graph._program
-    original_engine = graph._engine
-    assert original_program is not None
-    assert original_engine is not None
-
-    # WHEN we enter and exit inference_mode
-    with inference_mode(graph):
-        assert graph._program is not original_program
-        assert graph._engine is not original_engine
-
-    # THEN the original program and engine should be restored
-    assert graph._program is original_program
-    assert graph._engine is original_engine
-
-
-def test_inference_mode_produces_same_output_as_default(model: Model) -> None:
-    # GIVEN a GraphModule and an input tensor
-    graph = model.to_graph_module()
-    x = torch.randn(1, 5)
-
-    # WHEN we run the graph normally and under inference_mode
-    default_output = graph(x)
-    with inference_mode(graph):
-        inference_output = graph(x)
-
-    # THEN both outputs should be identical
-    torch.testing.assert_close(inference_output, default_output)
-
-
-def test_inference_mode_enables_torch_inference_mode(probe_module: ProbeModule) -> None:
-    # GIVEN a module that records whether torch.is_inference_mode_enabled during forward
-    probe = probe_module
-    graph = GraphModule()
-    inp = graph.add_input("x")
-    out = graph.add_node("probe", probe, [inp])
-    graph.add_output(out)
-
-    # WHEN we run the graph under inference_mode
-    with inference_mode(graph):
-        graph(torch.randn(1, 5))
-
-    # THEN torch inference mode should have been active during forward
-    assert probe.is_on_inference_mode
 
 
 def _add_two_input_graph() -> GraphModule:

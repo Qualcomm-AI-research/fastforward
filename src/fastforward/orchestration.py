@@ -11,7 +11,6 @@ import torch
 from fastforward._orchestration import registry
 from fastforward._orchestration.graph_module import (
     GraphModule,
-    _GraphExecutionContext,
     reduce_resolution,
 )
 from fastforward._orchestration.instruction_engine import ActivationBundle as ActivationBundle
@@ -32,7 +31,41 @@ from fastforward._orchestration.registry import register as register
 from fastforward._orchestration.registry import resolve as resolve
 from fastforward._orchestration.trace import trace
 
+__all__ = ["layerwise_optimize"]
+
 logger = logging.getLogger(__name__)
+
+
+class _GraphExecutionContext:
+    """Context manager that temporarily swaps a graph's execution program and engine.
+
+    On enter, the graph's `_program` and `_engine` are replaced with the provided
+    values. On exit, the original state is restored.
+
+    Args:
+        graph: The GraphModule whose execution state will be temporarily replaced.
+        program: The program to install for the duration of the context.
+        engine: The engine to install for the duration of the context.
+    """
+
+    def __init__(
+        self,
+        graph: GraphModule,
+        program: InstructionProgram,
+        engine: InstructionEngine,
+    ) -> None:
+        self._graph = graph
+        self._original_program = graph._program
+        self._original_engine = graph._engine
+        graph._program = program
+        graph._engine = engine
+
+    def __enter__(self) -> GraphModule:
+        return self._graph
+
+    def __exit__(self, *args: Any) -> None:
+        self._graph._program = self._original_program
+        self._graph._engine = self._original_engine
 
 
 class _ExecutionContext(_GraphExecutionContext):

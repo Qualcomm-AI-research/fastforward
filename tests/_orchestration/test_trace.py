@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # pylint: disable=missing-function-docstring
-import functools
 import importlib.util
 
 import pytest
@@ -11,10 +10,7 @@ import torch
 from fastforward._orchestration.graph_module import (
     GraphModule,
     Op,
-    inference_mode,
-    local_optimize,
 )
-from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.trace import (
     _MIN_TORCH_VERSION,
     _make_dict,
@@ -40,7 +36,6 @@ from ._models import (
     TupleOut,
     WithBuffer,
 )
-from .conftest import make_spec, sgd_step
 
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
@@ -431,102 +426,6 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining(
     # THEN the inlined graph still exposes call_function nodes (e.g. transpose,
     # mul) at the parent level — they didn't get re-tagged as torch_module
     assert {Op.torch_module, Op.call_function, Op.get_attr}.issubset(op_kinds)
-
-
-def test_trace_then_local_optimize_only_targets_specified_module(tiny_mlp: TinyMLP) -> None:
-    # GIVEN a traced TinyMLP and a SubgraphSpec targeting only fc1
-    model = tiny_mlp.eval()
-    x = torch.randn(2, 8)
-    graph = trace(model, x)
-    initial_w1 = model.fc1.weight.data.clone()
-    initial_w2 = model.fc2.weight.data.clone()
-
-    specs = [
-        make_spec(region=model.fc1, fn=functools.partial(sgd_step, lr=0.1)),
-    ]
-    calibration = [torch.randn(1, 8) for _ in range(4)]
-
-    # WHEN the graph is run under local_optimize with the spec
-    with local_optimize(graph, specs):
-        graph(calibration)
-
-    # THEN only fc1's weights changed; fc2 is untouched (single-spec partitioning)
-    assert not torch.allclose(initial_w1, model.fc1.weight.data)
-    assert torch.allclose(initial_w2, model.fc2.weight.data)
-
-
-def test_trace_then_local_optimize_fn_receives_original_module_and_dataset(
-    tiny_mlp: TinyMLP,
-) -> None:
-    # GIVEN a traced TinyMLP — verify the delegate fn contract: it gets a callable
-    # whose parameters include the targeted module's parameters, and the calibration
-    # data arrives as a non-empty iterable of batches in the captured context
-    model = tiny_mlp.eval()
-    x = torch.randn(2, 8)
-    graph = trace(model, x)
-    calibration = [torch.randn(1, 8) for _ in range(3)]
-    received: dict[str, object] = {}
-
-    def spy(module: nn.Module, bundle: ActivationBundle) -> None:
-        # Identity by id() because Tensors don't compare with `in` (uses __eq__)
-        received["param_ids"] = {id(p) for p in module.parameters()}
-        received["batches"] = list(bundle)
-
-    # WHEN we run local_optimize with the spy fn
-    specs = [make_spec(region=model.fc1, fn=spy)]
-    with local_optimize(graph, specs):
-        graph(calibration)
-
-    # THEN the fn received fc1's parameters (only) by identity and all calibration batches
-    assert id(model.fc1.weight) in received["param_ids"]  # type: ignore[operator]
-    assert id(model.fc1.bias) in received["param_ids"]  # type: ignore[operator]
-    assert id(model.fc2.weight) not in received["param_ids"]  # type: ignore[operator]
-    assert isinstance(received["batches"], list)
-    assert len(received["batches"]) == len(calibration)
-
-
-def test_trace_then_inference_mode_forward_matches_eager(tiny_mlp: TinyMLP) -> None:
-    # GIVEN a traced TinyMLP and the eager forward output
-    model = tiny_mlp.eval()
-    x = torch.randn(2, 8)
-    with torch.no_grad():
-        expected = model(x)
-
-    # WHEN the graph is run under inference_mode (the GPTQ notebook's eval path)
-    graph = trace(model, x)
-    with inference_mode(graph):
-        got = graph(x)
-
-    # THEN the inference-mode output matches eager element-wise
-    torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
-
-
-def test_trace_then_local_optimize_multiple_specs_each_targets_its_module(
-    tiny_mlp: TinyMLP,
-) -> None:
-    # GIVEN a traced TinyMLP and two SubgraphSpecs (one per Linear) — the typical
-    # GPTQ pattern where every projection gets its own single-module spec
-    model = tiny_mlp.eval()
-    x = torch.randn(2, 8)
-    graph = trace(model, x)
-    call_log: list[str] = []
-
-    def record(name: str, _module: nn.Module, bundle: ActivationBundle) -> None:
-        del bundle
-        call_log.append(name)
-
-    specs = [
-        make_spec(region=model.fc1, fn=functools.partial(record, "fc1")),
-        make_spec(region=model.fc2, fn=functools.partial(record, "fc2")),
-    ]
-    calibration = [torch.randn(1, 8) for _ in range(2)]
-
-    # WHEN local_optimize runs with both specs
-    with local_optimize(graph, specs):
-        graph(calibration)
-
-    # THEN each spec's fn was invoked exactly once, in topological order
-    assert call_log == ["fc1", "fc2"]
 
 
 @pytest.mark.slow

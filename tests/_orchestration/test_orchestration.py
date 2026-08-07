@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from fastforward._orchestration import registry
+from fastforward._orchestration.graph_module import Region, Span
 from fastforward._orchestration.instruction_engine import ActivationBundle, OffloadEverything
 from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
@@ -181,3 +182,85 @@ def test_layerwise_optimize_with_multiple_specs(two_linear: TwoLinear) -> None:
     # THEN both modules were optimized
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
     assert not torch.allclose(initial_w2, model.fc2.weight.data)
+
+
+def test_layerwise_optimize_overlapping_specs_raises(two_linear: TwoLinear) -> None:
+    # GIVEN a model and two specs that both target fc1
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+
+    spec1 = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+    spec2 = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+
+    # WHEN we pass overlapping specs
+    # THEN a ValueError is raised
+    with pytest.raises(ValueError, match="Overlapping nodes"):
+        ff.layerwise_optimize(model, calibration, [spec1, spec2])
+
+
+def test_layerwise_optimize_with_span_region(two_linear: TwoLinear) -> None:
+    # GIVEN a model and a Span covering fc1 through act
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(4)]
+    initial_w1 = model.fc1.weight.data.clone()
+    initial_w2 = model.fc2.weight.data.clone()
+
+    class _SpanSelector(registry.Selector):
+        def resolve(self, model: nn.Module) -> list[Region]:
+            return [Span(start=model.fc1, end=model.act)]  # type: ignore[arg-type]
+
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1), selector=_SpanSelector(), flows=make_flows()
+    )
+
+    # WHEN we optimize with a Span region
+    ff.layerwise_optimize(model, calibration, spec)
+
+    # THEN fc1 is optimized (it's inside the span) and fc2 is not
+    assert not torch.allclose(initial_w1, model.fc1.weight.data)
+    assert torch.allclose(initial_w2, model.fc2.weight.data)
+
+
+def test_layerwise_optimize_entire_graph_span(two_linear: TwoLinear) -> None:
+    # GIVEN a model and a Span covering the entire graph (fc1 through fc2)
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(4)]
+    initial_w1 = model.fc1.weight.data.clone()
+    initial_w2 = model.fc2.weight.data.clone()
+
+    class _FullSpanSelector(registry.Selector):
+        def resolve(self, model: nn.Module) -> list[Region]:
+            return [Span(start=model.fc1, end=model.fc2)]  # type: ignore[arg-type]
+
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1), selector=_FullSpanSelector(), flows=make_flows()
+    )
+
+    # WHEN we optimize spanning the whole graph
+    ff.layerwise_optimize(model, calibration, spec)
+
+    # THEN all weights changed
+    assert not torch.allclose(initial_w1, model.fc1.weight.data)
+    assert not torch.allclose(initial_w2, model.fc2.weight.data)
+
+
+def test_layerwise_optimize_fn_receives_correct_params_and_batches(two_linear: TwoLinear) -> None:
+    # GIVEN a model and a spy algorithm that records what it receives
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(5)]
+    received: dict[str, object] = {}
+
+    def spy(module: nn.Module, bundle: ActivationBundle) -> None:
+        received["param_ids"] = {id(p) for p in module.parameters()}
+        received["batches"] = list(bundle)
+
+    spec = AlgorithmSpec(fn=spy, selector=normalize([model.fc1]), flows=make_flows())
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, spec)
+
+    # THEN the fn received fc1's parameters by identity and the correct batch count
+    assert id(model.fc1.weight) in received["param_ids"]  # type: ignore[operator]
+    assert id(model.fc1.bias) in received["param_ids"]  # type: ignore[operator]
+    assert id(model.fc2.weight) not in received["param_ids"]  # type: ignore[operator]
+    assert len(received["batches"]) == len(calibration)  # type: ignore[arg-type]

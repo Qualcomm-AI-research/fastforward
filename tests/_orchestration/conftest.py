@@ -20,13 +20,8 @@ from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward._orchestration.instruction_engine import ActivationBundle
 
 from ._models import (
-    AddConstant,
     CatModel,
-    ConstReturn,
-    ConstReturnKwargs,
-    DecoderLayer,
     DeviceCastModel,
-    DualOutLayer,
     DualOutModel,
     KwargForward,
     MixedOps,
@@ -35,14 +30,9 @@ from ._models import (
     MultiOutputModel,
     NestedMLP,
     NestedWithTensorOps,
-    ProbeModule,
-    ReturnTuple,
     RNGTensor,
-    SmallAttn,
-    SmallMLP,
     TinyMLP,
     TinyModel,
-    ToyLlama,
     TupleOut,
     TwoLayerModel,
     TwoLinear,
@@ -119,12 +109,6 @@ def dual_out_model_fixture() -> DualOutModel:
     return DualOutModel()
 
 
-@pytest.fixture(name="dual_out_layer")
-def dual_out_layer_fixture() -> DualOutLayer:
-    """Fresh `DualOutLayer` with two independent output leaves."""
-    return DualOutLayer()
-
-
 @pytest.fixture(name="cat_model")
 def cat_model_fixture() -> CatModel:
     """Fresh `CatModel` that passes a list of tensors to torch.cat."""
@@ -143,58 +127,10 @@ def tiny_model_fixture() -> TinyModel:
     return TinyModel()
 
 
-@pytest.fixture(name="small_attn")
-def small_attn_fixture() -> SmallAttn:
-    """Fresh `SmallAttn` self-attention block."""
-    return SmallAttn()
-
-
-@pytest.fixture(name="small_mlp")
-def small_mlp_fixture() -> SmallMLP:
-    """Fresh `SmallMLP` block."""
-    return SmallMLP()
-
-
-@pytest.fixture(name="decoder_layer")
-def decoder_layer_fixture() -> DecoderLayer:
-    """Fresh `DecoderLayer` (attn + mlp fold)."""
-    return DecoderLayer()
-
-
-@pytest.fixture(name="const_return")
-def const_return_fixture() -> ConstReturn:
-    """Fresh `ConstReturn` module."""
-    return ConstReturn()
-
-
-@pytest.fixture(name="const_return_kwargs")
-def const_return_kwargs_fixture() -> ConstReturnKwargs:
-    """Fresh `ConstReturnKwargs` module."""
-    return ConstReturnKwargs()
-
-
-@pytest.fixture(name="add_constant")
-def add_constant_fixture() -> AddConstant:
-    """Fresh `AddConstant` module."""
-    return AddConstant()
-
-
-@pytest.fixture(name="return_tuple")
-def return_tuple_fixture() -> ReturnTuple:
-    """Fresh `ReturnTuple` module."""
-    return ReturnTuple()
-
-
 @pytest.fixture(name="rng_tensor")
 def rng_tensor_fixture() -> RNGTensor:
     """Fresh `RNGTensor` no-input generator module."""
     return RNGTensor()
-
-
-@pytest.fixture(name="probe_module")
-def probe_module_fixture() -> ProbeModule:
-    """Fresh `ProbeModule` that records inference-mode state."""
-    return ProbeModule()
 
 
 @pytest.fixture(name="tiny_mlp")
@@ -249,9 +185,3 @@ def nested_with_tensor_ops_fixture() -> NestedWithTensorOps:
 def device_cast_model_fixture() -> DeviceCastModel:
     """Fresh `DeviceCastModel` module (device-following buffer cast)."""
     return DeviceCastModel()
-
-
-@pytest.fixture(name="toy_llama")
-def toy_llama_fixture() -> ToyLlama:
-    """Fresh `ToyLlama` (Llama-shaped 2-layer stack)."""
-    return ToyLlama()

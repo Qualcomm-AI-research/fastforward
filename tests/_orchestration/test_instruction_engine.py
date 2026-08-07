@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
-import functools
 import uuid
 
 from contextlib import nullcontext
@@ -17,10 +16,9 @@ from fastforward._orchestration.graph_module import (
     Const,
     Delegate,
     GraphModule,
+    InputRef,
     NodeRef,
-    SubgraphSpec,
     _BaseRef,
-    local_optimize,
 )
 from fastforward._orchestration.instruction_engine import (
     ActivationBundle,
@@ -33,10 +31,10 @@ from fastforward._orchestration.instruction_engine import (
     LoadAttribute,
     MoveActivations,
     MoveModule,
-    OffloadEverything,
     OptimizeModule,
     ReturnOutputs,
     StoreValue,
+    _activation_offloading_pass,
     _cancel_module_round_trips,
     _cancel_redundant_activation_moves,
     _weight_offloading_pass,
@@ -44,8 +42,7 @@ from fastforward._orchestration.instruction_engine import (
     optimization_only_pass,
 )
 
-from ._models import Add, AddConstant, Model, ReturnTuple
-from .conftest import make_spec, sgd_step
+from ._models import Add, AddConstant, ReturnTuple
 
 
 def test_merge_zips_datasets_together() -> None:
@@ -159,6 +156,37 @@ def test_call_module_with_no_inputs_calls_module_once() -> None:
     stored = register[target][context]
     assert isinstance(stored, ActivationDataset)
     assert list(stored) == [sentinel]
+
+
+def test_call_module_single_tensor_arg() -> None:
+    """Test that CallModule correctly handles a single tensor argument without unpacking tensor elements."""
+    # GIVEN a simple linear module
+    module = torch.nn.Linear(5, 3)
+
+    # GIVEN a register with a single tensor batch in context-aware format
+    input_ref = InputRef(uuid.uuid4(), "input")
+    target_ref = NodeRef(uuid.uuid4(), "target")
+    register: ActivationRegister = {
+        input_ref: {DEFAULT_CONTEXT: ActivationDataset([torch.randn(2, 5)])}
+    }
+
+    # GIVEN a CallModule instruction with single arg and default context
+    instruction = CallModule(
+        module=module,
+        args=[input_ref],
+        kwargs={},
+        target=target_ref,
+        contexts=[DEFAULT_CONTEXT],
+    )
+
+    # WHEN we execute the instruction
+    instruction.execute(register)
+
+    # THEN the output should be computed correctly
+    assert target_ref in register
+    output_contexts = register[target_ref]
+    assert len(output_contexts[DEFAULT_CONTEXT]) == 1
+    assert output_contexts[DEFAULT_CONTEXT].batches[0].shape == (2, 3)
 
 
 def test_prepare_input_register_validates_inputs() -> None:
@@ -484,51 +512,6 @@ def test_move_activations_moves_register_entry_and_reports_ref() -> None:
     assert list(instruction.produces()) == []
 
 
-def _make_optimizer_specs(model: Model) -> list[SubgraphSpec]:
-    return [
-        make_spec(
-            region=model.residual_1.linear,
-            fn=functools.partial(sgd_step, lr=0.1),
-        )
-    ]
-
-
-def test_local_optimizer_with_offload_everything_only_updates_targeted_layer(model: Model) -> None:
-    # GIVEN a model, graph, calibration data, and a spec targeting residual_1's linear layer
-    graph = model.to_graph_module()
-    initial_w1 = model.residual_1.linear.weight.data.clone()
-    initial_w2 = model.residual_2.linear.weight.data.clone()
-    calibration_data = [torch.randn(1, 5) for _ in range(10)]
-
-    # WHEN we optimize with OffloadEverything
-    offloading = OffloadEverything(
-        compute_device=torch.device("cpu"),
-        storage_device=torch.device("cpu"),
-    )
-    with local_optimize(graph, _make_optimizer_specs(model), offloading_strategy=offloading):
-        graph(calibration_data)
-
-    # THEN only residual_1's weights changed
-    assert not torch.allclose(initial_w1, model.residual_1.linear.weight.data)
-    assert torch.allclose(initial_w2, model.residual_2.linear.weight.data)
-
-
-def test_local_optimizer_without_offloading_only_updates_targeted_layer(model: Model) -> None:
-    # GIVEN a model, graph, and calibration data
-    graph = model.to_graph_module()
-    initial_w1 = model.residual_1.linear.weight.data.clone()
-    initial_w2 = model.residual_2.linear.weight.data.clone()
-    calibration_data = [torch.randn(1, 5) for _ in range(10)]
-
-    # WHEN we optimize without an offloading strategy
-    with local_optimize(graph, _make_optimizer_specs(model)):
-        graph(calibration_data)
-
-    # THEN only residual_1's weights changed
-    assert not torch.allclose(initial_w1, model.residual_1.linear.weight.data)
-    assert torch.allclose(initial_w2, model.residual_2.linear.weight.data)
-
-
 def test_move_parameters_with_dict_moves_each_parameter_to_its_device() -> None:
     # GIVEN a linear module whose weight and bias are both on CPU
     module = torch.nn.Linear(4, 2)
@@ -586,6 +569,74 @@ def test_weight_offloading_pass_post_restore_uses_per_parameter_devices() -> Non
     assert isinstance(device_map, dict)
     assert "weight" in device_map
     assert "bias" in device_map
+
+
+def _two_linear_graph() -> tuple[GraphModule, torch.nn.Linear, torch.nn.Linear]:
+    """A `l1 -> l2` graph plus its two Linear modules, for offloading-pass tests."""
+    m1 = torch.nn.Linear(4, 4)
+    m2 = torch.nn.Linear(4, 4)
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    l1 = graph.add_node("l1", m1, [inp])
+    l2 = graph.add_node("l2", m2, [l1])
+    graph.add_output(l2)
+    return graph, m1, m2
+
+
+def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
+    # GIVEN a two-linear graph and its base instruction stream
+    graph, m1, m2 = _two_linear_graph()
+    base = InstructionScheduler().schedule(graph).instructions
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+
+    # WHEN we apply the weight offloading pass
+    result = _weight_offloading_pass(base, compute, storage, graph)
+
+    # THEN the stream starts by offloading every module to storage
+    pre_offload = result[:2]
+    assert all(isinstance(i, MoveModule) and i.device == storage for i in pre_offload)
+    assert {i.module for i in pre_offload} == {m1, m2}  # type: ignore[attr-defined]
+
+    # AND every module call is wrapped: load to compute before, offload to storage after
+    for idx, instruction in enumerate(result):
+        if isinstance(instruction, CallModule):
+            before, after = result[idx - 1], result[idx + 1]
+            assert isinstance(before, MoveModule)
+            assert before.device == compute and before.module is instruction.module
+            assert isinstance(after, MoveModule)
+            assert after.device == storage and after.module is instruction.module
+
+    # AND the stream ends by restoring every module to its per-parameter devices
+    post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.device, dict)]
+    assert {i.module for i in post_restore} == {m1, m2}
+
+
+def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storage() -> None:
+    # GIVEN a two-linear graph and its base instruction stream
+    graph, _, _ = _two_linear_graph()
+    base = InstructionScheduler().schedule(graph).instructions
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+
+    # WHEN we apply the activation offloading pass
+    result = _activation_offloading_pass(base, compute, storage)
+
+    # THEN each module call has its used activations moved to compute somewhere before it,
+    # and its output activation moved to storage directly after it
+    for idx, instruction in enumerate(result):
+        if isinstance(instruction, CallModule):
+            used = {ref for ref in instruction.uses() if not isinstance(ref.unwrap_ref(), Const)}
+            moved_to_compute = {
+                i.register_ref
+                for i in result[:idx]
+                if isinstance(i, MoveActivations) and i.device == compute
+            }
+            assert used <= moved_to_compute
+
+            after = result[idx + 1]
+            assert isinstance(after, MoveActivations)
+            assert after.device == storage and after.register_ref == instruction.target
 
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
