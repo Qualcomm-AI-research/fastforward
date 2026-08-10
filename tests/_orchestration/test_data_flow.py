@@ -1,82 +1,98 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from contextlib import nullcontext
+
 import pytest
-import torch
 
 from fastforward._orchestration.data_flow import (
-    ActivationsFlow,
-    FlowMode,
+    ANY,
+    ORIGINAL,
+    QUANTIZED,
+    FlowGenerator,
     InputActivations,
     OutputActivations,
+    register_generator,
 )
-from fastforward._orchestration.graph_module import Region
 
 
-def test_invalid_mode_raises_listing_valid_spellings() -> None:
-    # GIVEN a misspelled flow mode
+def test_unknown_generator_string_raises_with_available() -> None:
+    # GIVEN a misspelled generator key
     # WHEN building a flow with it
-    # THEN a ValueError names both valid spellings
-    with pytest.raises(ValueError, match="'original'") as excinfo:
+    # THEN a KeyError lists available keys
+    with pytest.raises(KeyError, match="'original'"):
         InputActivations("quantised")
-    assert "'quantized'" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("flow_cls", [InputActivations, OutputActivations], ids=["input", "output"])
-def test_mode_accepts_string_and_enum_equivalently(flow_cls: type[ActivationsFlow]) -> None:
-    # GIVEN a flow mode expressed as a string and as the equivalent enum member
-    # WHEN building a flow with each
+def test_generator_accepts_string_and_instance(flow_cls: type[InputActivations]) -> None:
+    # GIVEN a generator expressed as a string and as the FlowGenerator instance
     from_string = flow_cls("original")
-    from_enum = flow_cls(FlowMode.ORIGINAL)
+    from_instance = flow_cls(ORIGINAL)
 
-    # THEN both are equal and resolve to the same enum member
-    assert from_string == from_enum
-    assert from_string.mode is FlowMode.ORIGINAL
-    assert from_enum.mode is FlowMode.ORIGINAL
-
-
-@pytest.mark.parametrize(
-    "source",
-    [42, torch.nn.Linear(4, 4)],
-    ids=["non_callable", "module_instance"],
-)
-def test_invalid_source_raises(source: object) -> None:
-    # GIVEN an invalid flow source: a non-callable, or a Module (structurally
-    # callable but not a valid resolver)
-    # WHEN building a flow with it
-    # THEN a TypeError is raised
-    with pytest.raises(TypeError, match="Invalid flow source"):
-        InputActivations("original", source=source)
+    # THEN both resolve to the same generator
+    assert from_string.generator is ORIGINAL
+    assert from_instance.generator is ORIGINAL
+    assert from_string == from_instance
 
 
-def test_callable_source_is_accepted_and_kept() -> None:
-    # GIVEN a resolver naming the module execution should start at
-    def source(region: Region) -> torch.nn.Module:
-        assert isinstance(region, torch.nn.Module)
-        return region
+def test_bare_context_manager_auto_registers() -> None:
+    # GIVEN a bare context manager not previously registered
+    cm = nullcontext()
 
     # WHEN building a flow with it
-    flow = InputActivations("original", source=source)
+    flow = InputActivations(cm)
 
-    # THEN the resolver is kept on the flow unchanged, next to the normalized mode
-    assert flow.source is source
-    assert flow.mode is FlowMode.ORIGINAL
+    # THEN a FlowGenerator is created with the CM type's qualname as key
+    assert flow.generator.key == "nullcontext"
+    assert flow.generator.priority == 0
 
 
-def test_source_defaults_to_none_meaning_unbounded() -> None:
-    # GIVEN no source
-    # WHEN building a flow
-    flow = InputActivations("original")
+def test_bare_context_manager_reuses_registered() -> None:
+    # GIVEN two flows built with the same CM type
+    flow_a = InputActivations(nullcontext())
+    flow_b = InputActivations(nullcontext())
 
-    # THEN the source is None: execution is not bounded by a starting module
-    assert flow.source is None
+    # THEN they resolve to the same generator instance
+    assert flow_a.generator is flow_b.generator
 
 
 @pytest.mark.parametrize("cache", [True, False], ids=["cached", "uncached"])
-def test_cache_is_carried_through_make(cache: bool) -> None:
+def test_cache_is_carried_through(cache: bool) -> None:
     # GIVEN an explicit cache choice
     # WHEN building a flow with it
     flow = InputActivations("original", cache=cache)
 
     # THEN the flow reports that choice
     assert flow.cache is cache
+
+
+def test_builtin_generator_priority_order() -> None:
+    # ANY < ORIGINAL < QUANTIZED
+    assert ANY.priority < ORIGINAL.priority < QUANTIZED.priority
+
+
+def test_register_generator_makes_key_available() -> None:
+    # GIVEN a custom generator
+    custom = FlowGenerator("test_custom", lambda _: nullcontext(), priority=3)
+    register_generator(custom)
+
+    # WHEN building a flow with the key
+    flow = InputActivations("test_custom")
+
+    # THEN it resolves to the registered generator
+    assert flow.generator is custom
+
+
+def test_register_anonymous_generator() -> None:
+    # GIVEN an anonymous context manager passed to a flow
+    flow = InputActivations(nullcontext())
+
+    # WHEN building another flow with the auto-registered key
+    flow_by_key = InputActivations("nullcontext")
+
+    # THEN both resolve to the same generator
+    assert flow.generator is flow_by_key.generator
+
+    # THEN the default priority set is lowest
+    assert flow.generator.priority == 0

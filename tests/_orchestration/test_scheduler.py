@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.data_flow import InputActivations, OutputActivations
-from fastforward._orchestration.graph_module import GraphModule, Region
+from fastforward._orchestration.graph_module import GraphModule
 from fastforward._orchestration.scheduler import bind_flows
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
@@ -77,18 +77,3 @@ def test_input_activations_on_first_layer_runs_nothing(two_linear: TwoLinear) ->
 
     # THEN nothing has to run (the data is the graph's own input)
     assert plan.nodes == ()
-
-
-def test_non_ancestor_source_raises(two_linear: TwoLinear) -> None:
-    # GIVEN a traced model and a source resolver naming a module that is NOT
-    # an ancestor of the region being bound (fc2 comes after fc1, not before)
-    graph = _traced_two_linear(two_linear)
-    region = graph.node_ref(two_linear.fc1)
-
-    def source(_module: Region) -> torch.nn.Module:
-        return two_linear.fc2
-
-    # WHEN binding a flow with that source
-    # THEN a ValueError is raised mentioning it is not an ancestor
-    with pytest.raises(ValueError, match="not an ancestor"):
-        bind_flows(graph, region, [InputActivations("original", source=source)])

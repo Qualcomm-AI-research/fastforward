@@ -30,113 +30,114 @@ flows = [
 flows = [InputActivations("quantized")]  # x'
 ```
 
-Kinds of flow today: `InputActivations`, `OutputActivations`. Both are
-`ActivationsFlow`s
+Kinds of flow today: `InputActivations`, `OutputActivations`.
 """
 
 import abc
-import enum
 
-from typing import Callable, NoReturn, TypeAlias
+from contextlib import nullcontext
+from typing import Callable, ContextManager, TypeAlias
 
 import attrs
 import torch
 
-from fastforward._orchestration.graph_module import Region
+import fastforward as ff
 
 
-class FlowMode(str, enum.Enum):
-    """Which model runs the pass that produces the data.
+@attrs.define(frozen=True, eq=False)
+class FlowGenerator:
+    """Defines the execution context and scheduling priority of a data flow.
 
-    The mode is also a signal to the scheduler. Data produced by a model that
-    optimization does not touch stays valid once computed. Data produced by the
-    model under optimization goes stale and must be produced again.
-
-    Attributes:
-        ORIGINAL: The model as it was before optimization started.
-        QUANTIZED: The model with all optimization done so far.
+    Args:
+        key: Unique identifier for this generator.
+        context: Factory that produces the context manager for the forward pass.
+        priority: Scheduling order (lower runs first).
     """
 
-    ORIGINAL = "original"
-    QUANTIZED = "quantized"
-
-    @classmethod
-    def _missing_(cls, value: object) -> NoReturn:
-        # Catch spelling mistakes. 'quantised' vs 'quantized', etc. and
-        # return the actual enum options (default error does not).
-        modes = ", ".join(repr(m.value) for m in cls)
-        msg = f"Invalid flow mode {value!r}; expected one of {modes}."
-        raise ValueError(msg)
+    key: str
+    context: Callable[[torch.nn.Module], ContextManager[None]]
+    priority: int
 
 
-# A resolver: names the module execution should start at, given the region under
-# optimization. Resolved once a real graph exists. `None` means no bound: run
-# every ancestor of the region.
-FlowSource: TypeAlias = Callable[[Region], torch.nn.Module]
+_generators: dict[str, FlowGenerator] = {}
 
 
-def _checked_source(source: object) -> FlowSource | None:
-    """Return `source` as a resolver, or raise if it is not one.
+def register_generator(generator: FlowGenerator) -> FlowGenerator:
+    """Make a FlowGenerator available by its key for use in flow declarations.
 
-    `source` is typed `object` because this is the boundary that takes input
-    which has not been checked. A `torch.nn.Module` is callable, so it satisfies
-    `FlowSource` structurally but is not a resolver: passing `model.fc1` where
-    `lambda region: region.fc1` was meant fails here, rather than much later
-    inside the graph walk.
+    Once registered, the generator's key can be passed as a shorthand string to
+    DataFlow constructors (e.g. `InputActivations("original")`).
+
+    Args:
+        generator: The FlowGenerator to register.
+
+    Returns:
+        The same generator.
     """
-    if source is not None and (not callable(source) or isinstance(source, torch.nn.Module)):
-        msg = (
-            f"Invalid flow source {source!r}; expected a resolver "
-            "(Callable[[Region], Module]) or None."
-        )
-        raise TypeError(msg)
-    return source
+    _generators[generator.key] = generator
+    return generator
+
+
+def _disable_quantization(module: torch.nn.Module) -> ContextManager[None]:
+    return ff.disable_quantization(module)
+
+
+# Run with quantization disabled; produces baseline (unquantized) activations.
+ORIGINAL = register_generator(
+    FlowGenerator("original", lambda m: _disable_quantization(m), priority=5)
+)
+
+# Run with the model as-is; produces activations reflecting all mutations so far.
+QUANTIZED = register_generator(FlowGenerator("quantized", lambda _: nullcontext(), priority=10))
+
+# No constraints on the model state; default for a plain forward pass.
+ANY = register_generator(FlowGenerator("any", lambda _: nullcontext(), priority=0))
+
+
+def _to_generator(value: str | FlowGenerator | ContextManager[None]) -> FlowGenerator:
+    if isinstance(value, FlowGenerator):
+        return value
+
+    if isinstance(value, str):
+        if value not in _generators:
+            available = ", ".join(repr(k) for k in _generators)
+            msg = f"Unknown flow generator {value!r}; registered: {available}"
+            raise KeyError(msg)
+        return _generators[value]
+
+    cm: ContextManager[None] = value
+    key = type(cm).__qualname__
+    if key not in _generators:
+        # Add anonymous context manager if not existing yet.
+        def _anon_context(
+            _: torch.nn.Module, _cm: ContextManager[None] = cm
+        ) -> ContextManager[None]:
+            return _cm
+
+        register_generator(FlowGenerator(key, _anon_context, priority=0))
+    return _generators[key]
 
 
 @attrs.define(frozen=True)
 class DataFlow(abc.ABC):
     """One data requirement of the layer being optimized.
 
-    Concrete subclasses (`InputActivations`, `OutputActivations`, and future
-    kinds like gradients or a derived flow) describe *how* that data is produced.
-
     Args:
+        generator: The flow generator defining execution context for this data.
         cache: Whether the work done to produce this data may be reused.
     """
 
+    generator: FlowGenerator = attrs.field(converter=_to_generator)
     cache: bool = True
-
-
-@attrs.define(frozen=True)
-class ActivationsFlow(DataFlow):
-    """Base for flows that collect forward activations at the region.
-
-    `InputActivations` and `OutputActivations` share the nodes they need and
-    their mode; they differ only in *where* on the region they collect.
-
-    Args:
-        mode: Which model produces the activations.
-        source: A callable naming the module execution should start at. `None`
-            (default) means unbounded: every ancestor of the region runs.
-        cache: Whether the work done to produce this data may be reused.
-    """
-
-    mode: FlowMode = attrs.field(converter=FlowMode)
-    source: FlowSource | None = attrs.field(default=None, converter=_checked_source, kw_only=True)
-    cache: bool = True
-
-    def __repr__(self) -> str:
-        source = None if self.source is None else getattr(self.source, "__name__", "<resolver>")
-        return f"{type(self).__name__}(mode={self.mode!r}, source={source}, cache={self.cache!r})"
 
 
 @attrs.define(frozen=True, repr=False)
-class InputActivations(ActivationsFlow):
+class InputActivations(DataFlow):
     """The activations arriving at the region's input boundary."""
 
 
 @attrs.define(frozen=True, repr=False)
-class OutputActivations(ActivationsFlow):
+class OutputActivations(DataFlow):
     """The activations leaving the region's output boundary."""
 
 

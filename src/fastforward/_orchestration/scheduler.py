@@ -24,11 +24,9 @@ import dataclasses
 from collections.abc import Sequence
 from typing import assert_never
 
-import torch
-
 from fastforward._orchestration.data_flow import (
     Flow,
-    FlowSource,
+    FlowGenerator,
     InputActivations,
     OutputActivations,
 )
@@ -36,7 +34,6 @@ from fastforward._orchestration.graph_module import (
     GraphModule,
     NodeRef,
     ancestors,
-    topological_sort,
 )
 
 
@@ -62,6 +59,11 @@ class FlowPlan:
     nodes: tuple[NodeRef, ...]
 
     @property
+    def generator(self) -> FlowGenerator:
+        """The flow generator that defines execution context for this plan."""
+        return self.flow.generator
+
+    @property
     def cache(self) -> bool:
         """Whether the work done to produce this data may be reused."""
         return self.flow.cache
@@ -73,54 +75,32 @@ def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[Flow]) -> li
     Dispatches on the concrete `Flow` subclass; the fall-through is
     `assert_never` so mypy points here when a new subclass is missed.
     """
+    topo_index = {ref.id: i for i, ref in enumerate(graph.topo_order)}
+
     plans: list[FlowPlan] = []
     for flow in flows:
         match flow:
             case InputActivations():
-                # Reads the region's inputs, so the region itself must not run.
-                nodes = _run_upto(graph, region, flow.source, include_region=False)
+                node_set = _ancestors_of(graph, region, include_region=False)
             case OutputActivations():
-                # Reads the region's output, so the region runs last.
-                nodes = _run_upto(graph, region, flow.source, include_region=True)
+                node_set = _ancestors_of(graph, region, include_region=True)
             case _:
                 assert_never(flow)
-        plans.append(FlowPlan(flow=flow, nodes=nodes))
+        ordered = sorted(node_set, key=lambda ref: topo_index[ref.id])
+        plans.append(FlowPlan(flow=flow, nodes=tuple(ordered)))
     return plans
 
 
-def _run_upto(
-    graph: GraphModule,
-    region: NodeRef,
-    source: FlowSource | None,
-    *,
-    include_region: bool,
-) -> tuple[NodeRef, ...]:
-    """Nodes that must run to produce the data arriving at (or leaving) `region`.
+def _ancestors_of(
+    graph: GraphModule, region: NodeRef, *, include_region: bool
+) -> set[NodeRef]:
+    """Collect the ancestor set of `region`.
 
-    When `source` is `None` the walk is unbounded: every ancestor of the region.
-    When `source` names a predecessor, the walk stops there. `include_region`
-    keeps or drops the region itself from the result.
-
-    The result is empty when nothing has to run first -- dropping the region
-    from a region that has no predecessors of its own leaves nothing behind.
+    Returns the raw set; the caller is responsible for ordering.
     """
-    stop: NodeRef | None = None
-    if source is not None:
-        region_module = graph.node(region).target
-        if not isinstance(region_module, torch.nn.Module):
-            msg = f"Region {region.name!r} is not a module; cannot apply resolver."
-            raise TypeError(msg)
-        stop = graph.node_ref(source(region_module))
-
-    nodes, reached = ancestors(graph, region, stop=stop)
-    if stop is not None and not reached:
-        msg = (
-            f"Flow source {stop.name!r} is not an ancestor of "
-            f"{region.name!r}: no path from the source to the region."
-        )
-        raise ValueError(msg)
+    nodes, _ = ancestors(graph, region)
 
     if not include_region:
-        nodes = nodes - {region}
+        nodes -= {region}
 
-    return tuple(topological_sort(graph, nodes))
+    return nodes
