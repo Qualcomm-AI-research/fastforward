@@ -26,7 +26,6 @@ from fastforward._orchestration.graph_module import (
     DEFAULT_CONTEXT,
     AttributeRef,
     Const,
-    Contexts,
     Delegate,
     GraphModule,
     InputRef,
@@ -35,6 +34,12 @@ from fastforward._orchestration.graph_module import (
     _BaseRef,
     topological_sort,
 )
+
+# Distinguishes data produced under different execution conditions for the same node.
+StreamKey: TypeAlias = ContextManager[None]
+
+# Ordered sequence of context managers that an instruction executes under.
+Contexts: TypeAlias = Sequence[ContextManager[None]]
 
 
 def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
@@ -159,7 +164,40 @@ class ActivationDataset(Collection[Any]):
         return [ActivationDataset(ds.batches * target) if len(ds) == 1 else ds for ds in datasets]
 
 
-ActivationRegister: TypeAlias = dict[_BaseRef, dict[ContextManager[None], ActivationDataset | Any]]
+class ActivationRegister:
+    """Stores per-node, per-stream activation data for the instruction engine."""
+
+    def __init__(self) -> None:
+        self._data: dict[_BaseRef, dict[StreamKey, ActivationDataset]] = {}
+
+    def store(self, ref: _BaseRef, context: StreamKey, data: ActivationDataset) -> None:
+        """Store activation data for a ref under a specific context."""
+        if ref not in self._data:
+            self._data[ref] = {}
+        self._data[ref][context] = data
+
+    def store_all(self, ref: _BaseRef, mapping: dict[StreamKey, ActivationDataset]) -> None:
+        """Store activation data for a ref across multiple contexts at once."""
+        self._data[ref] = mapping
+
+    def load(self, ref: _BaseRef, context: StreamKey) -> ActivationDataset:
+        """Load activation data for a ref under a specific context."""
+        return self._data[ref][context]
+
+    def items_for(self, ref: _BaseRef) -> Iterator[tuple[StreamKey, ActivationDataset]]:
+        """Iterate over (context, dataset) pairs for a ref."""
+        return iter(self._data[ref].items())
+
+    def contexts_for(self, ref: _BaseRef) -> Iterator[StreamKey]:
+        """Iterate over contexts that have data stored for a ref."""
+        return iter(self._data[ref].keys())
+
+    def delete(self, ref: _BaseRef) -> None:
+        """Remove all data for a ref."""
+        self._data.pop(ref, None)
+
+    def __contains__(self, ref: _BaseRef) -> bool:
+        return ref in self._data
 
 
 @dataclasses.dataclass(frozen=True)
@@ -183,15 +221,15 @@ class ActivationBundle:
     def gather(
         cls,
         register: ActivationRegister,
-        context: ContextManager[None],
+        context: StreamKey,
         args: Sequence[_BaseRef],
         kwargs: Mapping[str, _BaseRef],
     ) -> "ActivationBundle":
-        """Resolve refs from the register under one context, broadcast, and bundle.
+        """Resolve refs from the register under one context key, broadcast, and bundle.
 
         Args:
             register: The activation register mapping refs to per-context datasets.
-            context: The execution context under which to resolve each ref.
+            context: The context key under which to resolve each ref.
             args: Positional input refs in declaration order.
             kwargs: Keyword input refs keyed by parameter name.
 
@@ -203,7 +241,7 @@ class ActivationBundle:
         def get_dataset(ref: _BaseRef) -> ActivationDataset:
             if isinstance(ref, Const):
                 return ActivationDataset([ref.value])
-            return register[ref][context]
+            return register.load(ref, context)
 
         arg_datasets = [get_dataset(ref) for ref in args]
         kwarg_datasets = {key: get_dataset(ref) for key, ref in kwargs.items()}
@@ -288,7 +326,8 @@ class StoreValue(Instruction):
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        register[self.target] = {context: self.value for context in self.contexts}
+        for context in self.contexts:
+            register.store(self.target, context, self.value)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
@@ -303,12 +342,8 @@ class LoadAttribute(Instruction):
     attribute: str | int
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        source_contexts = register[self.source]
-        register[self.target] = {
-            context: self._extract_attribute(dataset)
-            for context, dataset in source_contexts.items()
-            if isinstance(dataset, ActivationDataset)
-        }
+        for context, dataset in register.items_for(self.source):
+            register.store(self.target, context, self._extract_attribute(dataset))
 
     def _extract_attribute(self, dataset: ActivationDataset) -> ActivationDataset:
         """Extract attribute/item from each batch in the dataset."""
@@ -354,7 +389,7 @@ class CallModule(Instruction):
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        results: dict[ContextManager[None], ActivationDataset] = {}
+        results: dict[StreamKey, ActivationDataset] = {}
 
         for context in self.contexts:
             bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
@@ -367,7 +402,7 @@ class CallModule(Instruction):
                     outputs = [self.module(*args, **kwargs) for args, kwargs in bundle]
             results[context] = ActivationDataset(outputs)
 
-        register[self.target] = results
+        register.store_all(self.target, results)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -427,9 +462,9 @@ class ReturnOutputs(Instruction):
     def execute(self, register: ActivationRegister) -> Any:  # noqa: D102
         # Invert register[output_ref][context] to contexts[context] = [ds1, ds2, ...],
         # and use this to create a single ActivationDataset per context.
-        context_outputs = defaultdict(list)
+        context_outputs: dict[StreamKey, list[ActivationDataset]] = defaultdict(list)
         for output_ref in self.outputs:
-            for context, dataset in register[output_ref].items():
+            for context, dataset in register.items_for(output_ref):
                 context_outputs[context].append(dataset)
 
         context_datasets = {
@@ -451,8 +486,7 @@ class DeleteRegisterEntries(Instruction):
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         for target_id in self.targets:
-            if target_id in register:
-                del register[target_id]
+            register.delete(target_id)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -527,12 +561,11 @@ def _move_register_entries_to_device(
         ref: Reference whose entry should be moved.
         device: Target device.
     """
-    context_map = register[ref]
-    for context, dataset in context_map.items():
-        if isinstance(dataset, ActivationDataset):
-            context_map[context] = dataclasses.replace(
-                dataset, batches=[_move_to_device(batch, device) for batch in dataset.batches]
-            )
+    for context, dataset in register.items_for(ref):
+        moved = dataclasses.replace(
+            dataset, batches=[_move_to_device(batch, device) for batch in dataset.batches]
+        )
+        register.store(ref, context, moved)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -570,7 +603,7 @@ def _propagate_contexts(graph: GraphModule, order: list[NodeRef]) -> Mapping[_Ba
     Returns:
         Mapping from references to their required execution contexts.
     """
-    node_contexts: dict[_BaseRef, set[ContextManager[None]]] = defaultdict(set)
+    node_contexts: dict[_BaseRef, set[StreamKey]] = defaultdict(set)
 
     # Seed outputs with the default context so the forward pass always produces results.
     if graph._outputs:
@@ -674,10 +707,12 @@ class InstructionEngine:
             msg = f"Missing required inputs: {sorted(missing)}"
             raise TypeError(msg)
 
-        register: dict[_BaseRef, Any] = {}
+        register = ActivationRegister()
         for input_name, value in inputs.items():
-            key = input_refs[input_name]
-            register[key] = {context: ActivationDataset.from_value(value) for context in contexts}
+            ref = input_refs[input_name]
+            dataset = ActivationDataset.from_value(value)
+            for context in contexts:
+                register.store(ref, context, dataset)
         return register
 
     @staticmethod

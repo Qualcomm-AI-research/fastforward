@@ -147,13 +147,13 @@ def test_call_module_with_no_inputs_calls_module_once() -> None:
         return sentinel
 
     instr = CallModule(module=produce, args=[], kwargs={}, target=target, contexts=[context])
-    register: ActivationRegister = {}
+    register = ActivationRegister()
 
     # WHEN the instruction executes
     instr.execute(register)
 
     # THEN the module is called exactly once and its single output is stored
-    stored = register[target][context]
+    stored = register.load(target, context)
     assert isinstance(stored, ActivationDataset)
     assert list(stored) == [sentinel]
 
@@ -166,9 +166,8 @@ def test_call_module_single_tensor_arg() -> None:
     # GIVEN a register with a single tensor batch in context-aware format
     input_ref = InputRef(uuid.uuid4(), "input")
     target_ref = NodeRef(uuid.uuid4(), "target")
-    register: ActivationRegister = {
-        input_ref: {DEFAULT_CONTEXT: ActivationDataset([torch.randn(2, 5)])}
-    }
+    register = ActivationRegister()
+    register.store(input_ref, DEFAULT_CONTEXT, ActivationDataset([torch.randn(2, 5)]))
 
     # GIVEN a CallModule instruction with single arg and default context
     instruction = CallModule(
@@ -184,9 +183,9 @@ def test_call_module_single_tensor_arg() -> None:
 
     # THEN the output should be computed correctly
     assert target_ref in register
-    output_contexts = register[target_ref]
-    assert len(output_contexts[DEFAULT_CONTEXT]) == 1
-    assert output_contexts[DEFAULT_CONTEXT].batches[0].shape == (2, 3)
+    output_dataset = register.load(target_ref, DEFAULT_CONTEXT)
+    assert len(output_dataset) == 1
+    assert output_dataset.batches[0].shape == (2, 3)
 
 
 def test_prepare_input_register_validates_inputs() -> None:
@@ -199,15 +198,17 @@ def test_prepare_input_register_validates_inputs() -> None:
 
     # WHEN we bind with mixed positional and keyword args
     context = nullcontext()
-    register: dict[_BaseRef, Any] = InstructionEngine.prepare_input_register(
+    register = InstructionEngine.prepare_input_register(
         graph._inputs, args=(10, 20), kwargs={"z": 30}, contexts=[context]
     )
 
     # THEN all inputs are wrapped as ActivationDatasets with correct IDs
-    assert len(register) == 3
-    assert register[x][context].batches == [10]
-    assert register[y][context].batches == [20]
-    assert register[z][context].batches == [30]
+    assert x in register
+    assert y in register
+    assert z in register
+    assert register.load(x, context).batches == [10]
+    assert register.load(y, context).batches == [20]
+    assert register.load(z, context).batches == [30]
 
     # AND missing inputs raise TypeError
     with pytest.raises(TypeError, match="Missing required inputs"):
@@ -235,31 +236,31 @@ def test_return_outputs_unpacking() -> None:
     ref2 = NodeRef(id=uuid.uuid4(), name="n2")
 
     # Single output, single batch -> dict with tuple containing single batch
-    register: ActivationRegister = {ref1: {context: ActivationDataset([1])}}
+    register = ActivationRegister()
+    register.store(ref1, context, ActivationDataset([1]))
     result = ReturnOutputs([ref1]).execute(register)
     assert context in result
     assert result[context] == (1,)
 
     # Single output, multiple batches -> dict with tuple containing all batches
-    register = {ref1: {context: ActivationDataset([1, 2])}}
+    register = ActivationRegister()
+    register.store(ref1, context, ActivationDataset([1, 2]))
     result = ReturnOutputs([ref1]).execute(register)
     assert context in result
     assert result[context] == (1, 2)
 
     # Multiple outputs, single batch -> dict with tuple containing single zipped batch
-    register = {
-        ref1: {context: ActivationDataset([1])},
-        ref2: {context: ActivationDataset([2])},
-    }
+    register = ActivationRegister()
+    register.store(ref1, context, ActivationDataset([1]))
+    register.store(ref2, context, ActivationDataset([2]))
     result = ReturnOutputs([ref1, ref2]).execute(register)
     assert context in result
     assert result[context] == ((1, 2),)
 
     # Multiple outputs, multiple batches -> dict with tuple of zipped batches
-    register = {
-        ref1: {context: ActivationDataset([1, 2])},
-        ref2: {context: ActivationDataset([3, 4])},
-    }
+    register = ActivationRegister()
+    register.store(ref1, context, ActivationDataset([1, 2]))
+    register.store(ref2, context, ActivationDataset([3, 4]))
     result = ReturnOutputs([ref1, ref2]).execute(register)
     assert context in result
     assert result[context] == ((1, 3), (2, 4))
@@ -485,7 +486,7 @@ def test_move_parameters_moves_module_and_has_no_register_refs() -> None:
     instruction = MoveModule(device=torch.device("cpu"), module=module)
 
     # WHEN we execute and inspect uses/produces
-    register: ActivationRegister = {}
+    register = ActivationRegister()
     instruction.execute(register)
 
     # THEN the module stays on CPU and the instruction touches no register refs
@@ -500,14 +501,15 @@ def test_move_activations_moves_register_entry_and_reports_ref() -> None:
     ref = NodeRef(id=uuid.uuid4(), name="ref")
     context = nullcontext()
     ds = ActivationDataset([torch.randn(2, 3)])
-    register: ActivationRegister = {ref: {context: ds}}
+    register = ActivationRegister()
+    register.store(ref, context, ds)
     instruction = MoveActivations(device=torch.device("cpu"), register_ref=ref)
 
     # WHEN we execute and inspect uses/produces
     instruction.execute(register)
 
     # THEN the dataset is on CPU, uses() yields the ref, produces() is empty
-    assert register[ref][context].batches[0].device == torch.device("cpu")
+    assert register.load(ref, context).batches[0].device == torch.device("cpu")
     assert list(instruction.uses()) == [ref]
     assert list(instruction.produces()) == []
 
@@ -521,13 +523,12 @@ def test_move_parameters_with_dict_moves_each_parameter_to_its_device() -> None:
     # WHEN we execute MoveParameters with a per-parameter dict
     device_map = {"weight": torch.device("cpu"), "bias": torch.device("cpu")}
     instruction = MoveModule(device=device_map, module=module)
-    register: ActivationRegister = {}
+    register = ActivationRegister()
     instruction.execute(register)
 
     # THEN each parameter is on its mapped device and the register is untouched
     assert module.weight.device == torch.device("cpu")
     assert module.bias.device == torch.device("cpu")
-    assert register == {}
 
 
 def test_move_parameters_with_dict_ignores_unmapped_parameters() -> None:
@@ -537,7 +538,7 @@ def test_move_parameters_with_dict_ignores_unmapped_parameters() -> None:
     # WHEN we execute MoveParameters with a dict that only maps 'weight'
     device_map = {"weight": torch.device("cpu")}
     instruction = MoveModule(device=device_map, module=module)
-    register: ActivationRegister = {}
+    register = ActivationRegister()
     instruction.execute(register)
 
     # THEN weight is moved but bias is untouched (still on CPU in this case)
@@ -792,10 +793,9 @@ def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> Non
     context = nullcontext()
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
-    register: ActivationRegister = {
-        ref_a: {context: ActivationDataset([1, 2, 3])},
-        ref_b: {context: ActivationDataset([10, 20, 30])},
-    }
+    register = ActivationRegister()
+    register.store(ref_a, context, ActivationDataset([1, 2, 3]))
+    register.store(ref_b, context, ActivationDataset([10, 20, 30]))
 
     # WHEN we gather a bundle with two positional refs and no kwargs
     bundle = ActivationBundle.gather(register, context, args=[ref_a, ref_b], kwargs={})
@@ -809,10 +809,9 @@ def test_activation_bundle_kwargs_only_yields_empty_args_and_kwargs_dict() -> No
     context = nullcontext()
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     ref_y = NodeRef(id=uuid.uuid4(), name="y")
-    register: ActivationRegister = {
-        ref_x: {context: ActivationDataset(["a", "b"])},
-        ref_y: {context: ActivationDataset([100, 200])},
-    }
+    register = ActivationRegister()
+    register.store(ref_x, context, ActivationDataset(["a", "b"]))
+    register.store(ref_y, context, ActivationDataset([100, 200]))
 
     # WHEN we gather a bundle with no positional and two named kwargs
     bundle = ActivationBundle.gather(
@@ -831,10 +830,9 @@ def test_activation_bundle_mixed_args_and_kwargs_align_per_batch() -> None:
     context = nullcontext()
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
-    register: ActivationRegister = {
-        ref_x: {context: ActivationDataset([1, 2])},
-        ref_mask: {context: ActivationDataset([True, False])},
-    }
+    register = ActivationRegister()
+    register.store(ref_x, context, ActivationDataset([1, 2]))
+    register.store(ref_mask, context, ActivationDataset([True, False]))
 
     # WHEN we bundle with mixed positional and keyword
     bundle = ActivationBundle.gather(register, context, args=[ref_x], kwargs={"mask": ref_mask})
@@ -847,7 +845,8 @@ def test_activation_bundle_const_refs_are_wrapped_inline() -> None:
     # GIVEN one register-backed positional ref alongside a Const used as kwarg
     context = nullcontext()
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
-    register: ActivationRegister = {ref_x: {context: ActivationDataset([1, 2])}}
+    register = ActivationRegister()
+    register.store(ref_x, context, ActivationDataset([1, 2]))
 
     # WHEN we gather with a Const ref (which is not a register entry)
     bundle = ActivationBundle.gather(
@@ -863,10 +862,9 @@ def test_activation_bundle_broadcasts_singletons_against_n_length_streams() -> N
     context = nullcontext()
     ref_single = NodeRef(id=uuid.uuid4(), name="single")
     ref_multi = NodeRef(id=uuid.uuid4(), name="multi")
-    register: ActivationRegister = {
-        ref_single: {context: ActivationDataset(["S"])},
-        ref_multi: {context: ActivationDataset([1, 2, 3])},
-    }
+    register = ActivationRegister()
+    register.store(ref_single, context, ActivationDataset(["S"]))
+    register.store(ref_multi, context, ActivationDataset([1, 2, 3]))
 
     # WHEN we bundle them together
     bundle = ActivationBundle.gather(register, context, args=[ref_single, ref_multi], kwargs={})
@@ -880,10 +878,9 @@ def test_activation_bundle_length_mismatch_raises() -> None:
     context = nullcontext()
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
-    register: ActivationRegister = {
-        ref_a: {context: ActivationDataset([1, 2])},
-        ref_b: {context: ActivationDataset([10, 20, 30])},
-    }
+    register = ActivationRegister()
+    register.store(ref_a, context, ActivationDataset([1, 2]))
+    register.store(ref_b, context, ActivationDataset([10, 20, 30]))
 
     # WHEN/THEN gathering raises because broadcast cannot reconcile 2 != 3
     with pytest.raises(ValueError):
@@ -892,7 +889,7 @@ def test_activation_bundle_length_mismatch_raises() -> None:
 
 def test_activation_bundle_empty_inputs_has_zero_length() -> None:
     # GIVEN an empty register and no refs
-    bundle = ActivationBundle.gather({}, nullcontext(), args=[], kwargs={})
+    bundle = ActivationBundle.gather(ActivationRegister(), nullcontext(), args=[], kwargs={})
 
     # THEN the bundle is empty and iterates to nothing
     assert list(bundle) == []
@@ -904,11 +901,14 @@ def test_optimize_module_passes_kwargs_to_delegate() -> None:
     ref_hidden = NodeRef(id=uuid.uuid4(), name="hidden")
     ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
     ref_pos = NodeRef(id=uuid.uuid4(), name="pos")
-    register: ActivationRegister = {
-        ref_hidden: {context: ActivationDataset([torch.tensor([1.0]), torch.tensor([2.0])])},
-        ref_mask: {context: ActivationDataset([torch.tensor([True]), torch.tensor([False])])},
-        ref_pos: {context: ActivationDataset([torch.tensor([0.1]), torch.tensor([0.2])])},
-    }
+    register = ActivationRegister()
+    register.store(
+        ref_hidden, context, ActivationDataset([torch.tensor([1.0]), torch.tensor([2.0])])
+    )
+    register.store(
+        ref_mask, context, ActivationDataset([torch.tensor([True]), torch.tensor([False])])
+    )
+    register.store(ref_pos, context, ActivationDataset([torch.tensor([0.1]), torch.tensor([0.2])]))
 
     seen: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
 
@@ -970,12 +970,9 @@ def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
 
     ctx_b = _Ctx()
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
-    register: ActivationRegister = {
-        ref_x: {
-            ctx_a: ActivationDataset([1, 2]),
-            ctx_b: ActivationDataset([10, 20]),
-        },
-    }
+    register = ActivationRegister()
+    register.store(ref_x, ctx_a, ActivationDataset([1, 2]))
+    register.store(ref_x, ctx_b, ActivationDataset([10, 20]))
 
     received: list[ActivationBundle] = []
 
@@ -1039,15 +1036,14 @@ def test_load_attribute_extracts_dict_key_item() -> None:
     context = nullcontext()
     source = NodeRef(id=uuid.uuid4(), name="source")
     target = NodeRef(id=uuid.uuid4(), name="target")
-    register: ActivationRegister = {
-        source: {context: ActivationDataset([{"logits": 1}, {"logits": 2}])}
-    }
+    register = ActivationRegister()
+    register.store(source, context, ActivationDataset([{"logits": 1}, {"logits": 2}]))
 
     # WHEN we LoadAttribute a string key
     LoadAttribute(source=source, target=target, attribute="logits").execute(register)
 
     # THEN each batch is reduced to that key's value via item access
-    assert register[target][context].batches == [1, 2]
+    assert register.load(target, context).batches == [1, 2]
 
 
 def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
@@ -1061,13 +1057,14 @@ def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
     context = nullcontext()
     source = NodeRef(id=uuid.uuid4(), name="source")
     target = NodeRef(id=uuid.uuid4(), name="target")
-    register: ActivationRegister = {source: {context: ActivationDataset([Out(1), Out(2)])}}
+    register = ActivationRegister()
+    register.store(source, context, ActivationDataset([Out(1), Out(2)]))
 
     # WHEN we LoadAttribute a string key (item access fails, getattr fallback succeeds)
     LoadAttribute(source=source, target=target, attribute="logits").execute(register)
 
     # THEN the attribute is read via getattr on each batch
-    assert register[target][context].batches == [1, 2]
+    assert register.load(target, context).batches == [1, 2]
 
 
 def test_move_to_device_recurses_into_nested_tuples_and_lists() -> None:
