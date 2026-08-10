@@ -45,7 +45,7 @@ def test_bare_context_manager_auto_registers() -> None:
 
     # THEN a FlowGenerator is created with the CM type's qualname as key
     assert flow.generator.key == "nullcontext"
-    assert flow.generator.priority == 0
+    assert flow.generator.order == 0
 
 
 def test_bare_context_manager_reuses_registered() -> None:
@@ -67,14 +67,14 @@ def test_cache_is_carried_through(cache: bool) -> None:
     assert flow.cache is cache
 
 
-def test_builtin_generator_priority_order() -> None:
-    # ANY < ORIGINAL < QUANTIZED
-    assert ANY.priority < ORIGINAL.priority < QUANTIZED.priority
+def test_builtin_generator_order() -> None:
+    # ORIGINAL < QUANTIZED < ANY
+    assert ORIGINAL.order < QUANTIZED.order < ANY.order
 
 
 def test_register_generator_makes_key_available() -> None:
     # GIVEN a custom generator
-    custom = FlowGenerator("test_custom", lambda _: nullcontext(), priority=3)
+    custom = FlowGenerator("test_custom", lambda _: nullcontext(), order=3)
     register_generator(custom)
 
     # WHEN building a flow with the key
@@ -94,5 +94,5 @@ def test_register_anonymous_generator() -> None:
     # THEN both resolve to the same generator
     assert flow.generator is flow_by_key.generator
 
-    # THEN the default priority set is lowest
-    assert flow.generator.priority == 0
+    # THEN the default order is lowest
+    assert flow.generator.order == 0

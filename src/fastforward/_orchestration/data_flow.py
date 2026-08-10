@@ -46,17 +46,17 @@ import fastforward as ff
 
 @attrs.define(frozen=True, eq=False)
 class FlowGenerator:
-    """Defines the execution context and scheduling priority of a data flow.
+    """Defines the execution context and scheduling order of a data flow.
 
     Args:
         key: Unique identifier for this generator.
         context: Factory that produces the context manager for the forward pass.
-        priority: Scheduling order (lower runs first).
+        order: Scheduling position (lower runs first).
     """
 
     key: str
     context: Callable[[torch.nn.Module], ContextManager[None]]
-    priority: int
+    order: int
 
 
 _generators: dict[str, FlowGenerator] = {}
@@ -84,14 +84,14 @@ def _disable_quantization(module: torch.nn.Module) -> ContextManager[None]:
 
 # Run with quantization disabled; produces baseline (unquantized) activations.
 ORIGINAL = register_generator(
-    FlowGenerator("original", lambda m: _disable_quantization(m), priority=5)
+    FlowGenerator("original", lambda m: _disable_quantization(m), order=2)
 )
 
 # Run with the model as-is; produces activations reflecting all mutations so far.
-QUANTIZED = register_generator(FlowGenerator("quantized", lambda _: nullcontext(), priority=10))
+QUANTIZED = register_generator(FlowGenerator("quantized", lambda _: nullcontext(), order=5))
 
 # No constraints on the model state; default for a plain forward pass.
-ANY = register_generator(FlowGenerator("any", lambda _: nullcontext(), priority=0))
+ANY = register_generator(FlowGenerator("any", lambda _: nullcontext(), order=10))
 
 
 def _to_generator(value: str | FlowGenerator | ContextManager[None]) -> FlowGenerator:
@@ -114,7 +114,7 @@ def _to_generator(value: str | FlowGenerator | ContextManager[None]) -> FlowGene
         ) -> ContextManager[None]:
             return _cm
 
-        register_generator(FlowGenerator(key, _anon_context, priority=0))
+        register_generator(FlowGenerator(key, _anon_context, order=0))
     return _generators[key]
 
 
@@ -141,7 +141,5 @@ class OutputActivations(DataFlow):
     """The activations leaving the region's output boundary."""
 
 
-# Closed union of every concrete flow. Use this instead of `DataFlow` in type
-# parameters that need exhaustiveness -- a `match` against `Flow` lets mypy
-# flag any missed subclass through `assert_never`.
+# Closed union of every concrete flow.
 Flow: TypeAlias = InputActivations | OutputActivations

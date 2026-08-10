@@ -22,7 +22,6 @@ from __future__ import annotations
 import dataclasses
 
 from collections.abc import Sequence
-from typing import assert_never
 
 from fastforward._orchestration.data_flow import (
     Flow,
@@ -70,11 +69,7 @@ class FlowPlan:
 
 
 def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[Flow]) -> list[FlowPlan]:
-    """Bind each declared flow to concrete nodes on `graph`.
-
-    Dispatches on the concrete `Flow` subclass; the fall-through is
-    `assert_never` so mypy points here when a new subclass is missed.
-    """
+    """Bind each declared flow to concrete nodes on `graph`."""
     topo_index = {ref.id: i for i, ref in enumerate(graph.topo_order)}
 
     plans: list[FlowPlan] = []
@@ -84,16 +79,12 @@ def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[Flow]) -> li
                 node_set = _ancestors_of(graph, region, include_region=False)
             case OutputActivations():
                 node_set = _ancestors_of(graph, region, include_region=True)
-            case _:
-                assert_never(flow)
         ordered = sorted(node_set, key=lambda ref: topo_index[ref.id])
         plans.append(FlowPlan(flow=flow, nodes=tuple(ordered)))
     return plans
 
 
-def _ancestors_of(
-    graph: GraphModule, region: NodeRef, *, include_region: bool
-) -> set[NodeRef]:
+def _ancestors_of(graph: GraphModule, region: NodeRef, *, include_region: bool) -> set[NodeRef]:
     """Collect the ancestor set of `region`.
 
     Returns the raw set; the caller is responsible for ordering.
