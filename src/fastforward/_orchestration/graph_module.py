@@ -358,6 +358,19 @@ class GraphModule(torch.nn.Module):
 
         self._program: Any = None
         self._engine: InstructionEngine | None = None
+        self._topo_order: list[NodeRef] | None = None
+
+    def _invalidate_caches(self) -> None:
+        """Reset cached derived state after graph mutation."""
+        self._engine = None
+        self._topo_order = None
+
+    @property
+    def topo_order(self) -> list[NodeRef]:
+        """Topologically sorted leaf nodes, cached until the graph is mutated."""
+        if self._topo_order is None:
+            self._topo_order = topological_sort(self)
+        return self._topo_order
 
     @property
     def input_names(self) -> list[str]:
@@ -542,8 +555,8 @@ class GraphModule(torch.nn.Module):
             msg = f"Duplicate node id: {node_id}"
             raise ValueError(msg)
 
-        # Reset execution engine if it existed since the graph will be altered.
-        self._engine = None
+        # Reset cached derived state since the graph will be altered.
+        self._invalidate_caches()
         node = Node(node_id, name, target, args, op=op, kwargs=kwargs or {}, parent=parent)
         self._nodes[node_id] = node
         ref = NodeRef(node_id, name)
@@ -606,8 +619,8 @@ class GraphModule(torch.nn.Module):
             msg = "Subgraph has no output nodes defined"
             raise ValueError(msg)
 
-        # Reset execution engine if it existed since the graph will be altered.
-        self._engine = None
+        # Reset cached derived state since the graph will be altered.
+        self._invalidate_caches()
 
         kwargs = kwargs or {}
 
