@@ -7,6 +7,7 @@ from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.gguf.gguf_export_stages import (
     stage_apply_target_transforms,
     stage_extract_quantized_weights,
+    stage_fuse_tensors,
     stage_map_tensor_names,
     stage_pack_gguf_blocks,
     stage_write_gguf,
@@ -33,6 +34,9 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     ff_model (pipeline input)
         |
         | +--> extract_quantized_weights   (root; int codes + scales + float passthroughs)
+                    |
+                    v
+                fuse_tensors                (concat N sources -> 1 per TensorFusion spec)
                     |
                     v
                 apply_target_transforms     (per-arch RoPE Q/K permute)
@@ -64,9 +68,12 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     extract_stage = pipeline.register_stage(
         stage_extract_quantized_weights, "extract_quantized_weights"
     )
+    fuse_stage = pipeline.register_stage(stage_fuse_tensors, "fuse_tensors").depends_on(
+        extract_stage
+    )
     apply_transforms_stage = pipeline.register_stage(
         stage_apply_target_transforms, "apply_target_transforms"
-    ).depends_on(extract_stage)
+    ).depends_on(fuse_stage)
     map_names_stage = pipeline.register_stage(
         stage_map_tensor_names, "map_tensor_names"
     ).depends_on(apply_transforms_stage)

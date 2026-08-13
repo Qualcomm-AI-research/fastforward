@@ -16,6 +16,7 @@ quantize a parameter, it arrives as float.
 """
 
 import logging
+import re
 
 from dataclasses import dataclass
 
@@ -43,7 +44,7 @@ class ExtractedTensor:
     hf_name: str
     kind: str
     rows: int
-    cols: int | None = None
+    cols: int | None = None  # Always set for quantized (2D weights); None for 1D float tensors.
     int_codes: torch.Tensor | None = None
     scales: torch.Tensor | None = None
     float_data: torch.Tensor | None = None
@@ -129,6 +130,15 @@ def _validate_quantizer(
         raise ExportError(msg)
 
 
+def _is_fusion_source(hf_name: str, adapter: ArchAdapter) -> bool:
+    """Check if a parameter name matches any fusion source pattern."""
+    for fusion in adapter.fusions:
+        for pattern in fusion.sources:
+            if re.fullmatch(pattern, hf_name):
+                return True
+    return False
+
+
 def extract_module_tensors(
     model: torch.nn.Module,
     *,
@@ -168,7 +178,7 @@ def extract_module_tensors(
     skipped: list[str] = []
 
     for hf_name, param in model.named_parameters():
-        if adapter.name_map(hf_name) is None:
+        if adapter.name_map(hf_name) is None and not _is_fusion_source(hf_name, adapter):
             skipped.append(hf_name)
             continue
         if isinstance(param, torch.nn.UninitializedParameter):

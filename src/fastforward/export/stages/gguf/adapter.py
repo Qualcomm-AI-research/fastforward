@@ -57,6 +57,47 @@ TensorTransformT: TypeAlias = Callable[
 ]
 
 
+@dataclass(frozen=True, slots=True)
+class TensorFusion:
+    r"""Declarative specification of a tensor fusion operation.
+
+    A fusion combines N source tensors into a single output tensor by
+    concatenation along a specified axis. Source names are regex patterns
+    with capture groups; the ``target_name`` may use back-references (``\1``,
+    ``\2``, ...) to substitute matched groups from the sources.
+
+    All sources must match with the same captured groups (i.e. belong to the
+    same layer/instance). For each such match set, the sources are concatenated
+    in the order listed.
+
+    Example — fuse Q/K/V per layer::
+
+        TensorFusion(
+            sources=(
+                r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
+                r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
+                r"model\.layers\.(\d+)\.self_attn\.v_proj\.weight",
+            ),
+            target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
+            axis=0,
+        )
+
+    Attributes:
+        sources: Regex patterns identifying the tensors to fuse, in concat
+            order. Each pattern must have the same capture groups. Non-regex
+            literal names are also valid (no metacharacters = exact match).
+        target_name: Name for the fused output tensor. May contain back-
+            references (``\1``, ``\2``) that are substituted from the matched
+            capture groups.
+        axis: Concatenation axis. 0 = row-concat (the common case for
+            QKV fusion where each tensor contributes its rows).
+    """
+
+    sources: tuple[str, ...]
+    target_name: str
+    axis: int = 0
+
+
 def _default_is_tied(hf_name: str, config: GgufSourceConfig) -> bool:
     """Default tied-weight predicate: skips ``lm_head.weight`` when config indicates tying."""
     if not getattr(config, "tie_word_embeddings", False):
@@ -137,6 +178,10 @@ class ArchAdapter:
             unmatched tensors fall back to ``float_type``. Use this to keep
             specific layers at higher precision (e.g. norms at F32 while the
             rest is F16).
+        fusions: List of :class:`TensorFusion` specifications declaring which
+            source tensors to concatenate into a single output tensor. Applied
+            by ``stage_fuse_tensors`` before per-tensor transforms. An empty
+            list (the default) means no fusion is performed.
     """
 
     gguf_arch: str
@@ -148,3 +193,4 @@ class ArchAdapter:
     is_tied: _IsTiedT = field(default=_default_is_tied)
     float_type: str = "F32"
     float_type_overrides: dict[str, str] = field(default_factory=dict)
+    fusions: list[TensorFusion] = field(default_factory=list)

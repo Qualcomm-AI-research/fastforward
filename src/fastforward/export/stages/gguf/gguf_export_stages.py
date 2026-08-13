@@ -23,6 +23,7 @@ from gguf import GGMLQuantizationType, GGUFWriter
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor, extract_module_tensors
+from fastforward.export.stages.gguf._fusion import apply_fusions
 from fastforward.export.stages.gguf._vocab import write_vocab
 from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufQuantFormat
 
@@ -78,6 +79,23 @@ def stage_extract_quantized_weights(
         config=config,
         quant_format=quant_format,
     )
+
+
+def stage_fuse_tensors(
+    modules: tuple[list[ExtractedTensor], ...],
+    sample_inputs: _SampleInputsT,
+    context: dict[str, Any],
+) -> list[ExtractedTensor]:
+    """Fuse groups of tensors into single outputs per the adapter's fusion specs.
+
+    No-op when ``adapter.fusions`` is empty. Otherwise, for each
+    :class:`TensorFusion` spec, groups matching tensors by their captured
+    layer/instance indices and concatenates them along the specified axis.
+    """
+    del sample_inputs
+    (tensors,) = modules
+    adapter = _require_adapter(context)
+    return apply_fusions(tensors, adapter.fusions)
 
 
 def stage_apply_target_transforms(

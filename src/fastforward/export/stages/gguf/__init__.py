@@ -19,4 +19,5 @@ from fastforward.export.stages.gguf._packing import GGUF_Q4_0 as GGUF_Q4_0
 from fastforward.export.stages.gguf._packing import GGUF_Q8_0 as GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter as ArchAdapter
 from fastforward.export.stages.gguf.adapter import GgufQuantFormat as GgufQuantFormat
+from fastforward.export.stages.gguf.adapter import TensorFusion as TensorFusion
 from fastforward.export.stages.gguf.adapter import TensorTransformT as TensorTransformT
