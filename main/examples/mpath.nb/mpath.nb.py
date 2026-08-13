@@ -98,13 +98,13 @@ ff.mpath.search("layer4/[cls:torch.nn.Linear]", my_module)
 # - `[re:regex pattern]` or `[regex:regex pattern]`: Matches a module if its attribute name on the parent module fully matches the regex pattern.
 # - `~`: Matches a module that does **not** match the specified criteria.
 #
-# ### Class or Instance-Based Matching
+# ### Class or Instance Matching
 
 # %%
 ff.mpath.search("layer4/*/[cls:torch.nn.Linear]", my_module)
 
 # %% [markdown]
-# ### Regex based matching
+# ### Regex Matching
 
 # %%
 ff.mpath.search(
@@ -112,7 +112,7 @@ ff.mpath.search(
 )  # we have to escape ']' in the regex because the regex pattern is '[' and ']' delimited
 
 # %% [markdown]
-# ### Inverted matching
+# ### Inverted Matching
 
 # %%
 ff.mpath.search("layer2/~[cls:torch.nn.Linear]", my_module)
@@ -120,7 +120,10 @@ ff.mpath.search("layer2/~[cls:torch.nn.Linear]", my_module)
 # %% [markdown]
 # ### Query String Extension
 #
-# You can extend query strings and register your own extensions. A good starting point is the implementation of `fastforward.mpath.fragments.RegexPathSelectorFragment` or `fastforward.mpath.fragments.ClassSelectorFragments`. These examples are registered in `fastforward.mpath`.
+# You can extend query strings and register your own extensions.
+# A good starting point is the implementation of `fastforward.mpath.fragments.RegexPathSelectorFragment` or `fastforward.mpath.fragments.ClassSelectorFragments`.
+#
+# These examples are registered in `fastforward.mpath`.
 
 # %% [markdown]
 # # __MPath__ for Quantization Initialization

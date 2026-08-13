@@ -18,14 +18,14 @@
 # In this tutorial we will show how to quantize a large language model (Llama-v3) using **FastForward**.
 #
 #
-# ### Step 1: Install Dependencies
+# ### Install Dependencies
 # First, make sure you have all the necessary dependencies installed. You can do this by running the following command:
 # ```
 # pip install transformers==5.9.0 sentencepiece==0.2.1 datasets==4.8.5
 # ```
 # For instructions on installing `fastforward`, please refer to the project's documentation and/or readme.
 #
-# ### Step 2: Load the Model, Tokenizer, and Datasets
+# ### Load Model, Tokenizer, and Datasets
 # Next, we'll load the model, tokenizer, and datasets using the HuggingFace's `transformers` and `datasets` libraries.
 
 # +
@@ -81,12 +81,10 @@ valid_loader = DataLoader(
 train_loader = DataLoader(
     tokenized_trainset, batch_size, collate_fn=default_data_collator, shuffle=True
 )
-
 # -
 
 # ## Base Model Evaluation
 #
-# ### Step 3: Establish an Inference Loop
 # First, we'll create an inference loop to assess the performance of the base model. This loop will be our foundation, allowing us to later compare the results with those from the quantized versions of the model.
 #
 
@@ -123,13 +121,11 @@ orig_perplexity = evaluate_model(model, valid_loader, device=device, max_num_bat
 print(
     f"Perplexity over wikitext-validation using full-precision model ({model_dtype}): {orig_perplexity:.4}"
 )
-
 # -
 
-# ## Quantized Model
+# ## Quantization-Ready Model
 # Now that we have the original full-precision model and the tokenized dataset, we can start quantizing the model using FastForward.
 #
-# ### Step 4: Convert to a Quantization-Ready Model
 # First, we need to convert our model into a _quantization-ready_ one. This type of model, called a `QuantizedModule`, allows us to fully or partially quantize the model easily. These modules work like standard `PyTorch` modules but have extra features for seamless interaction with `FastForward` APIs.
 #
 # Currently, converting a model into a quantized module is semi-automatic and requires a custom implementation of all the PyTorch modules involved. If you want to create a custom QuantizedModule, check out [the tutorial on manually quantizing custom modules](examples/quantizing_networks.nb/#43-quantizing-custom-modules-manual-quantization). However, for this tutorial, we will use pre-provided modules to quantize the Llama model.
@@ -137,14 +133,12 @@ print(
 # > 💡 **Tip:** We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore for this step.
 
 # +
-
 # Import all the custom QuantizedModules required to quantize our llama model.
 # We just need to import those modules so that `ff.quantize_model` will be able to find them.
 from doc_helpers import quantized_llama as quantized_llama  # noqa: E402, I001
 
 # Convert the model into a QuantizedModel  (inplace operation)
 ff.quantize_model(model)
-
 # -
 
 # By default, FastForward operates in *"strict quantization"* mode. In this mode, many quantization errors, such as calling a quantized function without quantized tensors, are treated as errors. This is beneficial for quantizing models that require strict adherence to quantization rules. However, strict quantization is not always necessary. In this tutorial, we only partially quantize a model, so we disable strict quantization.
@@ -155,12 +149,11 @@ ff.set_strict_quantization(False)
 #
 # A `QuantizedModule` contains `QuantizerStub` instances at specific locations. Each quantizer stub is a placeholder module that can be easily replaced with any FastForward quantizer.
 #
-# ### Step 5: Replace Stubs with Actual Quantizers
 # We can start quantizing the model by replacing the stubs with actual quantizers. To do this, we use the `find_quantizers` function to select certain stubs and initialize them as `LinearQuantizer` objects.
 #
 # In this example, we will limit our quantization to all the weights in the self-attention and MLP modules within the Llama decoder layers.
-# +
 
+# +
 w_bits = 8
 
 # Set Weight Quantization
@@ -171,34 +164,31 @@ print(f"Found {len(w_quantizers)} weight quantizers.")
 
 # Move model to target device: quantizer parameters (scale/offsets) should be placed on the target device too.
 model.to(device)
-
 # -
 
-# ### Background: `fastforward.mpath`
+# ### Background: **MPath**
 # The `find_quantizers` function is a tool for filtering and selecting specific quantizers within the model, using the capabilities provided by `fastforward.mpath`.
 #
 # By passing _queries_ to `find_quantizer`, we can navigate the model and select quantizers similarly to how we select files in a Unix-like file system. Using strings and wildcards, we can match modules and quantizers just like matching folders and files from the terminal.
 #
-# Additionally, **mpath** offers advanced functionalities to select modules and quantizers based on special rules. In this example, we selected only the quantizers with the tag parameter/weight because we aim to perform weights-only quantization.
+# Additionally, **MPath** offers advanced functionalities to select modules and quantizers based on special rules. In this example, we selected only the quantizers with the tag parameter/weight because we aim to perform weights-only quantization.
 #
 # Each `find_quantizer` call returns a QuantizerCollection object containing the selected quantizers, which behaves similarly to a Python set.
 # In this case, we merged two collections simply using the `|` operator.
 #
-# For more information about **mpath** and its full range of functionalities,
+# For more information about **MPath** and its full range of functionalities,
 # we recommend reading the [**MPath tutorial**](../../mpath.nb/).
 #
 
-# ## Calibrate Weight-Quantized Model
+# ### Calibrate Weight Quantizers
 #
 # Before performing inference, we need to initialize the quantizer parameters using calibration data.
 #
-# ### Step 6: Estimate Quantization Ranges
 # FastForward provides a method for estimating quantization ranges by running the model's forward pass. This is done using the `fastforward.estimate_ranges` context manager.
 #
 # For weight-only quantization, passing dummy data is sufficient since no activation quantizers are involved. In this example, we use a *running min-max* estimator, which sets the quantizer ranges to the minimum and maximum values observed in the tensors during the forward pass.
 
 # +
-
 print("Calibrating weight-quantizers")
 
 with torch.no_grad(), ff.estimate_ranges(model, ff.range_setting.running_minmax):
@@ -209,21 +199,24 @@ with torch.no_grad(), ff.estimate_ranges(model, ff.range_setting.running_minmax)
 print("Calibrated!")
 # -
 
-# ### Step 7: Evaluate the weight-quantized model
 # Now, we can perform inference and evaluate the model's performance using the same procedure applied to the original model.
 
+# +
 w_quant_perplexity = evaluate_model(model, valid_loader, device=device, max_num_batches=None)
 print("Perplexity over wikitext-validation:")
 print(f" - Original model:       {orig_perplexity:.4f}  ({model_dtype}) ")
 print(f" - W-Quantized model:    {w_quant_perplexity:.4f}  (W{w_bits})")
-
+# -
 
 # ## Weight-Activation Quantization
-# In addition to the weight quantizers, we will now initialize some of the input quantizers for the linear layers; enabling weight-activation quantization.
+# In addition to the weight quantizers, we will now initialize some of the input quantizers for the
+# linear layers; enabling weight-activation quantization.
 #
-# Generally, quantizing all activations can significantly degrade accuracy. Therefore, in this example, we will limit our quantization to the inputs of the linear layers within the model.
+# Generally, quantizing all activations can significantly degrade accuracy.
+# Therefore, in this example, we will limit our quantization to the inputs of the linear layers
+# within the model.
 #
-# ### Step 8: Initialize Input Quantizers
+# ### Initialize Input Quantizers
 # We are initializing input quantizers for the linear layers to enable weight-activation quantization.
 
 # +
@@ -240,17 +233,19 @@ a_quantizers.initialize(
 )
 print(f"Found {len(a_quantizers)} activation quantizers.")
 
-# Move model to target device: quantizer parameters (scale/offsets) should be placed on the target device too.
+# Move model to target device: quantizer parameters (scale/offsets) should be placed on the target
+# device too.
 model.to(device)
-
 # -
 
-# ### Step 8: Calibrating Activation Quantizers
+# ### Calibrating Activation Quantizers
 #
-# Activation quantizers are significantly more sensitive to calibration.
-# Unlike weight quantizers, the exact range of data passing through activation quantizers cannot be determined in advance. Therefore, we need to estimate the activation ranges using a calibration set.
+# Unlike weight quantizers, activation quantizers are significantly more sensitive to calibration:
+# the exact range of data passing through activation quantizers cannot be determined in advance.
+# Therefore, we need to estimate the activation ranges using a calibration set.
 #
-# In this example, we use the Wikitext training set for calibration. Evaluation is conducted on a separate validation set.
+# In this example, we use the Wikitext training set for calibration.
+# Evaluation is conducted on a separate validation set.
 #
 
 # +
@@ -264,11 +259,8 @@ with torch.no_grad(), ff.estimate_ranges(model, ff.range_setting.running_minmax)
         model(**x)
 
 print("Calibrated!")
-
-
 # -
 
-# ### Step 9: Evaluate Weight-Activation Quantized Model
 # Now, we can evaluate our weight-activation quantized model and compare its performance to the other models.
 
 # +
@@ -279,14 +271,20 @@ print(f" - Original model:       {orig_perplexity:.4f}  ({model_dtype}) ")
 print(f" - W-Quantized model:    {w_quant_perplexity:.4f}  (W{w_bits})")
 print(f" - W+A Quantized model:  {wa_quant_perplexity:.4f}  (W{w_bits}A{a_bits})")
 # -
+
 # ## Wrap up
-
-
-# In this tutorial, we demonstrated how to use FastForward to apply weight-only and weight-activation quantization to a large language model. We also evaluated the performance differences compared to the original model.
+# In this tutorial, we demonstrated how to use FastForward to apply weight-only and
+# weight-activation quantization to a large language model.
+# We also evaluated the performance differences compared to the original model.
 #
-# FastForward, currently, provides a semi-automatic process for converting a model into a quantized one. However, if your model includes custom PyTorch modules, some manual work is still required to create a quantized version of those modules. We also have an experimental [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore.
+# FastForward, currently, provides a semi-automatic process for converting a model into
+# a quantized one.
+# However, if your model includes custom PyTorch modules, some manual work is still
+# required to create a quantized version of those modules. We also have an experimental
+# [`ff.autoquantize`](examples/autoquant.md) feature that you might want to explore.
 #
-# For more information on how to quantize a model from scratch, check out the tutorial:[Getting Started: Quantizing a LLM from scratch](examples/quantizing_networks.nb/).
+# For more information on how to quantize a model from scratch, check out the tutorial:
+# [Getting Started: Quantizing a LLM from scratch](/examples/quantizing_networks.nb/).
 #
 #
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.

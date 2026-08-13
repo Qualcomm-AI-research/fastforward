@@ -18,12 +18,12 @@
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/ff-logo-purple.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>Overview - FastForward</title>
+        <title>Saving the Quantization State - FastForward</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#overview" class="md-skip">
+        <a href="#saving-the-quantization-state" class="md-skip">
           Skip to content
         </a>
       
@@ -96,8 +96,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -114,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Saving the Quantization State
             
           </span>
         </div>
@@ -198,18 +197,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
   
+  
+    
   
   Home
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -263,7 +261,9 @@
           
             
               
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -272,14 +272,11 @@
   
 
 
-  
-
-<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     FastForward
@@ -305,56 +302,6 @@
   
   
   
-    
-    
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
-        
-          
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Home
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
     <li class="md-nav__item">
       <a href="../.." class="md-nav__link">
         
@@ -363,7 +310,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Home
   
 
     
@@ -372,14 +319,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -3084,6 +3023,56 @@
               </div>
             
             
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quantization-state-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quantization State Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loading-the-quantization-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Loading the Quantization State
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           
             <div class="md-content" data-md-component="content">
@@ -3091,6 +3080,8 @@
               <article class="md-content__inner md-typeset">
                 
                   
+  
+
 
 
   
@@ -3818,8 +3809,21 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=736ea93f">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=608ad129">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="saving-the-quantization-state">Saving the Quantization State<a class="anchor-link" href="#saving-the-quantization-state">¶</a></h1><p>In this notebook we will explain how to save and load the quantization state of
+a model quantized with fastforward.</p>
+<p>First of all, we need a model to play with: let's build a small multi-layer
+perceptron from standard <code>torch.nn</code> modules.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=033c92ae">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3837,64 +3841,9 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">difflib</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">tempfile</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemporaryDirectory</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">fastforward</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ff</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pygments</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span><span class="p">,</span> <span class="n">display</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-1">import difflib
-
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-import fastforward as ff
-import pygments
-import torch
-
-from IPython.display import HTML, display</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=176c06af">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="overview">Overview<a class="anchor-link" href="#overview">¶</a></h1><p>This notebook shows how to save and load the model quantization state. We need a model to play
-with, so we build a small multi-layer perceptron from standard <code>torch.nn</code> modules.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d7dd2df2">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-2">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">NUM_LAYERS</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">NUM_LAYERS</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">HIDDEN_SIZE</span> <span class="o">=</span> <span class="mi">32</span>
 
 
@@ -3915,8 +3864,14 @@ with, so we build a small multi-layer perceptron from standard <code>torch.nn</c
 
 <span class="n">model_name</span> <span class="o">=</span> <span class="s2">"tiny-mlp-demo"</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">make_model</span><span class="p">()</span>
+
+<span class="c1"># Now we can quantize the model and initialize a few quantizers.</span>
+<span class="c1"># We select the weight quantizers of the first linear layer in each block, and</span>
+<span class="c1"># instantiate them to 4 bit per-channel linear quantizers.</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-2">NUM_LAYERS = 3
+<div class="clipboard-copy-txt" id="cell-1">import torch
+
+NUM_LAYERS = 3
 HIDDEN_SIZE = 32
 
 
@@ -3936,34 +3891,26 @@ def make_model() -&gt; torch.nn.Sequential:
 
 
 model_name = "tiny-mlp-demo"
-model = make_model()</div>
+model = make_model()
+
+# Now we can quantize the model and initialize a few quantizers.
+# We select the weight quantizers of the first linear layer in each block, and
+# instantiate them to 4 bit per-channel linear quantizers.</div>
 </div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5f8c24a4">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Let's quantize it and initialize a few quantizers. We select the weight quantizers of the first
-linear layer in each block.</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=11d40e77">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b327fec1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-3">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-2">
 <div>
 <span class="notice" hidden="">Copied!</span>
 <svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
@@ -3973,13 +3920,17 @@ linear layer in each block.</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">ff</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastforward</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ff</span>
+
+<span class="n">ff</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 
 <span class="n">ff</span><span class="o">.</span><span class="n">find_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">"**/layers/*/0/[quantizer:parameter/weight]"</span><span class="p">)</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span>
     <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">ff</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">(),</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
 <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-3">ff.quantize_model(model)
+<div class="clipboard-copy-txt" id="cell-2">import fastforward as ff
+
+ff.quantize_model(model)
 
 ff.find_quantizers(model, "**/layers/*/0/[quantizer:parameter/weight]").initialize(
     ff.nn.LinearQuantizer, num_bits=4, granularity=ff.PerChannel(), quantized_dtype=torch.float32
@@ -3990,26 +3941,33 @@ ff.find_quantizers(model, "**/layers/*/0/[quantizer:parameter/weight]").initiali
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9988a799">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ebfd7028">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Before the next steps, we need to estimate the quantization ranges for our quantizers.</p>
+<p>The quantization state is composed by:</p>
+<ul>
+<li>The quantizers instantiation information (e.g.: linear, 4 bits, per channel),</li>
+<li>The quantization parameters (e.g.: scale and offset of each quantizer).</li>
+</ul>
+<p>We already have the instantiation information, but we still have to compute the quantization
+parameters.
+Let's do that with a simple round-to-nearest min-max range estimator, using some random data:</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0267793d">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=923ca3e9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-4">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-3">
 <div>
 <span class="notice" hidden="">Copied!</span>
 <svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
@@ -4028,7 +3986,7 @@ ff.find_quantizers(model, "**/layers/*/0/[quantizer:parameter/weight]").initiali
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Scale of the first quantizer: "</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-4">with (
+<div class="clipboard-copy-txt" id="cell-3">with (
     torch.no_grad(),
     ff.estimate_ranges(model, ff.range_setting.running_minmax),
     ff.set_strict_quantization(False),
@@ -4048,10 +4006,10 @@ print("Scale of the first quantizer: ", model.layers[0][0].weight_quantizer.scal
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>Scale of the first quantizer:  Parameter containing:
-tensor([0.0221, 0.0249, 0.0249, 0.0228, 0.0248, 0.0236, 0.0242, 0.0247, 0.0243,
-        0.0241, 0.0243, 0.0248, 0.0232, 0.0241, 0.0234, 0.0245, 0.0246, 0.0252,
-        0.0223, 0.0250, 0.0233, 0.0221, 0.0248, 0.0213, 0.0230, 0.0243, 0.0234,
-        0.0223, 0.0224, 0.0246, 0.0250, 0.0240], requires_grad=True)
+tensor([0.0240, 0.0235, 0.0250, 0.0251, 0.0219, 0.0238, 0.0252, 0.0239, 0.0237,
+        0.0246, 0.0248, 0.0251, 0.0234, 0.0242, 0.0239, 0.0235, 0.0247, 0.0225,
+        0.0226, 0.0250, 0.0238, 0.0234, 0.0235, 0.0248, 0.0247, 0.0223, 0.0249,
+        0.0248, 0.0244, 0.0252, 0.0252, 0.0243], requires_grad=True)
 </pre>
 </div>
 </div>
@@ -4059,19 +4017,113 @@ tensor([0.0221, 0.0249, 0.0249, 0.0228, 0.0248, 0.0236, 0.0242, 0.0247, 0.0243,
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fd28ee95">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=02300ade">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>💾 Now we can save the quantization state. We pass a <code>name_or_path</code> to identify the saved state
-(see the note on the <code>name_or_path</code> argument below).</p>
+<p>💾 Now we can save the quantization state.
+We pass a <code>name_or_path</code> to identify the saved state (see the note on the <code>name_or_path</code> argument below).</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=35a75eb7">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=32485893">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="CodeMirror cm-s-jupyter">
+<div class="zeroclipboard-container">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-4">
+<div>
+<span class="notice" hidden="">Copied!</span>
+<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
+<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+</clipboard-copy>
+</div>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tempfile</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemporaryDirectory</span>
+
+<span class="n">tmpdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">TemporaryDirectory</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">save_quantization_state</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">tmpdir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"**/*"</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-4">from pathlib import Path
+from tempfile import TemporaryDirectory
+
+tmpdir = Path(TemporaryDirectory().name)
+model.save_quantization_state(cache_dir=tmpdir, name_or_path=model_name)
+for p in tmpdir.glob("**/*"):
+    print(str(p))</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>/tmp/tmp642qrppn/quantization-state--tiny-mlp-demo
+/tmp/tmp642qrppn/quantization-state--tiny-mlp-demo/main
+/tmp/tmp642qrppn/quantization-state--tiny-mlp-demo/main/model.safetensors
+/tmp/tmp642qrppn/quantization-state--tiny-mlp-demo/main/config.yaml
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9f43aafa">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Both <code>save_quantization_state()</code> and <code>load_quantization_state()</code> methods accept several
+arguments to control where and how the quantization state is stored.</p>
+<ul>
+<li><p><code>cache_dir</code>: specifies the base directory where quantization states are stored.</p>
+</li>
+<li><p><code>tag</code>: allows you to create multiple versions or variants of quantization
+states for the same model. This is useful when you want to save different quantization
+configurations (e.g., different bit widths, granularities) for the same base model.</p>
+</li>
+<li><p><code>name_or_path</code>: specifies the model identifier used to organize quantization
+states. By default, it uses the value of the model's property <code>config.name_or_path</code>.</p>
+</li>
+</ul>
+<p>You can lookup the API reference to know more: <a href="/reference/fastforward/nn/quantized_module/#fastforward.nn.quantized_module.QuantizedModule.save_quantization_state">save_quantization_state</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=70dca622">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="quantization-state-files">Quantization State Files<a class="anchor-link" href="#quantization-state-files">¶</a></h2><p>The quantization state consists of two files:</p>
+<ul>
+<li><code>config.yaml</code>: a text file where other quantizer attributes are stored.</li>
+<li><code>model.safetensors</code>: a binary file where state_dict (parameters and buffers) of all quantizers is saved.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=79ae4d1d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4089,120 +4141,22 @@ tensor([0.0221, 0.0249, 0.0249, 0.0228, 0.0248, 0.0236, 0.0242, 0.0247, 0.0243,
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tmpdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">TemporaryDirectory</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">save_quantization_state</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">tmpdir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"**/*"</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-5">tmpdir = Path(TemporaryDirectory().name)
-model.save_quantization_state(cache_dir=tmpdir, name_or_path=model_name)
-for p in tmpdir.glob("**/*"):
-    print(str(p))</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>/tmp/tmpi7c84sou/quantization-state--tiny-mlp-demo
-/tmp/tmpi7c84sou/quantization-state--tiny-mlp-demo/main
-/tmp/tmpi7c84sou/quantization-state--tiny-mlp-demo/main/model.safetensors
-/tmp/tmpi7c84sou/quantization-state--tiny-mlp-demo/main/config.yaml
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=96ebb19f">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Both <code>save_quantization_state()</code> and <code>load_quantization_state()</code> methods accept several
-arguments to control where and how the quantization state is stored:</p>
-<ul>
-<li><code>cache_dir</code> argument
-The <code>cache_dir</code> parameter specifies the base directory where quantization states are stored.
-The quantization files will be saved in a subdirectory structure within this cache directory.
-If not provided, the following directories will be used as a cache:<ul>
-<li><code>$FF_CACHE</code></li>
-<li><code>$XDG_CACHE_HOME/fastforward</code></li>
-<li><code>~/.cache/fastforward</code></li>
-</ul>
-</li>
-<li><code>tag</code> argument
-The <code>tag</code> parameter allows you to create multiple versions or variants of quantization
-states for the same model. This is useful when you want to save different quantization
-configurations (e.g., different bit widths, granularities) for the same base model.<div class="highlight"><pre><span></span><span class="c1"># Save with different tags</span>
-<span class="n">model</span><span class="o">.</span><span class="n">save_quantization_state</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">"4bit_perchannel"</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">save_quantization_state</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">"8bit_pertensor"</span><span class="p">)</span>
-<span class="c1"># Load specific tagged version</span>
-<span class="n">model</span><span class="o">.</span><span class="n">load_quantization_state</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">"4bit_perchannel"</span><span class="p">)</span>
-</pre></div>
-</li>
-<li><code>name_or_path</code> argument
-The <code>name_or_path</code> parameter specifies the model identifier used to organize quantization
-states. By default, it uses the model's <code>name_or_path</code> from its config. If a model is not
-a HuggingFace model (is not inhereted from <code>transformers.AutoModel</code>), you should either
-manually add the <code>config.name_or_path</code> property or pass <code>name_or_path</code> to the function
-explicitly.</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=348d8e14">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The quantization state consists of two files:</p>
-<ul>
-<li><code>config.yaml</code></li>
-<li><code>model.safetensors</code></li>
-</ul>
-<p>The <code>model.safetensors</code> is a binary file where state_dict (parameters and buffers) of all
-quantizers is saved.
-The <code>config.yaml</code> is a text file where other quantizer attributes are stored.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=303f7e95">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-6">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="n">pygments</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pygments</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span><span class="p">,</span> <span class="n">display</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">pygments</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>
     <span class="nb">next</span><span class="p">(</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"**/config.yaml"</span><span class="p">))</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf8"</span><span class="p">),</span>
     <span class="n">pygments</span><span class="o">.</span><span class="n">lexers</span><span class="o">.</span><span class="n">YamlLexer</span><span class="p">(),</span>
     <span class="n">pygments</span><span class="o">.</span><span class="n">formatters</span><span class="o">.</span><span class="n">HtmlFormatter</span><span class="p">(),</span>
 <span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="sa">f</span><span class="s2">"&lt;details&gt;&lt;summary&gt;config.yaml&lt;/summary&gt;</span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2">&lt;/details&gt;"</span><span class="p">))</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-6">config = pygments.highlight(
+<div class="clipboard-copy-txt" id="cell-5">import pygments
+
+from IPython.display import HTML, display
+
+config = pygments.highlight(
     next(tmpdir.glob("**/config.yaml")).read_text(encoding="utf8"),
     pygments.lexers.YamlLexer(),
     pygments.formatters.HtmlFormatter(),
@@ -4222,7 +4176,7 @@ display(HTML(f"&lt;details&gt;&lt;summary&gt;config.yaml&lt;/summary&gt;{config}
 <details><summary>config.yaml</summary><div class="highlight"><pre><span></span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'1.0'</span>
 <span class="nt">name_or_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tiny-mlp-demo</span>
 <span class="nt">transformers_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">None</span>
-<span class="nt">fastforward_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1.0.dev1+g56060ce1d</span>
+<span class="nt">fastforward_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1.0.dev1+g3d3540e76</span>
 <span class="nt">quantizers</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">layers.0.0.weight_quantizer</span><span class="p">:</span><span class="w"> </span><span class="kt">!ff.obj</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fastforward.nn.linear_quantizer.LinearQuantizer</span>
@@ -4285,7 +4239,7 @@ display(HTML(f"&lt;details&gt;&lt;summary&gt;config.yaml&lt;/summary&gt;{config}
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fd2d52f4">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=555f42fa">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4305,18 +4259,66 @@ for yaml ant its syntax.</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=894b91bc">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d2c562e6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>To load the quantization state you should use the <a href="../../reference/fastforward/nn/quantized_module/#fastforward.nn.quantized_module.QuantizedModule.load_quantization_state"><code>load_quantization_state</code></a> function. We start from a fresh, quantized model and load the saved state into it:</p>
+<h2 id="loading-the-quantization-state">Loading the Quantization State<a class="anchor-link" href="#loading-the-quantization-state">¶</a></h2><p>To load the quantization state you should use the
+<a href="../../reference/fastforward/nn/quantized_module/#fastforward.nn.quantized_module.QuantizedModule.load_quantization_state"><code>load_quantization_state</code></a>
+function.</p>
+<p>We start from a fresh quantized model and load the saved state into it:</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ad5db434">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=86cd0914">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="CodeMirror cm-s-jupyter">
+<div class="zeroclipboard-container">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-6">
+<div>
+<span class="notice" hidden="">Copied!</span>
+<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
+<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+</clipboard-copy>
+</div>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">new_model</span> <span class="o">=</span> <span class="n">make_model</span><span class="p">()</span>
+<span class="n">ff</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">new_model</span><span class="p">)</span>
+<span class="n">new_model_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_model</span><span class="p">)</span>
+<span class="n">new_model</span><span class="o">.</span><span class="n">load_quantization_state</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-6">new_model = make_model()
+ff.quantize_model(new_model)
+new_model_str = str(new_model)
+new_model.load_quantization_state(cache_dir=tmpdir, name_or_path=model_name)</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ce49a709">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>🔍 To see what loading changed, we diff the model's structure before and after the load. The
+green lines show where the <code>QuantizerStub</code> placeholders were replaced by the real quantizers:</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1dedb7e6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4334,59 +4336,18 @@ for yaml ant its syntax.</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">new_model</span> <span class="o">=</span> <span class="n">make_model</span><span class="p">()</span>
-<span class="n">ff</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">new_model</span><span class="p">)</span>
-<span class="n">new_model_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_model</span><span class="p">)</span>
-<span class="n">new_model</span><span class="o">.</span><span class="n">load_quantization_state</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-7">new_model = make_model()
-ff.quantize_model(new_model)
-new_model_str = str(new_model)
-new_model.load_quantization_state(cache_dir=tmpdir, name_or_path=model_name)</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=899a9aa0">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>🔍 To see what loading changed, we diff the model's structure before and after the load. The
-green lines show where the <code>QuantizerStub</code> placeholders were replaced by the real quantizers:</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=15b3e9e9">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-8">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">diff</span> <span class="o">=</span> <span class="n">pygments</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">difflib</span>
+
+<span class="n">diff</span> <span class="o">=</span> <span class="n">pygments</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>
     <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">difflib</span><span class="o">.</span><span class="n">unified_diff</span><span class="p">(</span><span class="n">new_model_str</span><span class="o">.</span><span class="n">splitlines</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_model</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())),</span>
     <span class="n">pygments</span><span class="o">.</span><span class="n">lexers</span><span class="o">.</span><span class="n">DiffLexer</span><span class="p">(),</span>
     <span class="n">pygments</span><span class="o">.</span><span class="n">formatters</span><span class="o">.</span><span class="n">HtmlFormatter</span><span class="p">(),</span>
 <span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">diff</span><span class="p">))</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-8">diff = pygments.highlight(
+<div class="clipboard-copy-txt" id="cell-7">import difflib
+
+diff = pygments.highlight(
     "\n".join(difflib.unified_diff(new_model_str.splitlines(), str(new_model).splitlines())),
     pygments.lexers.DiffLexer(),
     pygments.formatters.HtmlFormatter(),
@@ -4444,27 +4405,27 @@ display(HTML(diff))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=58b856c7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=41946ead">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>✅ The stubs were replaced by the real quantizers. The quantizer parameters match the original
-model too - here we check that the loaded weight quantizer has the same scale:</p>
+<p>✅ The stubs were replaced by the real quantizers.
+The quantizer parameters match the original model too - here we check that the loaded weight quantizer has the same scale:</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=dac56925">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=00637314">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-9">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-8">
 <div>
 <span class="notice" hidden="">Copied!</span>
 <svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
@@ -4479,7 +4440,7 @@ model too - here we check that the loaded weight quantizer has the same scale:</
     <span class="n">new_model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">weight_quantizer</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-9">torch.testing.assert_close(
+<div class="clipboard-copy-txt" id="cell-8">torch.testing.assert_close(
     model.layers[0][0].weight_quantizer.scale,
     new_model.layers[0][0].weight_quantizer.scale,
 )</div>
@@ -4489,7 +4450,7 @@ model too - here we check that the loaded weight quantizer has the same scale:</
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=891df936">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=df96f688">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4511,8 +4472,13 @@ SPDX-License-Identifier: BSD-3-Clause-Clear</p>
 
 
 
+  
+  
 
 
+
+
+  
 
 
 
@@ -4553,10 +4519,14 @@ SPDX-License-Identifier: BSD-3-Clause-Clear</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/clickable-cards.js"></script>
+      
+        <script src="../../javascripts/api-heading-styling.js"></script>
       
     
   </body>
