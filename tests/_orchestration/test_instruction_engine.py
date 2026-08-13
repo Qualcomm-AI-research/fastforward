@@ -188,6 +188,69 @@ def test_call_module_single_tensor_arg() -> None:
     assert output_dataset.batches[0].shape == (2, 3)
 
 
+def test_activation_register_store_all_merges_across_producers() -> None:
+    # GIVEN two producers writing the same ref under different contexts
+    ref = NodeRef(id=uuid.uuid4(), name="shared")
+    original = nullcontext()
+    quantized = nullcontext()
+    original_data = ActivationDataset([torch.tensor([1.0])])
+    quantized_data = ActivationDataset([torch.tensor([2.0])])
+
+    register = ActivationRegister()
+
+    # WHEN each producer calls store_all with a single-context mapping
+    register.store_all(ref, {original: original_data})
+    register.store_all(ref, {quantized: quantized_data})
+
+    # THEN both contexts remain readable; the second write did not overwrite
+    # the first.
+    assert register.load(ref, original) is original_data
+    assert register.load(ref, quantized) is quantized_data
+
+
+def test_activation_register_delete_drops_every_stream_for_ref() -> None:
+    # GIVEN a ref stored under two streams
+    ref = NodeRef(id=uuid.uuid4(), name="shared")
+    original = nullcontext()
+    quantized = nullcontext()
+    register = ActivationRegister()
+    register.store_all(
+        ref,
+        {
+            original: ActivationDataset([torch.tensor([1.0])]),
+            quantized: ActivationDataset([torch.tensor([2.0])]),
+        },
+    )
+
+    # WHEN the ref is deleted without a context (the whole-ref mode)
+    register.delete(ref)
+
+    # THEN both streams are gone
+    assert ref not in register
+
+
+def test_activation_register_delete_targeted_drops_only_one_stream() -> None:
+    # GIVEN a ref stored under two streams
+    ref = NodeRef(id=uuid.uuid4(), name="shared")
+    original = nullcontext()
+    quantized = nullcontext()
+    original_data = ActivationDataset([torch.tensor([1.0])])
+    quantized_data = ActivationDataset([torch.tensor([2.0])])
+    register = ActivationRegister()
+    register.store_all(ref, {original: original_data, quantized: quantized_data})
+
+    # WHEN one stream is deleted by context
+    register.delete(ref, original)
+
+    # THEN the other stream is still readable, and the ref itself remains
+    assert ref in register
+    assert register.load(ref, quantized) is quantized_data
+
+    # AND deleting the last stream drops the ref entirely
+    register.delete(ref, quantized)
+    assert ref not in register
+
+
 def test_prepare_input_register_validates_inputs() -> None:
     """Test that prepare_input_register validates args/kwargs and wraps in ActivationDatasets."""
     # GIVEN a graph with three inputs

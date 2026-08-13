@@ -177,8 +177,8 @@ class ActivationRegister:
         self._data[ref][context] = data
 
     def store_all(self, ref: _BaseRef, mapping: dict[StreamKey, ActivationDataset]) -> None:
-        """Store activation data for a ref across multiple contexts at once."""
-        self._data[ref] = mapping
+        """Merge activation data for a ref, so multiple producers accumulate streams."""
+        self._data.setdefault(ref, {}).update(mapping)
 
     def load(self, ref: _BaseRef, context: StreamKey) -> ActivationDataset:
         """Load activation data for a ref under a specific context."""
@@ -192,9 +192,19 @@ class ActivationRegister:
         """Iterate over contexts that have data stored for a ref."""
         return iter(self._data[ref].keys())
 
-    def delete(self, ref: _BaseRef) -> None:
-        """Remove all data for a ref."""
-        self._data.pop(ref, None)
+    def delete(self, ref: _BaseRef, context: StreamKey | None = None) -> None:
+        """Remove data for `ref`.
+
+        With `context` omitted, drops every stream stored for `ref`. With
+        `context` given, drops only that stream; if it was the last, `ref`
+        itself is dropped so `ref in register` becomes False.
+        """
+        if context is None:
+            self._data.pop(ref, None)
+        elif ref in self._data:
+            self._data[ref].pop(context, None)
+            if not self._data[ref]:
+                self._data.pop(ref)
 
     def __contains__(self, ref: _BaseRef) -> bool:
         return ref in self._data
