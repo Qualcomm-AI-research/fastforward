@@ -1,11 +1,12 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import attrs
 import pytest
 import torch
 
-from fastforward._orchestration.data_flow import InputActivations, OutputActivations
-from fastforward._orchestration.graph_module import GraphModule
+from fastforward._orchestration.data_flow import DataFlow, InputActivations, OutputActivations
+from fastforward._orchestration.graph_module import GraphModule, NodeRef
 from fastforward._orchestration.scheduler import bind_flows
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
@@ -21,6 +22,25 @@ pytestmark = pytest.mark.skipif(
 def _traced_two_linear(model: TwoLinear) -> GraphModule:
     """Trace `model` so its nodes can be referenced by `bind_flows`."""
     return trace(model.eval(), torch.randn(2, 8))
+
+
+def _branching_kwarg_graph() -> tuple[GraphModule, NodeRef]:
+    """A graph whose region reads two branches positionally plus one keyword.
+
+    Tracing cannot produce this shape: a keyword-only forward argument becomes a
+    graph input, not a node kwarg, so every traced node has empty kwargs. Build
+    it by hand to exercise the multi-read and keyword paths.
+
+    Returns:
+        The graph and a ref to its region.
+    """
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    left = graph.add_node("left", torch.nn.Linear(8, 8), [inp])
+    right = graph.add_node("right", torch.nn.Linear(8, 8), [inp])
+    region = graph.add_node("region", torch.nn.Linear(8, 8), [left, right], {"extra": inp})
+    graph.add_output(region)
+    return graph, region
 
 
 def test_input_activations_nodes_exclude_region(two_linear: TwoLinear) -> None:
@@ -77,3 +97,59 @@ def test_input_activations_on_first_layer_runs_nothing(two_linear: TwoLinear) ->
 
     # THEN nothing has to run (the data is the graph's own input)
     assert plan.nodes == ()
+
+
+def test_input_activations_reads_are_region_args_and_kwargs() -> None:
+    # GIVEN a region reading two branches positionally plus one keyword
+    graph, region = _branching_kwarg_graph()
+    node = graph.node(region)
+    assert node.kwargs  # guard: a traced region has none, which made this vacuous
+
+    # WHEN generating a plan to optimize that region w.r.t. its inputs
+    [plan] = bind_flows(graph, region, [InputActivations("original")])
+
+    # THEN the plan gives us the args and the kwargs arriving at the region
+    assert plan.reads == tuple(node.args)
+    assert plan.read_kwargs == {"extra": graph._inputs["x"]}
+
+
+def test_output_activations_reads_are_region_itself() -> None:
+    # GIVEN a region that carries a keyword argument
+    graph, region = _branching_kwarg_graph()
+    assert graph.node(region).kwargs  # guard: kwargs must exist to be dropped
+
+    # WHEN generating a plan to optimize that region w.r.t. its output
+    [plan] = bind_flows(graph, region, [OutputActivations("original")])
+
+    # THEN only the region's own output is read, and its kwargs are dropped
+    assert plan.reads == (region,)
+    assert plan.read_kwargs == {}
+
+
+def test_input_activations_reads_every_branch_not_just_the_last() -> None:
+    # GIVEN a region fed by two independent branches
+    graph, region = _branching_kwarg_graph()
+    left, right = tuple(graph.node(region).args)
+
+    # WHEN generating a plan to optimize that region w.r.t. its inputs
+    [plan] = bind_flows(graph, region, [InputActivations("original")])
+
+    # THEN both branches are read, so the reads are not a single node
+    assert plan.reads == (left, right)
+    # THEN the last bound node is only one of them, so it is not the read point
+    assert plan.nodes[-1] == right
+    assert set(plan.reads) - {plan.nodes[-1]} == {left}
+
+
+def test_bind_flows_rejects_unknown_dataflow_type(two_linear: TwoLinear) -> None:
+    # GIVEN a custom DataFlow subclass not handled by bind_flows
+    @attrs.define(frozen=True)
+    class UnknownFlow(DataFlow):
+        pass
+
+    graph = _traced_two_linear(two_linear)
+    region = graph.node_ref(two_linear.fc2)
+
+    # WHEN / THEN planning for an unknown flow type raises TypeError
+    with pytest.raises(TypeError, match="unsupported DataFlow type"):
+        bind_flows(graph, region, [UnknownFlow("original")])

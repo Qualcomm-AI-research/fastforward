@@ -36,7 +36,7 @@ Kinds of flow today: `InputActivations`, `OutputActivations`.
 import abc
 
 from contextlib import nullcontext
-from typing import Callable, ContextManager, TypeAlias
+from typing import Callable, ContextManager
 
 import attrs
 import torch
@@ -139,7 +139,3 @@ class InputActivations(DataFlow):
 @attrs.define(frozen=True, repr=False)
 class OutputActivations(DataFlow):
     """The activations leaving the region's output boundary."""
-
-
-# Closed union of every concrete flow.
-Flow: TypeAlias = InputActivations | OutputActivations
