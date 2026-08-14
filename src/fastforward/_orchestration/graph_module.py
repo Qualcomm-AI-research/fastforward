@@ -954,6 +954,53 @@ def ancestors(
     return on_path, reached
 
 
+def descendants(
+    graph: GraphModule, node: NodeRef, *, stop: NodeRef | None = None, strict: bool = False
+) -> tuple[set[NodeRef], bool]:
+    """Collect the transitive output-closure of `node`, optionally bounded at `stop`.
+
+    Walks `node_outputs` forward from `node`. When `stop` is given the walk does
+    not recurse past it. `strict=False` (default) returns the full closure of
+    everything reachable from `node` (including branches that then diverge).
+    `strict=True` (requires `stop`) keeps only nodes on a directed `node -> stop`
+    path.
+
+    Returns `(nodes, reached)` where `reached` reports whether `stop` was actually
+    encountered. When `stop is None`, `reached` is always True.
+    """
+    if strict and stop is None:
+        msg = "descendants(strict=True) requires a stop node to bound the path."
+        raise ValueError(msg)
+
+    collected: set[NodeRef] = set()
+    reached = stop is None
+    frontier = [node]
+    while frontier:
+        current = frontier.pop()
+        if current in collected:
+            continue
+        collected.add(current)
+        if current == stop:
+            reached = True
+            continue
+        frontier.extend(graph.node_outputs(current))
+
+    if not strict:
+        return collected, reached
+    if not reached:
+        return set(), False
+
+    on_path: set[NodeRef] = set()
+    frontier = [stop] if stop is not None else []
+    while frontier:
+        current = frontier.pop()
+        if current in on_path:
+            continue
+        on_path.add(current)
+        frontier.extend(inp for inp in graph.node_inputs(current) if inp in collected)
+    return on_path, reached
+
+
 def find_cycle(edges: dict[NodeRef, set[NodeRef]]) -> list[NodeRef] | None:
     """Return one cycle as a closed node path (`a -> ... -> a`), or None if acyclic.
 

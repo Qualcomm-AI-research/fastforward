@@ -34,6 +34,7 @@ from fastforward._orchestration.graph_module import (
     NodeRef,
     _BaseRef,
     ancestors,
+    descendants,
 )
 
 
@@ -113,11 +114,18 @@ def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[DataFlow]) -
 
 
 def _ancestors_of(graph: GraphModule, region: NodeRef, *, include_region: bool) -> set[NodeRef]:
-    """Collect the ancestor set of `region`.
-
-    Returns the raw set; the caller is responsible for ordering.
-    """
+    """Collect the (unordered) set of ancestors of `region`."""
     nodes, _ = ancestors(graph, region)
+
+    if not include_region:
+        nodes -= {region}
+
+    return nodes
+
+
+def _descendants_of(graph: GraphModule, region: NodeRef, *, include_region: bool) -> set[NodeRef]:
+    """Collect the (unordered) set of descendants of `region`."""
+    nodes, _ = descendants(graph, region)
 
     if not include_region:
         nodes -= {region}

@@ -19,6 +19,7 @@ from fastforward._orchestration.graph_module import (
     _BaseRef,
     ancestors,
     create_subgraph,
+    descendants,
     find_cycle,
     reduce_resolution,
     remap_subgraph_reference,
@@ -826,6 +827,41 @@ def test_ancestors_strict_and_nonstrict() -> None:
 
     # WHEN strict: only nodes on a src -> dst path
     on_path, reached = ancestors(graph, dst, stop=src, strict=True)
+    assert reached is True
+    assert on_path == {src, mid, dst}
+
+
+def test_descendants_strict_no_path_reports_not_reached(model: Model) -> None:
+    # GIVEN two real nodes where the stop lies upstream of the target
+    graph = model.to_graph_module()
+    sigmoid = graph.node_ref(graph.get_submodule("sigmoid"))
+    residual_1_linear = graph.node_ref(model.residual_1.linear)
+
+    # WHEN we ask for the strict path with stop upstream of target
+    nodes, reached = descendants(graph, sigmoid, stop=residual_1_linear, strict=True)
+
+    # THEN no path exists
+    assert reached is False
+    assert nodes == set()
+
+
+def test_descendants_strict_and_nonstrict() -> None:
+    # GIVEN a fork node feeding two branches: src -> mid -> dst, and src -> other
+    graph = GraphModule()
+    x = graph.add_input("x")
+    src = graph.add_node("src", torch.nn.Identity(), [x])
+    mid = graph.add_node("mid", torch.nn.Identity(), [src])
+    other = graph.add_node("other", torch.nn.Identity(), [src])
+    dst = graph.add_node("dst", torch.nn.Identity(), [mid])
+    graph.add_output(dst)
+    graph.add_output(other)
+
+    # WHEN non-strict: full closure includes the off-path branch
+    closure, _ = descendants(graph, src, stop=dst)
+    assert closure == {src, mid, dst, other}
+
+    # WHEN strict: only nodes on a src -> dst path
+    on_path, reached = descendants(graph, src, stop=dst, strict=True)
     assert reached is True
     assert on_path == {src, mid, dst}
 
