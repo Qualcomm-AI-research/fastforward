@@ -3,13 +3,13 @@
 
 """Pack FastForward integer codes + scales into GGUF block-32 quantized bytes.
 
-These helpers convert from FastForward's signed-symmetric quantization
-convention to the exact byte layout llama.cpp expects for the block-32
-quantized types (``Q4_0``, ``Q8_0``). The output is fed to
+These helpers convert from FastForward's quantization convention to the exact
+byte layout llama.cpp expects for the block-32 quantized types (``Q4_0``,
+``Q4_1``, ``Q8_0``). The output is fed to
 ``GGUFWriter.add_tensor(..., raw_dtype=...)``, which writes the bytes verbatim
 without re-quantizing — this is what preserves FastForward's learned scales.
 
-Both packers are pure ``torch`` and carry no dependency on the ``gguf`` package,
+All packers are pure ``torch`` and carry no dependency on the ``gguf`` package,
 so they can be imported and unit-tested without it installed.
 """
 
@@ -20,7 +20,9 @@ import torch
 from fastforward.export.stages.gguf.adapter import GgufQuantFormat
 
 
-def pack_q4_0_blocks(int_codes: torch.Tensor, scales: torch.Tensor) -> torch.Tensor:
+def pack_q4_0_blocks(
+    int_codes: torch.Tensor, scales: torch.Tensor, _offsets: torch.Tensor | None = None
+) -> torch.Tensor:
     """Pack FastForward quantized data into Q4_0 GGUF blocks.
 
     Args:
@@ -53,7 +55,9 @@ def pack_q4_0_blocks(int_codes: torch.Tensor, scales: torch.Tensor) -> torch.Ten
     return torch.cat([d_bytes, packed], dim=-1)
 
 
-def pack_q8_0_blocks(int_codes: torch.Tensor, scales: torch.Tensor) -> torch.Tensor:
+def pack_q8_0_blocks(
+    int_codes: torch.Tensor, scales: torch.Tensor, _offsets: torch.Tensor | None = None
+) -> torch.Tensor:
     """Pack FastForward quantized data into Q8_0 GGUF blocks.
 
     Args:
@@ -79,6 +83,40 @@ def pack_q8_0_blocks(int_codes: torch.Tensor, scales: torch.Tensor) -> torch.Ten
     return torch.cat([d_bytes, gguf_qs], dim=-1)
 
 
+def pack_q4_1_blocks(
+    int_codes: torch.Tensor, scales: torch.Tensor, offsets: torch.Tensor
+) -> torch.Tensor:
+    """Pack FastForward asymmetric quantized data into Q4_1 GGUF blocks.
+
+    Args:
+        int_codes: ``(n_blocks, 32)`` int8, values in ``[-8, +7]`` (FastForward
+            signed convention).
+        scales: ``(n_blocks,)`` float32, FastForward per-block scale.
+        offsets: ``(n_blocks,)`` float32, FastForward per-block offset.
+
+    Returns:
+        ``(n_blocks, 20)`` uint8 — raw Q4_1 block bytes: ``[fp16 d | fp16 m | 16 nibble bytes]``.
+
+    Convention conversion:
+        FastForward dequant: ``x = (code + offset) * scale`` with signed
+        ``code`` in ``[-8, +7]``. GGUF Q4_1 dequant: ``y = d * qs + m`` with
+        unsigned ``qs`` in ``[0, 15]``. Substituting ``code = qs - 8`` gives
+        ``d = scale`` and ``m = (offset - 8) * scale``.
+    """
+    n_blocks = int_codes.shape[0]
+
+    d_bytes = scales.to(torch.float16).view(torch.uint8).reshape(n_blocks, 2)
+    m = (offsets - 8) * scales
+    m_bytes = m.to(torch.float16).view(torch.uint8).reshape(n_blocks, 2)
+
+    gguf_qs = (int_codes.to(torch.int16) + 8).clamp(0, 15).to(torch.uint8)
+    block_size = int_codes.shape[1]
+    gguf_qs = gguf_qs.reshape(n_blocks, 2, block_size // 2)
+    packed = gguf_qs[:, 0, :] | (gguf_qs[:, 1, :] << 4)
+
+    return torch.cat([d_bytes, m_bytes, packed], dim=-1)
+
+
 GGUF_Q4_0 = GgufQuantFormat(
     name="Q4_0",
     num_bits=4,
@@ -95,4 +133,13 @@ GGUF_Q8_0 = GgufQuantFormat(
     symmetric=True,
     pack_fn=pack_q8_0_blocks,
     file_type=7,
+)
+
+GGUF_Q4_1 = GgufQuantFormat(
+    name="Q4_1",
+    num_bits=4,
+    block_size=32,
+    symmetric=False,
+    pack_fn=pack_q4_1_blocks,
+    file_type=3,
 )

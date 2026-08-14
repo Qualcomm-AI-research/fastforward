@@ -47,6 +47,7 @@ class ExtractedTensor:
     cols: int | None = None  # Always set for quantized (2D weights); None for 1D float tensors.
     int_codes: torch.Tensor | None = None
     scales: torch.Tensor | None = None
+    offsets: torch.Tensor | None = None
     float_data: torch.Tensor | None = None
     gguf_name: str = ""
 
@@ -193,6 +194,11 @@ def extract_module_tensors(
             quantized = quantizer(weight)
             int_codes = quantized.int_repr().detach().cpu()
             scales = quantizer.scale.detach().cpu().float()
+            offsets = (
+                None
+                if quantizer.symmetric or quantizer.offset is None
+                else quantizer.offset.detach().cpu().float()
+            )
             rows, cols = weight.shape
             # `_validate_quantizer` pins granularity so scales form a (rows, blocks) grid.
             assert scales.numel() % rows == 0
@@ -204,6 +210,7 @@ def extract_module_tensors(
                     cols=cols,
                     int_codes=int_codes,
                     scales=scales.reshape(rows, -1),
+                    offsets=offsets.reshape(rows, -1) if offsets is not None else None,
                 )
             )
         else:

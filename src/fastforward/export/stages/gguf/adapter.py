@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 _NameMapT: TypeAlias = Callable[[str], str | None]
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
 _IsTiedT: TypeAlias = Callable[[str, GgufSourceConfig], bool]
-_PackFnT: TypeAlias = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+_PackFnT: TypeAlias = Callable[..., torch.Tensor]
 TensorTransformT: TypeAlias = Callable[
     ["ExtractedTensor", GgufSourceConfig, "GgufQuantFormat"], "ExtractedTensor"
 ]

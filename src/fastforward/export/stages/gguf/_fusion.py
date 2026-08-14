@@ -97,13 +97,19 @@ def _fuse_quantized(tensors: list[ExtractedTensor], target_name: str, axis: int)
     """Concatenate quantized tensors along the given axis."""
     codes_list = []
     scales_list = []
+    offsets_list = []
+    has_offsets = tensors[0].offsets is not None
     for t in tensors:
         assert t.int_codes is not None and t.scales is not None
         codes_list.append(t.int_codes)
         scales_list.append(t.scales)
+        if has_offsets:
+            assert t.offsets is not None
+            offsets_list.append(t.offsets)
 
     fused_codes = torch.cat(codes_list, dim=axis)
     fused_scales = torch.cat(scales_list, dim=axis)
+    fused_offsets = torch.cat(offsets_list, dim=axis) if has_offsets else None
 
     if axis == 0:
         total_rows = sum(t.rows for t in tensors)
@@ -119,6 +125,7 @@ def _fuse_quantized(tensors: list[ExtractedTensor], target_name: str, axis: int)
         cols=total_cols,
         int_codes=fused_codes,
         scales=fused_scales,
+        offsets=fused_offsets,
     )
 
 

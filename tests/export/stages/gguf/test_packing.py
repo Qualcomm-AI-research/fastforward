@@ -1,7 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-"""Tests for GGUF block packing (Q4_0 / Q8_0).
+"""Tests for GGUF block packing (Q4_0 / Q4_1 / Q8_0).
 
 The packers convert FastForward's positive-scale signed codes into the exact
 byte layout llama.cpp reads back. The risk is entirely in the convention
@@ -20,6 +20,7 @@ import torch
 from fastforward.export.stages.gguf._packing import (
     GGUF_Q4_0,
     pack_q4_0_blocks,
+    pack_q4_1_blocks,
     pack_q8_0_blocks,
 )
 
@@ -130,3 +131,78 @@ def test_pack_block_byte_width(pack_fn: _PackFnT, block_bytes: int) -> None:
 
     # WHEN / THEN: the packed block has the GGUF-defined byte width.
     assert pack_fn(int_codes, scales).shape == (1, block_bytes)
+
+
+def _dequantize_q4_1(block_bytes: npt.NDArray[np.uint8]) -> npt.NDArray[np.float32]:
+    """Dequantize Q4_1 blocks the way llama.cpp does: ``y = d * qs + m``."""
+    n_blocks = block_bytes.shape[0]
+    d = block_bytes[:, :2].copy().view(np.float16).astype(np.float32).reshape(n_blocks, 1)
+    m = block_bytes[:, 2:4].copy().view(np.float16).astype(np.float32).reshape(n_blocks, 1)
+    qs = block_bytes[:, 4:]
+    low = (qs & 0x0F).astype(np.float32)
+    high = (qs >> 4).astype(np.float32)
+    nibbles = np.concatenate([low, high], axis=1)
+    result: npt.NDArray[np.float32] = d * nibbles + m
+    return result
+
+
+def test_pack_q4_1_block_layout() -> None:
+    # GIVEN: two blocks of signed 4-bit codes, positive scales, and offsets.
+    int_codes = torch.zeros(2, BLOCK_SIZE, dtype=torch.int8)
+    int_codes[0, 0] = -8
+    int_codes[0, 1] = 7
+    int_codes[1, :] = 3
+    scales = torch.tensor([0.5, 2.0], dtype=torch.float32)
+    offsets = torch.tensor([4.0, 6.0], dtype=torch.float32)
+
+    # WHEN: packing to Q4_1 bytes.
+    packed = pack_q4_1_blocks(int_codes, scales, offsets)
+
+    # THEN: each block is 20 bytes (fp16 d + fp16 m + 16 nibble bytes).
+    assert packed.shape == (2, 20)
+    assert packed.dtype == torch.uint8
+
+    packed_np = packed.numpy()
+    stored_d = packed_np[:, :2].copy().view(np.float16).astype(np.float32)
+    np.testing.assert_allclose(stored_d.reshape(-1), scales.numpy(), rtol=1e-3)
+
+    # THEN: m = (offset - 8) * scale.
+    expected_m = ((offsets - 8) * scales).numpy()
+    stored_m = packed_np[:, 2:4].copy().view(np.float16).astype(np.float32)
+    np.testing.assert_allclose(stored_m.reshape(-1), expected_m, rtol=1e-3)
+
+    # THEN: the signed codes map to unsigned nibbles via a +8 offset.
+    first_low_nibble = int(packed[0, 4]) & 0x0F
+    assert first_low_nibble == 0  # code -8 -> 0
+    second_low_nibble = int(packed[0, 4]) >> 4  # element 16 of block 0 is code 0 -> 8
+    assert second_low_nibble == 8
+
+
+def test_pack_q4_1_round_trip_matches_dequant() -> None:
+    # GIVEN: random signed 4-bit codes in [-8, 7] with positive scales and offsets.
+    rng = np.random.default_rng(42)
+    n_blocks = 16
+    int_codes_np = rng.integers(-8, 8, size=(n_blocks, BLOCK_SIZE)).astype(np.int8)
+    scales_np = rng.uniform(0.05, 2.0, size=n_blocks).astype(np.float32)
+    offsets_np = rng.uniform(-5.0, 10.0, size=n_blocks).astype(np.float32)
+
+    int_codes = torch.from_numpy(int_codes_np)
+    scales = torch.from_numpy(scales_np)
+    offsets = torch.from_numpy(offsets_np)
+
+    # WHEN: packing then dequantizing with llama.cpp's Q4_1 formula.
+    reconstructed = _dequantize_q4_1(pack_q4_1_blocks(int_codes, scales, offsets).numpy())
+
+    # THEN: it reproduces (code + offset) * scale within fp16 tolerance.
+    expected = (int_codes_np.astype(np.float32) + offsets_np[:, None]) * scales_np[:, None]
+    np.testing.assert_allclose(reconstructed, expected, atol=5e-2)
+
+
+def test_pack_q4_1_block_byte_width() -> None:
+    # GIVEN: a single zero block.
+    int_codes = torch.zeros(1, BLOCK_SIZE, dtype=torch.int8)
+    scales = torch.ones(1, dtype=torch.float32)
+    offsets = torch.zeros(1, dtype=torch.float32)
+
+    # WHEN / THEN: the packed block has the Q4_1-defined byte width of 20.
+    assert pack_q4_1_blocks(int_codes, scales, offsets).shape == (1, 20)
