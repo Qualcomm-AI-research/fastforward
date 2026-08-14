@@ -129,6 +129,14 @@ class ArchAdapter:
             implementation skips ``"lm_head.weight"`` when
             ``config.tie_word_embeddings`` is true. Override for architectures
             with different or additional tied parameters.
+        float_type: GGML type name for float tensors (e.g. ``"F32"``,
+            ``"F16"``, ``"BF16"``). All non-quantized tensors are cast to this
+            type at write time. Defaults to ``"F32"``.
+        float_type_overrides: Mapping of regex patterns (matched against the
+            GGUF tensor name) to GGML type names. First matching pattern wins;
+            unmatched tensors fall back to ``float_type``. Use this to keep
+            specific layers at higher precision (e.g. norms at F32 while the
+            rest is F16).
     """
 
     gguf_arch: str
@@ -138,3 +146,5 @@ class ArchAdapter:
     tokenizer_model: str
     tokenizer_pre: str
     is_tied: _IsTiedT = field(default=_default_is_tied)
+    float_type: str = "F32"
+    float_type_overrides: dict[str, str] = field(default_factory=dict)

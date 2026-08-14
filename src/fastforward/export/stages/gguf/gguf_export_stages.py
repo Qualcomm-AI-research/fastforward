@@ -11,6 +11,7 @@ operates on the live quantized module rather than a captured FX graph.
 """
 
 import pathlib
+import re
 
 from dataclasses import replace
 from typing import Any, TypeAlias, cast
@@ -173,7 +174,6 @@ def stage_write_gguf(
     quant_format = _require_quant_format(context)
 
     raw_dtype = GGMLQuantizationType[quant_format.name]
-    f32_dtype = GGMLQuantizationType["F32"]
 
     output_dir = pathlib.Path(context["output_dir"])
     model_name = context["model_name"]
@@ -191,7 +191,9 @@ def stage_write_gguf(
         for gguf_name, block_bytes in packed["quantized"].items():
             writer.add_tensor(gguf_name, block_bytes.numpy(), raw_dtype=raw_dtype)
         for gguf_name, float_data in packed["float"].items():
-            writer.add_tensor(gguf_name, float_data.numpy(), raw_dtype=f32_dtype)
+            float_type = _resolve_float_type(gguf_name, adapter)
+            data = _cast_float(float_data, float_type)
+            writer.add_tensor(gguf_name, data.numpy(), raw_dtype=GGMLQuantizationType[float_type])
 
         writer.write_header_to_file()
         writer.write_kv_data_to_file()
@@ -200,3 +202,32 @@ def stage_write_gguf(
         writer.close()
 
     return output_path
+
+
+def _resolve_float_type(gguf_name: str, adapter: ArchAdapter) -> str:
+    """Determine the GGML float type for a tensor, checking overrides first."""
+    for pattern, float_type in adapter.float_type_overrides.items():
+        if re.fullmatch(pattern, gguf_name):
+            return float_type
+    return adapter.float_type
+
+
+_FLOAT_DTYPES: dict[str, torch.dtype] = {
+    "F32": torch.float32,
+    "F16": torch.float16,
+    "BF16": torch.bfloat16,
+    "F64": torch.float64,
+}
+
+_RAW_BYTE_TYPES = frozenset({"BF16"})
+
+
+def _cast_float(data: torch.Tensor, target_type: str) -> torch.Tensor:
+    """Cast float32 tensor data to the target GGML float type for writing."""
+    if target_type not in _FLOAT_DTYPES:
+        msg = f"Unsupported float_type '{target_type}'. Supported: {sorted(_FLOAT_DTYPES)}"
+        raise ExportError(msg)
+    result = data.to(_FLOAT_DTYPES[target_type])
+    if target_type in _RAW_BYTE_TYPES:
+        result = result.view(torch.uint8)
+    return result

@@ -15,9 +15,11 @@ import pytest
 import torch
 
 from fastforward.exceptions import ExportError
-from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER, QWEN3_ADAPTER
+from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER, QWEN3_ADAPTER, ArchAdapter
 from fastforward.export.stages.gguf._extract import ExtractedTensor
 from fastforward.export.stages.gguf.gguf_export_stages import (
+    _cast_float,
+    _resolve_float_type,
     stage_apply_target_transforms,
     stage_map_tensor_names,
     stage_pack_gguf_blocks,
@@ -190,3 +192,111 @@ def _make_full_config() -> Any:
         rope_scaling = None
 
     return C()
+
+
+def test_resolve_float_type_default() -> None:
+    # GIVEN: an adapter with F16 default and no overrides.
+    adapter = ArchAdapter(
+        gguf_arch="test",
+        name_map=lambda n: n,
+        transforms=[],
+        write_metadata=lambda w, c: None,
+        tokenizer_model="gpt2",
+        tokenizer_pre="default",
+        float_type="F16",
+    )
+
+    # WHEN: resolving a tensor with no override match.
+    result = _resolve_float_type("blk.0.ffn_up.weight", adapter)
+
+    # THEN: falls back to the default.
+    assert result == "F16"
+
+
+def test_resolve_float_type_override_matches() -> None:
+    # GIVEN: an adapter with F16 default but norms overridden to F32.
+    adapter = ArchAdapter(
+        gguf_arch="test",
+        name_map=lambda n: n,
+        transforms=[],
+        write_metadata=lambda w, c: None,
+        tokenizer_model="gpt2",
+        tokenizer_pre="default",
+        float_type="F16",
+        float_type_overrides={r".*norm.*": "F32"},
+    )
+
+    # WHEN: resolving tensors.
+    norm_result = _resolve_float_type("blk.0.attn_norm.weight", adapter)
+    weight_result = _resolve_float_type("blk.0.ffn_up.weight", adapter)
+
+    # THEN: norm matches the override, other falls back to default.
+    assert norm_result == "F32"
+    assert weight_result == "F16"
+
+
+def test_resolve_float_type_first_override_wins() -> None:
+    # GIVEN: an adapter with multiple overrides that could both match.
+    adapter = ArchAdapter(
+        gguf_arch="test",
+        name_map=lambda n: n,
+        transforms=[],
+        write_metadata=lambda w, c: None,
+        tokenizer_model="gpt2",
+        tokenizer_pre="default",
+        float_type="F32",
+        float_type_overrides={
+            r"blk\.0\..*": "F16",
+            r".*norm.*": "BF16",
+        },
+    )
+
+    # WHEN: resolving a tensor that matches both patterns.
+    result = _resolve_float_type("blk.0.attn_norm.weight", adapter)
+
+    # THEN: first matching pattern wins.
+    assert result == "F16"
+
+
+def test_cast_float_f32_noop() -> None:
+    # GIVEN: float32 data.
+    data = torch.randn(4, 8)
+
+    # WHEN: casting to F32.
+    result = _cast_float(data, "F32")
+
+    # THEN: returns the same tensor unchanged.
+    assert result is data
+
+
+def test_cast_float_f16() -> None:
+    # GIVEN: float32 data.
+    data = torch.randn(4, 8)
+
+    # WHEN: casting to F16.
+    result = _cast_float(data, "F16")
+
+    # THEN: result is float16.
+    assert result.dtype == torch.float16
+    assert result.shape == (4, 8)
+
+
+def test_cast_float_bf16() -> None:
+    # GIVEN: float32 data.
+    data = torch.randn(4, 8)
+
+    # WHEN: casting to BF16.
+    result = _cast_float(data, "BF16")
+
+    # THEN: result is uint8 raw bytes (2 bytes per element).
+    assert result.dtype == torch.uint8
+    assert result.shape == (4, 16)
+
+
+def test_cast_float_unsupported_raises() -> None:
+    # GIVEN: float32 data and an invalid target type.
+    data = torch.randn(4, 8)
+
+    # WHEN / THEN: casting to an unsupported type raises ExportError.
+    with pytest.raises(ExportError, match="Unsupported float_type 'MXFP4'"):
+        _cast_float(data, "MXFP4")
