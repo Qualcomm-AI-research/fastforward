@@ -29,6 +29,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Design: design-choices.md
   - Tutorials: examples/index.md
   - API reference: reference/
 
