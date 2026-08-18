@@ -123,7 +123,7 @@ def test_ff_model_to_onnx_export(
     not is_torch_version_at_least("2.7"),
     reason=(
         "torch <= 2.6 does not re-infer the QuantizeLinear output type after the "
-        "FF quantize_by_tile lowering, leaving a stale float value_info that ONNX "
+        "FF affine_static_quantize lowering, leaving a stale float value_info that ONNX "
         "Runtime rejects at load time."
     ),
 )

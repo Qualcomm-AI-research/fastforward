@@ -1,149 +1,24 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-import functools
-import logging
-
-from typing import Any, Callable, List, ParamSpec, Sequence, TypeAlias, TypeVar
+from typing import List, Sequence
 
 import torch
 
 import fastforward as ff
 
-from fastforward.flags import get_compiled_quant_funcs
+from fastforward.library import conditional_compile, custom_quant_op, register_quant_fake
 from fastforward.quantization import tiled_tensor
 from fastforward.quantization.ste import round_ste
 
-from . import affine
-from .tiled_tensor import rows_to_tiles, tiles_to_rows
+from . import dtypes, range
 
 SizeT = Sequence[int]
 
-_T = TypeVar("_T")
-_P = ParamSpec("_P")
 
-
-def conditional_compile(func: Callable[_P, _T]) -> Callable[_P, _T]:
-    compiled_func = None
-
-    @functools.wraps(func)
-    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
-        nonlocal compiled_func
-        if "num_bits" in kwargs:
-            kwargs["num_bits"] = float(kwargs["num_bits"])  # type: ignore[arg-type]
-
-        if get_compiled_quant_funcs():
-            if compiled_func is None:
-                compiled_func = torch.compile(func)
-            return compiled_func(*args, **kwargs)  # type: ignore[no-any-return, unused-ignore]
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-@functools.lru_cache(maxsize=10)
-def can_support_bitwidth(dtype: torch.dtype, num_bits: float) -> bool:
-    """Check if dtype can store a quantized value without precision loss."""
-    available_precision_bits: float
-    if dtype.is_complex or dtype.is_floating_point:
-        match torch.finfo(dtype).dtype:
-            case "bfloat16":
-                available_precision_bits = 7
-            case "float16":
-                available_precision_bits = 10
-            case "float32":
-                available_precision_bits = 23
-            case "float64":
-                available_precision_bits = 52
-            case "float8_e4m3fn" | "float8_e4m3fnuz":
-                available_precision_bits = 3
-            case "float8_e5m2" | "float8_e5m2fnuz":
-                available_precision_bits = 2
-            case _:
-                available_precision_bits = num_bits
-                logging.getLogger(__name__).warning(
-                    f"Unknown mantissa size for {dtype}; precision loss possible."
-                )
-    else:
-        available_precision_bits = torch.iinfo(dtype).bits
-
-    # The first integer that cannot be exactly represented using a floating
-    # point representation is (2 ** (mantissa_bits + 1)) + 1. Since fastforward
-    # uses a signed quantization representation, we can also leverage the sign
-    # bit, providing an extra bit of precision.
-    representable_bitwidth = available_precision_bits + 2
-    return representable_bitwidth >= num_bits
-
-
-if torch.__version__ < "2.4":
-    torch.library.define(
-        "fastforward::quantize_by_tile",
-        "("
-        "Tensor input,"
-        "Tensor scale,"
-        "int[] tile_size,"
-        "int num_bits,"
-        "ScalarType? output_dtype = None,"
-        "Tensor? offset = None"
-        ") -> Tensor",
-    )
-
-    torch.library.define(
-        "fastforward::dequantize_by_tile",
-        "("
-        "Tensor input,"
-        "Tensor scale,"
-        "int[] tile_size,"
-        "Tensor? offset = None,"
-        "ScalarType? output_dtype = None"
-        ") -> Tensor",
-    )
-
-    torch.library.define(
-        "fastforward::quantize_by_tile_backward",
-        "("
-        "Tensor input,"
-        "Tensor doutput,"
-        "Tensor scale,"
-        "int[] tile_size,"
-        "int num_bits,"
-        "Tensor? offset"
-        ") -> (Tensor, Tensor, Tensor)",
-    )
-
-    torch.library.define(
-        "fastforward::quantize_dynamic_by_tile",
-        "("
-        "Tensor data,"
-        "int[] tile_size,"
-        "int num_bits,"
-        "bool symmetric,"
-        "bool allow_one_sided,"
-        "ScalarType output_dtype"
-        ") -> (Tensor, Tensor, Tensor)",
-    )
-
-
-def quant_operator(name: str) -> Callable[[Callable[..., Any]], Any]:
-    def decorator(func: Callable[..., Any]) -> Any:
-        if torch.__version__ >= "2.4":
-            return torch.library.custom_op(name, mutates_args=())(func)  # type:ignore[attr-defined, unused-ignore]
-        else:
-            return torch.library.impl(name, ("cpu", "cuda"), func=func)
-
-    return decorator
-
-
-register_fake = getattr(torch.library, "register_fake", torch.library.impl_abstract)
-
-
-def _infer_offset(offset: torch.Tensor | None, scale: torch.Tensor) -> torch.Tensor:
-    return torch.round(offset.reshape(-1)) if offset is not None else torch.zeros_like(scale)
-
-
-@quant_operator("fastforward::quantize_by_tile")
+@custom_quant_op("affine_static_quantize")
 @conditional_compile
-def quantize_by_tile_impl(
+def affine_static_quantize_op(
     data: torch.Tensor,
     scale: torch.Tensor,
     tile_size: SizeT,
@@ -162,16 +37,16 @@ def quantize_by_tile_impl(
     quantized = torch.clamp(quantized, min_threshold, max_threshold)
     result = tiled_tensor.rows_to_tiles(quantized, data.shape, tile_size)
     output_dtype = output_dtype or result.dtype
-    if not can_support_bitwidth(output_dtype, num_bits):
+    if not dtypes.can_support_bitwidth(output_dtype, num_bits):
         msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
         raise RuntimeError(msg)
     result = result.to(output_dtype)
     return result
 
 
-@quant_operator("fastforward::dequantize_by_tile")
+@custom_quant_op("affine_dequantize")
 @conditional_compile
-def dequantize_by_tile_impl(
+def affine_dequantize_op(
     data: torch.Tensor,
     scale: torch.Tensor,
     tile_size: SizeT,
@@ -182,7 +57,7 @@ def dequantize_by_tile_impl(
     offset = _infer_offset(offset, scale)
     tile_size = torch.Size(tile_size)
 
-    row_representation = tiles_to_rows(data, tile_size)
+    row_representation = tiled_tensor.tiles_to_rows(data, tile_size)
     dequantized = (row_representation + offset[:, None]) * scale[:, None]
     dequantized = tiled_tensor.rows_to_tiles(dequantized, data.shape, tile_size)
     if output_dtype:
@@ -190,9 +65,9 @@ def dequantize_by_tile_impl(
     return dequantized
 
 
-@quant_operator("fastforward::quantize_by_tile_backward")
+@custom_quant_op("affine_quantize_backward")
 @conditional_compile
-def quant_dequant_by_tile_grad_impl(
+def affine_quantize_backward_op(
     data: torch.Tensor,
     output_grad: torch.Tensor,
     scale: torch.Tensor,
@@ -209,8 +84,8 @@ def quant_dequant_by_tile_grad_impl(
     min_threshold = -(2 ** (num_bits - 1))
     max_threshold = -min_threshold - 1
 
-    data_as_rows = tiles_to_rows(data, tile_size)
-    grad_as_rows = tiles_to_rows(output_grad, tile_size)
+    data_as_rows = tiled_tensor.tiles_to_rows(data, tile_size)
+    grad_as_rows = tiled_tensor.tiles_to_rows(output_grad, tile_size)
 
     pre_round = (data_as_rows / scale[:, None]) - round_ste(offset[:, None])
     quantized = torch.round(pre_round)
@@ -232,24 +107,21 @@ def quant_dequant_by_tile_grad_impl(
     torch.where(clip_mask, dscale, (quantized - pre_round).to(dscale.dtype), out=dscale)
     dscale.mul_(grad_as_rows)
 
-    dinput = rows_to_tiles(dinput, data.shape, tile_size)
+    dinput = tiled_tensor.rows_to_tiles(dinput, data.shape, tile_size)
     dscale = dscale.sum(1).reshape(param_shape)
     return [dinput, dscale, doffset]
 
 
-RT: TypeAlias = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-
-
-@quant_operator("fastforward::quantize_dynamic_by_tile")
+@custom_quant_op("affine_dynamic_quantize")
 @conditional_compile
-def quantize_dynamic_by_tile_impl(
+def affine_dynamic_quantize_op(
     data: torch.Tensor,
     tile_size: SizeT,
     num_bits: float,
     symmetric: bool,
     allow_one_sided: bool,
     output_dtype: torch.dtype | None,
-) -> RT:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     tile_size = torch.Size(tile_size)
 
     min_threshold = -(2 ** (num_bits - 1))
@@ -263,7 +135,7 @@ def quantize_dynamic_by_tile_impl(
         msg = f"Cannot dynamically quantize an empty tensor of shape {data.shape}"
         raise ff.exceptions.QuantizationError(msg) from e
 
-    scale, offset = affine.parameters_for_range(
+    scale, offset = range.parameters_for_range(
         min_range,
         max_range,
         num_bits,
@@ -278,15 +150,15 @@ def quantize_dynamic_by_tile_impl(
     quantized = torch.clamp(quantized, min_threshold, max_threshold)
     result = tiled_tensor.rows_to_tiles(quantized, data.shape, tile_size)
     output_dtype = output_dtype or result.dtype
-    if not can_support_bitwidth(output_dtype, num_bits):
+    if not dtypes.can_support_bitwidth(output_dtype, num_bits):
         msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
         raise RuntimeError(msg)
     result = result.to(output_dtype)
     return result, scale, offset
 
 
-@register_fake("fastforward::quantize_by_tile")  # type: ignore[untyped-decorator]
-def quantize_by_tile_meta(
+@register_quant_fake("affine_static_quantize")
+def affine_static_quantize_meta(
     input: torch.Tensor,
     scale: torch.Tensor,
     tile_size: SizeT,
@@ -298,8 +170,8 @@ def quantize_by_tile_meta(
     return torch.empty_like(input)
 
 
-@register_fake("fastforward::dequantize_by_tile")  # type: ignore[untyped-decorator]
-def dequantize_by_tile_meta(
+@register_quant_fake("affine_dequantize")
+def affine_dequantize_meta(
     input: torch.Tensor,
     scale: torch.Tensor,
     tile_size: SizeT,
@@ -310,8 +182,8 @@ def dequantize_by_tile_meta(
     return torch.empty_like(input)
 
 
-@register_fake("fastforward::quantize_by_tile_backward")  # type: ignore[untyped-decorator]
-def quantize_by_tile_backward_meta(
+@register_quant_fake("affine_quantize_backward")
+def affine_quantize_backward_meta(
     input: torch.Tensor,
     output_grad: torch.Tensor,
     scale: torch.Tensor,
@@ -323,17 +195,21 @@ def quantize_by_tile_backward_meta(
     return [torch.empty_like(input), torch.empty_like(scale), torch.empty_like(scale)]
 
 
-@register_fake("fastforward::quantize_dynamic_by_tile")  # type: ignore[untyped-decorator]
-def quantize_dynamic_by_tile_meta(
+@register_quant_fake("affine_dynamic_quantize")
+def affine_dynamic_quantize_meta(
     input: torch.Tensor,
     tile_size: SizeT,
     num_bits: float,
     symmetric: bool,
     allow_one_sided: bool,
     output_dtype: torch.dtype | None,
-) -> RT:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     del num_bits, symmetric, allow_one_sided, output_dtype
     num_params = int(input.numel() / torch.Size(tile_size).numel())
     scale = torch.empty(num_params)
     offset = torch.empty(num_params)
     return torch.empty_like(input), scale, offset
+
+
+def _infer_offset(offset: torch.Tensor | None, scale: torch.Tensor) -> torch.Tensor:
+    return torch.round(offset.reshape(-1)) if offset is not None else torch.zeros_like(scale)

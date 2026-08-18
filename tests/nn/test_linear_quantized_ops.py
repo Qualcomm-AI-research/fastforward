@@ -160,7 +160,7 @@ def test_getitem_perchannel(granularity: ff.granularity.Granularity, _seed_prngs
     # Given: a quantized and dequantized tensor
     data_shape = (3, 1, 2)
     x_in = torch.randn(data_shape)
-    qx = dynamic_quant.quantize_per_granularity(x_in, granularity=granularity, num_bits=4)
+    qx = dynamic_quant.quantize(x_in, granularity=granularity, num_bits=4)
     x = qx.dequantize()
 
     # Iterate over a large set of possible ways of indexing a tensor

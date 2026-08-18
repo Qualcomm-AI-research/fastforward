@@ -33,8 +33,8 @@ def test_with_ff_qdq_lowerings_injects_ff_lowerings_without_mutating_input() -> 
     # call at the same opset is well-defined.
     expected_q, expected_dq = _resolve_qdq_lowerings(_QDQ_MIN_OPSET_VERSION)
     merged_table = new_context["onnx_export_options"]["custom_translation_table"]
-    assert merged_table[torch.ops.fastforward.quantize_by_tile.default] is expected_q
-    assert merged_table[torch.ops.fastforward.dequantize_by_tile.default] is expected_dq
+    assert merged_table[torch.ops.fastforward.affine_static_quantize.default] is expected_q
+    assert merged_table[torch.ops.fastforward.affine_dequantize.default] is expected_dq
     assert merged_table["sentinel_op"] == "sentinel_lowering"
 
     # THEN the user context remains unchanged
@@ -52,7 +52,7 @@ def test_with_ff_qdq_lowerings_injects_ff_lowerings_without_mutating_input() -> 
 
 
 def test_with_ff_qdq_lowerings_preserves_user_override_for_ff_op() -> None:
-    # GIVEN a user context with a custom Q lowering for the quantize_by_tile op.
+    # GIVEN a user context with a custom Q lowering for the affine_static_quantize op.
     def _custom_q_lowering(*args: Any, **kwargs: Any) -> Any:
         del args, kwargs
         return None
@@ -60,7 +60,7 @@ def test_with_ff_qdq_lowerings_preserves_user_override_for_ff_op() -> None:
     user_context = {
         "onnx_export_options": {
             "custom_translation_table": {
-                torch.ops.fastforward.quantize_by_tile.default: _custom_q_lowering,
+                torch.ops.fastforward.affine_static_quantize.default: _custom_q_lowering,
             },
         },
     }
@@ -71,9 +71,9 @@ def test_with_ff_qdq_lowerings_preserves_user_override_for_ff_op() -> None:
     # THEN the user-supplied lowering for the overridden op wins, while the FF
     # default is still applied for the op the user did not override.
     table = new_context["onnx_export_options"]["custom_translation_table"]
-    assert table[torch.ops.fastforward.quantize_by_tile.default] is _custom_q_lowering
+    assert table[torch.ops.fastforward.affine_static_quantize.default] is _custom_q_lowering
     _, expected_dq = _resolve_qdq_lowerings(_QDQ_MIN_OPSET_VERSION)
-    assert table[torch.ops.fastforward.dequantize_by_tile.default] is expected_dq
+    assert table[torch.ops.fastforward.affine_dequantize.default] is expected_dq
 
 
 @pytest.mark.parametrize(

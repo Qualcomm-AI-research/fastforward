@@ -27,11 +27,11 @@ def _build_module_with_quantize_and_dequantize() -> torch.fx.GraphModule:
     offset_node = graph.get_attr("offset")
 
     quantize_node = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(input_node, scale_node, (1,), 8.0, torch.int8, offset_node),
     )
     dequantize_node = graph.call_function(
-        torch.ops.fastforward.dequantize_by_tile.default,
+        torch.ops.fastforward.affine_dequantize.default,
         args=(quantize_node, scale_node, (1,), offset_node, torch.float32),
     )
     graph.output(dequantize_node)
@@ -49,19 +49,19 @@ def _build_module_with_two_quantize_and_dequantize_pairs() -> torch.fx.GraphModu
     offset_node = graph.get_attr("offset")
 
     quantize_node_1 = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(input_node, scale_node, (1,), 8.0, torch.int8, offset_node),
     )
     dequantize_node_1 = graph.call_function(
-        torch.ops.fastforward.dequantize_by_tile.default,
+        torch.ops.fastforward.affine_dequantize.default,
         args=(quantize_node_1, scale_node, (1,), offset_node, torch.float32),
     )
     quantize_node_2 = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(dequantize_node_1, scale_node, (1,), 8.0, torch.int8, offset_node),
     )
     dequantize_node_2 = graph.call_function(
-        torch.ops.fastforward.dequantize_by_tile.default,
+        torch.ops.fastforward.affine_dequantize.default,
         args=(quantize_node_2, scale_node, (1,), offset_node, torch.float32),
     )
     graph.output(dequantize_node_2)
@@ -80,11 +80,11 @@ def _build_module_with_mixed_ops_and_quantization() -> torch.fx.GraphModule:
     offset_node = graph.get_attr("offset")
 
     quantize_node = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(relu_node, scale_node, (1,), 8.0, torch.int8, offset_node),
     )
     dequantize_node = graph.call_function(
-        torch.ops.fastforward.dequantize_by_tile.default,
+        torch.ops.fastforward.affine_dequantize.default,
         args=(quantize_node, scale_node, (1,), offset_node, torch.float32),
     )
     sigmoid_node = graph.call_function(torch.ops.aten.sigmoid.default, args=(dequantize_node,))
@@ -145,8 +145,8 @@ def test_annotate_ff_quant_specs_removes_quantize_and_dequantize_nodes() -> None
 
     # THEN: Quantize/dequantize nodes should be removed and quant spec attached to input.
     call_targets = [node.target for node in output_module.graph.nodes if node.op == "call_function"]
-    assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
-    assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
+    assert torch.ops.fastforward.affine_static_quantize.default not in call_targets
+    assert torch.ops.fastforward.affine_dequantize.default not in call_targets
 
     input_node = next(node for node in output_module.graph.nodes if node.op == "placeholder")
     assert FF_QUANTIZATION_SPEC in input_node.meta
@@ -161,8 +161,8 @@ def test_annotate_ff_quant_specs_removes_all_quantize_and_dequantize_nodes() -> 
 
     # THEN: All quantize/dequantize nodes should be removed.
     call_targets = [node.target for node in output_module.graph.nodes if node.op == "call_function"]
-    assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
-    assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
+    assert torch.ops.fastforward.affine_static_quantize.default not in call_targets
+    assert torch.ops.fastforward.affine_dequantize.default not in call_targets
 
 
 def test_annotate_ff_quant_specs_removes_quant_nodes_and_retains_other_nodes() -> None:
@@ -174,8 +174,8 @@ def test_annotate_ff_quant_specs_removes_quant_nodes_and_retains_other_nodes() -
 
     # THEN: FF quant/dequant nodes are removed, but other call_function nodes remain.
     call_targets = [node.target for node in output_module.graph.nodes if node.op == "call_function"]
-    assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
-    assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
+    assert torch.ops.fastforward.affine_static_quantize.default not in call_targets
+    assert torch.ops.fastforward.affine_dequantize.default not in call_targets
     assert torch.ops.aten.relu.default in call_targets
     assert torch.ops.aten.sigmoid.default in call_targets
     assert len(call_targets) == 2
@@ -190,8 +190,8 @@ def test_ff_quantization_nodes_only_returns_quantize_and_dequantize_nodes() -> N
 
     # THEN: Only quantize/dequantize nodes are returned.
     assert len(quantization_nodes) == 2
-    assert quantization_nodes[0].target == torch.ops.fastforward.quantize_by_tile.default
-    assert quantization_nodes[1].target == torch.ops.fastforward.dequantize_by_tile.default
+    assert quantization_nodes[0].target == torch.ops.fastforward.affine_static_quantize.default
+    assert quantization_nodes[1].target == torch.ops.fastforward.affine_dequantize.default
 
 
 def test_propagate_ff_quant_specs_propagates_through_view_ops() -> None:

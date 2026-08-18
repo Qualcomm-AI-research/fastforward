@@ -18,8 +18,8 @@ from fastforward.export._export_types import (
     QuantParametersDict,
 )
 from fastforward.export._lpbq import LPBQProcessor
-from fastforward.quantization._quantizer_impl import _infer_offset
 from fastforward.quantization.affine import integer_minimum, quantization_range
+from fastforward.quantization.affine._ops import _infer_offset
 from fastforward.quantization.granularity import granularity_from_sizes
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ import torch
 from fastforward.quantization import granularity as granularities
 from fastforward.quantized_tensor import QuantizedTensor
 
-from .affine import quantize_per_granularity
+from .affine import quantize
 
 
 def random_quantized(
@@ -51,7 +51,7 @@ def random_quantized(
                 + f"Found {scale.numel()} and {offset.numel()}"
             )
 
-    random_tensor = quantize_per_granularity(
+    random_tensor = quantize(
         torch.randn(shape, device=device),
         scale=scale,
         offset=offset,

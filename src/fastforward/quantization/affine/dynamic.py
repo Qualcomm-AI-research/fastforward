@@ -1,7 +1,6 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 from typing import TYPE_CHECKING
 
 import torch
@@ -16,7 +15,7 @@ from fastforward.quantization.affine.function import (
 from fastforward.quantization.function import QuantizationContext
 
 if TYPE_CHECKING:
-    from fastforward.quantized_tensor import QuantizedTensor
+    from fastforward import QuantizedTensor
 
 
 def quantization_context(
@@ -53,7 +52,7 @@ def quantization_context(
     return QuantizationContext(AffineQuantizationFunction, params)
 
 
-def quantize_per_granularity(
+def quantize(
     input: torch.Tensor,
     granularity: granularities.Granularity,
     num_bits: int = 8,
@@ -75,38 +74,17 @@ def quantize_per_granularity(
     Returns:
         Quantized tensor
     """
-    match granularity:
-        case granularities.PerTensor():
-            return quantize_per_tensor(
-                input,
-                num_bits=num_bits,
-                symmetric=symmetric,
-                allow_one_sided=allow_one_sided,
-                output_dtype=output_dtype,
-            )
-        case granularities.PerChannel(axis):
-            return quantize_per_channel(
-                input,
-                axis,
-                num_bits=num_bits,
-                symmetric=symmetric,
-                allow_one_sided=allow_one_sided,
-                output_dtype=output_dtype,
-            )
-        case _:
-            tile_size = granularity.tile_size(input.shape)
-            assert not isinstance(tile_size, str)
-            return quantize_by_tile(
-                input,
-                tile_size,
-                num_bits=num_bits,
-                symmetric=symmetric,
-                allow_one_sided=allow_one_sided,
-                output_dtype=output_dtype,
-            )
+    params = DynamicAffineQuantParams(
+        num_bits=num_bits,
+        granularity=granularity,
+        symmetric=symmetric,
+        allow_one_sided=allow_one_sided,
+        quantized_dtype=output_dtype,
+    )
+    return AffineQuantizationFunction.quantize(input, params)
 
 
-def quantize_by_tile(
+def quantize_per_tile(
     input: torch.Tensor,
     tile_size: torch.Size,
     num_bits: int = 8,
@@ -128,14 +106,8 @@ def quantize_by_tile(
     Returns:
         Quantized tensor
     """
-    params = DynamicAffineQuantParams(
-        num_bits=num_bits,
-        granularity=ff.PerTile(tile_size),
-        symmetric=symmetric,
-        allow_one_sided=allow_one_sided,
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerTile(tile_size)
+    return quantize(input, granularity, num_bits, symmetric, allow_one_sided, output_dtype)
 
 
 def quantize_per_tensor(
@@ -158,14 +130,8 @@ def quantize_per_tensor(
     Returns:
         Quantized tensor
     """
-    params = DynamicAffineQuantParams(
-        num_bits=num_bits,
-        granularity=ff.PerTensor(),
-        symmetric=symmetric,
-        allow_one_sided=allow_one_sided,
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerTensor()
+    return quantize(input, granularity, num_bits, symmetric, allow_one_sided, output_dtype)
 
 
 def quantize_per_channel(
@@ -190,14 +156,8 @@ def quantize_per_channel(
     Returns:
         Quantized tensor
     """
-    params = DynamicAffineQuantParams(
-        num_bits=num_bits,
-        granularity=ff.PerChannel(axis),
-        symmetric=symmetric,
-        allow_one_sided=allow_one_sided,
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerChannel(axis)
+    return quantize(input, granularity, num_bits, symmetric, allow_one_sided, output_dtype)
 
 
 def quantize_per_block(
@@ -230,12 +190,5 @@ def quantize_per_block(
     input_shape[channel_axis] = 1
     input_shape[block_axis] = block_size
     tile_size = torch.Size(input_shape)
-
-    params = DynamicAffineQuantParams(
-        num_bits=num_bits,
-        granularity=ff.PerTile(tile_size),
-        symmetric=symmetric,
-        allow_one_sided=allow_one_sided,
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerTile(tile_size)
+    return quantize(input, granularity, num_bits, symmetric, allow_one_sided, output_dtype)

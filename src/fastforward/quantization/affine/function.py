@@ -22,7 +22,7 @@ from fastforward.quantization.function import (
     QuantizationParameters,
 )
 
-from ._autograd import dequantize_affine, quantize_affine, quantize_dynamic_affine
+from ._autograd import affine_dequantize_fn, affine_dynamic_quantize_fn, affine_static_quantize_fn
 
 if TYPE_CHECKING:
     from fastforward.quantized_tensor import QuantizedTensor
@@ -102,7 +102,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             raise ExportError("Export supports only static affine quantization.")
 
         tile_size = params.granularity.tile_size(data.shape)
-        quantized_data = quantize_affine(
+        quantized_data = affine_static_quantize_fn(
             data,
             params.scale,
             params.offset,
@@ -111,7 +111,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             params.quantized_dtype or data.dtype,
         )
 
-        dequantized_data = dequantize_affine(
+        dequantized_data = affine_dequantize_fn(
             quantized_data,
             params.scale,
             params.offset,
@@ -125,7 +125,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         cls, data: torch.Tensor, params: StaticAffineQuantParams
     ) -> "QuantizedTensor":
         tile_size = params.granularity.tile_size(data.shape)
-        quantized_data = quantize_affine(
+        quantized_data = affine_static_quantize_fn(
             data,
             params.scale,
             params.offset,
@@ -161,7 +161,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         tile_size = params.granularity.tile_size(data.shape)
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         output_dtype = params.quantized_dtype or data.dtype
-        quantized_data, scale, offset = quantize_dynamic_affine(
+        quantized_data, scale, offset = affine_dynamic_quantize_fn(
             data,
             tile_size,
             params.num_bits,
@@ -183,7 +183,7 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
             raise TypeError("Cannot dequantize a QuantizedTensor with dynamic parameters.")
 
         tile_size = params.granularity.tile_size(data.shape)
-        return dequantize_affine(
+        return affine_dequantize_fn(
             data, params.scale, params.offset, tile_size, params.dequantize_dtype
         )
 

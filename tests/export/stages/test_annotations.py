@@ -14,7 +14,7 @@ def _build_quantize_node(num_bits: int | float) -> tuple[torch.fx.Node, dict[str
     scale = graph.get_attr("scale")
     offset = graph.get_attr("offset")
     quantize = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(data, scale, (1,), num_bits, torch.int8, offset),
     )
     graph.output(quantize)

@@ -16,7 +16,7 @@ _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 
 _QDQ_DTYPE_BY_BITWIDTH = {
     # Smallest signed-int ONNX storage that matches FF's signed-range clamping.
-    # FF's quantize_by_tile clamps to [-2**(N-1), 2**(N-1)-1]; ONNX QuantizeLinear
+    # FF's affine_static_quantize clamps to [-2**(N-1), 2**(N-1)-1]; ONNX QuantizeLinear
     # saturates to the storage dtype's full range. The two only agree when the
     # storage dtype is at least N bits wide, so we pick the tight signed dtype
     # for each supported bitwidth. INT4/INT16 in QuantizeLinear/DequantizeLinear
@@ -109,8 +109,8 @@ def _ff_quant_dtype_for_bitwidth(num_bits: int | float) -> int:
     return dtype
 
 
-def _make_ff_quantize_by_tile_onnx(op: Any) -> Callable[..., Any]:
-    """Return a `quantize_by_tile -> QuantizeLinear` lowering bound to ``op``.
+def _make_ff_affine_static_quantize_onnx(op: Any) -> Callable[..., Any]:
+    """Return a `affine_static_quantize -> QuantizeLinear` lowering bound to ``op``.
 
     ``op`` is the onnxscript opset namespace (e.g. ``onnxscript.opset21``)
     selected at runtime from the user's ``onnx_export_options["opset_version"]``.
@@ -139,8 +139,8 @@ def _make_ff_quantize_by_tile_onnx(op: Any) -> Callable[..., Any]:
     return lowering
 
 
-def _make_ff_dequantize_by_tile_onnx(op: Any) -> Callable[..., Any]:
-    """Return a `dequantize_by_tile -> DequantizeLinear` lowering bound to ``op``.
+def _make_ff_affine_dequantize_onnx(op: Any) -> Callable[..., Any]:
+    """Return a `affine_dequantize -> DequantizeLinear` lowering bound to ``op``.
 
     Expects the lowering's ``input`` to already be the integer-typed output of an
     upstream ``QuantizeLinear`` (i.e. no float-cast roundtrip between Q and DQ).
@@ -186,7 +186,7 @@ def _resolve_qdq_lowerings(
             f"a supported opset (>= {_QDQ_MIN_OPSET_VERSION})."
         )
         raise ExportError(msg)
-    return _make_ff_quantize_by_tile_onnx(op), _make_ff_dequantize_by_tile_onnx(op)
+    return _make_ff_affine_static_quantize_onnx(op), _make_ff_affine_dequantize_onnx(op)
 
 
 def _with_ff_qdq_lowerings(context: dict[str, Any]) -> dict[str, Any]:
@@ -229,8 +229,8 @@ def _with_ff_qdq_lowerings(context: dict[str, Any]) -> dict[str, Any]:
     q_lowering, dq_lowering = _resolve_qdq_lowerings(int(options["opset_version"]))
 
     table = dict(raw_table)
-    table.setdefault(torch.ops.fastforward.quantize_by_tile.default, q_lowering)
-    table.setdefault(torch.ops.fastforward.dequantize_by_tile.default, dq_lowering)
+    table.setdefault(torch.ops.fastforward.affine_static_quantize.default, q_lowering)
+    table.setdefault(torch.ops.fastforward.affine_dequantize.default, dq_lowering)
     options["custom_translation_table"] = table
     return {**context, "onnx_export_options": options}
 

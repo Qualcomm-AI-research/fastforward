@@ -11,8 +11,9 @@ different in representation, not in value. These semantics are not strictly
 enforced but implementers of new quantization functions are encouraged to
 follow the same semantics.
 
-`quantize_affine`, `dequantize_affine` and `quantize_dynamic_affine` are typed
-interfaces to their corresponding autograd functions.
+`static_affine_quantize_fn`, `affine_dequantize_fn` and
+`dynamic_affine_quantize_fn` are typed interfaces to their corresponding
+autograd functions.
 """
 
 from typing import Any, Literal
@@ -24,7 +25,7 @@ from typing_extensions import override
 from fastforward.common import tensor_or_none
 
 
-def quantize_affine(
+def affine_static_quantize_fn(
     data: torch.Tensor,
     scale: float | torch.Tensor,
     offset: float | torch.Tensor | None,
@@ -35,10 +36,23 @@ def quantize_affine(
     dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
     scale = tensor_or_none(scale, dtype=dtype, device=data.device)
     offset = tensor_or_none(offset, dtype=dtype, device=data.device)
-    return QuantizeStaticAffine.apply(data, scale, offset, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
+    return AffineStaticQuantizeFn.apply(data, scale, offset, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
 
 
-def dequantize_affine(
+def affine_dynamic_quantize_fn(
+    data: torch.Tensor,
+    tile_size: torch.Size | Literal["data_shape"],
+    num_bits: int,
+    symmetric: bool,
+    allow_one_sided: bool,
+    quantized_dtype: torch.dtype | None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
+    return AffineDynamicQuantizeFn.apply(  # type: ignore[no-any-return]
+        data, tile_size, num_bits, symmetric, allow_one_sided, quantized_dtype
+    )
+
+
+def affine_dequantize_fn(
     data: torch.Tensor,
     scale: float | torch.Tensor,
     offset: float | torch.Tensor | None,
@@ -49,23 +63,10 @@ def dequantize_affine(
         dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
     scale = tensor_or_none(scale, dtype=dtype, device=data.device)
     offset = tensor_or_none(offset, dtype=dtype, device=data.device)
-    return DequantizeAffine.apply(data, scale, offset, tile_size, dtype)  # type: ignore[no-any-return]
+    return AffineDequantizeFn.apply(data, scale, offset, tile_size, dtype)  # type: ignore[no-any-return]
 
 
-def quantize_dynamic_affine(
-    data: torch.Tensor,
-    tile_size: torch.Size | Literal["data_shape"],
-    num_bits: int,
-    symmetric: bool,
-    allow_one_sided: bool,
-    quantized_dtype: torch.dtype | None,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-    return QuantizeDynamicAffine.apply(  # type: ignore[no-any-return]
-        data, tile_size, num_bits, symmetric, allow_one_sided, quantized_dtype
-    )
-
-
-class QuantizeStaticAffine(torch.autograd.Function):
+class AffineStaticQuantizeFn(torch.autograd.Function):
     @staticmethod
     @override
     def forward(
@@ -83,7 +84,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
 
-        return torch.ops.fastforward.quantize_by_tile(  # type: ignore[no-any-return]
+        return torch.ops.fastforward.affine_static_quantize(  # type: ignore[no-any-return]
             data, scale, tile_size, num_bits, quant_dtype, offset
         )
 
@@ -96,7 +97,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
         data, scale, offset = ctx.saved_tensors
         tile_size = ctx.tile_size
         num_bits = ctx.num_bits
-        grads = torch.ops.fastforward.quantize_by_tile_backward(
+        grads = torch.ops.fastforward.affine_quantize_backward(
             data, output_grad, scale, tile_size, num_bits, offset
         )
         data_grad, scale_grad, offset_grad_ = grads
@@ -104,7 +105,7 @@ class QuantizeStaticAffine(torch.autograd.Function):
         return (data_grad, scale_grad, offset_grad, None, None, None)
 
 
-class QuantizeDynamicAffine(torch.autograd.Function):
+class AffineDynamicQuantizeFn(torch.autograd.Function):
     @staticmethod
     @override
     def forward(
@@ -118,7 +119,7 @@ class QuantizeDynamicAffine(torch.autograd.Function):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         quant_dtype = quantized_dtype or data.dtype
         tile_size = data.shape if tile_size == "data_shape" else tile_size
-        return torch.ops.fastforward.quantize_dynamic_by_tile(  # type: ignore[no-any-return]
+        return torch.ops.fastforward.affine_dynamic_quantize(  # type: ignore[no-any-return]
             data, tile_size, num_bits, symmetric, allow_one_sided, quant_dtype
         )
 
@@ -133,7 +134,7 @@ class QuantizeDynamicAffine(torch.autograd.Function):
         return (grad, None, None, None, None, None)
 
 
-class DequantizeAffine(torch.autograd.Function):
+class AffineDequantizeFn(torch.autograd.Function):
     @staticmethod
     @override
     def forward(
@@ -145,7 +146,9 @@ class DequantizeAffine(torch.autograd.Function):
         dtype: torch.dtype | None,
     ) -> torch.Tensor:
         tile_size = data.shape if tile_size == "data_shape" else tile_size
-        return torch.ops.fastforward.dequantize_by_tile(data, scale, tile_size, offset, dtype)  # type: ignore[no-any-return]
+        return torch.ops.fastforward.affine_dequantize(  # type: ignore[no-any-return]
+            data, scale, tile_size, offset, dtype
+        )
 
     @staticmethod
     @override

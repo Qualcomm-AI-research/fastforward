@@ -25,7 +25,7 @@ def _ff_quantizer_spec(
     node: torch.fx.Node, quant_params: dict[str, torch.Tensor]
 ) -> FFQuantizerSpec:
     """Get ff specific quantization spec for `node`."""
-    if node.target is not torch.ops.fastforward.quantize_by_tile.default:  # type: ignore[misc,unused-ignore]
+    if node.target is not torch.ops.fastforward.affine_static_quantize.default:  # type: ignore[misc,unused-ignore]
         msg = f"Unsupported target: {node.target}"
         raise NotImplementedError(msg)
 

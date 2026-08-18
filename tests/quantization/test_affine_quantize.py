@@ -186,7 +186,7 @@ def test_quantize_per_block(
 @pytest.mark.parametrize("num_bits", NUM_BITS)
 @pytest.mark.parametrize("output_dtype", OUTPUT_DTYPES)
 @pytest.mark.parametrize("tile_size", [(16, 8, 4), (8, 16, 2)])
-def test_quantize_by_tile(
+def test_affine_static_quantize(
     device: torch.device,
     num_bits: int,
     output_dtype: torch.dtype,
@@ -204,7 +204,7 @@ def test_quantize_by_tile(
     scale.requires_grad_()
     offset.requires_grad_()
 
-    quantized = affine.quantize_by_tile(data, scale, offset, tile_size, num_bits, output_dtype)
+    quantized = affine.quantize_per_tile(data, scale, offset, tile_size, num_bits, output_dtype)
     dequantized = quantized.dequantize()
 
     quantized.dequantize().sum().backward()
@@ -338,7 +338,7 @@ def _quantize_per_element_impl(
         offset.fill_(offset_)
 
     tile_size = torch.Size((1, 1, 1))
-    quantized = affine.quantize_by_tile(data, scale, offset, tile_size, num_bits, output_dtype)
+    quantized = affine.quantize_per_tile(data, scale, offset, tile_size, num_bits, output_dtype)
     dequantized = quantized.dequantize()
 
     if dequantized.grad_fn is not None:
@@ -373,7 +373,7 @@ def test_quantized_value_precision_loss() -> None:
     # WHEN the tensor is quantized to a bitwidth that cannot be represented in the provided output_dtype
     # THEN a RuntimeError is raised
     with pytest.raises(RuntimeError):
-        affine.quantize_by_tile(
+        affine.quantize_per_tile(
             data,
             torch.tensor([1.0]),
             torch.tensor([0.0]),

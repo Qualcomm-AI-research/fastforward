@@ -14,8 +14,8 @@ from torch.fx.passes.infra.pass_base import PassResult
 from fastforward.export.stages.annotations import _ff_quantizer_spec
 
 FF_QUANTIZATION_SPEC = "__FF_QUANTIZATION_SPEC"
-QUANTIZE_OPERATIONS = (torch.ops.fastforward.quantize_by_tile.default,)
-DEQUANTIZE_OPERATIONS = (torch.ops.fastforward.dequantize_by_tile.default,)
+QUANTIZE_OPERATIONS = (torch.ops.fastforward.affine_static_quantize.default,)
+DEQUANTIZE_OPERATIONS = (torch.ops.fastforward.affine_dequantize.default,)
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +125,9 @@ def _ff_quantization_parameters(
     offset: Any = None
     for node in _ff_quantization_nodes(module.graph):
         match node.target:
-            case torch.ops.fastforward.quantize_by_tile.default:
+            case torch.ops.fastforward.affine_static_quantize.default:
                 _data, scale, _tile_size, _num_bits, _output_dtype, offset = node.args
-            case torch.ops.fastforward.dequantize_by_tile.default:
+            case torch.ops.fastforward.affine_dequantize.default:
                 _data, scale, _tile_size, offset, _output_dtype = node.args
             case _:
                 assert False, "unreachable"

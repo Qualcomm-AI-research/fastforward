@@ -36,13 +36,13 @@ class Granularity(abc.ABC):
         > gr = some_granularity(...)
         > tile_size = gr.tile_size(data.shape)
 
-    The found tile size can then be used as input for the `quantize_by_tile` and `quantize_by_tile_function`
+    The found tile size can then be used as input for the `affine_static_quantize` and `affine_static_quantize_function`
     methods from `fastforward.quantization.affine` like so:
 
         > scale = 1.4
         > offset = 0.
         > num_bits = 3
-        > quantize_by_tile(scale, offset, tile_size, num_bits)
+        > affine_static_quantize(scale, offset, tile_size, num_bits)
 
     A more involved usage of the Granularity class can be found in the `LinearQuantizer` class in
     FastForward (`fastforward.nn.linear_quantizer`).

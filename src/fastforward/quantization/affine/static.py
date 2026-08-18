@@ -54,7 +54,7 @@ def quantization_context(
     return QuantizationContext(AffineQuantizationFunction, params)
 
 
-def quantize_per_granularity(
+def quantize(
     input: torch.Tensor,
     scale: torch.Tensor | float,
     offset: torch.Tensor | float | None,
@@ -77,18 +77,17 @@ def quantize_per_granularity(
     Returns:
         Quantized tensor
     """
-    match granularity:
-        case granularities.PerTensor():
-            return quantize_per_tensor(input, scale, offset, num_bits, output_dtype)
-        case granularities.PerChannel(axis):
-            return quantize_per_channel(input, scale, offset, axis, num_bits, output_dtype)
-        case _:
-            tile_size = granularity.tile_size(input.shape)
-            assert not isinstance(tile_size, str)
-            return quantize_by_tile(input, scale, offset, tile_size, num_bits, output_dtype)
+    params = StaticAffineQuantParams(
+        scale=scale,
+        offset=offset,
+        num_bits=num_bits,
+        granularity=granularity,
+        quantized_dtype=output_dtype,
+    )
+    return AffineQuantizationFunction.quantize(input, params)
 
 
-def quantize_by_tile(
+def quantize_per_tile(
     input: torch.Tensor,
     scale: torch.Tensor | float,
     offset: torch.Tensor | float | None,
@@ -111,14 +110,8 @@ def quantize_by_tile(
     Returns:
         Quantized tensor
     """
-    params = StaticAffineQuantParams(
-        scale=scale,
-        offset=offset,
-        num_bits=num_bits,
-        granularity=ff.PerTile(tile_shape=tile_size),
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerTile(tile_shape=tile_size)
+    return quantize(input, scale, offset, granularity, num_bits, output_dtype)
 
 
 def quantize_per_tensor(
@@ -140,14 +133,8 @@ def quantize_per_tensor(
     Returns:
         Quantized tensor
     """
-    params = StaticAffineQuantParams(
-        scale=scale,
-        offset=offset,
-        num_bits=num_bits,
-        granularity=ff.PerTensor(),
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerTensor()
+    return quantize(input, scale, offset, granularity, num_bits, output_dtype)
 
 
 def quantize_per_channel(
@@ -171,14 +158,8 @@ def quantize_per_channel(
     Returns:
         Quantized tensor
     """
-    params = StaticAffineQuantParams(
-        scale=scale,
-        offset=offset,
-        num_bits=num_bits,
-        granularity=ff.PerChannel(axis),
-        quantized_dtype=output_dtype,
-    )
-    return AffineQuantizationFunction.quantize(input, params)
+    granularity = ff.PerChannel(axis)
+    return quantize(input, scale, offset, granularity, num_bits, output_dtype)
 
 
 def quantize_per_block(
@@ -210,4 +191,5 @@ def quantize_per_block(
     input_shape[channel_axis] = 1
     input_shape[block_axis] = block_size
     tile_size = torch.Size(input_shape)
-    return quantize_by_tile(input, scale, offset, tile_size, num_bits, output_dtype)
+    granularity = ff.PerTile(tile_size)
+    return quantize(input, scale, offset, granularity, num_bits, output_dtype)

@@ -4,7 +4,7 @@
 import fastforward as ff
 import torch
 
-from fastforward.quantization.affine.static import quantize_by_tile
+from fastforward.quantization.affine.static import quantize_per_tile
 from fastforward.quantized_tensor import QuantizedTensor
 
 
@@ -18,7 +18,7 @@ def test_export_mode(_seed_prngs: int) -> None:
     num_bits = 8
 
     # WHEN quantizing the input tensor NOT on export mode
-    quant_a = quantize_by_tile(a, scale, offset, tile_size, num_bits)
+    quant_a = quantize_per_tile(a, scale, offset, tile_size, num_bits)
 
     # THEN the output type should be a QuantizedTensor object
     assert not ff.get_export_mode()
@@ -26,7 +26,7 @@ def test_export_mode(_seed_prngs: int) -> None:
 
     # WHEN quantizing the input tensor on export mode
     with ff.export_mode(True):
-        fake_quant_a = quantize_by_tile(a, scale, offset, tile_size, num_bits)
+        fake_quant_a = quantize_per_tile(a, scale, offset, tile_size, num_bits)
         # THEN the output type should not be a QuantizedTensor
         assert ff.get_export_mode()
         assert not isinstance(fake_quant_a, QuantizedTensor)

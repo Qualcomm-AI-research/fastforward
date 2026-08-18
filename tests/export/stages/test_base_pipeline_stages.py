@@ -126,11 +126,11 @@ def _build_mock_exported_program_with_quantize_nodes() -> _MockExportedProgram:
     scale_node = graph.get_attr("scale")
     offset_node = graph.get_attr("offset")
     quantize_node = graph.call_function(
-        torch.ops.fastforward.quantize_by_tile.default,
+        torch.ops.fastforward.affine_static_quantize.default,
         args=(input_node, scale_node, (1,), 8.0, torch.int8, offset_node),
     )
     dequantize_node = graph.call_function(
-        torch.ops.fastforward.dequantize_by_tile.default,
+        torch.ops.fastforward.affine_dequantize.default,
         args=(quantize_node, scale_node, (1,), offset_node, torch.float32),
     )
     graph.output(dequantize_node)
@@ -285,8 +285,8 @@ def test_stage_convert_captured_impl_ff_returns_graph_module() -> None:
 
     # THEN: The stage should return a captured FX GraphModule with FF quant nodes removed.
     assert isinstance(captured_module, torch.fx.GraphModule)
-    assert torch.ops.fastforward.quantize_by_tile.default not in call_targets
-    assert torch.ops.fastforward.dequantize_by_tile.default not in call_targets
+    assert torch.ops.fastforward.affine_static_quantize.default not in call_targets
+    assert torch.ops.fastforward.affine_dequantize.default not in call_targets
 
 
 def test_stage_convert_captured_impl_ff_qdq_preserves_ff_quant_nodes() -> None:
@@ -304,8 +304,8 @@ def test_stage_convert_captured_impl_ff_qdq_preserves_ff_quant_nodes() -> None:
 
     # THEN: FF custom quant ops should be preserved for ONNX custom lowering.
     assert isinstance(captured_module, torch.fx.GraphModule)
-    assert torch.ops.fastforward.quantize_by_tile.default in call_targets
-    assert torch.ops.fastforward.dequantize_by_tile.default in call_targets
+    assert torch.ops.fastforward.affine_static_quantize.default in call_targets
+    assert torch.ops.fastforward.affine_dequantize.default in call_targets
 
 
 def test_stage_capture_impl_ff_respects_torch_export_decomp_table() -> None:

@@ -21,7 +21,7 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     r"""Create the FastForward -> ONNX QDQ export pipeline.
 
     This pipeline captures a quantized FastForward model and emits an ONNX
-    model where each FF `quantize_by_tile` / `dequantize_by_tile` op is lowered
+    model where each FF `affine_static_quantize` / `affine_dequantize` op is lowered
     to a standard ONNX `QuantizeLinear` / `DequantizeLinear` (QDQ) pair. Unlike
     `qnn_onnx_pipeline`, the quantization parameters live in the graph topology
     itself (as Q/DQ node inputs and initializers) rather than in side-channel
@@ -69,11 +69,11 @@ def qnn_onnx_qdq_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     - `convert_captured_ff_qdq`:
       Materializes an FX `GraphModule` from the captured program after running
       decompositions, but intentionally skips the FF quant-spec annotation /
-      removal passes so that `fastforward::quantize_by_tile` and
-      `fastforward::dequantize_by_tile` are preserved for downstream lowering.
+      removal passes so that `fastforward::affine_static_quantize` and
+      `fastforward::affine_dequantize` are preserved for downstream lowering.
     - `fx_to_onnx_program_qdq`:
       Wraps `fx_to_onnx_program` with a context that injects FF-specific custom
-      lowerings (`ff_quantize_by_tile_onnx` / `ff_dequantize_by_tile_onnx`) into
+      lowerings (`ff_affine_static_quantize_onnx` / `ff_affine_dequantize_onnx`) into
       `onnx_export_options["custom_translation_table"]`. The wrapper builds a
       fresh context dict, so user-supplied export options are not mutated.
       Defaults `onnx_export_options["opset_version"]` to 21 when unset and
