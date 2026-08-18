@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/">
       
       
-        <link rel="prev" href="../exceptions/">
+        <link rel="prev" href="../base_pipeline_stages/">
       
       
-        <link rel="next" href="export/">
+        <link rel="next" href="adapter/">
       
       
         
       
       
-      <link rel="icon" href="../../../assets/ff-logo-purple.png">
+      <link rel="icon" href="../../../../../assets/ff-logo-purple.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>export - FastForward</title>
+        <title>gguf - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -98,9 +98,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              export
+              gguf
             
           </span>
         </div>
@@ -202,7 +202,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../.." class="md-tabs__link">
+      <a href="../../../../.." class="md-tabs__link">
         
   
   
@@ -221,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../design-choices/" class="md-tabs__link">
+      <a href="../../../../../design-choices/" class="md-tabs__link">
         
   
   
@@ -240,7 +240,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../examples/" class="md-tabs__link">
+      <a href="../../../../../examples/" class="md-tabs__link">
         
   
   
@@ -263,7 +263,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+        <a href="../../../" class="md-tabs__link">
           
   
   
@@ -297,9 +297,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     FastForward
@@ -326,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../design-choices/" class="md-nav__link">
+      <a href="../../../../../design-choices/" class="md-nav__link">
         
   
   
@@ -380,7 +380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/" class="md-nav__link">
+      <a href="../../../../../examples/" class="md-nav__link">
         
   
   
@@ -479,7 +479,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../" class="md-nav__link ">
               
   
   
@@ -521,7 +521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../autoquant/" class="md-nav__link">
+      <a href="../../../autoquant/" class="md-nav__link">
         
   
   
@@ -549,7 +549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cache/" class="md-nav__link">
+      <a href="../../../cache/" class="md-nav__link">
         
   
   
@@ -577,7 +577,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../common/" class="md-nav__link">
+      <a href="../../../common/" class="md-nav__link">
         
   
   
@@ -605,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dataclasses/" class="md-nav__link">
+      <a href="../../../dataclasses/" class="md-nav__link">
         
   
   
@@ -633,7 +633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dispatcher/" class="md-nav__link">
+      <a href="../../../dispatcher/" class="md-nav__link">
         
   
   
@@ -661,7 +661,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../exceptions/" class="md-nav__link">
+      <a href="../../../exceptions/" class="md-nav__link">
         
   
   
@@ -706,7 +706,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -724,7 +724,7 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -748,7 +748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="export/" class="md-nav__link">
+      <a href="../../export/" class="md-nav__link">
         
   
   
@@ -776,7 +776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="module_export/" class="md-nav__link">
+      <a href="../../module_export/" class="md-nav__link">
         
   
   
@@ -819,7 +819,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="pipeline/" class="md-nav__link ">
+            <a href="../../pipeline/" class="md-nav__link ">
               
   
   
@@ -861,7 +861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/core/" class="md-nav__link">
+      <a href="../../pipeline/core/" class="md-nav__link">
         
   
   
@@ -889,7 +889,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
+      <a href="../../pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
         
   
   
@@ -917,7 +917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/orchestrator/" class="md-nav__link">
+      <a href="../../pipeline/orchestrator/" class="md-nav__link">
         
   
   
@@ -945,7 +945,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+      <a href="../../pipeline/qnn_onnx_pipeline/" class="md-nav__link">
         
   
   
@@ -973,7 +973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+      <a href="../../pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
         
   
   
@@ -1001,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/registry/" class="md-nav__link">
+      <a href="../../pipeline/registry/" class="md-nav__link">
         
   
   
@@ -1034,6 +1034,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1044,15 +1046,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1076,7 +1078,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1094,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/annotations/" class="md-nav__link">
+      <a href="../annotations/" class="md-nav__link">
         
   
   
@@ -1122,7 +1124,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/base_pipeline_stages/" class="md-nav__link">
+      <a href="../base_pipeline_stages/" class="md-nav__link">
         
   
   
@@ -1147,6 +1149,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1157,15 +1161,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/gguf/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   
@@ -1183,13 +1187,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_1_7_4_3" id="__nav_4_1_7_4_3_label" tabindex="0">
+              <label class="md-nav__link md-nav__link--active" for="__nav_4_1_7_4_3" id="__nav_4_1_7_4_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1207,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/gguf/adapter/" class="md-nav__link">
+      <a href="adapter/" class="md-nav__link">
         
   
   
@@ -1235,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/gguf/gguf_export_stages/" class="md-nav__link">
+      <a href="gguf_export_stages/" class="md-nav__link">
         
   
   
@@ -1286,7 +1290,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/onnx/" class="md-nav__link ">
+            <a href="../onnx/" class="md-nav__link ">
               
   
   
@@ -1328,7 +1332,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_export_stages/" class="md-nav__link">
+      <a href="../onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
@@ -1356,7 +1360,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
+      <a href="../onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
@@ -1392,7 +1396,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/passes/" class="md-nav__link">
+      <a href="../passes/" class="md-nav__link">
         
   
   
@@ -1436,7 +1440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flags/" class="md-nav__link">
+      <a href="../../../flags/" class="md-nav__link">
         
   
   
@@ -1464,7 +1468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../forward_override/" class="md-nav__link">
+      <a href="../../../forward_override/" class="md-nav__link">
         
   
   
@@ -1492,7 +1496,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logging_utils/" class="md-nav__link">
+      <a href="../../../logging_utils/" class="md-nav__link">
         
   
   
@@ -1535,7 +1539,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../mpath/" class="md-nav__link ">
+            <a href="../../../mpath/" class="md-nav__link ">
               
   
   
@@ -1577,7 +1581,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/fragments/" class="md-nav__link">
+      <a href="../../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -1605,7 +1609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/selector/" class="md-nav__link">
+      <a href="../../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -1656,7 +1660,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/" class="md-nav__link ">
+            <a href="../../../nn/" class="md-nav__link ">
               
   
   
@@ -1698,7 +1702,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/activations/" class="md-nav__link">
+      <a href="../../../nn/activations/" class="md-nav__link">
         
   
   
@@ -1726,7 +1730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/container/" class="md-nav__link">
+      <a href="../../../nn/container/" class="md-nav__link">
         
   
   
@@ -1754,7 +1758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/conv/" class="md-nav__link">
+      <a href="../../../nn/conv/" class="md-nav__link">
         
   
   
@@ -1782,7 +1786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1810,7 +1814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/embedding/" class="md-nav__link">
+      <a href="../../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1853,7 +1857,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/" class="md-nav__link ">
+            <a href="../../../nn/functional/" class="md-nav__link ">
               
   
   
@@ -1910,7 +1914,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/custom/" class="md-nav__link ">
+            <a href="../../../nn/functional/custom/" class="md-nav__link ">
               
   
   
@@ -1952,7 +1956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/functional/custom/sdpa/" class="md-nav__link">
+      <a href="../../../nn/functional/custom/sdpa/" class="md-nav__link">
         
   
   
@@ -1996,7 +2000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear/" class="md-nav__link">
+      <a href="../../../nn/linear/" class="md-nav__link">
         
   
   
@@ -2024,7 +2028,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -2052,7 +2056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/normalization/" class="md-nav__link">
+      <a href="../../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -2080,7 +2084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantized_module/" class="md-nav__link">
+      <a href="../../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -2108,7 +2112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantizer/" class="md-nav__link">
+      <a href="../../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -2144,7 +2148,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../orchestration/" class="md-nav__link">
+      <a href="../../../orchestration/" class="md-nav__link">
         
   
   
@@ -2172,7 +2176,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overrides/" class="md-nav__link">
+      <a href="../../../overrides/" class="md-nav__link">
         
   
   
@@ -2215,7 +2219,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/" class="md-nav__link ">
+            <a href="../../../quantization/" class="md-nav__link ">
               
   
   
@@ -2272,7 +2276,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/affine/" class="md-nav__link ">
+            <a href="../../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -2314,7 +2318,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -2342,7 +2346,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/function/" class="md-nav__link">
+      <a href="../../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -2370,7 +2374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/range/" class="md-nav__link">
+      <a href="../../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -2398,7 +2402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/static/" class="md-nav__link">
+      <a href="../../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -2434,7 +2438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/freeze/" class="md-nav__link">
+      <a href="../../../quantization/freeze/" class="md-nav__link">
         
   
   
@@ -2462,7 +2466,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/function/" class="md-nav__link">
+      <a href="../../../quantization/function/" class="md-nav__link">
         
   
   
@@ -2490,7 +2494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/fuse/" class="md-nav__link">
+      <a href="../../../quantization/fuse/" class="md-nav__link">
         
   
   
@@ -2518,7 +2522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/gptq/" class="md-nav__link">
+      <a href="../../../quantization/gptq/" class="md-nav__link">
         
   
   
@@ -2546,7 +2550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/granularity/" class="md-nav__link">
+      <a href="../../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -2574,7 +2578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quant_init/" class="md-nav__link">
+      <a href="../../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -2602,7 +2606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quantizer_annotations/" class="md-nav__link">
+      <a href="../../../quantization/quantizer_annotations/" class="md-nav__link">
         
   
   
@@ -2630,7 +2634,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/random/" class="md-nav__link">
+      <a href="../../../quantization/random/" class="md-nav__link">
         
   
   
@@ -2658,7 +2662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/save_load/" class="md-nav__link">
+      <a href="../../../quantization/save_load/" class="md-nav__link">
         
   
   
@@ -2686,7 +2690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/ste/" class="md-nav__link">
+      <a href="../../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -2714,7 +2718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -2742,7 +2746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -2778,7 +2782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_tensor/" class="md-nav__link">
+      <a href="../../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -2821,7 +2825,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../range_setting/" class="md-nav__link ">
+            <a href="../../../range_setting/" class="md-nav__link ">
               
   
   
@@ -2863,7 +2867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/common/" class="md-nav__link">
+      <a href="../../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -2891,7 +2895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/min_error/" class="md-nav__link">
+      <a href="../../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -2919,7 +2923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/minmax/" class="md-nav__link">
+      <a href="../../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -2955,7 +2959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../serialization/" class="md-nav__link">
+      <a href="../../../serialization/" class="md-nav__link">
         
   
   
@@ -2998,7 +3002,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../testing/" class="md-nav__link ">
+            <a href="../../../testing/" class="md-nav__link ">
               
   
   
@@ -3040,7 +3044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/autoquant/" class="md-nav__link">
+      <a href="../../../testing/autoquant/" class="md-nav__link">
         
   
   
@@ -3068,7 +3072,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/initialization/" class="md-nav__link">
+      <a href="../../../testing/initialization/" class="md-nav__link">
         
   
   
@@ -3096,7 +3100,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/metrics/" class="md-nav__link">
+      <a href="../../../testing/metrics/" class="md-nav__link">
         
   
   
@@ -3124,7 +3128,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/package_mock/" class="md-nav__link">
+      <a href="../../../testing/package_mock/" class="md-nav__link">
         
   
   
@@ -3152,7 +3156,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/string/" class="md-nav__link">
+      <a href="../../../testing/string/" class="md-nav__link">
         
   
   
@@ -3188,7 +3192,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../type_common/" class="md-nav__link">
+      <a href="../../../type_common/" class="md-nav__link">
         
   
   
@@ -3279,7 +3283,7 @@
   
 
 
-  <h1>export</h1>
+  <h1>gguf</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -3287,6 +3291,13 @@
 
 
     <div class="doc doc-contents first">
+
+        <p>Public API for FastForward's GGUF export stages.</p>
+<p>Users pick a shipped :data:<code>LLAMA_ADAPTER</code>, :data:<code>QWEN2_ADAPTER</code>, or
+:data:<code>QWEN3_ADAPTER</code>, or construct their own :class:<code>ArchAdapter</code> when
+targeting a model with a non-standard module tree. The quantization format
+is selected via :data:<code>GGUF_Q4_0</code> / :data:<code>GGUF_Q8_0</code> or a custom
+:class:<code>GgufQuantFormat</code>.</p>
 
 
 
@@ -3316,12 +3327,8 @@
 
 </div><h3 id="submodules">Submodules<a class="headerlink" href="#submodules" title="Permanent link">#</a></h3>
 <ul>
-<li><a href="export/"><code>export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="module_export/"><code>module_export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="pipeline/"><code>pipeline</code></a></li>
-<li><a href="stages/"><code>stages</code></a></li>
+<li><a href="adapter/"><code>adapter</code></a> <span class="doc-submodule-summary">— Public <code>ArchAdapter</code> and <code>GgufQuantFormat</code> — the seams by which users configure the GGUF pipeline.</span></li>
+<li><a href="gguf_export_stages/"><code>gguf_export_stages</code></a> <span class="doc-submodule-summary">— Pipeline stages for the FastForward -&gt; GGUF (llama.cpp) export path.</span></li>
 </ul>
 
 
@@ -3372,14 +3379,14 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../../javascripts/clickable-cards.js"></script>
+        <script src="../../../../../javascripts/clickable-cards.js"></script>
       
-        <script src="../../../javascripts/api-heading-styling.js"></script>
+        <script src="../../../../../javascripts/api-heading-styling.js"></script>
       
     
   </body>

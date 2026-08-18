@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter/">
       
       
-        <link rel="prev" href="../dynamic/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../range/">
+        <link rel="next" href="../gguf_export_stages/">
       
       
         
       
       
-      <link rel="icon" href="../../../../../assets/ff-logo-purple.png">
+      <link rel="icon" href="../../../../../../assets/ff-logo-purple.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>function - FastForward</title>
+        <title>adapter - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.quantization.affine.function-attributes" class="md-skip">
+        <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              function
+              adapter
             
           </span>
         </div>
@@ -202,7 +202,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../.." class="md-tabs__link">
+      <a href="../../../../../.." class="md-tabs__link">
         
   
   
@@ -221,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../design-choices/" class="md-tabs__link">
+      <a href="../../../../../../design-choices/" class="md-tabs__link">
         
   
   
@@ -240,7 +240,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../../examples/" class="md-tabs__link">
+      <a href="../../../../../../examples/" class="md-tabs__link">
         
   
   
@@ -263,7 +263,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../../" class="md-tabs__link">
+        <a href="../../../../" class="md-tabs__link">
           
   
   
@@ -297,9 +297,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     FastForward
@@ -326,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../design-choices/" class="md-nav__link">
+      <a href="../../../../../../design-choices/" class="md-nav__link">
         
   
   
@@ -380,7 +380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../examples/" class="md-nav__link">
+      <a href="../../../../../../examples/" class="md-nav__link">
         
   
   
@@ -479,7 +479,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../" class="md-nav__link ">
+            <a href="../../../../" class="md-nav__link ">
               
   
   
@@ -521,7 +521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoquant/" class="md-nav__link">
+      <a href="../../../../autoquant/" class="md-nav__link">
         
   
   
@@ -549,7 +549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../cache/" class="md-nav__link">
+      <a href="../../../../cache/" class="md-nav__link">
         
   
   
@@ -577,7 +577,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/" class="md-nav__link">
+      <a href="../../../../common/" class="md-nav__link">
         
   
   
@@ -605,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../dataclasses/" class="md-nav__link">
+      <a href="../../../../dataclasses/" class="md-nav__link">
         
   
   
@@ -633,7 +633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../dispatcher/" class="md-nav__link">
+      <a href="../../../../dispatcher/" class="md-nav__link">
         
   
   
@@ -661,7 +661,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../exceptions/" class="md-nav__link">
+      <a href="../../../../exceptions/" class="md-nav__link">
         
   
   
@@ -686,6 +686,8 @@
                 
   
   
+    
+  
   
   
     
@@ -696,15 +698,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../export/" class="md-nav__link ">
+            <a href="../../../" class="md-nav__link ">
               
   
   
@@ -728,7 +730,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -746,7 +748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/export/" class="md-nav__link">
+      <a href="../../../export/" class="md-nav__link">
         
   
   
@@ -774,7 +776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/module_export/" class="md-nav__link">
+      <a href="../../../module_export/" class="md-nav__link">
         
   
   
@@ -817,7 +819,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../export/pipeline/" class="md-nav__link ">
+            <a href="../../../pipeline/" class="md-nav__link ">
               
   
   
@@ -859,7 +861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/core/" class="md-nav__link">
+      <a href="../../../pipeline/core/" class="md-nav__link">
         
   
   
@@ -887,7 +889,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
         
   
   
@@ -915,7 +917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/orchestrator/" class="md-nav__link">
+      <a href="../../../pipeline/orchestrator/" class="md-nav__link">
         
   
   
@@ -943,7 +945,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/qnn_onnx_pipeline/" class="md-nav__link">
         
   
   
@@ -971,7 +973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
         
   
   
@@ -999,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/pipeline/registry/" class="md-nav__link">
+      <a href="../../../pipeline/registry/" class="md-nav__link">
         
   
   
@@ -1032,6 +1034,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1042,15 +1046,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../export/stages/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -1074,7 +1078,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1092,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/annotations/" class="md-nav__link">
+      <a href="../../annotations/" class="md-nav__link">
         
   
   
@@ -1120,7 +1124,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/base_pipeline_stages/" class="md-nav__link">
+      <a href="../../base_pipeline_stages/" class="md-nav__link">
         
   
   
@@ -1145,6 +1149,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1155,15 +1161,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../export/stages/gguf/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1187,7 +1193,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1202,10 +1208,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../export/stages/gguf/adapter/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adapter
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1221,6 +1252,91 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attributes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TensorTransformT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter.ArchAdapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ArchAdapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GgufQuantFormat
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1233,7 +1349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/gguf/gguf_export_stages/" class="md-nav__link">
+      <a href="../gguf_export_stages/" class="md-nav__link">
         
   
   
@@ -1284,7 +1400,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../export/stages/onnx/" class="md-nav__link ">
+            <a href="../../onnx/" class="md-nav__link ">
               
   
   
@@ -1326,7 +1442,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/onnx/onnx_export_stages/" class="md-nav__link">
+      <a href="../../onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
@@ -1354,7 +1470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
+      <a href="../../onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
@@ -1390,7 +1506,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../export/stages/passes/" class="md-nav__link">
+      <a href="../../passes/" class="md-nav__link">
         
   
   
@@ -1434,7 +1550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../flags/" class="md-nav__link">
+      <a href="../../../../flags/" class="md-nav__link">
         
   
   
@@ -1462,7 +1578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../forward_override/" class="md-nav__link">
+      <a href="../../../../forward_override/" class="md-nav__link">
         
   
   
@@ -1490,7 +1606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../logging_utils/" class="md-nav__link">
+      <a href="../../../../logging_utils/" class="md-nav__link">
         
   
   
@@ -1533,7 +1649,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../mpath/" class="md-nav__link ">
+            <a href="../../../../mpath/" class="md-nav__link ">
               
   
   
@@ -1575,7 +1691,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../mpath/fragments/" class="md-nav__link">
+      <a href="../../../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -1603,7 +1719,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../mpath/selector/" class="md-nav__link">
+      <a href="../../../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -1654,7 +1770,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../nn/" class="md-nav__link ">
+            <a href="../../../../nn/" class="md-nav__link ">
               
   
   
@@ -1696,7 +1812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/activations/" class="md-nav__link">
+      <a href="../../../../nn/activations/" class="md-nav__link">
         
   
   
@@ -1724,7 +1840,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/container/" class="md-nav__link">
+      <a href="../../../../nn/container/" class="md-nav__link">
         
   
   
@@ -1752,7 +1868,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/conv/" class="md-nav__link">
+      <a href="../../../../nn/conv/" class="md-nav__link">
         
   
   
@@ -1780,7 +1896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1808,7 +1924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/embedding/" class="md-nav__link">
+      <a href="../../../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1851,7 +1967,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../nn/functional/" class="md-nav__link ">
+            <a href="../../../../nn/functional/" class="md-nav__link ">
               
   
   
@@ -1908,7 +2024,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../nn/functional/custom/" class="md-nav__link ">
+            <a href="../../../../nn/functional/custom/" class="md-nav__link ">
               
   
   
@@ -1950,7 +2066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/functional/custom/sdpa/" class="md-nav__link">
+      <a href="../../../../nn/functional/custom/sdpa/" class="md-nav__link">
         
   
   
@@ -1994,7 +2110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/linear/" class="md-nav__link">
+      <a href="../../../../nn/linear/" class="md-nav__link">
         
   
   
@@ -2022,7 +2138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -2050,7 +2166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/normalization/" class="md-nav__link">
+      <a href="../../../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -2078,7 +2194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/quantized_module/" class="md-nav__link">
+      <a href="../../../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -2106,7 +2222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../nn/quantizer/" class="md-nav__link">
+      <a href="../../../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -2142,7 +2258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../orchestration/" class="md-nav__link">
+      <a href="../../../../orchestration/" class="md-nav__link">
         
   
   
@@ -2170,7 +2286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../overrides/" class="md-nav__link">
+      <a href="../../../../overrides/" class="md-nav__link">
         
   
   
@@ -2195,8 +2311,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2207,15 +2321,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_15" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_15" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../../../../quantization/" class="md-nav__link ">
               
   
   
@@ -2239,7 +2353,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_15_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_15_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1_15">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2254,8 +2368,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2266,15 +2378,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_15_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_15_1" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -2298,7 +2410,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_15_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_15_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1_15_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2316,7 +2428,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dynamic/" class="md-nav__link">
+      <a href="../../../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -2341,35 +2453,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    function
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -2385,113 +2472,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attributes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attributes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.AffineQuantParams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AffineQuantParams
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.DynamicParamInferenceFn" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DynamicParamInferenceFn
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function-classes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Classes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Classes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.AffineQuantizationFunction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AffineQuantizationFunction
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DynamicAffineQuantParams
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.StaticAffineQuantParams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        StaticAffineQuantParams
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2504,7 +2484,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range/" class="md-nav__link">
+      <a href="../../../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -2532,7 +2512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../static/" class="md-nav__link">
+      <a href="../../../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -2568,7 +2548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../freeze/" class="md-nav__link">
+      <a href="../../../../quantization/freeze/" class="md-nav__link">
         
   
   
@@ -2596,7 +2576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../function/" class="md-nav__link">
+      <a href="../../../../quantization/function/" class="md-nav__link">
         
   
   
@@ -2624,7 +2604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../fuse/" class="md-nav__link">
+      <a href="../../../../quantization/fuse/" class="md-nav__link">
         
   
   
@@ -2652,7 +2632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../gptq/" class="md-nav__link">
+      <a href="../../../../quantization/gptq/" class="md-nav__link">
         
   
   
@@ -2680,7 +2660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../granularity/" class="md-nav__link">
+      <a href="../../../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -2708,7 +2688,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quant_init/" class="md-nav__link">
+      <a href="../../../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -2736,7 +2716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quantizer_annotations/" class="md-nav__link">
+      <a href="../../../../quantization/quantizer_annotations/" class="md-nav__link">
         
   
   
@@ -2764,7 +2744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../random/" class="md-nav__link">
+      <a href="../../../../quantization/random/" class="md-nav__link">
         
   
   
@@ -2792,7 +2772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../save_load/" class="md-nav__link">
+      <a href="../../../../quantization/save_load/" class="md-nav__link">
         
   
   
@@ -2820,7 +2800,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ste/" class="md-nav__link">
+      <a href="../../../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -2848,7 +2828,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../strict_quantization/" class="md-nav__link">
+      <a href="../../../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -2876,7 +2856,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tiled_tensor/" class="md-nav__link">
+      <a href="../../../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -2912,7 +2892,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quantized_tensor/" class="md-nav__link">
+      <a href="../../../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -2955,7 +2935,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../range_setting/" class="md-nav__link ">
+            <a href="../../../../range_setting/" class="md-nav__link ">
               
   
   
@@ -2997,7 +2977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../range_setting/common/" class="md-nav__link">
+      <a href="../../../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -3025,7 +3005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../range_setting/min_error/" class="md-nav__link">
+      <a href="../../../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -3053,7 +3033,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../range_setting/minmax/" class="md-nav__link">
+      <a href="../../../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -3089,7 +3069,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../serialization/" class="md-nav__link">
+      <a href="../../../../serialization/" class="md-nav__link">
         
   
   
@@ -3132,7 +3112,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../testing/" class="md-nav__link ">
+            <a href="../../../../testing/" class="md-nav__link ">
               
   
   
@@ -3174,7 +3154,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing/autoquant/" class="md-nav__link">
+      <a href="../../../../testing/autoquant/" class="md-nav__link">
         
   
   
@@ -3202,7 +3182,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing/initialization/" class="md-nav__link">
+      <a href="../../../../testing/initialization/" class="md-nav__link">
         
   
   
@@ -3230,7 +3210,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing/metrics/" class="md-nav__link">
+      <a href="../../../../testing/metrics/" class="md-nav__link">
         
   
   
@@ -3258,7 +3238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing/package_mock/" class="md-nav__link">
+      <a href="../../../../testing/package_mock/" class="md-nav__link">
         
   
   
@@ -3286,7 +3266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing/string/" class="md-nav__link">
+      <a href="../../../../testing/string/" class="md-nav__link">
         
   
   
@@ -3322,7 +3302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../type_common/" class="md-nav__link">
+      <a href="../../../../type_common/" class="md-nav__link">
         
   
   
@@ -3383,7 +3363,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function-attributes" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Attributes
@@ -3395,21 +3375,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.AffineQuantParams" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AffineQuantParams
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.DynamicParamInferenceFn" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DynamicParamInferenceFn
+        TensorTransformT
       
     </span>
   </a>
@@ -3422,7 +3391,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function-classes" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.adapter-classes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Classes
@@ -3434,10 +3403,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.AffineQuantizationFunction" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.adapter.ArchAdapter" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AffineQuantizationFunction
+        ArchAdapter
       
     </span>
   </a>
@@ -3445,21 +3414,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DynamicAffineQuantParams
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.quantization.affine.function.StaticAffineQuantParams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        StaticAffineQuantParams
+        GgufQuantFormat
       
     </span>
   </a>
@@ -3491,7 +3449,7 @@
   
 
 
-  <h1>function</h1>
+  <h1>adapter</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -3500,6 +3458,35 @@
 
     <div class="doc doc-contents first">
 
+        <p>Public <code>ArchAdapter</code> and <code>GgufQuantFormat</code> — the seams by which users configure the GGUF pipeline.</p>
+<p>FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
+parameter-name assumption, every architecture-specific tensor transform, and
+every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
+adapters (<code>LLAMA_ADAPTER</code>, <code>QWEN2_ADAPTER</code>, <code>QWEN3_ADAPTER</code>) are shipped
+alongside as reference implementations; for a model whose module tree differs
+(custom wrapper class, LoRA-merged copy, non-HF codebase), construct your own
+<code>ArchAdapter</code> and pass it via <code>GgufLlamaCppOptions.arch_adapter</code>.</p>
+<p>Similarly, the quantization format (block size, byte layout, GGML type) is
+encapsulated in :class:<code>GgufQuantFormat</code>. Built-in formats <code>GGUF_Q4_0</code> and
+<code>GGUF_Q8_0</code> are provided. Users targeting a custom GGUF type construct their
+own <code>GgufQuantFormat</code> with the appropriate pack function.</p>
+<p>Example::</p>
+<div class="highlight"><pre><span></span><code>from fastforward.export.stages.gguf import ArchAdapter, GgufQuantFormat
+
+def my_name_map(hf_name: str) -&gt; str | None:
+    # Map user's own parameter naming onto GGUF's blk.&lt;i&gt;.&lt;slot&gt;.weight scheme.
+    ...
+
+adapter = ArchAdapter(
+    gguf_arch="my-arch",
+    name_map=my_name_map,
+    transforms=[],
+    write_metadata=my_write_metadata,
+    tokenizer_model="gpt2",
+    tokenizer_pre="default",
+)
+</code></pre></div>
+
 
 
 
@@ -3515,20 +3502,20 @@
 
 
 
-<h3 id="fastforward.quantization.affine.function-attributes">Attributes<a href="#fastforward.quantization.affine.function-attributes" class="headerlink" title="Permanent link">#</a></h3>
+<h3 id="fastforward.export.stages.gguf.adapter-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter-attributes" class="headerlink" title="Permanent link">#</a></h3>
 
 <div class="doc doc-object doc-attribute">
 
 
 
-<h4 id="fastforward.quantization.affine.function.AffineQuantParams" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">affine</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">AffineQuantParams</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">'AffineQuantParams'</span><span class="p">,</span> <span class="n">StaticAffineQuantParams</span><span class="p">,</span> <span class="n">DynamicAffineQuantParams</span><span class="p">)</span></code>
+<h4 id="fastforward.export.stages.gguf.adapter.TensorTransformT" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">TensorTransformT</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">'ExtractedTensor'</span><span class="p">,</span> <span class="n">GgufSourceConfig</span><span class="p">,</span> <span class="s1">'GgufQuantFormat'</span><span class="p">],</span> <span class="s1">'ExtractedTensor'</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.AffineQuantParams" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -3537,87 +3524,179 @@
 
 </div>
 
-<div class="doc doc-object doc-attribute">
-
-
-
-<h4 id="fastforward.quantization.affine.function.DynamicParamInferenceFn" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">affine</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">DynamicParamInferenceFn</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">'DynamicAffineQuantParams'</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">_ScaleOffset</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.DynamicParamInferenceFn" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<h3 id="fastforward.quantization.affine.function-classes">Classes<a href="#fastforward.quantization.affine.function-classes" class="headerlink" title="Permanent link">#</a></h3>
+<h3 id="fastforward.export.stages.gguf.adapter-classes">Classes<a href="#fastforward.export.stages.gguf.adapter-classes" class="headerlink" title="Permanent link">#</a></h3>
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="fastforward.quantization.affine.function.AffineQuantizationFunction" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>fastforward.quantization.affine.function.AffineQuantizationFunction</code>
+<h4 id="fastforward.export.stages.gguf.adapter.ArchAdapter" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">name_map</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">is_tied</span><span class="o">=</span><span class="n">_default_is_tied</span><span class="p">)</span></code>
 
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
 
-<a href="#fastforward.quantization.affine.function.AffineQuantizationFunction" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;" href="../../function/#fastforward.quantization.function.QuantizationFunction">QuantizationFunction</a>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;AffineQuantParams&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TypeVar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#x27;AffineQuantParams&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;StaticAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+
+
+        <p>Bundle of architecture-specific choices consumed by the GGUF stages.</p>
+<p>Every field is consumed by exactly one stage — this is the whole surface
+between generic FastForward code and model-specific knowledge.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;gguf_arch&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.gguf_arch&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.gguf_arch">gguf_arch</a></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Architecture string passed to <code>GGUFWriter(arch=)</code>. Written
+into the GGUF header and used by llama.cpp to pick its loader.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;name_map&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.name_map&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.name_map">name_map</a></code></td>
+            <td>
+                  <code><span title="fastforward.export.stages.gguf.adapter._NameMapT">_NameMapT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maps a HuggingFace parameter name (e.g.
+<code>"model.layers.0.self_attn.q_proj.weight"</code>) to its GGUF tensor
+name (<code>"blk.0.attn_q.weight"</code>), or <code>None</code> to skip the parameter.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;transforms&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.transforms&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.transforms">transforms</a></code></td>
+            <td>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;TensorTransformT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#x27;ExtractedTensor&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;GgufSourceConfig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#x27;GgufQuantFormat&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#x27;ExtractedTensor&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.function.AffineQuantParams&lt;/code&gt;)" href="#fastforward.quantization.affine.function.AffineQuantParams">AffineQuantParams</a>]</code></p>
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorTransformT&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorTransformT">TensorTransformT</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ordered list of per-tensor transform functions applied by
+<code>stage_apply_target_transforms</code>. Each receives an
+:class:<code>ExtractedTensor</code>, the source config, and the quant format,
+and returns a (possibly modified) <code>ExtractedTensor</code>. Built-in
+helpers like :func:<code>llama_rope_permute</code> slot in here. An empty list
+means no transforms are applied.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;write_metadata&lt;/span&gt;&lt;/code&gt;
 
-            <div style="display: none">
-              <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.affine.function.AffineQuantizationFunction&lt;/code&gt;" href="#fastforward.quantization.affine.function.AffineQuantizationFunction" id="mermaid-link-fastforward.quantization.affine.function.AffineQuantizationFunction"></a>
-                  <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.quantization.function.QuantizationFunction&lt;/code&gt;" href="../../function/#fastforward.quantization.function.QuantizationFunction" id="mermaid-link-fastforward.quantization.function.QuantizationFunction"></a>
-            </div>
-            <pre class="mermaid"><code id="mermaid-diagram-fastforward.quantization.affine.function.AffineQuantizationFunction">
-              flowchart TD
-              fastforward.quantization.affine.function.AffineQuantizationFunction[AffineQuantizationFunction]
-              fastforward.quantization.function.QuantizationFunction[QuantizationFunction]
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.write_metadata&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.write_metadata">write_metadata</a></code></td>
+            <td>
+                  <code><span title="fastforward.export.stages.gguf.adapter._WriteMetadataT">_WriteMetadataT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Writes architecture metadata (dims, RoPE, vocab size,
+head counts) onto an open <code>GGUFWriter</code> from the source config.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;tokenizer_model&lt;/span&gt;&lt;/code&gt;
 
-                              fastforward.quantization.function.QuantizationFunction --> fastforward.quantization.affine.function.AffineQuantizationFunction
-                
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model">tokenizer_model</a></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Value passed to <code>writer.add_tokenizer_model(...)</code>
+(llama.cpp's tokenizer-model discriminator, e.g. <code>"gpt2"</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;tokenizer_pre&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_pre&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_pre">tokenizer_pre</a></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Value passed to <code>writer.add_tokenizer_pre(...)</code>
+(llama.cpp's pre-tokenizer discriminator, e.g. <code>"llama-bpe"</code>,
+<code>"qwen2"</code>, or <code>"default"</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;is_tied&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_default_is_tied&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied">is_tied</a></code></td>
+            <td>
+                  <code><span title="fastforward.export.stages.gguf.adapter._IsTiedT">_IsTiedT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Predicate that decides whether a parameter should be skipped
+because it shares storage with another exported parameter. Receives
+the HF parameter name and the source config. The default
+implementation skips <code>"lm_head.weight"</code> when
+<code>config.tie_word_embeddings</code> is true. Override for architectures
+with different or additional tied parameters.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-              click fastforward.quantization.affine.function.AffineQuantizationFunction href "" "fastforward.quantization.affine.function.AffineQuantizationFunction"
-              click fastforward.quantization.function.QuantizationFunction href "" "fastforward.quantization.function.QuantizationFunction"
-            </code></pre>
-            <script>
-              var diagram = document.getElementById('mermaid-diagram-fastforward.quantization.affine.function.AffineQuantizationFunction');
-              diagram.innerHTML = diagram.innerHTML.replace(/click ([\w.]+) href "" "\1"/g, function(match, nodeID, offset) {
-                try {
-                  const link = document.getElementById("mermaid-link-" + nodeID).href;
-                  return `click ${nodeID} href "${link}" "${nodeID}"`
-                } catch (e) {
-                  return '';
-                }
-              });
-            </script>
-
-
-        <p>Affine quantization function.</p>
-<p>Implementation of standard affine quantization.</p>
 
 
 
 
 
 
-
-
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function.py#L66" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L100" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -3627,154 +3706,41 @@
 
 
 
-
-
-
-<h5 id="fastforward.quantization.affine.function.AffineQuantizationFunction-functions">Methods<a href="#fastforward.quantization.affine.function.AffineQuantizationFunction-functions" class="headerlink" title="Permanent link">#</a></h5>
-
-<div class="doc doc-object doc-function">
-
-
-<h6 id="fastforward.quantization.affine.function.AffineQuantizationFunction.dequantize" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">dequantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.AffineQuantizationFunction.dequantize" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function.py#L179" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h6 id="fastforward.quantization.affine.function.AffineQuantizationFunction.quantize" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">quantize</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.AffineQuantizationFunction.quantize" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function.py#L72" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h4 id="fastforward.quantization.affine.function.DynamicAffineQuantParams" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">affine</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">DynamicAffineQuantParams</span><span class="p">(</span><span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="p">,</span> <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_one_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dequantize_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parameter_inference_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationParameters&lt;/code&gt;)" href="../../function/#fastforward.quantization.function.QuantizationParameters">QuantizationParameters</a></code></p>
-
-            <div style="display: none">
-              <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DynamicAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;symmetric&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;allow_one_sided&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parameter_inference_fn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.function.DynamicAffineQuantParams&lt;/code&gt;)" href="#fastforward.quantization.affine.function.DynamicAffineQuantParams" id="mermaid-link-fastforward.quantization.affine.function.DynamicAffineQuantParams"></a>
-                  <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationParameters&lt;/code&gt;)" href="../../function/#fastforward.quantization.function.QuantizationParameters" id="mermaid-link-fastforward.quantization.function.QuantizationParameters"></a>
-            </div>
-            <pre class="mermaid"><code id="mermaid-diagram-fastforward.quantization.affine.function.DynamicAffineQuantParams">
-              flowchart TD
-              fastforward.quantization.affine.function.DynamicAffineQuantParams[DynamicAffineQuantParams]
-              fastforward.quantization.function.QuantizationParameters[QuantizationParameters]
-
-                              fastforward.quantization.function.QuantizationParameters --> fastforward.quantization.affine.function.DynamicAffineQuantParams
-                
-
-
-              click fastforward.quantization.affine.function.DynamicAffineQuantParams href "" "fastforward.quantization.affine.function.DynamicAffineQuantParams"
-              click fastforward.quantization.function.QuantizationParameters href "" "fastforward.quantization.function.QuantizationParameters"
-            </code></pre>
-            <script>
-              var diagram = document.getElementById('mermaid-diagram-fastforward.quantization.affine.function.DynamicAffineQuantParams');
-              diagram.innerHTML = diagram.innerHTML.replace(/click ([\w.]+) href "" "\1"/g, function(match, nodeID, offset) {
-                try {
-                  const link = document.getElementById("mermaid-link-" + nodeID).href;
-                  return `click ${nodeID} href "${link}" "${nodeID}"`
-                } catch (e) {
-                  return '';
-                }
-              });
-            </script>
-
-
-        <p>Quantization parameters for dynamic affine quantization.</p>
-
-
-
-
-
-
-
-
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function.py#L50" target="_blank" rel="noopener">[source]</a></p>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-<h5 id="fastforward.quantization.affine.function.DynamicAffineQuantParams-attributes">Attributes<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams-attributes" class="headerlink" title="Permanent link">#</a></h5>
+<h5 id="fastforward.export.stages.gguf.adapter.ArchAdapter-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter-attributes" class="headerlink" title="Permanent link">#</a></h5>
 
 <div class="doc doc-object doc-attribute">
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.allow_one_sided" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">allow_one_sided</span> <span class="o">=</span> <span class="kc">True</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.gguf_arch" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">gguf_arch</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.gguf_arch" class="headerlink" title="Permanent link">#</a></h6>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">is_tied</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">_default_is_tied</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.allow_one_sided" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3787,15 +3753,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.dequantize_dtype" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">dequantize_dtype</span> <span class="o">=</span> <span class="kc">None</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.name_map" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">name_map</span></code>
 
   <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.dequantize_dtype" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.name_map" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3808,14 +3773,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.granularity" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">granularity</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">tokenizer_model</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.granularity" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3828,14 +3793,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.num_bits" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">num_bits</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_pre" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">tokenizer_pre</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.num_bits" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_pre" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3848,15 +3813,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.parameter_inference_fn" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">parameter_inference_fn</span> <span class="o">=</span> <span class="kc">None</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.transforms" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">transforms</span></code>
 
   <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.parameter_inference_fn" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.transforms" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3869,36 +3833,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.quantized_dtype" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="kc">None</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.write_metadata" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">write_metadata</span></code>
 
   <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.quantized_dtype" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.quantization.affine.function.DynamicAffineQuantParams.symmetric" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">symmetric</span> <span class="o">=</span> <span class="kc">False</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.DynamicAffineQuantParams.symmetric" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.write_metadata" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -3922,71 +3864,145 @@
 
 
 
-<h4 id="fastforward.quantization.affine.function.StaticAffineQuantParams" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">affine</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">StaticAffineQuantParams</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">num_bits</span><span class="p">,</span> <span class="n">granularity</span><span class="p">,</span> <span class="n">quantized_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dequantize_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<h4 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">GgufQuantFormat</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">num_bits</span><span class="p">,</span> <span class="n">block_size</span><span class="p">,</span> <span class="n">symmetric</span><span class="p">,</span> <span class="n">pack_fn</span><span class="p">,</span> <span class="n">file_type</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt;
+
+
+
+        <p>Describes a GGUF block-quantized format for the packing and writing stages.</p>
+<p>Each GGUF quant type has a fixed block size (number of elements per block),
+a pack function that produces the raw byte layout, and a GGML type name that
+selects the correct dequantizer in llama.cpp.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationParameters&lt;/code&gt;)" href="../../function/#fastforward.quantization.function.QuantizationParameters">QuantizationParameters</a></code></p>
-
-            <div style="display: none">
-              <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;affine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StaticAffineQuantParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;scale&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;offset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;granularity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;quantized_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dequantize_dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.name&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.name">name</a></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GGML type name (e.g. <code>"Q4_0"</code>, <code>"Q8_0"</code>). Must match a key in
+<code>gguf.GGMLQuantizationType</code> so the writer can look up the enum.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;num_bits&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.affine.function.StaticAffineQuantParams&lt;/code&gt;)" href="#fastforward.quantization.affine.function.StaticAffineQuantParams" id="mermaid-link-fastforward.quantization.affine.function.StaticAffineQuantParams"></a>
-                  <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;quantization&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;QuantizationParameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;/code&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.num_bits&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.num_bits">num_bits</a></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of quantization bits (e.g. 4 for Q4_0, 8 for Q8_0).
+Used to validate that the user's quantizers match the target format.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;block_size&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.quantization.function.QuantizationParameters&lt;/code&gt;)" href="../../function/#fastforward.quantization.function.QuantizationParameters" id="mermaid-link-fastforward.quantization.function.QuantizationParameters"></a>
-            </div>
-            <pre class="mermaid"><code id="mermaid-diagram-fastforward.quantization.affine.function.StaticAffineQuantParams">
-              flowchart TD
-              fastforward.quantization.affine.function.StaticAffineQuantParams[StaticAffineQuantParams]
-              fastforward.quantization.function.QuantizationParameters[QuantizationParameters]
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.block_size&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.block_size">block_size</a></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of elements per quantized block (e.g. 32 for Q4_0/Q8_0,
+256 for K-quants).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;symmetric&lt;/span&gt;&lt;/code&gt;
 
-                              fastforward.quantization.function.QuantizationParameters --> fastforward.quantization.affine.function.StaticAffineQuantParams
-                
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.symmetric&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.symmetric">symmetric</a></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether the format requires symmetric quantization. Q4_0 and
+Q8_0 are symmetric (only <code>d</code> per block); Q4_1 is asymmetric
+(stores both <code>d</code> and <code>m</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;pack_fn&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.pack_fn&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.pack_fn">pack_fn</a></code></td>
+            <td>
+                  <code><span title="fastforward.export.stages.gguf.adapter._PackFnT">_PackFnT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Callable <code>(int_codes: Tensor[n_blocks, block_size],
+scales: Tensor[n_blocks]) -&gt; Tensor[n_blocks, block_bytes]</code> that
+produces the raw byte layout for this quant type.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;file_type&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.GgufQuantFormat.file_type&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.file_type">file_type</a></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GGUF file-type integer written to the header (used by llama.cpp
+to select a default compute type).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-              click fastforward.quantization.affine.function.StaticAffineQuantParams href "" "fastforward.quantization.affine.function.StaticAffineQuantParams"
-              click fastforward.quantization.function.QuantizationParameters href "" "fastforward.quantization.function.QuantizationParameters"
-            </code></pre>
-            <script>
-              var diagram = document.getElementById('mermaid-diagram-fastforward.quantization.affine.function.StaticAffineQuantParams');
-              diagram.innerHTML = diagram.innerHTML.replace(/click ([\w.]+) href "" "\1"/g, function(match, nodeID, offset) {
-                try {
-                  const link = document.getElementById("mermaid-link-" + nodeID).href;
-                  return `click ${nodeID} href "${link}" "${nodeID}"`
-                } catch (e) {
-                  return '';
-                }
-              });
-            </script>
-
-
-        <p>Quantization parameters for static affine quantization.</p>
 
 
 
 
 
 
-
-
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/quantization/affine/function.py#L31" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L67" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -3996,21 +4012,20 @@
 
 
 
-<h5 id="fastforward.quantization.affine.function.StaticAffineQuantParams-attributes">Attributes<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams-attributes" class="headerlink" title="Permanent link">#</a></h5>
+<h5 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat-attributes" class="headerlink" title="Permanent link">#</a></h5>
 
 <div class="doc doc-object doc-attribute">
 
 
 
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.dequantize_dtype" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">dequantize_dtype</span> <span class="o">=</span> <span class="kc">None</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.block_size" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">block_size</span></code>
 
   <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.dequantize_dtype" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.block_size" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4023,14 +4038,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.granularity" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">granularity</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.file_type" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">file_type</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.granularity" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.file_type" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4043,14 +4058,34 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.num_bits" class="doc doc-heading">
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.name" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">name</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.name" class="headerlink" title="Permanent link">#</a></h6>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.num_bits" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">num_bits</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.num_bits" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.num_bits" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4063,14 +4098,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.offset" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">offset</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.pack_fn" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">pack_fn</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.offset" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.pack_fn" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4083,35 +4118,14 @@
 
 
 
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.quantized_dtype" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">quantized_dtype</span> <span class="o">=</span> <span class="kc">None</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.quantized_dtype" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.quantization.affine.function.StaticAffineQuantParams.scale" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">scale</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.GgufQuantFormat.symmetric" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">symmetric</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.quantization.affine.function.StaticAffineQuantParams.scale" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.GgufQuantFormat.symmetric" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4188,14 +4202,14 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../../../../javascripts/clickable-cards.js"></script>
+        <script src="../../../../../../javascripts/clickable-cards.js"></script>
       
-        <script src="../../../../../javascripts/api-heading-styling.js"></script>
+        <script src="../../../../../../javascripts/api-heading-styling.js"></script>
       
     
   </body>

@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/main/design-choices/">
       
       
-        <link rel="prev" href="../exceptions/">
+        <link rel="prev" href="..">
       
       
-        <link rel="next" href="export/">
+        <link rel="next" href="../examples/">
       
       
         
       
       
-      <link rel="icon" href="../../../assets/ff-logo-purple.png">
+      <link rel="icon" href="../assets/ff-logo-purple.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>export - FastForward</title>
+        <title>Design - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#submodules" class="md-skip">
+        <a href="#fastforward-design-choices" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href=".." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../assets/ff-logo-white.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              export
+              Design
             
           </span>
         </div>
@@ -202,7 +202,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../.." class="md-tabs__link">
+      <a href=".." class="md-tabs__link">
         
   
   
@@ -219,9 +219,11 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../../../design-choices/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
   
@@ -240,7 +242,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../examples/" class="md-tabs__link">
+      <a href="../examples/" class="md-tabs__link">
         
   
   
@@ -257,13 +259,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../reference/fastforward/" class="md-tabs__link">
           
   
   
@@ -297,9 +297,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href=".." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../assets/ff-logo-white.png" alt="logo">
 
     </a>
     FastForward
@@ -326,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -350,10 +350,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../design-choices/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -369,6 +396,230 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-fastforward-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What FastForward is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Design principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-architecture-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Architecture at a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-quantization-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Quantization core
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Quantization core">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-quantizedtensor-carries-data-and-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 QuantizedTensor carries data and metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-autograd-semantics-identity-jacobian-dequantize-gradients-live-in-quantize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Autograd semantics: identity-Jacobian dequantize, gradients live in quantize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-operator-dispatch-extends-__torch_function__-with-predicate-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Operator dispatch extends __torch_function__ with predicate routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-a-data-driven-yaml-operator-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 A data-driven YAML operator table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-granularity-as-a-tiling-abstraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Granularity as a tiling abstraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-quantization-safety-strict-mode-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Quantization safety: strict mode + overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-no-in-place-ops-on-quantizedtensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 No in-place ops on QuantizedTensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-export-mode-dequantizes-on-attach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Export mode dequantizes on attach
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#49-range-setting-is-a-pluggable-subsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.9 Range setting is a pluggable subsystem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-quantized-modules-ffnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Quantized modules (ff.nn)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-autoquant-quantization-by-source-transpilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Autoquant — quantization by source transpilation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-orchestration-algorithms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Orchestration &amp; algorithms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-status-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Status summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -380,7 +631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -404,29 +655,24 @@
       
   
   
-    
   
   
-  
     
     
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -444,7 +690,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -459,8 +705,6 @@
                 
   
   
-    
-  
   
   
     
@@ -471,15 +715,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../reference/fastforward/" class="md-nav__link ">
               
   
   
@@ -503,7 +747,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -521,7 +765,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../autoquant/" class="md-nav__link">
+      <a href="../reference/fastforward/autoquant/" class="md-nav__link">
         
   
   
@@ -549,7 +793,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cache/" class="md-nav__link">
+      <a href="../reference/fastforward/cache/" class="md-nav__link">
         
   
   
@@ -577,7 +821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../common/" class="md-nav__link">
+      <a href="../reference/fastforward/common/" class="md-nav__link">
         
   
   
@@ -605,7 +849,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dataclasses/" class="md-nav__link">
+      <a href="../reference/fastforward/dataclasses/" class="md-nav__link">
         
   
   
@@ -633,7 +877,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dispatcher/" class="md-nav__link">
+      <a href="../reference/fastforward/dispatcher/" class="md-nav__link">
         
   
   
@@ -661,7 +905,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../exceptions/" class="md-nav__link">
+      <a href="../reference/fastforward/exceptions/" class="md-nav__link">
         
   
   
@@ -686,8 +930,6 @@
                 
   
   
-    
-  
   
   
     
@@ -698,15 +940,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../reference/fastforward/export/" class="md-nav__link ">
               
   
   
@@ -724,13 +966,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -748,7 +990,7 @@
   
   
     <li class="md-nav__item">
-      <a href="export/" class="md-nav__link">
+      <a href="../reference/fastforward/export/export/" class="md-nav__link">
         
   
   
@@ -776,7 +1018,7 @@
   
   
     <li class="md-nav__item">
-      <a href="module_export/" class="md-nav__link">
+      <a href="../reference/fastforward/export/module_export/" class="md-nav__link">
         
   
   
@@ -819,7 +1061,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="pipeline/" class="md-nav__link ">
+            <a href="../reference/fastforward/export/pipeline/" class="md-nav__link ">
               
   
   
@@ -861,7 +1103,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/core/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/core/" class="md-nav__link">
         
   
   
@@ -889,7 +1131,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
         
   
   
@@ -917,7 +1159,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/orchestrator/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/orchestrator/" class="md-nav__link">
         
   
   
@@ -945,7 +1187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/qnn_onnx_pipeline/" class="md-nav__link">
         
   
   
@@ -973,7 +1215,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
         
   
   
@@ -1001,7 +1243,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/registry/" class="md-nav__link">
+      <a href="../reference/fastforward/export/pipeline/registry/" class="md-nav__link">
         
   
   
@@ -1052,7 +1294,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/" class="md-nav__link ">
+            <a href="../reference/fastforward/export/stages/" class="md-nav__link ">
               
   
   
@@ -1094,7 +1336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/annotations/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/annotations/" class="md-nav__link">
         
   
   
@@ -1122,7 +1364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/base_pipeline_stages/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/base_pipeline_stages/" class="md-nav__link">
         
   
   
@@ -1165,7 +1407,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/gguf/" class="md-nav__link ">
+            <a href="../reference/fastforward/export/stages/gguf/" class="md-nav__link ">
               
   
   
@@ -1207,7 +1449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/gguf/adapter/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/gguf/adapter/" class="md-nav__link">
         
   
   
@@ -1235,7 +1477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/gguf/gguf_export_stages/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/gguf/gguf_export_stages/" class="md-nav__link">
         
   
   
@@ -1286,7 +1528,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/onnx/" class="md-nav__link ">
+            <a href="../reference/fastforward/export/stages/onnx/" class="md-nav__link ">
               
   
   
@@ -1328,7 +1570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_export_stages/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
@@ -1356,7 +1598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
@@ -1392,7 +1634,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/passes/" class="md-nav__link">
+      <a href="../reference/fastforward/export/stages/passes/" class="md-nav__link">
         
   
   
@@ -1436,7 +1678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flags/" class="md-nav__link">
+      <a href="../reference/fastforward/flags/" class="md-nav__link">
         
   
   
@@ -1464,7 +1706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../forward_override/" class="md-nav__link">
+      <a href="../reference/fastforward/forward_override/" class="md-nav__link">
         
   
   
@@ -1492,7 +1734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logging_utils/" class="md-nav__link">
+      <a href="../reference/fastforward/logging_utils/" class="md-nav__link">
         
   
   
@@ -1535,7 +1777,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../mpath/" class="md-nav__link ">
+            <a href="../reference/fastforward/mpath/" class="md-nav__link ">
               
   
   
@@ -1577,7 +1819,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/fragments/" class="md-nav__link">
+      <a href="../reference/fastforward/mpath/fragments/" class="md-nav__link">
         
   
   
@@ -1605,7 +1847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/selector/" class="md-nav__link">
+      <a href="../reference/fastforward/mpath/selector/" class="md-nav__link">
         
   
   
@@ -1656,7 +1898,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/" class="md-nav__link ">
+            <a href="../reference/fastforward/nn/" class="md-nav__link ">
               
   
   
@@ -1698,7 +1940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/activations/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/activations/" class="md-nav__link">
         
   
   
@@ -1726,7 +1968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/container/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/container/" class="md-nav__link">
         
   
   
@@ -1754,7 +1996,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/conv/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/conv/" class="md-nav__link">
         
   
   
@@ -1782,7 +2024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1810,7 +2052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/embedding/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/embedding/" class="md-nav__link">
         
   
   
@@ -1853,7 +2095,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/" class="md-nav__link ">
+            <a href="../reference/fastforward/nn/functional/" class="md-nav__link ">
               
   
   
@@ -1910,7 +2152,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/custom/" class="md-nav__link ">
+            <a href="../reference/fastforward/nn/functional/custom/" class="md-nav__link ">
               
   
   
@@ -1952,7 +2194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/functional/custom/sdpa/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/functional/custom/sdpa/" class="md-nav__link">
         
   
   
@@ -1996,7 +2238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/linear/" class="md-nav__link">
         
   
   
@@ -2024,7 +2266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -2052,7 +2294,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/normalization/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/normalization/" class="md-nav__link">
         
   
   
@@ -2080,7 +2322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantized_module/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -2108,7 +2350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantizer/" class="md-nav__link">
+      <a href="../reference/fastforward/nn/quantizer/" class="md-nav__link">
         
   
   
@@ -2144,7 +2386,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../orchestration/" class="md-nav__link">
+      <a href="../reference/fastforward/orchestration/" class="md-nav__link">
         
   
   
@@ -2172,7 +2414,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overrides/" class="md-nav__link">
+      <a href="../reference/fastforward/overrides/" class="md-nav__link">
         
   
   
@@ -2215,7 +2457,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/" class="md-nav__link ">
+            <a href="../reference/fastforward/quantization/" class="md-nav__link ">
               
   
   
@@ -2272,7 +2514,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/affine/" class="md-nav__link ">
+            <a href="../reference/fastforward/quantization/affine/" class="md-nav__link ">
               
   
   
@@ -2314,7 +2556,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -2342,7 +2584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/function/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -2370,7 +2612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/range/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -2398,7 +2640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/static/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -2434,7 +2676,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/freeze/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/freeze/" class="md-nav__link">
         
   
   
@@ -2462,7 +2704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/function/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/function/" class="md-nav__link">
         
   
   
@@ -2490,7 +2732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/fuse/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/fuse/" class="md-nav__link">
         
   
   
@@ -2518,7 +2760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/gptq/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/gptq/" class="md-nav__link">
         
   
   
@@ -2546,7 +2788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/granularity/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/granularity/" class="md-nav__link">
         
   
   
@@ -2574,7 +2816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quant_init/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -2602,7 +2844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quantizer_annotations/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/quantizer_annotations/" class="md-nav__link">
         
   
   
@@ -2630,7 +2872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/random/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/random/" class="md-nav__link">
         
   
   
@@ -2658,7 +2900,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/save_load/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/save_load/" class="md-nav__link">
         
   
   
@@ -2686,7 +2928,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/ste/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/ste/" class="md-nav__link">
         
   
   
@@ -2714,7 +2956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -2742,7 +2984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../reference/fastforward/quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -2778,7 +3020,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_tensor/" class="md-nav__link">
+      <a href="../reference/fastforward/quantized_tensor/" class="md-nav__link">
         
   
   
@@ -2821,7 +3063,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../range_setting/" class="md-nav__link ">
+            <a href="../reference/fastforward/range_setting/" class="md-nav__link ">
               
   
   
@@ -2863,7 +3105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/common/" class="md-nav__link">
+      <a href="../reference/fastforward/range_setting/common/" class="md-nav__link">
         
   
   
@@ -2891,7 +3133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/min_error/" class="md-nav__link">
+      <a href="../reference/fastforward/range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -2919,7 +3161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/minmax/" class="md-nav__link">
+      <a href="../reference/fastforward/range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -2955,7 +3197,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../serialization/" class="md-nav__link">
+      <a href="../reference/fastforward/serialization/" class="md-nav__link">
         
   
   
@@ -2998,7 +3240,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../testing/" class="md-nav__link ">
+            <a href="../reference/fastforward/testing/" class="md-nav__link ">
               
   
   
@@ -3040,7 +3282,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/autoquant/" class="md-nav__link">
+      <a href="../reference/fastforward/testing/autoquant/" class="md-nav__link">
         
   
   
@@ -3068,7 +3310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/initialization/" class="md-nav__link">
+      <a href="../reference/fastforward/testing/initialization/" class="md-nav__link">
         
   
   
@@ -3096,7 +3338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/metrics/" class="md-nav__link">
+      <a href="../reference/fastforward/testing/metrics/" class="md-nav__link">
         
   
   
@@ -3124,7 +3366,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/package_mock/" class="md-nav__link">
+      <a href="../reference/fastforward/testing/package_mock/" class="md-nav__link">
         
   
   
@@ -3152,7 +3394,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/string/" class="md-nav__link">
+      <a href="../reference/fastforward/testing/string/" class="md-nav__link">
         
   
   
@@ -3188,7 +3430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../type_common/" class="md-nav__link">
+      <a href="../reference/fastforward/type_common/" class="md-nav__link">
         
   
   
@@ -3241,6 +3483,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -3249,10 +3493,203 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#submodules" class="md-nav__link">
+  <a href="#1-what-fastforward-is" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submodules
+        1. What FastForward is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Design principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-architecture-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Architecture at a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-quantization-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Quantization core
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Quantization core">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-quantizedtensor-carries-data-and-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 QuantizedTensor carries data and metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-autograd-semantics-identity-jacobian-dequantize-gradients-live-in-quantize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Autograd semantics: identity-Jacobian dequantize, gradients live in quantize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-operator-dispatch-extends-__torch_function__-with-predicate-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Operator dispatch extends __torch_function__ with predicate routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-a-data-driven-yaml-operator-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 A data-driven YAML operator table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-granularity-as-a-tiling-abstraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Granularity as a tiling abstraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-quantization-safety-strict-mode-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Quantization safety: strict mode + overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-no-in-place-ops-on-quantizedtensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 No in-place ops on QuantizedTensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-export-mode-dequantizes-on-attach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Export mode dequantizes on attach
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#49-range-setting-is-a-pluggable-subsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.9 Range setting is a pluggable subsystem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-quantized-modules-ffnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Quantized modules (ff.nn)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-autoquant-quantization-by-source-transpilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Autoquant — quantization by source transpilation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-orchestration-algorithms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Orchestration &amp; algorithms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-status-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Status summary
       
     </span>
   </a>
@@ -3279,50 +3716,385 @@
   
 
 
-  <h1>export</h1>
-
-<div class="doc doc-object doc-module">
-
-
-
-
-    <div class="doc doc-contents first">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div><h3 id="submodules">Submodules<a class="headerlink" href="#submodules" title="Permanent link">#</a></h3>
+<h1 id="fastforward-design-choices">FastForward Design Choices<a class="headerlink" href="#fastforward-design-choices" title="Permanent link">#</a></h1>
+<p>This document records the <em>fundamental design choices</em> behind FastForward and
+the rationale for each. See <a href="#9-status-summary">§9</a> for which of them are
+implemented today and which are still planned.</p>
+<hr />
+<h2 id="1-what-fastforward-is">1. What FastForward is<a class="headerlink" href="#1-what-fastforward-is" title="Permanent link">#</a></h2>
+<p>FastForward is a Python package built on top of PyTorch for neural-network
+quantization. It aims to serve as a foundation for research and prototyping in
+quantization, and second as a reliable path to deployment. It leverages
+PyTorch's eager mode, so working with a quantized network is meant to feel like
+working with any other <code>torch.nn.Module</code>.</p>
+<p>In practice, a model moves through FastForward in stages: a float module is
+converted into a <em>quant-ready</em> tree of quantizer stubs, those stubs are resolved
+into concrete <em>quant-aware</em> quantizers, ranges are estimated to produce a fitted
+<em>quantized</em> model, and the result can be exported to a deployment artifact. Each
+stage is separately customizable, and users are not required to make every
+decision up front (<a href="#2-design-principles">§2</a>).</p>
+<p>These stages run on CPU/GPU, while the exported artifact targets accelerators
+such as NPUs; GPU references elsewhere in this document refer to the former.</p>
+<p>Three properties shape the library as a whole:</p>
 <ul>
-<li><a href="export/"><code>export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="module_export/"><code>module_export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="pipeline/"><code>pipeline</code></a></li>
-<li><a href="stages/"><code>stages</code></a></li>
+<li><strong>Ease of use and extensibility as primary goals</strong>, chosen ahead of breadth of
+  features.</li>
+<li><strong>Minimal dependencies and easy installability</strong>, so it composes with many
+  PyTorch / OS / library versions.</li>
+<li><strong>A single library, configured for hardware</strong>, rather than divergent
+  forks — HW-aware behavior belongs in (possibly private) configuration,
+  not in a separate codebase.</li>
 </ul>
+<p>A complementary principle bounds the scope: the <strong>quantization core does one
+thing — quantization</strong>. Hardware targets, model conversion, logging, and export
+are all supported, but they live in layers on top of the core rather than being
+baked into it. This "do one thing well / pull complexity down" stance is the
+reason the codebase is split into cooperating layers
+(<a href="#3-architecture-at-a-glance">§3</a>) rather than a monolith.</p>
+<hr />
+<h2 id="2-design-principles">2. Design principles<a class="headerlink" href="#2-design-principles" title="Permanent link">#</a></h2>
+<p>These principles are visible throughout the codebase:</p>
+<ol>
+<li><strong>Eager-mode transparency.</strong> A quantized model should be as inspectable as
+   any PyTorch module — breakpoints, <code>print</code>, and standard introspection all
+   work. This is the reason Autoquant emits plain Python code rather than a traced
+   graph (<a href="#6-autoquant-quantization-by-source-transpilation">§6</a>).</li>
+<li><strong>PyTorch-native, define-by-run.</strong> Quantization is expressed in ordinary
+   Python/PyTorch, deliberately <em>not</em> requiring <code>torch.compile</code> or trace-only
+   capture as the primary path.</li>
+<li><strong>Enable, don't prescribe.</strong> The library exposes mechanism (custom
+   quantizers, custom kernels, custom export stages) rather than hard-coding
+   policy. "Simple ≠ easy": the common path is unsurprising, but non-standard
+   tasks are supported at the cost of some user investment.</li>
+<li><strong>Deferred quantization specification.</strong> A model progresses
+   float → quant-ready (stubs) → quant-aware (concrete quantizers) → quantized
+   (fitted). Users are not forced to make all decisions up front (<a href="#5-quantized-modules-ffnn">§5</a>).</li>
+<li><strong>Separation of concerns / layering.</strong> Core quantization, dispatch,
+   range-setting, modules, orchestration, and export are distinct layers that
+   can be adopted incrementally.</li>
+</ol>
+<hr />
+<h2 id="3-architecture-at-a-glance">3. Architecture at a glance<a class="headerlink" href="#3-architecture-at-a-glance" title="Permanent link">#</a></h2>
+<p>FastForward is organized as cooperating layers, low-level to high-level.
+Packages are given relative to <code>src/fastforward/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Package</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quantized Tensor &amp; Ops Dispatch</td>
+<td><code>quantized_tensor.py</code>, <code>dispatcher.py</code>, <code>_quantops/</code></td>
+<td>Represent quantized values + route operators</td>
+</tr>
+<tr>
+<td>Quantization logic</td>
+<td><code>quantization/</code>, <code>range_setting/</code></td>
+<td>Quantize/dequantize functions, granularity, range estimation</td>
+</tr>
+<tr>
+<td>Modules</td>
+<td><code>nn/</code></td>
+<td>Quantization-aware module wrappers + functional API</td>
+</tr>
+<tr>
+<td>Model selection</td>
+<td><code>mpath/</code></td>
+<td>Select/update many submodules at once</td>
+</tr>
+<tr>
+<td>Autoquant</td>
+<td><code>_autoquant/</code>, <code>autoquant.py</code></td>
+<td>Generate quantized-ready module source code from original torch model source</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td><code>_orchestration/</code>, <code>orchestration.py</code></td>
+<td>Schedule and execute layer-by-layer algorithms (GPTQ, etc.) over a graph IR</td>
+</tr>
+<tr>
+<td>Export</td>
+<td><code>export/</code></td>
+<td>Produce deployable artifacts (QNN/ONNX)</td>
+</tr>
+<tr>
+<td>Cross-cutting</td>
+<td><code>serialization.py</code>, <code>flags.py</code>, <code>overrides.py</code>, <code>testing/</code></td>
+<td>State I/O, global modes, helpers</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-quantization-core">4. Quantization core<a class="headerlink" href="#4-quantization-core" title="Permanent link">#</a></h2>
+<h3 id="41-quantizedtensor-carries-data-and-metadata">4.1 <code>QuantizedTensor</code> carries data <em>and</em> metadata<a class="headerlink" href="#41-quantizedtensor-carries-data-and-metadata" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> The central abstraction is <code>QuantizedTensor</code> (a <code>torch.Tensor</code>
+subclass) that stores the integer representation together with a
+<code>QuantizationContext</code> (the quantization function + its parameters: scale,
+offset, num_bits, tile size).</p>
+<p><strong>Why.</strong> Keeping parameters attached to the tensor lets operators and modules
+understand format, range, and granularity without out-of-band bookkeeping.</p>
+<h3 id="42-autograd-semantics-identity-jacobian-dequantize-gradients-live-in-quantize">4.2 Autograd semantics: identity-Jacobian dequantize, gradients live in <em>quantize</em><a class="headerlink" href="#42-autograd-semantics-identity-jacobian-dequantize-gradients-live-in-quantize" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> A quantized tensor represents <em>real values</em> in quantized form.
+Dequantization changes representation, not value, so its backward pass is the
+<strong>identity</strong>. <em>All</em> gradient behavior — exact or approximate (STE/LSQ-style) —
+is implemented in the <strong>quantize</strong> function's backward pass.</p>
+<p><strong>Why.</strong> This makes gradient approximations mathematically well-defined and
+composable: any custom quantization function that follows the same convention
+interoperates cleanly. The convention is documented in-code and encouraged (not
+strictly enforced) for new quantization functions.</p>
+<h3 id="43-operator-dispatch-extends-__torch_function__-with-predicate-routing">4.3 Operator dispatch extends <code>__torch_function__</code> with predicate routing<a class="headerlink" href="#43-operator-dispatch-extends-__torch_function__-with-predicate-routing" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> Rather than replace PyTorch's operator routing, FastForward extends
+it: <code>QuantizedTensor.__torch_function__</code> calls a predicate-based <code>dispatch()</code>.
+Kernels register with a priority (<code>DEFAULT</code> → <code>FALLBACK</code> →
+<code>NOT_IMPLEMENTED_FALLBACK</code>); the first matching predicate wins. If nothing
+matches, a dequantization fallback runs (subject to strict mode, <a href="#46-quantization-safety-strict-mode-overrides">§4.6</a>).</p>
+<p><strong>Why.</strong> Quantized and float ops coexist in one eager graph — essential for
+debugging, gradual adoption, and mixed-precision experiments.</p>
+<h3 id="44-a-data-driven-yaml-operator-table">4.4 A data-driven YAML operator table<a class="headerlink" href="#44-a-data-driven-yaml-operator-table" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> Quantized operators are declared <em>as data</em> in
+<code>_quantops/quantized_operators.yaml</code> (each entry: an <code>op</code> signature using
+<code>Quantized</code>/<code>MaybeQuantized</code> symbolic types, a <code>fallback</code> torch callable, and
+optional <code>aliases</code>), not by subclassing per operator.</p>
+<p><strong>Why.</strong> Declarative operator specs decouple the <em>set</em> of quantized operators
+from runtime dispatch and from Autoquant's code generation. New operators, or
+extra qualified names for the same op, are added without touching dispatch
+logic.</p>
+<h3 id="45-granularity-as-a-tiling-abstraction">4.5 Granularity as a tiling abstraction<a class="headerlink" href="#45-granularity-as-a-tiling-abstraction" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> <code>Granularity</code> is an abstract base with <code>PerTensor</code>, <code>PerChannel</code>,
+<code>PerBlock</code>, and <code>PerTile</code> implementations. Each computes <code>tile_size(shape)</code>,
+from which parameter dimensionality is derived.</p>
+<p><strong>Why.</strong> A single tiling abstraction expresses all granularities uniformly, so
+quantization logic need not special-case per-channel vs. per-block.</p>
+<h3 id="46-quantization-safety-strict-mode-overrides">4.6 Quantization safety: strict mode + overrides<a class="headerlink" href="#46-quantization-safety-strict-mode-overrides" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> A global <code>strict_quantization</code> flag (default <strong>on</strong>) turns implicit
+dequantization into an error; context managers (<code>disable_quantization</code>, etc.)
+relax it locally.</p>
+<p><strong>Why.</strong> Catch common quantization mistakes early by default, while still
+allowing exploratory, partially-quantized runs.</p>
+<h3 id="47-no-in-place-ops-on-quantizedtensor">4.7 No in-place ops on <code>QuantizedTensor</code><a class="headerlink" href="#47-no-in-place-ops-on-quantizedtensor" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> In-place tensor operators (<code>+=</code>, etc.) are disabled and fall back to
+out-of-place semantics.</p>
+<p><strong>Why.</strong> In-place mutation would generally push values off the quantization
+grid, violating the "quantized tensor = real values on a grid" invariant.</p>
+<h3 id="48-export-mode-dequantizes-on-attach">4.8 Export mode dequantizes on attach<a class="headerlink" href="#48-export-mode-dequantizes-on-attach" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> With <code>export_mode</code> set, attaching a <code>QuantizationContext</code> yields a
+dequantized float tensor instead of a <code>QuantizedTensor</code>.</p>
+<p><strong>Why.</strong> Lets capture/export machinery operate without the eager-mode
+<code>QuantizedTensor</code> infrastructure being active.</p>
+<h3 id="49-range-setting-is-a-pluggable-subsystem">4.9 Range setting is a pluggable subsystem<a class="headerlink" href="#49-range-setting-is-a-pluggable-subsystem" title="Permanent link">#</a></h3>
+<p><strong>Choice.</strong> Range-estimation strategies (min/max, min-error, smoothed min/max)
+live in <code>range_setting/</code>, invoked via an <code>estimate_ranges</code> context manager, so
+all quantizers estimate/update ranges consistently. Algorithms such as GPTQ
+(<a href="#7-orchestration-algorithms">§7</a>) build on this subsystem rather than
+re-implementing estimation.</p>
+<hr />
+<h2 id="5-quantized-modules-ffnn">5. Quantized modules (<code>ff.nn</code>)<a class="headerlink" href="#5-quantized-modules-ffnn" title="Permanent link">#</a></h2>
+<p><strong>Choice.</strong> Quantized modules inherit from both <code>QuantizedModule</code> and their
+float counterpart (e.g. <code>QuantizedLinear(QuantizedModule, torch.nn.Linear)</code>). A
+metaclass calls <code>__init_quantization__</code>, which installs input/weight/bias/output
+quantizers — initially as <code>QuantizerStub</code> placeholders. A functional API
+(<code>ff.nn.functional</code>) mirrors the operator table. <code>mpath</code> provides a selector DSL
+to configure many submodules at once.</p>
+<p><strong>Why.</strong> This realizes <em>deferred specification</em> (<a href="#2-design-principles">§2</a>): converting a model
+produces a quant-ready module tree of stubs, which are later resolved to
+concrete quantizers. Familiar <code>torch.nn</code> APIs are preserved so adoption is
+incremental.</p>
+<hr />
+<h2 id="6-autoquant-quantization-by-source-transpilation">6. Autoquant — quantization by source transpilation<a class="headerlink" href="#6-autoquant-quantization-by-source-transpilation" title="Permanent link">#</a></h2>
+<p><strong>Choice.</strong> Autoquant converts a float module into quantization-ready <strong>module
+Python source code</strong>: it reads the module's source, parses it to a Concrete Syntax
+Tree (libcst), applies passes, and emits formatted Python.</p>
+<p>Key sub-choices:</p>
+<ul>
+<li><strong>Emit source, not a runtime graph transform.</strong> Preserves eager-mode
+  execution (dispatcher, <code>QuantizedTensor</code>, range-setting all stay live and
+  debuggable), and keeps control flow, loops, and comments intact.</li>
+<li><strong>libcst (CST) over AST.</strong> Preserves formatting/comments through the
+  round-trip.</li>
+<li><strong>Optional mypy type inference</strong> to decide which variables are quantized
+  ("quant vs. nonquant").</li>
+<li><strong>Correct operation order under variable reassignment.</strong> SSA-like versioning
+  and walrus-bound temporaries avoid re-quantizing shared subexpressions and
+  keep quantizer insertion at safe points.</li>
+<li><strong>Collision-safe naming</strong> for generated classes and aliases.</li>
+</ul>
+<p><strong>Roadmap (design material, not yet in code):</strong> policy-driven Autoquant
+(generate alternative rewrites — a <code>PatternRule</code> extension point exists but is
+not yet exercised); structured Autoquant <em>reports</em> (currently only logging);
+and agent-in-the-loop Autoquant. Generation of freeze-parameter-ready quantizers
+is likewise a documented interaction question rather than implemented codegen.</p>
+<hr />
+<h2 id="7-orchestration-algorithms">7. Orchestration &amp; algorithms<a class="headerlink" href="#7-orchestration-algorithms" title="Permanent link">#</a></h2>
+<p><strong>Choice.</strong> A dedicated orchestration layer separates <em>execution policy</em>
+(ordering, scheduling, memory movement) from <em>algorithm logic</em> (GPTQ, local-error
+methods). A model is represented as an explicit DAG (<code>GraphModule</code>) whose node
+arguments are symbolic references, lowered by an <code>InstructionScheduler</code> into a
+linear <code>InstructionProgram</code> executed by a register-based <code>InstructionEngine</code>.</p>
+<p>Key sub-choices:</p>
+<ul>
+<li><strong>Graph IR + topological scheduling</strong>, not control flow, so execution order is
+  explicit and analyzable.</li>
+<li><strong>Instruction VM</strong> with a small instruction set (call/optimize module, load
+  attribute, store/return, move module/activations, delete register entries).</li>
+<li><strong>Multi-context execution via <code>Delegate</code> + <code>Contexts</code>.</strong> Local-error methods
+  (e.g. GPTQ) need activations in several regimes (float calibration vs.
+  quantized forward); contexts propagate backward through the graph so each node
+  produces what downstream optimization needs.</li>
+<li><strong>Lifetime &amp; offloading passes</strong> free activations at last use and move
+  weights/activations between compute/storage devices.</li>
+</ul>
+<p><strong>Roadmap:</strong> Work on orchestration is primarily algorithm-driven. We plan on adding
+support for richer forward-data flows to support algorithms like AdaRound and BrecQ,
+and backward-data flows to support algorithms like YAQA. Secondary to this, we want to
+add optimizations for distributed workflows (multi-GPU offloading, instruction placement
+on specific devices, automatic load balancing). Finally, although we have a tracing
+mechanism for automatic GraphModule creation, this is still experimental and we would
+like to make this feature stable.</p>
+<hr />
+<h2 id="8-export">8. Export<a class="headerlink" href="#8-export" title="Permanent link">#</a></h2>
+<p><strong>Choice.</strong> Export is a <strong>DAG of stages</strong> resolved by topological sort, selected
+from a <strong>registry keyed by <code>(target, format)</code></strong>. Quantization is serialized as
+<strong>ONNX <code>metadata_props</code> side-channel</strong> (plus an <code>.encodings</code> file), keeping the
+graph itself float and standard. Model capture uses <strong><code>torch.export</code> (PT2E)</strong>.</p>
+<p>Key sub-choices:</p>
+<ul>
+<li><strong>Stage DAG over a monolithic exporter</strong>, so targets add, replace, and
+  re-order stages independently.</li>
+<li><strong><code>(target, format)</code> registry keying</strong>, so one target can support multiple
+  formats side-by-side. Two QNN pipelines ship: <code>("qnn", "onnx")</code> (metadata) and
+  <code>("qnn", "onnx_qdq")</code> (embedded Q/DQ nodes).</li>
+<li><strong>Metadata-based encodings, not fake-quant nodes</strong>, so downstream tooling
+  reconstructs quantization from side-channel data on a clean float graph.
+  Encoding schemas are <strong>versioned</strong> (Legacy 0.6.1 / V1 / V2) behind a handler
+  protocol; V1 is the default.</li>
+<li><strong>PT2E / <code>torch.export</code> capture</strong>, aligning with PyTorch's canonical
+  quantization IR.</li>
+<li><strong>User-extensible by construction</strong> (custom stages, custom
+  <code>pipeline_factory</code> / <code>registry</code>).</li>
+<li><strong>Module-level export</strong> (<code>ModuleIORecorder</code>) for per-layer export and
+  numerical validation.</li>
+<li><strong>QNN-specific transforms stay out of tree by design</strong>, keeping core export
+  generic.</li>
+</ul>
+<p><strong>Roadmap:</strong> <strong>ExecuTorch</strong> and <strong>GGUF</strong> targets are planned but <strong>not</strong> yet
+registered in the default registry.</p>
+<hr />
+<h2 id="9-status-summary">9. Status summary<a class="headerlink" href="#9-status-summary" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Choice</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Core</td>
+<td><code>QuantizedTensor</code> = data + metadata</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>Identity-Jacobian dequantize; gradients in quantize</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td><code>__torch_function__</code> + predicate dispatch</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>YAML operator table</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>Granularity tiling abstraction</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>Strict mode + overrides</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>No in-place ops; export-mode dequantize</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Modules</td>
+<td>Dual-inheritance modules + quantizer stubs (deferred spec)</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Autoquant</td>
+<td>Source transpilation (libcst, optional mypy, SSA order)</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Autoquant</td>
+<td>Policy-driven / reports / agent-in-loop</td>
+<td>Roadmap</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Graph IR + instruction VM + multi-context delegates</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Lifetime management + offload passes</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Forward data flow support for AdaRound style algorithms</td>
+<td>Roadmap</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Backward data flow support for YAQA style algorithms</td>
+<td>Roadmap</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>Automatic load balancing for multi-GPU setups</td>
+<td>Roadmap</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>Stage DAG + <code>(target,format)</code> registry</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>Metadata encodings (versioned) + PT2E capture</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>QNN ONNX + ONNX-QDQ pipelines</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>ExecuTorch target</td>
+<td>Roadmap</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>GGUF target</td>
+<td>Roadmap</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -3372,14 +4144,14 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../../javascripts/clickable-cards.js"></script>
+        <script src="../javascripts/clickable-cards.js"></script>
       
-        <script src="../../../javascripts/api-heading-styling.js"></script>
+        <script src="../javascripts/api-heading-styling.js"></script>
       
     
   </body>

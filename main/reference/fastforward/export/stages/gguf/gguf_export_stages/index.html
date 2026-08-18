@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/">
+        <link rel="canonical" href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages/">
       
       
-        <link rel="prev" href="../exceptions/">
+        <link rel="prev" href="../adapter/">
       
       
-        <link rel="next" href="export/">
+        <link rel="next" href="../../onnx/">
       
       
         
       
       
-      <link rel="icon" href="../../../assets/ff-logo-purple.png">
+      <link rel="icon" href="../../../../../../assets/ff-logo-purple.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>export - FastForward</title>
+        <title>gguf_export_stages - FastForward</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#submodules" class="md-skip">
+        <a href="#fastforward.export.stages.gguf.gguf_export_stages-functions" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../../.." title="FastForward" class="md-header__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              export
+              gguf_export_stages
             
           </span>
         </div>
@@ -202,7 +202,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../.." class="md-tabs__link">
+      <a href="../../../../../.." class="md-tabs__link">
         
   
   
@@ -221,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../design-choices/" class="md-tabs__link">
+      <a href="../../../../../../design-choices/" class="md-tabs__link">
         
   
   
@@ -240,7 +240,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../examples/" class="md-tabs__link">
+      <a href="../../../../../../examples/" class="md-tabs__link">
         
   
   
@@ -263,7 +263,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+        <a href="../../../../" class="md-tabs__link">
           
   
   
@@ -297,9 +297,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
+    <a href="../../../../../.." title="FastForward" class="md-nav__button md-logo" aria-label="FastForward" data-md-component="logo">
       
-  <img src="../../../assets/ff-logo-white.png" alt="logo">
+  <img src="../../../../../../assets/ff-logo-white.png" alt="logo">
 
     </a>
     FastForward
@@ -326,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../design-choices/" class="md-nav__link">
+      <a href="../../../../../../design-choices/" class="md-nav__link">
         
   
   
@@ -380,7 +380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../examples/" class="md-nav__link">
+      <a href="../../../../../../examples/" class="md-nav__link">
         
   
   
@@ -479,7 +479,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../../" class="md-nav__link ">
               
   
   
@@ -521,7 +521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../autoquant/" class="md-nav__link">
+      <a href="../../../../autoquant/" class="md-nav__link">
         
   
   
@@ -549,7 +549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cache/" class="md-nav__link">
+      <a href="../../../../cache/" class="md-nav__link">
         
   
   
@@ -577,7 +577,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../common/" class="md-nav__link">
+      <a href="../../../../common/" class="md-nav__link">
         
   
   
@@ -605,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dataclasses/" class="md-nav__link">
+      <a href="../../../../dataclasses/" class="md-nav__link">
         
   
   
@@ -633,7 +633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dispatcher/" class="md-nav__link">
+      <a href="../../../../dispatcher/" class="md-nav__link">
         
   
   
@@ -661,7 +661,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../exceptions/" class="md-nav__link">
+      <a href="../../../../exceptions/" class="md-nav__link">
         
   
   
@@ -706,7 +706,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../../../" class="md-nav__link ">
               
   
   
@@ -724,7 +724,7 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_1_7" id="__nav_4_1_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -748,7 +748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="export/" class="md-nav__link">
+      <a href="../../../export/" class="md-nav__link">
         
   
   
@@ -776,7 +776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="module_export/" class="md-nav__link">
+      <a href="../../../module_export/" class="md-nav__link">
         
   
   
@@ -819,7 +819,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="pipeline/" class="md-nav__link ">
+            <a href="../../../pipeline/" class="md-nav__link ">
               
   
   
@@ -861,7 +861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/core/" class="md-nav__link">
+      <a href="../../../pipeline/core/" class="md-nav__link">
         
   
   
@@ -889,7 +889,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/gguf_llama_cpp_pipeline/" class="md-nav__link">
         
   
   
@@ -917,7 +917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/orchestrator/" class="md-nav__link">
+      <a href="../../../pipeline/orchestrator/" class="md-nav__link">
         
   
   
@@ -945,7 +945,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/qnn_onnx_pipeline/" class="md-nav__link">
         
   
   
@@ -973,7 +973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
+      <a href="../../../pipeline/qnn_onnx_qdq_pipeline/" class="md-nav__link">
         
   
   
@@ -1001,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pipeline/registry/" class="md-nav__link">
+      <a href="../../../pipeline/registry/" class="md-nav__link">
         
   
   
@@ -1034,6 +1034,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1044,15 +1046,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -1076,7 +1078,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_7_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1094,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/annotations/" class="md-nav__link">
+      <a href="../../annotations/" class="md-nav__link">
         
   
   
@@ -1122,7 +1124,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/base_pipeline_stages/" class="md-nav__link">
+      <a href="../../base_pipeline_stages/" class="md-nav__link">
         
   
   
@@ -1147,6 +1149,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1157,15 +1161,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_7_4_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/gguf/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1189,7 +1193,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_7_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_7_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1207,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/gguf/adapter/" class="md-nav__link">
+      <a href="../adapter/" class="md-nav__link">
         
   
   
@@ -1232,10 +1236,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="stages/gguf/gguf_export_stages/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    gguf_export_stages
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1251,6 +1280,96 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_apply_target_transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_extract_quantized_weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_extract_quantized_weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_map_tensor_names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_pack_gguf_blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_pack_gguf_blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_write_gguf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_write_gguf
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1286,7 +1405,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="stages/onnx/" class="md-nav__link ">
+            <a href="../../onnx/" class="md-nav__link ">
               
   
   
@@ -1328,7 +1447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_export_stages/" class="md-nav__link">
+      <a href="../../onnx/onnx_export_stages/" class="md-nav__link">
         
   
   
@@ -1356,7 +1475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/onnx/onnx_qdq_export_stages/" class="md-nav__link">
+      <a href="../../onnx/onnx_qdq_export_stages/" class="md-nav__link">
         
   
   
@@ -1392,7 +1511,7 @@
   
   
     <li class="md-nav__item">
-      <a href="stages/passes/" class="md-nav__link">
+      <a href="../../passes/" class="md-nav__link">
         
   
   
@@ -1436,7 +1555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flags/" class="md-nav__link">
+      <a href="../../../../flags/" class="md-nav__link">
         
   
   
@@ -1464,7 +1583,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../forward_override/" class="md-nav__link">
+      <a href="../../../../forward_override/" class="md-nav__link">
         
   
   
@@ -1492,7 +1611,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logging_utils/" class="md-nav__link">
+      <a href="../../../../logging_utils/" class="md-nav__link">
         
   
   
@@ -1535,7 +1654,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../mpath/" class="md-nav__link ">
+            <a href="../../../../mpath/" class="md-nav__link ">
               
   
   
@@ -1577,7 +1696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/fragments/" class="md-nav__link">
+      <a href="../../../../mpath/fragments/" class="md-nav__link">
         
   
   
@@ -1605,7 +1724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mpath/selector/" class="md-nav__link">
+      <a href="../../../../mpath/selector/" class="md-nav__link">
         
   
   
@@ -1656,7 +1775,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/" class="md-nav__link ">
+            <a href="../../../../nn/" class="md-nav__link ">
               
   
   
@@ -1698,7 +1817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/activations/" class="md-nav__link">
+      <a href="../../../../nn/activations/" class="md-nav__link">
         
   
   
@@ -1726,7 +1845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/container/" class="md-nav__link">
+      <a href="../../../../nn/container/" class="md-nav__link">
         
   
   
@@ -1754,7 +1873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/conv/" class="md-nav__link">
+      <a href="../../../../nn/conv/" class="md-nav__link">
         
   
   
@@ -1782,7 +1901,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/dynamic_linear_quantizer/" class="md-nav__link">
+      <a href="../../../../nn/dynamic_linear_quantizer/" class="md-nav__link">
         
   
   
@@ -1810,7 +1929,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/embedding/" class="md-nav__link">
+      <a href="../../../../nn/embedding/" class="md-nav__link">
         
   
   
@@ -1853,7 +1972,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/" class="md-nav__link ">
+            <a href="../../../../nn/functional/" class="md-nav__link ">
               
   
   
@@ -1910,7 +2029,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../nn/functional/custom/" class="md-nav__link ">
+            <a href="../../../../nn/functional/custom/" class="md-nav__link ">
               
   
   
@@ -1952,7 +2071,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/functional/custom/sdpa/" class="md-nav__link">
+      <a href="../../../../nn/functional/custom/sdpa/" class="md-nav__link">
         
   
   
@@ -1996,7 +2115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear/" class="md-nav__link">
+      <a href="../../../../nn/linear/" class="md-nav__link">
         
   
   
@@ -2024,7 +2143,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/linear_quantizer/" class="md-nav__link">
+      <a href="../../../../nn/linear_quantizer/" class="md-nav__link">
         
   
   
@@ -2052,7 +2171,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/normalization/" class="md-nav__link">
+      <a href="../../../../nn/normalization/" class="md-nav__link">
         
   
   
@@ -2080,7 +2199,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantized_module/" class="md-nav__link">
+      <a href="../../../../nn/quantized_module/" class="md-nav__link">
         
   
   
@@ -2108,7 +2227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nn/quantizer/" class="md-nav__link">
+      <a href="../../../../nn/quantizer/" class="md-nav__link">
         
   
   
@@ -2144,7 +2263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../orchestration/" class="md-nav__link">
+      <a href="../../../../orchestration/" class="md-nav__link">
         
   
   
@@ -2172,7 +2291,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overrides/" class="md-nav__link">
+      <a href="../../../../overrides/" class="md-nav__link">
         
   
   
@@ -2215,7 +2334,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/" class="md-nav__link ">
+            <a href="../../../../quantization/" class="md-nav__link ">
               
   
   
@@ -2272,7 +2391,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../quantization/affine/" class="md-nav__link ">
+            <a href="../../../../quantization/affine/" class="md-nav__link ">
               
   
   
@@ -2314,7 +2433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/dynamic/" class="md-nav__link">
+      <a href="../../../../quantization/affine/dynamic/" class="md-nav__link">
         
   
   
@@ -2342,7 +2461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/function/" class="md-nav__link">
+      <a href="../../../../quantization/affine/function/" class="md-nav__link">
         
   
   
@@ -2370,7 +2489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/range/" class="md-nav__link">
+      <a href="../../../../quantization/affine/range/" class="md-nav__link">
         
   
   
@@ -2398,7 +2517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/affine/static/" class="md-nav__link">
+      <a href="../../../../quantization/affine/static/" class="md-nav__link">
         
   
   
@@ -2434,7 +2553,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/freeze/" class="md-nav__link">
+      <a href="../../../../quantization/freeze/" class="md-nav__link">
         
   
   
@@ -2462,7 +2581,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/function/" class="md-nav__link">
+      <a href="../../../../quantization/function/" class="md-nav__link">
         
   
   
@@ -2490,7 +2609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/fuse/" class="md-nav__link">
+      <a href="../../../../quantization/fuse/" class="md-nav__link">
         
   
   
@@ -2518,7 +2637,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/gptq/" class="md-nav__link">
+      <a href="../../../../quantization/gptq/" class="md-nav__link">
         
   
   
@@ -2546,7 +2665,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/granularity/" class="md-nav__link">
+      <a href="../../../../quantization/granularity/" class="md-nav__link">
         
   
   
@@ -2574,7 +2693,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quant_init/" class="md-nav__link">
+      <a href="../../../../quantization/quant_init/" class="md-nav__link">
         
   
   
@@ -2602,7 +2721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/quantizer_annotations/" class="md-nav__link">
+      <a href="../../../../quantization/quantizer_annotations/" class="md-nav__link">
         
   
   
@@ -2630,7 +2749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/random/" class="md-nav__link">
+      <a href="../../../../quantization/random/" class="md-nav__link">
         
   
   
@@ -2658,7 +2777,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/save_load/" class="md-nav__link">
+      <a href="../../../../quantization/save_load/" class="md-nav__link">
         
   
   
@@ -2686,7 +2805,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/ste/" class="md-nav__link">
+      <a href="../../../../quantization/ste/" class="md-nav__link">
         
   
   
@@ -2714,7 +2833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/strict_quantization/" class="md-nav__link">
+      <a href="../../../../quantization/strict_quantization/" class="md-nav__link">
         
   
   
@@ -2742,7 +2861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantization/tiled_tensor/" class="md-nav__link">
+      <a href="../../../../quantization/tiled_tensor/" class="md-nav__link">
         
   
   
@@ -2778,7 +2897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quantized_tensor/" class="md-nav__link">
+      <a href="../../../../quantized_tensor/" class="md-nav__link">
         
   
   
@@ -2821,7 +2940,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../range_setting/" class="md-nav__link ">
+            <a href="../../../../range_setting/" class="md-nav__link ">
               
   
   
@@ -2863,7 +2982,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/common/" class="md-nav__link">
+      <a href="../../../../range_setting/common/" class="md-nav__link">
         
   
   
@@ -2891,7 +3010,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/min_error/" class="md-nav__link">
+      <a href="../../../../range_setting/min_error/" class="md-nav__link">
         
   
   
@@ -2919,7 +3038,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../range_setting/minmax/" class="md-nav__link">
+      <a href="../../../../range_setting/minmax/" class="md-nav__link">
         
   
   
@@ -2955,7 +3074,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../serialization/" class="md-nav__link">
+      <a href="../../../../serialization/" class="md-nav__link">
         
   
   
@@ -2998,7 +3117,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../testing/" class="md-nav__link ">
+            <a href="../../../../testing/" class="md-nav__link ">
               
   
   
@@ -3040,7 +3159,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/autoquant/" class="md-nav__link">
+      <a href="../../../../testing/autoquant/" class="md-nav__link">
         
   
   
@@ -3068,7 +3187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/initialization/" class="md-nav__link">
+      <a href="../../../../testing/initialization/" class="md-nav__link">
         
   
   
@@ -3096,7 +3215,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/metrics/" class="md-nav__link">
+      <a href="../../../../testing/metrics/" class="md-nav__link">
         
   
   
@@ -3124,7 +3243,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/package_mock/" class="md-nav__link">
+      <a href="../../../../testing/package_mock/" class="md-nav__link">
         
   
   
@@ -3152,7 +3271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing/string/" class="md-nav__link">
+      <a href="../../../../testing/string/" class="md-nav__link">
         
   
   
@@ -3188,7 +3307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../type_common/" class="md-nav__link">
+      <a href="../../../../type_common/" class="md-nav__link">
         
   
   
@@ -3249,13 +3368,74 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#submodules" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submodules
+        Functions
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_apply_target_transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_extract_quantized_weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_extract_quantized_weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_map_tensor_names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_pack_gguf_blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_pack_gguf_blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_write_gguf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_write_gguf
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3279,7 +3459,7 @@
   
 
 
-  <h1>export</h1>
+  <h1>gguf_export_stages</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -3287,6 +3467,13 @@
 
 
     <div class="doc doc-contents first">
+
+        <p>Pipeline stages for the FastForward -&gt; GGUF (llama.cpp) export path.</p>
+<p>The stages are intentionally thin: each reads its configuration from the
+pipeline <code>context</code> and delegates the real work to the helper modules in this
+package (extraction, RoPE permute, name mapping, block packing, vocab writing).
+GGUF export is weight-only, so the extraction stage is a pipeline root that
+operates on the live quantized module rather than a captured FX graph.</p>
 
 
 
@@ -3306,7 +3493,112 @@
 
 
 
+<h3 id="fastforward.export.stages.gguf.gguf_export_stages-functions">Functions<a href="#fastforward.export.stages.gguf.gguf_export_stages-functions" class="headerlink" title="Permanent link">#</a></h3>
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_apply_target_transforms</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply architecture-specific tensor transforms in adapter-defined order.</p>
+<p>Iterates the adapter's <code>transforms</code> list, applying each to every tensor.
+Built-in transforms include :func:<code>llama_rope_permute</code>; users can append
+their own to the list when constructing a custom :class:<code>ArchAdapter</code>.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L82" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_extract_quantized_weights" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_extract_quantized_weights</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_extract_quantized_weights" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extract integer codes + scales (and float passthroughs) from the FF module.</p>
+<p>Root stage: receives the source quantized module and reads every exportable
+tensor into an architecture-neutral list of :class:<code>ExtractedTensor</code>.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L58" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_map_tensor_names</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Assign each tensor its GGUF name via the architecture adapter's name map.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L107" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_pack_gguf_blocks" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_pack_gguf_blocks</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_pack_gguf_blocks" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Pack quantized tensors into GGUF block bytes; keep float tensors as-is.</p>
+<p>Returns a mapping with two sub-dicts keyed by GGUF tensor name:
+<code>{"quantized": {name: (rows, block_bytes) uint8 tensor}, "float": {name: tensor}}</code>.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L126" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_write_gguf" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_write_gguf</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_write_gguf" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Write the packed tensors, metadata, and vocabulary to a <code>.gguf</code> file.</p>
+<p>Uses <code>GGUFWriter</code>'s <code>raw_dtype</code> path so the pre-packed quantized bytes are
+written verbatim, preserving FastForward's learned scales. This is the
+torch-&gt;numpy boundary: <code>GGUFWriter.add_tensor</code> expects numpy arrays.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L157" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
 
 
 
@@ -3314,15 +3606,7 @@
 
     </div>
 
-</div><h3 id="submodules">Submodules<a class="headerlink" href="#submodules" title="Permanent link">#</a></h3>
-<ul>
-<li><a href="export/"><code>export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="module_export/"><code>module_export</code></a> <span class="doc-submodule-summary">— !!! experimental
-    Export is an experimental feature and is currently under active development.</span></li>
-<li><a href="pipeline/"><code>pipeline</code></a></li>
-<li><a href="stages/"><code>stages</code></a></li>
-</ul>
+</div>
 
 
 
@@ -3372,14 +3656,14 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../../javascripts/clickable-cards.js"></script>
+        <script src="../../../../../../javascripts/clickable-cards.js"></script>
       
-        <script src="../../../javascripts/api-heading-styling.js"></script>
+        <script src="../../../../../../javascripts/api-heading-styling.js"></script>
       
     
   </body>
