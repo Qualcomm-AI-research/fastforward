@@ -69,9 +69,8 @@ tokenizer = AutoTokenizer.from_pretrained(
 # We use WikiText-2, where the training split feeds calibration, the validation split is used for evaluation.
 
 # %%
+from fastforward.testing.data import tokenize_dataset
 from torch.utils.data import DataLoader
-
-from doc_helpers.data_utils import tokenize_dataset
 
 sequence_length = 1024
 batch_size = 1
@@ -97,7 +96,7 @@ train_loader = DataLoader(tokenized_trainset, batch_size, collate_fn=default_dat
 # This is the reference number that the quantized model will be compared against.
 
 # %%
-from doc_helpers.data_utils import sliced_tqdm
+from fastforward.testing.data import sliced_tqdm
 
 
 def prepare_batch(batch: dict, device: torch.device):
@@ -169,7 +168,7 @@ from _autoquantized_qwen import QuantizedQwen3ForCausalLM
 ff.quantize_model(model, skip_quantized_modules=True)
 
 # %%
-# OPTIONAL: you can cast the model to QuantizedLlamaForCausalLM to help LSP or IDE
+# OPTIONAL: you can cast the model to QuantizedQwen3ForCausalLM to help LSP or IDE
 from typing import cast
 
 model: QuantizedQwen3ForCausalLM = cast(QuantizedQwen3ForCausalLM, model)

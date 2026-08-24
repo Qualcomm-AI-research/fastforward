@@ -3141,6 +3141,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../testing/data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../testing/initialization/" class="md-nav__link">
         
   
@@ -3425,6 +3453,9 @@ capture/convert/cleanup chain of the ONNX pipeline.</p>
     | +--&gt; extract_quantized_weights   (root; int codes + scales + float passthroughs)
                 |
                 v
+            fuse_tensors                (concat N sources -&gt; 1 per TensorFusion spec)
+                |
+                v
             apply_target_transforms     (per-arch RoPE Q/K permute)
                 |
                 v
@@ -3498,7 +3529,7 @@ own for a non-standard model layout.</p>
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/gguf_llama_cpp_pipeline.py#L16" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/gguf_llama_cpp_pipeline.py#L17" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>

@@ -1329,6 +1329,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_fuse_tensors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3187,6 +3198,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../testing/data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../testing/initialization/" class="md-nav__link">
         
   
@@ -3402,6 +3441,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stage_fuse_tensors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3512,7 +3562,7 @@ Built-in transforms include :func:<code>llama_rope_permute</code>; users can app
 their own to the list when constructing a custom :class:<code>ArchAdapter</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L83" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L101" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3533,7 +3583,29 @@ their own to the list when constructing a custom :class:<code>ArchAdapter</code>
 tensor into an architecture-neutral list of :class:<code>ExtractedTensor</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L59" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L60" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_fuse_tensors</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Fuse groups of tensors into single outputs per the adapter's fusion specs.</p>
+<p>No-op when <code>adapter.fusions</code> is empty. Otherwise, for each
+:class:<code>TensorFusion</code> spec, groups matching tensors by their captured
+layer/instance indices and concatenates them along the specified axis.</p>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L84" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3552,7 +3624,7 @@ tensor into an architecture-neutral list of :class:<code>ExtractedTensor</code>.
         <p>Assign each tensor its GGUF name via the architecture adapter's name map.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L108" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L126" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3573,7 +3645,7 @@ tensor into an architecture-neutral list of :class:<code>ExtractedTensor</code>.
 <code>{"quantized": {name: (rows, block_bytes) uint8 tensor}, "float": {name: tensor}}</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L127" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L145" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3595,7 +3667,7 @@ written verbatim, preserving FastForward's learned scales. This is the
 torch-&gt;numpy boundary: <code>GGUFWriter.add_tensor</code> expects numpy arrays.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L158" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L176" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
