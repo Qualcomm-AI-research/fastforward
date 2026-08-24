@@ -51,6 +51,7 @@ models-deps = [
 ]
 test-regression = [
   {include-group = "models-deps"},
+  {include-group = "test"},
 ]
 docs = [
   {include-group = "models-deps"},
