@@ -12,6 +12,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import textwrap
 import types
 import warnings
 
@@ -40,11 +41,16 @@ from fastforward._autoquant.autoquant import (
 )
 from fastforward._autoquant.cst import passes
 from fastforward._autoquant.cst.nodes import QuantizerReference
+from fastforward._autoquant.import_collision import (
+    _import_binding_name,
+    resolve_import_collisions,
+)
 from fastforward._autoquant.pysource import SourceContext
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._quantops import OperatorTable, optable
 from fastforward.autoquant import autoquantize
 from fastforward.testing.metrics import sqnr as metric_sqnr
+from fastforward.testing.package_mock import PackageMock
 from fastforward.testing.string import assert_strings_match_verbose
 from torch import Tensor as TensorAlias  # required for tests, do not remove
 from typing_extensions import override
@@ -1914,3 +1920,223 @@ def test_autoquant_mro_skip_anchored_at_class_without_own_method() -> None:
     # quantized, so the re-anchored call reaches a quantized `* 2`
     quantized_base = code.split("class Quantized_SkipAnchorBase(")[1].split("class Quantized_")[0]
     assert "output_quantizer=self.quantizer_mul" in quantized_base
+
+
+@pytest.mark.parametrize(
+    "symbol,expected",
+    [
+        # `from mod import name` binds `name`.
+        (ImportSymbol(name="helper", module="pkg.mod"), "helper"),
+        # An `as` clause always wins.
+        (ImportSymbol(name="helper", module="pkg.mod", asname="alias"), "alias"),
+        (ImportSymbol(name="torch.nn.functional", asname="F"), "F"),
+        # A plain `import a.b.c` binds only its root package.
+        (ImportSymbol(name="torch"), "torch"),
+        (ImportSymbol(name="torch.nn.functional"), "torch"),
+    ],
+)
+def test_import_binding_name(symbol: ImportSymbol, expected: str) -> None:
+    """The binding name is the local name an import actually introduces."""
+    # GIVEN an import symbol
+    # WHEN its local binding name is computed
+    # THEN it matches the name Python would bind
+    assert _import_binding_name(symbol) == expected
+
+
+def _function_builder(code: str, required_imports: tuple[ImportSymbol, ...]) -> Any:
+    funcdef = libcst.parse_statement(textwrap.dedent(code))
+    assert isinstance(funcdef, libcst.FunctionDef)
+    return pybuilder.FunctionBuilder(funcdef, required_imports=required_imports, origin=None)
+
+
+def _render_module_imports(module_builder: pybuilder.ModuleBuilder) -> str:
+    cst_module = libcst.Module([])
+    return "\n".join(cst_module.code_for_node(stmt) for stmt in module_builder.import_statements())
+
+
+def test_colliding_imports_are_aliased_and_references_rewritten() -> None:
+    """Two same-named symbols from different modules must not shadow each other."""
+    # GIVEN two functions that each call a `helper` imported from a different module
+    first = _function_builder(
+        "def first(x):\n    return helper(x)\n",
+        (ImportSymbol(name="helper", module="pkg.alpha.mod_alpha"),),
+    )
+    second = _function_builder(
+        "def second(x):\n    return helper(x)\n",
+        (ImportSymbol(name="helper", module="pkg.beta.mod_beta"),),
+    )
+    module_builder = pybuilder.ModuleBuilder(origin=None)
+    module_builder.add_function(first)
+    module_builder.add_function(second)
+
+    # WHEN import collisions are resolved
+    resolve_import_collisions(module_builder)
+
+    rendered_imports = _render_module_imports(module_builder)
+
+    # THEN the first symbol keeps the plain name and the second is aliased with a
+    # module-qualified prefix
+    assert "from pkg.alpha.mod_alpha import helper\n" in rendered_imports
+    assert "from pkg.beta.mod_beta import helper as beta_helper\n" in rendered_imports
+
+    # THEN only the body that required the aliased symbol is rewritten
+    assert "return helper(x)" in libcst.Module([]).code_for_node(first.cst)
+    assert "return beta_helper(x)" in libcst.Module([]).code_for_node(second.cst)
+
+
+def test_colliding_imports_do_not_shadow_a_quantized_class_name() -> None:
+    """An alias must never collide with a name already used at module level."""
+    # GIVEN a generated class whose name would clash with the natural alias
+    first = _function_builder(
+        "def first(x):\n    return helper(x)\n",
+        (ImportSymbol(name="helper", module="pkg.alpha.mod_alpha"),),
+    )
+    second = _function_builder(
+        "def second(x):\n    return helper(x)\n",
+        (ImportSymbol(name="helper", module="pkg.beta.mod_beta"),),
+    )
+    taken = pybuilder.ClassBuilder(name="beta_helper", bases=(), required_imports=(), origin=None)
+    module_builder = pybuilder.ModuleBuilder(origin=None)
+    module_builder.add_function(first)
+    module_builder.add_function(second)
+    module_builder.add_class(taken)
+
+    # WHEN import collisions are resolved
+    resolve_import_collisions(module_builder)
+
+    # THEN the alias falls through to the next, wider module-qualified candidate
+    rendered_imports = _render_module_imports(module_builder)
+    assert "import helper as pkg_beta_helper\n" in rendered_imports
+    assert "return pkg_beta_helper(x)" in libcst.Module([]).code_for_node(second.cst)
+
+
+def test_compatible_plain_module_imports_are_not_aliased() -> None:
+    """`import torch` and `import torch.nn.functional` may coexist."""
+    # GIVEN two functions importing the same root package at different depths
+    first = _function_builder(
+        "def first(x):\n    return torch.abs(x)\n",
+        (ImportSymbol(name="torch"),),
+    )
+    second = _function_builder(
+        "def second(x):\n    return torch.nn.functional.silu(x)\n",
+        (ImportSymbol(name="torch.nn.functional"),),
+    )
+    module_builder = pybuilder.ModuleBuilder(origin=None)
+    module_builder.add_function(first)
+    module_builder.add_function(second)
+
+    # WHEN import collisions are resolved
+    resolve_import_collisions(module_builder)
+
+    # THEN neither import is aliased, because both bind the same root package
+    rendered_imports = _render_module_imports(module_builder)
+    assert "import torch\n" in rendered_imports
+    assert "import torch.nn.functional\n" in rendered_imports
+    assert " as " not in rendered_imports
+    assert "return torch.nn.functional.silu(x)" in libcst.Module([]).code_for_node(second.cst)
+
+
+def test_base_class_import_keeps_plain_name_on_collision() -> None:
+    """A class' base import cannot be aliased, so the helper import is renamed."""
+    # GIVEN a quantized class whose base class collides with a helper's import
+    method = _function_builder(
+        "def forward(self, x):\n    return x\n",
+        (),
+    )
+    cls_builder = pybuilder.ClassBuilder(
+        name="QuantizedBlock",
+        bases=("Block",),
+        required_imports=(ImportSymbol(name="Block", module="pkg.alpha.mod_alpha"),),
+        origin=None,
+    )
+    cls_builder.add_method(method)
+    helper = _function_builder(
+        "def helper(x):\n    return Block(x)\n",
+        (ImportSymbol(name="Block", module="pkg.beta.mod_beta"),),
+    )
+    module_builder = pybuilder.ModuleBuilder(origin=None)
+    module_builder.add_class(cls_builder)
+    module_builder.add_function(helper)
+
+    # WHEN import collisions are resolved
+    resolve_import_collisions(module_builder)
+
+    # THEN the base class keeps the name its `bases` entry refers to
+    rendered_imports = _render_module_imports(module_builder)
+    assert "from pkg.alpha.mod_alpha import Block\n" in rendered_imports
+    assert "from pkg.beta.mod_beta import Block as beta_Block\n" in rendered_imports
+    assert "return beta_Block(x)" in libcst.Module([]).code_for_node(helper.cst)
+
+
+class _ImportCollisionWrapper(torch.nn.Module):
+    """Pairs two submodules whose helper imports collide by name."""
+
+    def __init__(self, first: torch.nn.Module, second: torch.nn.Module) -> None:
+        super().__init__()
+        self.first = first
+        self.second = second
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self.second(self.first(x)))
+
+
+@pytest.mark.slow
+def test_generated_module_has_no_shadowed_imports(tmp_path: pathlib.Path) -> None:
+    """Colliding helper imports must not shadow one another in generated code."""
+
+    # GIVEN two packages that each define a module-level `residual_op` with
+    # different semantics, each referenced by its own torch module. This mirrors
+    # `eager_attention_forward` being defined by both the `ministral3` and
+    # `pixtral` transformers modules, where the helper is referenced rather than
+    # called directly and so remains an import.
+    def _block_source(class_name: str, op: str) -> str:
+        return f"""
+        import torch
+
+        def residual_op(x, y):
+            return x {op} y
+
+        class {class_name}(torch.nn.Module):
+            def forward(self, x):
+                op = residual_op
+                return op(x, x)
+        """
+
+    packages = PackageMock({
+        "mock_alpha.modeling_alpha": _block_source("AlphaBlock", "+"),
+        "mock_beta.modeling_beta": _block_source("BetaBlock", "-"),
+    })
+
+    with packages:
+        alpha = importlib.import_module("mock_alpha.modeling_alpha")
+        beta = importlib.import_module("mock_beta.modeling_beta")
+
+        # WHEN the pair is autoquantized
+        code = codeformat_with_defaults(
+            autoquant_with_defaults(
+                _ImportCollisionWrapper(alpha.AlphaBlock(), beta.BetaBlock()),
+                use_type_inference=False,
+            )
+        )
+
+    # THEN both helpers are bound, under distinct names
+    assert "from mock_alpha.modeling_alpha import AlphaBlock, residual_op" in code
+    assert "from mock_beta.modeling_beta import residual_op as mock_beta_residual_op" in code
+
+    # THEN each generated forward references the helper from its own module
+    assert "op = residual_op" in code
+    assert "op = mock_beta_residual_op" in code
+
+    generated = tmp_path / "generated_import_collision.py"
+    generated.write_text(code, encoding="utf-8")
+
+    proc = subprocess.run(
+        ["ruff", "check", "--isolated", str(generated), "--select", "F811"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    # THEN ruff reports no redefinition errors (F811) in the generated file
+    assert proc.returncode == 0, proc.stdout + proc.stderr

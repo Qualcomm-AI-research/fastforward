@@ -156,6 +156,11 @@ class ClassBuilder(NodeBuilder[libcst.ClassDef]):
         return self._name
 
     @property
+    def own_required_imports(self) -> tuple[ImportSymbol, ...]:
+        """Imports that are required for this class itself, excluding its methods."""
+        return self._required_imports
+
+    @property
     def required_imports(self) -> tuple[ImportSymbol, ...]:
         """Imports that are required for this class."""
         required_imports: set[ImportSymbol] = set(self._required_imports)
@@ -304,6 +309,10 @@ class FunctionBuilder(NodeBuilder[libcst.FunctionDef]):
     def required_imports(self) -> tuple[ImportSymbol, ...]:
         """Imports that are required for this function."""
         return self._required_imports
+
+    @required_imports.setter
+    def required_imports(self, required_imports: Iterable[ImportSymbol]) -> None:
+        self._required_imports = tuple(required_imports)
 
     @override
     def build(self, quantizer_refs: QuantizerReferenceCollection) -> libcst.FunctionDef:

@@ -1,10 +1,9 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-import collections
 import logging
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
 import torch
 
@@ -12,49 +11,9 @@ from fastforward._autoquant import pybuilder
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
 
+from .name_allocation import QuantizedClassNameAllocator
+
 logger = logging.getLogger(__name__)
-
-
-class QuantizedClassNameAllocator:
-    """Allocates collision-safe base aliases and quantized class names."""
-
-    def __init__(self, module_types: Sequence[type[torch.nn.Module]]) -> None:
-        self._type_name_totals = collections.Counter(mod_type.__name__ for mod_type in module_types)
-        self._type_name_next_index: collections.Counter[str] = collections.Counter()
-        self._used_quantized_class_names: set[str] = set()
-        self._used_base_import_aliases: set[str] = set()
-
-    @staticmethod
-    def _alloc_unique_name(preferred: str, used_names: set[str]) -> str:
-        if preferred not in used_names:
-            used_names.add(preferred)
-            return preferred
-
-        index = 1
-        while True:
-            candidate = f"{preferred}_{index}"
-            if candidate not in used_names:
-                used_names.add(candidate)
-                return candidate
-            index += 1
-
-    def for_module_type(self, mod_type: type[torch.nn.Module]) -> tuple[str, str]:
-        type_name = mod_type.__name__
-        total = self._type_name_totals[type_name]
-        index = self._type_name_next_index[type_name]
-        self._type_name_next_index[type_name] += 1
-
-        if total > 1:
-            preferred_base_alias = f"__ffaq_base_{type_name}_{index}"
-            preferred_quantized_name = f"Quantized{type_name}_{index}"
-        else:
-            preferred_base_alias = type_name
-            preferred_quantized_name = f"Quantized{type_name}"
-
-        return (
-            self._alloc_unique_name(preferred_base_alias, self._used_base_import_aliases),
-            self._alloc_unique_name(preferred_quantized_name, self._used_quantized_class_names),
-        )
 
 
 class ClassBuilderStore:

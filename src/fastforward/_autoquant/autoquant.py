@@ -25,7 +25,6 @@ from fastforward._autoquant import pybuilder, pysource, superclass
 from fastforward._autoquant.bypass import is_bypassed_callable
 from fastforward._autoquant.class_builder import (
     ClassBuilderStore,
-    QuantizedClassNameAllocator,
     class_builders_in_definition_order,
 )
 from fastforward._autoquant.convert import convert_function
@@ -37,7 +36,12 @@ from fastforward._autoquant.function_utils import (
     resolve_function_source_member_name,
     resolve_method_owner_and_name,
 )
+from fastforward._autoquant.import_collision import resolve_import_collisions
 from fastforward._autoquant.mypy.type_provider import mypy_call_scoped_cache
+from fastforward._autoquant.name_allocation import (
+    QuantizedClassNameAllocator,
+    RenameHelperRefsTransformer,
+)
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
 from fastforward._import import fully_qualified_name
@@ -282,6 +286,7 @@ def autoquant(
         module_builder.add_class(class_builder)
 
     _resolve_all_quantized_calls(module_builder, quantizer_refs)
+    resolve_import_collisions(module_builder)
 
     return module_builder.build(quantizer_refs).code
 
@@ -702,7 +707,7 @@ def _resolve_all_quantized_calls(
         else:
             helper_name_map[old_name] = replacement
 
-    rename_transformer = _RenameHelperRefsTransformer(helper_name_map)
+    rename_transformer = RenameHelperRefsTransformer(helper_name_map)
     call_transformer = _ResolveQuantizedCallsTransformer(calls, helper_function_names)
     for func_ref, func_builder in func_builder_map.items():
         func_builder.quantizer_signature = signatures.get(func_ref, ())
@@ -981,47 +986,6 @@ def _resolve_calls(
                         value = caller_mapped_refs[idx]
                 call_args.append(_CallArg(keyword=param, value=value))
             calls[unresolved_call] = tuple(call_args)
-
-
-class _RenameHelperRefsTransformer(libcst.CSTTransformer):
-    """Replace stale Name references to renamed helpers.
-
-    After autoquant renames helper functions (e.g. ``group_norm`` →
-    ``quantized_group_norm``), non-call references to the old name become
-    undefined.  This pass rewrites all such ``Name`` nodes.  Call-target
-    renames are already handled by ``_ResolveQuantizedCallsTransformer``.
-
-    Only standalone ``Name`` nodes are renamed — attribute accesses like
-    ``torch.group_norm`` are left untouched because the ``attr`` part of an
-    ``Attribute`` node is not an independent reference.
-    """
-
-    def __init__(self, name_map: dict[str, libcst.BaseExpression]) -> None:
-        self._name_map = name_map
-        self._inside_attr: set[int] = set()
-
-    def visit_Attribute(self, node: libcst.Attribute) -> bool:
-        self._inside_attr.add(id(node.attr))
-        return True
-
-    def leave_Attribute(
-        self,
-        original_node: libcst.Attribute,
-        updated_node: libcst.Attribute,
-    ) -> libcst.BaseExpression:
-        self._inside_attr.discard(id(original_node.attr))
-        return updated_node
-
-    def leave_Name(
-        self,
-        original_node: libcst.Name,
-        updated_node: libcst.Name,
-    ) -> libcst.BaseExpression:
-        if id(original_node) in self._inside_attr:
-            return updated_node
-        if replacement := self._name_map.get(updated_node.value):
-            return replacement.deep_clone()
-        return updated_node
 
 
 class _ResolveQuantizedCallsTransformer(libcst.CSTTransformer):

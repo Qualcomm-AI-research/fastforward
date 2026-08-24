@@ -13,6 +13,11 @@ from libcst.metadata.scope_provider import ScopeVisitor as _ScopeVisitor
 from fastforward._autoquant.cst import nodes
 
 
+def is_valid_identifier(name: str) -> bool:
+    """True if `name` can be used as a Python identifier."""
+    return name.isidentifier() and not keyword.iskeyword(name)
+
+
 @dataclasses.dataclass(frozen=True)
 class ImportSymbol:
     """Representation of a symbol imported from another module/package."""
@@ -23,7 +28,7 @@ class ImportSymbol:
 
     @staticmethod
     def _is_valid_identifier(name: str) -> bool:
-        return name.isidentifier() and not keyword.iskeyword(name)
+        return is_valid_identifier(name)
 
     @classmethod
     def _is_valid_dotted_name(cls, name: str) -> bool:
