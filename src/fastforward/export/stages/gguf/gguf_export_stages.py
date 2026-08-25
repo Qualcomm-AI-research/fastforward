@@ -166,6 +166,12 @@ def stage_pack_gguf_blocks(
             scales = tensor.scales.reshape(-1)
             offsets = tensor.offsets.reshape(-1) if tensor.offsets is not None else None
             packed = quant_format.pack_fn(int_codes, scales, offsets)
+            if packed.shape[-1] != quant_format.block_bytes:
+                msg = (
+                    f"pack_fn for {quant_format.name} returned "
+                    f"{packed.shape[-1]} bytes/block, expected {quant_format.block_bytes}"
+                )
+                raise ExportError(msg)
             quantized[tensor.gguf_name] = packed.reshape(tensor.rows, -1)
         else:
             assert tensor.float_data is not None

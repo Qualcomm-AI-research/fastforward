@@ -37,7 +37,7 @@ Example::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, TypeAlias
+from typing import TYPE_CHECKING, Callable, Protocol, TypeAlias, runtime_checkable
 
 import torch
 
@@ -51,7 +51,50 @@ if TYPE_CHECKING:
 _NameMapT: TypeAlias = Callable[[str], str | None]
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
 _IsTiedT: TypeAlias = Callable[[str, GgufSourceConfig], bool]
-_PackFnT: TypeAlias = Callable[..., torch.Tensor]
+
+
+@runtime_checkable
+class PackFn(Protocol):
+    """Protocol for GGUF block-packing functions.
+
+    A pack function converts per-block quantization data from FastForward's
+    internal representation into the raw byte layout expected by llama.cpp.
+
+    Implementations receive integer codes, per-block scales, and (for asymmetric
+    formats) per-block offsets, and must return a ``uint8`` tensor containing
+    the packed block bytes.
+
+    Example::
+
+        def pack_q5_0_blocks(
+            int_codes: torch.Tensor,
+            scales: torch.Tensor,
+            offsets: torch.Tensor | None = None,
+        ) -> torch.Tensor:
+            ...  # produce (n_blocks, 22) uint8 tensor
+            return packed
+    """
+
+    def __call__(
+        self,
+        int_codes: torch.Tensor,
+        scales: torch.Tensor,
+        offsets: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Pack quantized blocks into raw GGUF bytes.
+
+        Args:
+            int_codes: ``(n_blocks, block_size)`` int8 — FastForward signed codes.
+            scales: ``(n_blocks,)`` float32 — per-block scale factor.
+            offsets: ``(n_blocks,)`` float32 for asymmetric formats, ``None`` for
+                symmetric. The caller always passes all three positional args.
+
+        Returns:
+            ``(n_blocks, block_bytes)`` uint8 — the packed byte blocks.
+        """
+        ...
+
+
 TensorTransformT: TypeAlias = Callable[
     ["ExtractedTensor", GgufSourceConfig, "GgufQuantFormat"], "ExtractedTensor"
 ]
@@ -113,6 +156,14 @@ class GgufQuantFormat:
     a pack function that produces the raw byte layout, and a GGML type name that
     selects the correct dequantizer in llama.cpp.
 
+    Custom packing formats can be defined by implementing a function matching
+    the :class:`PackFn` protocol and wrapping it in a ``GgufQuantFormat``::
+
+        GGUF_Q5_0 = GgufQuantFormat(
+            name="Q5_0", num_bits=5, block_size=32, block_bytes=22,
+            symmetric=True, pack_fn=pack_q5_0_blocks, file_type=8,
+        )
+
     Attributes:
         name: GGML type name (e.g. ``"Q4_0"``, ``"Q8_0"``). Must match a key in
             ``gguf.GGMLQuantizationType`` so the writer can look up the enum.
@@ -120,12 +171,13 @@ class GgufQuantFormat:
             Used to validate that the user's quantizers match the target format.
         block_size: Number of elements per quantized block (e.g. 32 for Q4_0/Q8_0,
             256 for K-quants).
+        block_bytes: Number of raw bytes per packed block (e.g. 18 for Q4_0, 20
+            for Q4_1, 34 for Q8_0). Used for output validation.
         symmetric: Whether the format requires symmetric quantization. Q4_0 and
             Q8_0 are symmetric (only ``d`` per block); Q4_1 is asymmetric
             (stores both ``d`` and ``m``).
-        pack_fn: Callable ``(int_codes: Tensor[n_blocks, block_size],
-            scales: Tensor[n_blocks]) -> Tensor[n_blocks, block_bytes]`` that
-            produces the raw byte layout for this quant type.
+        pack_fn: Callable matching the :class:`PackFn` protocol that produces
+            the raw byte layout for this quant type.
         file_type: GGUF file-type integer written to the header (used by llama.cpp
             to select a default compute type).
     """
@@ -133,8 +185,9 @@ class GgufQuantFormat:
     name: str
     num_bits: int
     block_size: int
+    block_bytes: int
     symmetric: bool
-    pack_fn: _PackFnT
+    pack_fn: PackFn
     file_type: int
 
 
