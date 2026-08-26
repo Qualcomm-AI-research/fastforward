@@ -237,7 +237,7 @@ class Node:
     id: uuid.UUID
     name: str
     target: torch.nn.Module | Callable[..., Any]
-    args: Collection[_BaseRef]
+    args: Sequence[_BaseRef]
     op: Op = Op.torch_module
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
     delegate: Delegate | None = None
@@ -522,7 +522,7 @@ class GraphModule(torch.nn.Module):
         self,
         name: str,
         target: torch.nn.Module | Callable[..., Any],
-        args: Collection[_BaseRef],
+        args: Sequence[_BaseRef],
         kwargs: Mapping[str, _BaseRef] | None = None,
         *,
         op: Op = Op.torch_module,
@@ -584,7 +584,7 @@ class GraphModule(torch.nn.Module):
         self,
         name: str,
         subgraph: GraphModule,
-        args: Collection[_BaseRef],
+        args: Sequence[_BaseRef],
         kwargs: Mapping[str, _BaseRef] | None = None,
         *,
         original_module: torch.nn.Module | None = None,
