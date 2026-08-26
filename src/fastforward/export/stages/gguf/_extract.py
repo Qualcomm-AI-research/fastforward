@@ -26,7 +26,8 @@ import fastforward as ff
 
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
-from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufQuantFormat
+from fastforward.export.stages.gguf._packing import default_format_registry
+from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
 from fastforward.nn import LinearQuantizer
 from fastforward.quantization import granularity as granularities
 
@@ -50,6 +51,7 @@ class ExtractedTensor:
     offsets: torch.Tensor | None = None
     float_data: torch.Tensor | None = None
     gguf_name: str = ""
+    quant_format: GgufQuantFormat | None = None  # Resolved per-tensor for quantized tensors.
 
 
 def _build_quantizer_map(model: torch.nn.Module) -> dict[str, LinearQuantizer]:
@@ -131,6 +133,37 @@ def _validate_quantizer(
         raise ExportError(msg)
 
 
+def _resolve_quant_format(
+    quantizer: LinearQuantizer,
+    registry: GgufFormatRegistry,
+    hf_name: str,
+) -> GgufQuantFormat:
+    """Resolve the GGUF format for a quantizer from the registry.
+
+    Looks up the format by ``(num_bits, symmetric, block_size)`` derived from
+    the quantizer's properties. Raises :class:`ExportError` if no registered
+    format matches.
+    """
+    if not isinstance(quantizer.granularity, granularities.PerBlock):
+        msg = (
+            f"Parameter '{hf_name}': quantizer granularity is "
+            f"{type(quantizer.granularity).__name__} but GGUF export requires "
+            f"PerBlock granularity"
+        )
+        raise ExportError(msg)
+
+    block_size = quantizer.granularity.block_sizes[0]
+    fmt = registry.resolve(quantizer.num_bits, quantizer.symmetric, block_size)
+    if fmt is None:
+        msg = (
+            f"Parameter '{hf_name}': no registered GGUF format matches quantizer "
+            f"(num_bits={quantizer.num_bits}, symmetric={quantizer.symmetric}, "
+            f"block_size={block_size}). Register a GgufQuantFormat for this configuration."
+        )
+        raise ExportError(msg)
+    return fmt
+
+
 def _is_fusion_source(hf_name: str, adapter: ArchAdapter) -> bool:
     """Check if a parameter name matches any fusion source pattern."""
     for fusion in adapter.fusions:
@@ -145,7 +178,8 @@ def extract_module_tensors(
     *,
     adapter: ArchAdapter,
     config: GgufSourceConfig,
-    quant_format: GgufQuantFormat,
+    format_registry: GgufFormatRegistry | None = None,
+    quant_format: GgufQuantFormat | None = None,
 ) -> list[ExtractedTensor]:
     """Extract every GGUF-exportable tensor from ``model``.
 
@@ -153,9 +187,9 @@ def extract_module_tensors(
     ``ff.find_quantizers``) are extracted as quantized (integer codes + scales).
     Everything else passes through as float. No fallback quantization is applied.
 
-    Each quantizer is validated against ``quant_format`` before extraction:
-    it must be symmetric, match the format's ``num_bits``, and (for PerBlock
-    granularity) have a block size present in the format's ``block_size``.
+    Each quantizer is resolved against the ``format_registry`` to determine its
+    target GGUF format (by matching ``num_bits``, ``symmetric``, and
+    ``block_size``), then validated for compatibility before extraction.
 
     Args:
         model: The quantized FastForward module to export.
@@ -165,15 +199,26 @@ def extract_module_tensors(
             parameter.
         config: Source model config, passed to the adapter's ``is_tied``
             predicate for architecture-specific tied-weight logic.
-        quant_format: Target GGUF quantization format. Used to validate that
-            quantizers are compatible before extracting codes and scales.
+        format_registry: Registry of allowed GGUF quantization formats. Each
+            quantizer is matched against the registry by its properties. If no
+            format matches, an :class:`ExportError` is raised.
+        quant_format: Single GGUF format (backward-compatible shorthand). If
+            provided without ``format_registry``, creates a single-format
+            registry containing only this format.
 
     Returns:
         The extracted tensors, in ``named_parameters`` order.
 
     Raises:
-        ExportError: If a quantizer is incompatible with ``quant_format``.
+        ExportError: If a quantizer does not match any registered format or is
+            otherwise incompatible.
     """
+    if format_registry is None:
+        if quant_format is None:
+            format_registry = default_format_registry()
+        else:
+            format_registry = GgufFormatRegistry()
+            format_registry.register(quant_format)
     quantizer_map = _build_quantizer_map(model)
     extracted: list[ExtractedTensor] = []
     skipped: list[str] = []
@@ -189,7 +234,8 @@ def extract_module_tensors(
 
         quantizer = quantizer_map.get(hf_name)
         if quantizer is not None:
-            _validate_quantizer(quantizer, quant_format, hf_name)
+            resolved_format = _resolve_quant_format(quantizer, format_registry, hf_name)
+            _validate_quantizer(quantizer, resolved_format, hf_name)
             weight = param.data.float()
             quantized = quantizer(weight)
             int_codes = quantized.int_repr().detach().cpu()
@@ -211,6 +257,7 @@ def extract_module_tensors(
                     int_codes=int_codes,
                     scales=scales.reshape(rows, -1),
                     offsets=offsets.reshape(rows, -1) if offsets is not None else None,
+                    quant_format=resolved_format,
                 )
             )
         else:

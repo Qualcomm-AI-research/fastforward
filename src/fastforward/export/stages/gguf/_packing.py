@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import torch
 
-from fastforward.export.stages.gguf.adapter import GgufQuantFormat
+from fastforward.export.stages.gguf.adapter import GgufFormatRegistry, GgufQuantFormat
 
 
 def pack_q4_0_blocks(
@@ -135,6 +135,16 @@ GGUF_Q4_0 = GgufQuantFormat(
     pack_fn=pack_q4_0_blocks,
     file_type=2,
 )
+"""4-bit symmetric per-block quantization.
+
+Requires a FastForward quantizer configured as:
+- ``num_bits=4``
+- ``symmetric=True``
+- ``granularity=PerBlock(block_sizes=(32,), block_dims=(1,), per_channel_dims=(0,))``
+
+Block layout (18 bytes): ``[fp16 scale | 16 nibble-packed code bytes]``.
+Dequantization: ``x = scale * (code - 8)``.
+"""
 
 GGUF_Q8_0 = GgufQuantFormat(
     name="Q8_0",
@@ -145,6 +155,16 @@ GGUF_Q8_0 = GgufQuantFormat(
     pack_fn=pack_q8_0_blocks,
     file_type=7,
 )
+"""8-bit symmetric per-block quantization.
+
+Requires a FastForward quantizer configured as:
+- ``num_bits=8``
+- ``symmetric=True``
+- ``granularity=PerBlock(block_sizes=(32,), block_dims=(1,), per_channel_dims=(0,))``
+
+Block layout (34 bytes): ``[fp16 scale | 32 int8 codes]``.
+Dequantization: ``x = scale * code``.
+"""
 
 GGUF_Q4_1 = GgufQuantFormat(
     name="Q4_1",
@@ -155,3 +175,22 @@ GGUF_Q4_1 = GgufQuantFormat(
     pack_fn=pack_q4_1_blocks,
     file_type=3,
 )
+"""4-bit asymmetric per-block quantization.
+
+Requires a FastForward quantizer configured as:
+- ``num_bits=4``
+- ``symmetric=False``
+- ``granularity=PerBlock(block_sizes=(32,), block_dims=(1,), per_channel_dims=(0,))``
+
+Block layout (20 bytes): ``[fp16 scale | fp16 min | 16 nibble-packed code bytes]``.
+Dequantization: ``x = scale * code + min``.
+"""
+
+
+def default_format_registry() -> GgufFormatRegistry:
+    """Return a :class:`GgufFormatRegistry` pre-loaded with all built-in formats."""
+    registry = GgufFormatRegistry()
+    registry.register(GGUF_Q4_0)
+    registry.register(GGUF_Q4_1)
+    registry.register(GGUF_Q8_0)
+    return registry

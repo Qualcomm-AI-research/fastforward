@@ -95,6 +95,15 @@ def _validate_fusion_group(
 
 def _fuse_quantized(tensors: list[ExtractedTensor], target_name: str, axis: int) -> ExtractedTensor:
     """Concatenate quantized tensors along the given axis."""
+    formats = {t.quant_format for t in tensors} - {None}
+    if len(formats) > 1:
+        msg = (
+            f"Tensor fusion '{target_name}': cannot fuse tensors with "
+            f"different quant formats {formats}"
+        )
+        raise ExportError(msg)
+    fused_format = next(iter(formats)) if formats else None
+
     codes_list = []
     scales_list = []
     offsets_list = []
@@ -126,6 +135,7 @@ def _fuse_quantized(tensors: list[ExtractedTensor], target_name: str, axis: int)
         int_codes=fused_codes,
         scales=fused_scales,
         offsets=fused_offsets,
+        quant_format=fused_format,
     )
 
 

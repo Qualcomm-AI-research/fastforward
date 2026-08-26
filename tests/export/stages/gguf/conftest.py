@@ -21,4 +21,5 @@ def make_quantized_tensor(hf_name: str, rows: int, cols: int) -> ExtractedTensor
         cols=cols,
         int_codes=torch.randint(-8, 8, (n_blocks, block_size), generator=gen, dtype=torch.int8),
         scales=torch.rand(n_blocks, generator=gen) * 0.95 + 0.05,
+        quant_format=GGUF_Q4_0,
     )

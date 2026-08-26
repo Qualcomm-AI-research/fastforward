@@ -9,7 +9,7 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.export.stages.gguf import ArchAdapter, TensorFusion
+from fastforward.export.stages.gguf import GGUF_Q4_0, GGUF_Q8_0, ArchAdapter, TensorFusion
 from fastforward.export.stages.gguf._extract import ExtractedTensor, _is_fusion_source
 from fastforward.export.stages.gguf._fusion import apply_fusions
 
@@ -246,3 +246,50 @@ def test_extraction_includes_fusion_sources() -> None:
     assert _is_fusion_source("model.layers.2.self_attn.v_proj.weight", adapter)
     assert not _is_fusion_source("model.layers.0.self_attn.o_proj.weight", adapter)
     assert not _is_fusion_source("model.norm.weight", adapter)
+
+
+def test_mixed_quant_format_fusion_raises() -> None:
+    """Fusing tensors with different quant_format values raises ExportError."""
+    # GIVEN: two quantized tensors with different quant formats.
+    q = _make_quantized_tensor("layer.0.q.weight", 128, 128)
+    k = _make_quantized_tensor("layer.0.k.weight", 64, 128)
+    q.quant_format = GGUF_Q4_0
+    k.quant_format = GGUF_Q8_0
+
+    fusion = TensorFusion(
+        sources=(
+            r"layer\.(\d+)\.q\.weight",
+            r"layer\.(\d+)\.k\.weight",
+        ),
+        target_name=r"layer.\1.qk.weight",
+        axis=0,
+    )
+
+    # WHEN/THEN: applying fusion raises due to conflicting quant formats.
+    with pytest.raises(ff.exceptions.ExportError, match="different quant formats"):
+        apply_fusions([q, k], [fusion])
+
+
+def test_fusion_propagates_quant_format() -> None:
+    """Fusing tensors with the same quant_format propagates it to the result."""
+    # GIVEN: two quantized tensors sharing the same quant format.
+    q = _make_quantized_tensor("layer.0.q.weight", 128, 128)
+    k = _make_quantized_tensor("layer.0.k.weight", 64, 128)
+    q.quant_format = GGUF_Q4_0
+    k.quant_format = GGUF_Q4_0
+
+    fusion = TensorFusion(
+        sources=(
+            r"layer\.(\d+)\.q\.weight",
+            r"layer\.(\d+)\.k\.weight",
+        ),
+        target_name=r"layer.\1.qk.weight",
+        axis=0,
+    )
+
+    # WHEN: applying fusion.
+    result = apply_fusions([q, k], [fusion])
+
+    # THEN: the fused tensor carries the shared format.
+    assert len(result) == 1
+    assert result[0].quant_format is GGUF_Q4_0

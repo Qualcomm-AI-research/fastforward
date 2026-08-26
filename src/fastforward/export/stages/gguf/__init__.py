@@ -32,7 +32,11 @@ from fastforward.export.stages.gguf._config import GgufSourceConfig as GgufSourc
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0 as GGUF_Q4_0
 from fastforward.export.stages.gguf._packing import GGUF_Q4_1 as GGUF_Q4_1
 from fastforward.export.stages.gguf._packing import GGUF_Q8_0 as GGUF_Q8_0
+from fastforward.export.stages.gguf._packing import (
+    default_format_registry as default_format_registry,
+)
 from fastforward.export.stages.gguf.adapter import ArchAdapter as ArchAdapter
+from fastforward.export.stages.gguf.adapter import GgufFormatRegistry as GgufFormatRegistry
 from fastforward.export.stages.gguf.adapter import GgufQuantFormat as GgufQuantFormat
 from fastforward.export.stages.gguf.adapter import PackFn as PackFn
 from fastforward.export.stages.gguf.adapter import TensorFusion as TensorFusion

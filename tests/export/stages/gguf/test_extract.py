@@ -281,8 +281,8 @@ def test_extract_rejects_asymmetric_quantizer(_seed_prngs: int) -> None:
 
     model = Model()
 
-    # WHEN/THEN: extraction raises ExportError mentioning asymmetric.
-    with pytest.raises(ff.exceptions.ExportError, match="asymmetric"):
+    # WHEN/THEN: extraction raises ExportError (no format matches the asymmetric quantizer).
+    with pytest.raises(ff.exceptions.ExportError, match="no registered GGUF format matches"):
         extract_module_tensors(
             model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
         )

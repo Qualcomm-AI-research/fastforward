@@ -13,6 +13,7 @@ operates on the live quantized module rather than a captured FX graph.
 import pathlib
 import re
 
+from collections import Counter
 from dataclasses import replace
 from typing import Any, TypeAlias, cast
 
@@ -24,21 +25,41 @@ from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor, extract_module_tensors
 from fastforward.export.stages.gguf._fusion import apply_fusions
+from fastforward.export.stages.gguf._packing import default_format_registry
 from fastforward.export.stages.gguf._vocab import write_vocab
-from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufQuantFormat
+from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 
 
-def _require_quant_format(context: dict[str, Any]) -> GgufQuantFormat:
+def _require_format_registry(context: dict[str, Any]) -> GgufFormatRegistry:
+    """Resolve a format registry from the pipeline context.
+
+    Resolution order:
+    1. ``context["format_registry"]`` — user-provided registry (may include
+       custom formats).
+    2. ``context["quant_format"]`` — single format (backward-compat). Creates a
+       registry containing only that format, preserving strict single-format
+       validation.
+    3. Neither — returns the default registry with all built-in formats.
+    """
+    registry = context.get("format_registry")
+    if registry is not None:
+        if not isinstance(registry, GgufFormatRegistry):
+            msg = "'format_registry' must be a GgufFormatRegistry instance"
+            raise ExportError(msg)
+        return registry
+
     quant_format = context.get("quant_format")
-    if quant_format is None:
-        msg = "GGUF export requires 'quant_format' in the pipeline options"
-        raise ExportError(msg)
-    if not isinstance(quant_format, GgufQuantFormat):
-        msg = "'quant_format' must be a GgufQuantFormat instance"
-        raise ExportError(msg)
-    return quant_format
+    if quant_format is not None:
+        if not isinstance(quant_format, GgufQuantFormat):
+            msg = "'quant_format' must be a GgufQuantFormat instance"
+            raise ExportError(msg)
+        single_registry = GgufFormatRegistry()
+        single_registry.register(quant_format)
+        return single_registry
+
+    return default_format_registry()
 
 
 def _require_config(context: dict[str, Any]) -> GgufSourceConfig:
@@ -71,13 +92,13 @@ def stage_extract_quantized_weights(
     (model,) = modules
     adapter = _require_adapter(context)
     config = _require_config(context)
-    quant_format = _require_quant_format(context)
+    format_registry = _require_format_registry(context)
 
     return extract_module_tensors(
         model,
         adapter=adapter,
         config=config,
-        quant_format=quant_format,
+        format_registry=format_registry,
     )
 
 
@@ -108,17 +129,23 @@ def stage_apply_target_transforms(
     Iterates the adapter's ``transforms`` list, applying each to every tensor.
     Built-in transforms include :func:`llama_rope_permute`; users can append
     their own to the list when constructing a custom :class:`ArchAdapter`.
+
+    Each transform receives the tensor's resolved :class:`GgufQuantFormat` (for
+    quantized tensors) or a default format (for float tensors, which built-in
+    transforms skip).
     """
     del sample_inputs
     (tensors,) = modules
     adapter = _require_adapter(context)
     config = _require_config(context)
-    quant_format = _require_quant_format(context)
+    format_registry = _require_format_registry(context)
+    fallback_format = format_registry.first()
 
     transformed: list[ExtractedTensor] = []
     for tensor in tensors:
+        fmt = tensor.quant_format if tensor.quant_format is not None else fallback_format
         for transform in adapter.transforms:
-            tensor = transform(tensor, config, quant_format)
+            tensor = transform(tensor, config, fmt)
         transformed.append(tensor)
     return transformed
 
@@ -146,33 +173,36 @@ def stage_pack_gguf_blocks(
     modules: tuple[list[ExtractedTensor], ...],
     sample_inputs: _SampleInputsT,
     context: dict[str, Any],
-) -> dict[str, dict[str, torch.Tensor]]:
+) -> dict[str, dict[str, Any]]:
     """Pack quantized tensors into GGUF block bytes; keep float tensors as-is.
 
-    Returns a mapping with two sub-dicts keyed by GGUF tensor name:
-    ``{"quantized": {name: (rows, block_bytes) uint8 tensor}, "float": {name: tensor}}``.
-    """
-    del sample_inputs
-    (tensors,) = modules
-    quant_format = _require_quant_format(context)
-    block_size = quant_format.block_size
+    Each quantized tensor is packed using its own resolved :class:`GgufQuantFormat`,
+    supporting mixed quantization types in a single file.
 
-    quantized: dict[str, torch.Tensor] = {}
+    Returns a mapping with two sub-dicts keyed by GGUF tensor name:
+    ``{"quantized": {name: (block_bytes, format)}, "float": {name: tensor}}``.
+    """
+    del sample_inputs, context
+    (tensors,) = modules
+
+    quantized: dict[str, tuple[torch.Tensor, GgufQuantFormat]] = {}
     float_tensors: dict[str, torch.Tensor] = {}
     for tensor in tensors:
         if tensor.kind == "quantized":
             assert tensor.int_codes is not None and tensor.scales is not None
-            int_codes = tensor.int_codes.reshape(-1, block_size)
+            assert tensor.quant_format is not None
+            fmt = tensor.quant_format
+            int_codes = tensor.int_codes.reshape(-1, fmt.block_size)
             scales = tensor.scales.reshape(-1)
             offsets = tensor.offsets.reshape(-1) if tensor.offsets is not None else None
-            packed = quant_format.pack_fn(int_codes, scales, offsets)
-            if packed.shape[-1] != quant_format.block_bytes:
+            packed = fmt.pack_fn(int_codes, scales, offsets)
+            if packed.shape[-1] != fmt.block_bytes:
                 msg = (
-                    f"pack_fn for {quant_format.name} returned "
-                    f"{packed.shape[-1]} bytes/block, expected {quant_format.block_bytes}"
+                    f"pack_fn for {fmt.name} returned "
+                    f"{packed.shape[-1]} bytes/block, expected {fmt.block_bytes}"
                 )
                 raise ExportError(msg)
-            quantized[tensor.gguf_name] = packed.reshape(tensor.rows, -1)
+            quantized[tensor.gguf_name] = (packed.reshape(tensor.rows, -1), fmt)
         else:
             assert tensor.float_data is not None
             float_tensors[tensor.gguf_name] = tensor.float_data
@@ -181,39 +211,53 @@ def stage_pack_gguf_blocks(
 
 
 def stage_write_gguf(
-    modules: tuple[dict[str, dict[str, torch.Tensor]], ...],
+    modules: tuple[dict[str, dict[str, Any]], ...],
     sample_inputs: _SampleInputsT,
     context: dict[str, Any],
 ) -> pathlib.Path:
     """Write the packed tensors, metadata, and vocabulary to a ``.gguf`` file.
 
     Uses ``GGUFWriter``'s ``raw_dtype`` path so the pre-packed quantized bytes are
-    written verbatim, preserving FastForward's learned scales. This is the
-    torch->numpy boundary: ``GGUFWriter.add_tensor`` expects numpy arrays.
+    written verbatim, preserving FastForward's learned scales. Each quantized
+    tensor is written with its own GGML type, supporting mixed quantization.
+
+    The GGUF header ``file_type`` is set to the dominant quantization format
+    (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
+    convention.
     """
     del sample_inputs
     (packed,) = modules
 
     adapter = _require_adapter(context)
     config = _require_config(context)
-    quant_format = _require_quant_format(context)
-
-    raw_dtype = GGMLQuantizationType[quant_format.name]
 
     output_dir = pathlib.Path(context["output_dir"])
     model_name = context["model_name"]
     output_path = output_dir / f"{model_name}.gguf"
 
+    quantized_entries: dict[str, tuple[torch.Tensor, GgufQuantFormat]] = packed["quantized"]
+
+    format_counts: Counter[int] = Counter()
+    for _, fmt in quantized_entries.values():
+        format_counts[fmt.file_type] += 1
+
+    if not format_counts:
+        msg = "GGUF export produced no quantized tensors — cannot determine file_type"
+        raise ExportError(msg)
+
+    dominant_file_type = format_counts.most_common(1)[0][0]
+
     writer = GGUFWriter(str(output_path), arch=adapter.gguf_arch)
     try:
         adapter.write_metadata(writer, config)
-        writer.add_file_type(quant_format.file_type)
+        writer.add_file_type(dominant_file_type)
 
         tokenizer = context.get("tokenizer")
         if tokenizer is not None:
             write_vocab(writer, tokenizer, config, adapter)
 
-        for gguf_name, block_bytes in packed["quantized"].items():
+        for gguf_name, (block_bytes, fmt) in quantized_entries.items():
+            raw_dtype = GGMLQuantizationType[fmt.name]
             writer.add_tensor(gguf_name, block_bytes.numpy(), raw_dtype=raw_dtype)
         for gguf_name, float_data in packed["float"].items():
             float_type = _resolve_float_type(gguf_name, adapter)

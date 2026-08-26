@@ -247,3 +247,35 @@ class ArchAdapter:
     float_type: str = "F32"
     float_type_overrides: dict[str, str] = field(default_factory=dict)
     fusions: list[TensorFusion] = field(default_factory=list)
+
+
+class GgufFormatRegistry:
+    """Registry of GGUF quantization formats, keyed by quantizer properties.
+
+    At extraction time, each quantizer's ``(num_bits, symmetric, block_size)``
+    tuple is looked up in the registry to find the matching
+    :class:`GgufQuantFormat`. The default registry ships pre-loaded with all
+    built-in formats (Q4_0, Q4_1, Q8_0). Users can register additional formats
+    for custom quantizer/packer pairs (e.g. K-quants)::
+
+        from fastforward.export.stages.gguf import GgufFormatRegistry, default_format_registry
+
+        registry = default_format_registry()
+        registry.register(my_k_quant_format)
+    """
+
+    def __init__(self) -> None:
+        self._formats: dict[tuple[int, bool, int], GgufQuantFormat] = {}
+
+    def register(self, fmt: GgufQuantFormat) -> None:
+        """Register a format, keyed by ``(num_bits, symmetric, block_size)``."""
+        key = (fmt.num_bits, fmt.symmetric, fmt.block_size)
+        self._formats[key] = fmt
+
+    def resolve(self, num_bits: int, symmetric: bool, block_size: int) -> GgufQuantFormat | None:
+        """Look up the format matching the given quantizer properties."""
+        return self._formats.get((num_bits, symmetric, block_size))
+
+    def first(self) -> GgufQuantFormat:
+        """Return the first registered format (for fallback/default contexts)."""
+        return next(iter(self._formats.values()))

@@ -15,12 +15,22 @@ import pytest
 import torch
 
 from fastforward.exceptions import ExportError
-from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER, QWEN3_ADAPTER, ArchAdapter
+from fastforward.export.stages.gguf import (
+    GGUF_Q4_0,
+    GGUF_Q4_1,
+    GGUF_Q8_0,
+    LLAMA_ADAPTER,
+    QWEN3_ADAPTER,
+    ArchAdapter,
+)
 from fastforward.export.stages.gguf._extract import ExtractedTensor
+from fastforward.export.stages.gguf._packing import default_format_registry
+from fastforward.export.stages.gguf.adapter import GgufFormatRegistry
 from fastforward.export.stages.gguf.gguf_export_stages import (
     _cast_float,
     _resolve_float_type,
     stage_apply_target_transforms,
+    stage_extract_quantized_weights,
     stage_map_tensor_names,
     stage_pack_gguf_blocks,
     stage_write_gguf,
@@ -93,25 +103,31 @@ def test_pack_gguf_blocks_splits_quantized_and_float() -> None:
         float_data=torch.ones(32),
         gguf_name="output_norm.weight",
     )
-    context = {"quant_format": GGUF_Q4_0}
+    context: dict[str, object] = {}
 
     # WHEN: packing.
     packed = stage_pack_gguf_blocks(([quant, float_tensor],), [], context)
 
-    # THEN: the quantized tensor becomes (rows, 18) uint8 block bytes; the float
+    # THEN: the quantized tensor becomes (block_bytes, format) tuple; the float
     # tensor passes through unchanged.
-    assert packed["quantized"]["blk.0.ffn_up.weight"].shape == (4, 18)
-    assert packed["quantized"]["blk.0.ffn_up.weight"].dtype == torch.uint8
+    block_bytes, fmt = packed["quantized"]["blk.0.ffn_up.weight"]
+    assert block_bytes.shape == (4, 18)
+    assert block_bytes.dtype == torch.uint8
+    assert fmt.name == "Q4_0"
     torch.testing.assert_close(packed["float"]["output_norm.weight"], torch.ones(32))
 
 
-def test_pack_gguf_blocks_rejects_invalid_quant_format() -> None:
+def test_extract_stage_rejects_invalid_quant_format() -> None:
     # GIVEN: a quant_format that is not a GgufQuantFormat instance.
-    context = {"quant_format": "Q2_K"}
+    context: dict[str, object] = {
+        "quant_format": "Q2_K",
+        "arch_adapter": LLAMA_ADAPTER,
+        "model_config": _Config(),
+    }
 
-    # WHEN / THEN: packing raises a helpful ExportError.
+    # WHEN / THEN: extraction raises a helpful ExportError.
     with pytest.raises(ExportError, match="must be a GgufQuantFormat"):
-        stage_pack_gguf_blocks(([],), [], context)
+        stage_extract_quantized_weights((torch.nn.Linear(4, 4),), [], context)
 
 
 def test_write_gguf_requires_model_config() -> None:
@@ -156,7 +172,7 @@ def test_write_gguf_closes_writer_on_exception(tmp_path: Any) -> None:
         "model_name": "boom",
     }
     packed: dict[str, dict[str, Any]] = {
-        "quantized": {"blk.0.attn_q.weight": torch.zeros(4, 18, dtype=torch.uint8)},
+        "quantized": {"blk.0.attn_q.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0)},
         "float": {},
     }
 
@@ -300,3 +316,120 @@ def test_cast_float_unsupported_raises() -> None:
     # WHEN / THEN: casting to an unsupported type raises ExportError.
     with pytest.raises(ExportError, match="Unsupported float_type 'MXFP4'"):
         _cast_float(data, "MXFP4")
+
+
+# --- GgufFormatRegistry tests ---
+
+
+def test_registry_register_and_resolve() -> None:
+    # GIVEN: an empty registry.
+    registry = GgufFormatRegistry()
+
+    # WHEN: registering Q4_0.
+    registry.register(GGUF_Q4_0)
+
+    # THEN: resolve finds it by matching properties.
+    assert registry.resolve(4, True, 32) is GGUF_Q4_0
+
+
+def test_registry_resolve_returns_none_on_miss() -> None:
+    # GIVEN: a registry with only Q4_0.
+    registry = GgufFormatRegistry()
+    registry.register(GGUF_Q4_0)
+
+    # WHEN: resolving properties that don't match.
+    result = registry.resolve(8, True, 32)
+
+    # THEN: returns None.
+    assert result is None
+
+
+def test_registry_first_returns_first_registered() -> None:
+    # GIVEN: a registry with Q4_0 and Q8_0 registered in that order.
+    registry = GgufFormatRegistry()
+    registry.register(GGUF_Q4_0)
+    registry.register(GGUF_Q8_0)
+
+    # THEN: first() returns Q4_0.
+    assert registry.first() is GGUF_Q4_0
+
+
+def test_default_format_registry_contains_builtins() -> None:
+    # GIVEN: the default registry.
+    registry = default_format_registry()
+
+    # THEN: all built-in formats are resolvable.
+    assert registry.resolve(4, True, 32) is GGUF_Q4_0
+    assert registry.resolve(8, True, 32) is GGUF_Q8_0
+    assert registry.resolve(4, False, 32) is GGUF_Q4_1
+
+
+# --- Mixed-precision pipeline tests ---
+
+
+def _make_q8_tensor(gguf_name: str, rows: int, cols: int) -> ExtractedTensor:
+    """Build a minimal Q8_0 quantized ExtractedTensor."""
+    block_size = GGUF_Q8_0.block_size
+    n_blocks = (rows * cols) // block_size
+    return ExtractedTensor(
+        hf_name=gguf_name,
+        kind="quantized",
+        rows=rows,
+        cols=cols,
+        int_codes=torch.randint(-128, 127, (n_blocks, block_size), dtype=torch.int8),
+        scales=torch.rand(n_blocks) * 0.95 + 0.05,
+        gguf_name=gguf_name,
+        quant_format=GGUF_Q8_0,
+    )
+
+
+def test_pack_gguf_blocks_mixed_precision() -> None:
+    # GIVEN: one Q4_0 tensor and one Q8_0 tensor, both with GGUF names set.
+    q4_tensor = make_quantized_tensor("model.layers.0.mlp.up_proj.weight", rows=4, cols=32)
+    q4_tensor.gguf_name = "blk.0.ffn_up.weight"
+
+    q8_tensor = _make_q8_tensor("blk.0.attn_q.weight", rows=4, cols=32)
+
+    context: dict[str, object] = {}
+
+    # WHEN: packing.
+    packed = stage_pack_gguf_blocks(([q4_tensor, q8_tensor],), [], context)
+
+    # THEN: each tensor is packed with its own format.
+    block_bytes_q4, fmt_q4 = packed["quantized"]["blk.0.ffn_up.weight"]
+    assert fmt_q4.name == "Q4_0"
+    assert block_bytes_q4.shape == (4, GGUF_Q4_0.block_bytes)
+
+    block_bytes_q8, fmt_q8 = packed["quantized"]["blk.0.attn_q.weight"]
+    assert fmt_q8.name == "Q8_0"
+    assert block_bytes_q8.shape == (4, GGUF_Q8_0.block_bytes)
+
+
+def test_write_gguf_mixed_precision_dominant_file_type(tmp_path: Any) -> None:
+    # GIVEN: packed data with 2 Q4_0 tensors and 1 Q8_0 tensor.
+    context = {
+        "arch_adapter": LLAMA_ADAPTER,
+        "model_config": _make_full_config(),
+        "output_dir": tmp_path,
+        "model_name": "mixed",
+    }
+    packed: dict[str, dict[str, Any]] = {
+        "quantized": {
+            "blk.0.attn_q.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0),
+            "blk.0.attn_k.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0),
+            "blk.0.ffn_up.weight": (torch.zeros(4, 34, dtype=torch.uint8), GGUF_Q8_0),
+        },
+        "float": {},
+    }
+
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((packed,), [], context)
+
+    # THEN: file_type is set to Q4_0's (dominant: 2 out of 3 tensors).
+    mock_writer.add_file_type.assert_called_once_with(GGUF_Q4_0.file_type)
