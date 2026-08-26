@@ -359,11 +359,13 @@ class GraphModule(torch.nn.Module):
         self._program: Any = None
         self._engine: InstructionEngine | None = None
         self._topo_order: list[NodeRef] | None = None
+        self._node_consumers: dict[uuid.UUID, list[NodeRef]] | None = None
 
     def _invalidate_caches(self) -> None:
         """Reset cached derived state after graph mutation."""
         self._engine = None
         self._topo_order = None
+        self._node_consumers = None
 
     @property
     def topo_order(self) -> list[NodeRef]:
@@ -394,6 +396,26 @@ class GraphModule(torch.nn.Module):
                     seen.add(arg_base.id)
                     yield arg_base
 
+    def _node_consumer_index(self) -> dict[uuid.UUID, list[NodeRef]]:
+        """Map each node id to the nodes that consume it, cached until the graph is mutated.
+
+        Without the index, every `node_outputs` call scans the whole graph, so a
+        forward closure over `n` nodes costs O(n^2). Building it once costs one scan.
+        """
+        if self._node_consumers is None:
+            consumers: dict[uuid.UUID, list[NodeRef]] = {}
+            for node_id, node in self._nodes.items():
+                seen: set[uuid.UUID] = set()
+                for arg in (*node.args, *node.kwargs.values()):
+                    if not isinstance(arg_base := arg.unwrap_ref(), NodeRef):
+                        continue
+                    if arg_base.id in seen:
+                        continue
+                    seen.add(arg_base.id)
+                    consumers.setdefault(arg_base.id, []).append(self._node_refs[node_id])
+            self._node_consumers = consumers
+        return self._node_consumers
+
     def node_outputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that use `node_ref` as input.
 
@@ -404,14 +426,7 @@ class GraphModule(torch.nn.Module):
             Iterator yielding NodeRef objects for each output node.
         """
         node = self._nodes[node_ref.id]
-        seen: set[uuid.UUID] = set()
-        for other_node in self._nodes.values():
-            for arg in (*other_node.args, *other_node.kwargs.values()):
-                if isinstance(arg_base := arg.unwrap_ref(), NodeRef) and arg_base.id == node.id:
-                    if other_node.id not in seen:
-                        seen.add(other_node.id)
-                        yield self._node_refs[other_node.id]
-                    break
+        yield from self._node_consumer_index().get(node.id, ())
 
     def node_ref(self, module: torch.nn.Module) -> NodeRef:
         """Return the NodeRef for the given module instance.
