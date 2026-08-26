@@ -61,10 +61,19 @@ def test_bare_context_manager_reuses_registered() -> None:
 def test_cache_is_carried_through(cache: bool) -> None:
     # GIVEN an explicit cache choice
     # WHEN building a flow with it
-    flow = InputActivations("original", cache=cache)
+    flow = InputActivations("quantized", cache=cache)
 
     # THEN the flow reports that choice
     assert flow.cache is cache
+
+
+@pytest.mark.parametrize("flow_cls", [InputActivations, OutputActivations], ids=["input", "output"])
+def test_original_with_cache_false_is_rejected(flow_cls: type[InputActivations]) -> None:
+    # GIVEN an ORIGINAL flow, which cannot be produced again after a mutation
+    # WHEN declaring it uncached
+    # THEN the declaration itself is rejected
+    with pytest.raises(NotImplementedError, match="copy of the model"):
+        flow_cls(ORIGINAL, cache=False)
 
 
 def test_builtin_generator_order() -> None:

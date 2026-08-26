@@ -52,11 +52,17 @@ class FlowGenerator:
         key: Unique identifier for this generator.
         context: Factory that produces the context manager for the forward pass.
         order: Scheduling position (lower runs first).
+        pinned: Whether the data shows the weights from before every mutation. A
+            pinned generator loses its data the moment an optimization changes a
+            weight it reads through, so the scheduler must take that data first. A
+            generator that is not pinned shows the weights as they are, so its data
+            can always be produced again.
     """
 
     key: str
     context: Callable[[torch.nn.Module], ContextManager[None]]
     order: int
+    pinned: bool = False
 
 
 _generators: dict[str, FlowGenerator] = {}
@@ -82,16 +88,24 @@ def _disable_quantization(module: torch.nn.Module) -> ContextManager[None]:
     return ff.disable_quantization(module)
 
 
+def _quantized_context(_: torch.nn.Module) -> ContextManager[None]:
+    return nullcontext()
+
+
+def _any_context(_: torch.nn.Module) -> ContextManager[None]:
+    return nullcontext()
+
+
 # Run with quantization disabled; produces baseline (unquantized) activations.
 ORIGINAL = register_generator(
-    FlowGenerator("original", lambda m: _disable_quantization(m), order=2)
+    FlowGenerator("original", _disable_quantization, order=2, pinned=True)
 )
 
 # Run with the model as-is; produces activations reflecting all mutations so far.
-QUANTIZED = register_generator(FlowGenerator("quantized", lambda _: nullcontext(), order=5))
+QUANTIZED = register_generator(FlowGenerator("quantized", _quantized_context, order=5))
 
 # No constraints on the model state; default for a plain forward pass.
-ANY = register_generator(FlowGenerator("any", lambda _: nullcontext(), order=10))
+ANY = register_generator(FlowGenerator("any", _any_context, order=10))
 
 
 def _to_generator(value: str | FlowGenerator | ContextManager[None]) -> FlowGenerator:
@@ -124,11 +138,31 @@ class DataFlow(abc.ABC):
 
     Args:
         generator: The flow generator defining execution context for this data.
-        cache: Whether the work done to produce this data may be reused.
+        cache: Whether the work done to produce this data may be reused. The value
+            reaches `CallModule.cache` as a hint for the consumer. It does not move
+            a call, and it does not keep a register entry alive: the lifetime pass
+            frees every entry after its last reader either way.
     """
 
     generator: FlowGenerator = attrs.field(converter=_to_generator)
     cache: bool = True
+
+    def __attrs_post_init__(self) -> None:
+        """Reject a requirement that no model state can satisfy.
+
+        A pinned generator shows the weights from before every mutation. To produce
+        that data more than once, the scheduler would need a copy of the original
+        weights, which is not implemented yet. So a pinned flow must cache.
+
+        Raises:
+            NotImplementedError: If a pinned flow declares `cache=False`.
+        """
+        if self.generator.pinned and not self.cache:
+            msg = (
+                f"The {self.generator.key!r} flow generator is pinned, so cache=False "
+                f"requires a copy of the model, which is not implemented yet."
+            )
+            raise NotImplementedError(msg)
 
 
 @attrs.define(frozen=True, repr=False)
