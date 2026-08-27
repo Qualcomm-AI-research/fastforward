@@ -19,16 +19,15 @@ from fastforward._orchestration.instruction_engine import (
     InstructionPass,
     InstructionPasses,
     InstructionProgram,
-    InstructionScheduler,
     OffloadingStrategy,
     lifetime_management_pass,
-    optimization_only_pass,
 )
 from fastforward._orchestration.registry import Algorithm as Algorithm
 from fastforward._orchestration.registry import AlgorithmSpec as AlgorithmSpec
 from fastforward._orchestration.registry import Selector as Selector
 from fastforward._orchestration.registry import register as register
 from fastforward._orchestration.registry import resolve as resolve
+from fastforward._orchestration.scheduler import schedule
 from fastforward._orchestration.trace import trace
 
 __all__ = ["layerwise_optimize"]
@@ -137,10 +136,10 @@ def layerwise_optimize(
     graph, optimization_specs = reduce_resolution(graph, optimization_specs)
 
     # (3) Schedule instruction program
-    program = InstructionScheduler().schedule(graph)
+    program = schedule(graph, optimization_specs)
 
     # (4) Execute
-    passes: list[InstructionPass] = [optimization_only_pass, lifetime_management_pass]
+    passes: list[InstructionPass] = [lifetime_management_pass]
 
     with _ExecutionContext(graph, program, passes=passes, offloading=offloading):
         graph(data, **kwargs)

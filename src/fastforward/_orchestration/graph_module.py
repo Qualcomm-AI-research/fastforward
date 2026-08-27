@@ -10,7 +10,6 @@ import itertools
 import uuid
 
 from collections.abc import Collection, Mapping
-from contextlib import nullcontext
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -167,23 +166,6 @@ def remap_subgraph_reference(
             assert False, f"Unexpected reference type {type(old_reference)}"
 
 
-# Contexts should be ordered to match delegate function signature.
-Contexts: TypeAlias = Sequence[ContextManager[None]]
-
-
-@dataclasses.dataclass(frozen=True)
-class Delegate:
-    """Defines a function to execute on a node and the contexts needed to generate its inputs.
-
-    Args:
-        fn: Function that receives the module and input activations as positional arguments.
-        contexts: Sequence of ContextManagers that generate input activations.
-    """
-
-    fn: Callable[..., None]
-    contexts: Contexts
-
-
 class Op(enum.Enum):
     """Operation type for node dispatching.
 
@@ -229,8 +211,6 @@ class Node:
             or Const), resolved to actual values at execution time.
         op: Selects how `target` is invoked (see above).
         kwargs: Keyword dependencies, same reference types as `args`.
-        delegate: Optional optimization function with calibration contexts,
-            invoked instead of `target` during local optimization.
         parent: Enclosing fold, or None for top-level nodes.
     """
 
@@ -240,7 +220,6 @@ class Node:
     args: Sequence[_BaseRef]
     op: Op = Op.torch_module
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
-    delegate: Delegate | None = None
     parent: NodeRef | None = None
 
 
@@ -748,13 +727,10 @@ class GraphModule(torch.nn.Module):
         args, kwargs = _sanitize_inputs(self.input_names, args, kwargs)
 
         if self._engine is None:
-            from fastforward._orchestration.instruction_engine import (
-                InstructionEngine,
-                InstructionScheduler,
-            )
+            from fastforward._orchestration.instruction_engine import InstructionEngine
+            from fastforward._orchestration.scheduler import schedule
 
-            scheduler = InstructionScheduler()
-            self._program = scheduler.schedule(self)
+            self._program = schedule(self)
             self._engine = InstructionEngine()
 
         # The engine produces per-context results.  When the program has no
@@ -1045,9 +1021,6 @@ def find_cycle(edges: dict[NodeRef, set[NodeRef]]) -> list[NodeRef] | None:
     return None
 
 
-DEFAULT_CONTEXT = nullcontext()
-
-
 @dataclasses.dataclass(frozen=True)
 class Span:
     """A contiguous path between two modules in the graph (inclusive)."""
@@ -1111,19 +1084,12 @@ class SubgraphSpec:
         region: The region to turn into a subgraph.
         fn: Function to execute on the subgraph.
         flows: The region's data-flow requirements.
-        contexts: Sequence of ContextManagers that generate input activations. If
-            not specified, inputs are computed in a single default execution context.
     """
 
     region: Region
 
     fn: Callable[..., None]
     flows: Sequence[DataFlow]
-    contexts: dataclasses.InitVar[Contexts | None] = None
-    delegate: Delegate = dataclasses.field(init=False)
-
-    def __post_init__(self, contexts: Contexts | None = None) -> None:
-        self.delegate = Delegate(self.fn, contexts or (DEFAULT_CONTEXT,))
 
     def resolve(self, graph: GraphModule) -> ResolvedRegion:
         """Resolve this spec's region into concrete graph nodes and an optional wrapper subgraph."""
@@ -1303,21 +1269,9 @@ def reduce_resolution(
         assert isinstance(rewritten, (NodeRef, AttributeRef))
         new_graph.add_output(rewritten)
 
-    # Attach delegates to their target node in the reduced graph.
-    for target, spec in zip(spec_targets, specs):
-        base_ref = new_graph.node_ref(target)
-        new_graph._nodes[base_ref.id] = dataclasses.replace(
-            new_graph._nodes[base_ref.id], delegate=spec.delegate
-        )
-
     # Re-anchor specs: leaf regions stay unchanged, Span/Group regions become the wrapping subgraph.
     remapped_specs = [
-        SubgraphSpec(
-            region=target,
-            fn=spec.fn,
-            flows=spec.flows,
-            contexts=spec.delegate.contexts,
-        )
+        SubgraphSpec(region=target, fn=spec.fn, flows=spec.flows)
         for target, spec in zip(spec_targets, specs)
     ]
 

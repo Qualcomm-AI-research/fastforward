@@ -1,0 +1,90 @@
+# serializer version: 1
+# name: test_snapshot_input_activations_original_and_quantized
+  '''
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(fc1), contexts=[_disable_quantization], cache=True)
+  CallModule(module=SiLU, args=[NodeRef(fc1)], kwargs={}, target=NodeRef(act), contexts=[_disable_quantization], cache=True)
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(fc1), contexts=[_quantized_context], cache=False)
+  CallModule(module=SiLU, args=[NodeRef(fc1)], kwargs={}, target=NodeRef(act), contexts=[_quantized_context], cache=False)
+  OptimizeModule(module=Linear, args=[NodeRef(act), NodeRef(act)], kwargs={}, fn=_noop, contexts=[_disable_quantization, _quantized_context])
+  '''
+# ---
+# name: test_snapshot_input_activations_original_on_every_linear
+  '''
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.q_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.q_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.k_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.k_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.v_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.v_proj>, contexts=[_disable_quantization])
+  CallModule(module=scaled_dot_product_attention, args=[NodeRef(layer_0.attn.q_proj), NodeRef(layer_0.attn.k_proj), NodeRef(layer_0.attn.v_proj)], kwargs={}, target=NodeRef(layer_0.attn.sdpa), contexts=[_disable_quantization], cache=True)
+  CallModule(module=Linear, args=[NodeRef(layer_0.attn.sdpa)], kwargs={}, target=NodeRef(layer_0.attn.out_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.attn.sdpa)], kwargs={}, fn=optimize<layer_0.attn.out_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[NodeRef(layer_0.attn.out_proj)], kwargs={}, target=NodeRef(layer_0.mlp.up), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.attn.out_proj)], kwargs={}, fn=optimize<layer_0.mlp.up>, contexts=[_disable_quantization])
+  CallModule(module=relu, args=[NodeRef(layer_0.mlp.up)], kwargs={}, target=NodeRef(layer_0.mlp.act), contexts=[_disable_quantization], cache=True)
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.act)], kwargs={}, target=NodeRef(layer_0.mlp.down), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.act)], kwargs={}, fn=optimize<layer_0.mlp.down>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.q_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.q_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.k_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.k_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.v_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.v_proj>, contexts=[_disable_quantization])
+  CallModule(module=scaled_dot_product_attention, args=[NodeRef(layer_1.attn.q_proj), NodeRef(layer_1.attn.k_proj), NodeRef(layer_1.attn.v_proj)], kwargs={}, target=NodeRef(layer_1.attn.sdpa), contexts=[_disable_quantization], cache=True)
+  CallModule(module=Linear, args=[NodeRef(layer_1.attn.sdpa)], kwargs={}, target=NodeRef(layer_1.attn.out_proj), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.attn.sdpa)], kwargs={}, fn=optimize<layer_1.attn.out_proj>, contexts=[_disable_quantization])
+  CallModule(module=Linear, args=[NodeRef(layer_1.attn.out_proj)], kwargs={}, target=NodeRef(layer_1.mlp.up), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.attn.out_proj)], kwargs={}, fn=optimize<layer_1.mlp.up>, contexts=[_disable_quantization])
+  CallModule(module=relu, args=[NodeRef(layer_1.mlp.up)], kwargs={}, target=NodeRef(layer_1.mlp.act), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.mlp.act)], kwargs={}, fn=optimize<layer_1.mlp.down>, contexts=[_disable_quantization])
+  '''
+# ---
+# name: test_snapshot_input_activations_original_on_reduced_folds
+  '''
+  CallModule(module=SmallAttn, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=SmallAttn, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn>, contexts=[_disable_quantization])
+  CallModule(module=SmallMLP, args=[NodeRef(layer_0.attn)], kwargs={}, target=NodeRef(layer_0.mlp), contexts=[_disable_quantization], cache=True)
+  OptimizeModule(module=SmallMLP, args=[NodeRef(layer_0.attn)], kwargs={}, fn=optimize<layer_0.mlp>, contexts=[_disable_quantization])
+  OptimizeModule(module=SmallAttn, args=[NodeRef(layer_0.mlp)], kwargs={}, fn=optimize<layer_1.attn>, contexts=[_disable_quantization])
+  '''
+# ---
+# name: test_snapshot_input_activations_quantized_on_every_linear
+  '''
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.q_proj>, contexts=[_quantized_context])
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.k_proj>, contexts=[_quantized_context])
+  OptimizeModule(module=Linear, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn.v_proj>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.q_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.k_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn.v_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=scaled_dot_product_attention, args=[NodeRef(layer_0.attn.q_proj), NodeRef(layer_0.attn.k_proj), NodeRef(layer_0.attn.v_proj)], kwargs={}, target=NodeRef(layer_0.attn.sdpa), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.attn.sdpa)], kwargs={}, fn=optimize<layer_0.attn.out_proj>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_0.attn.sdpa)], kwargs={}, target=NodeRef(layer_0.attn.out_proj), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.attn.out_proj)], kwargs={}, fn=optimize<layer_0.mlp.up>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_0.attn.out_proj)], kwargs={}, target=NodeRef(layer_0.mlp.up), contexts=[_quantized_context], cache=True)
+  CallModule(module=relu, args=[NodeRef(layer_0.mlp.up)], kwargs={}, target=NodeRef(layer_0.mlp.act), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.act)], kwargs={}, fn=optimize<layer_0.mlp.down>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.act)], kwargs={}, target=NodeRef(layer_0.mlp.down), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.q_proj>, contexts=[_quantized_context])
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.k_proj>, contexts=[_quantized_context])
+  OptimizeModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, fn=optimize<layer_1.attn.v_proj>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.q_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.k_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=Linear, args=[NodeRef(layer_0.mlp.down)], kwargs={}, target=NodeRef(layer_1.attn.v_proj), contexts=[_quantized_context], cache=True)
+  CallModule(module=scaled_dot_product_attention, args=[NodeRef(layer_1.attn.q_proj), NodeRef(layer_1.attn.k_proj), NodeRef(layer_1.attn.v_proj)], kwargs={}, target=NodeRef(layer_1.attn.sdpa), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.attn.sdpa)], kwargs={}, fn=optimize<layer_1.attn.out_proj>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_1.attn.sdpa)], kwargs={}, target=NodeRef(layer_1.attn.out_proj), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.attn.out_proj)], kwargs={}, fn=optimize<layer_1.mlp.up>, contexts=[_quantized_context])
+  CallModule(module=Linear, args=[NodeRef(layer_1.attn.out_proj)], kwargs={}, target=NodeRef(layer_1.mlp.up), contexts=[_quantized_context], cache=True)
+  CallModule(module=relu, args=[NodeRef(layer_1.mlp.up)], kwargs={}, target=NodeRef(layer_1.mlp.act), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=Linear, args=[NodeRef(layer_1.mlp.act)], kwargs={}, fn=optimize<layer_1.mlp.down>, contexts=[_quantized_context])
+  '''
+# ---
+# name: test_snapshot_input_activations_quantized_on_reduced_folds
+  '''
+  OptimizeModule(module=SmallAttn, args=[InputRef(x)], kwargs={}, fn=optimize<layer_0.attn>, contexts=[_quantized_context])
+  CallModule(module=SmallAttn, args=[InputRef(x)], kwargs={}, target=NodeRef(layer_0.attn), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=SmallMLP, args=[NodeRef(layer_0.attn)], kwargs={}, fn=optimize<layer_0.mlp>, contexts=[_quantized_context])
+  CallModule(module=SmallMLP, args=[NodeRef(layer_0.attn)], kwargs={}, target=NodeRef(layer_0.mlp), contexts=[_quantized_context], cache=True)
+  OptimizeModule(module=SmallAttn, args=[NodeRef(layer_0.mlp)], kwargs={}, fn=optimize<layer_1.attn>, contexts=[_quantized_context])
+  '''
+# ---

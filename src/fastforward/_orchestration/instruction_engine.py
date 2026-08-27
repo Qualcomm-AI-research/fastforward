@@ -23,23 +23,18 @@ import torch
 from torch.utils.data import DataLoader
 
 from fastforward._orchestration.graph_module import (
-    DEFAULT_CONTEXT,
-    AttributeRef,
     Const,
-    Delegate,
     GraphModule,
     InputRef,
-    NodeRef,
     Op,
     _BaseRef,
-    topological_sort,
 )
 
 # Distinguishes data produced under different execution conditions for the same node.
-StreamKey: TypeAlias = ContextManager[None]
+StreamKey: TypeAlias = Callable[[torch.nn.Module], ContextManager[None]]
 
 # Ordered sequence of context managers that an instruction executes under.
-Contexts: TypeAlias = Sequence[ContextManager[None]]
+Contexts: TypeAlias = Sequence[Callable[[torch.nn.Module], ContextManager[None]]]
 
 
 def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
@@ -55,8 +50,8 @@ def _fmt_callable(fn: Callable[..., Any]) -> str:
 
 
 def _fmt_contexts(contexts: Contexts) -> str:
-    """Format execution contexts by class name, without their memory addresses."""
-    return "[" + ", ".join(type(context).__name__ for context in contexts) + "]"
+    """Format execution contexts by callable name, without their memory addresses."""
+    return "[" + ", ".join(_fmt_callable(context) for context in contexts) + "]"
 
 
 def _fmt_value(value: Any) -> str:
@@ -378,41 +373,39 @@ class LoadAttribute(Instruction):
 
 
 @dataclasses.dataclass(frozen=True)
-class CallModule(Instruction):
-    """Execute a module on batched data from the register.
+class Call(Instruction, abc.ABC):
+    """Execute one graph node on batched data from the register.
 
-    Merges data arguments (zipped) and constant arguments (broadcast),
-    then calls the module on each batch with the provided kwargs.
+    Handles the per-context loop, bundle gathering, and result storage. A
+    subclass adds one field for the callable it invokes and implements `_call`.
+
+    Args:
+        args: Positional input refs in declaration order.
+        kwargs: Keyword input refs keyed by parameter name.
+        target: Ref the outputs are stored under.
+        contexts: Execution conditions to run under, one pass each.
+        cache: Whether the outputs may be reused by a later reader.
     """
 
-    module: torch.nn.Module | Callable[..., Any]
     args: Sequence[_BaseRef]
     kwargs: dict[str, _BaseRef]
     target: _BaseRef
     contexts: Contexts
+    cache: bool = dataclasses.field(default=False, kw_only=True)
 
-    def __repr__(self) -> str:
-        return (
-            f"CallModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
-            f"kwargs={self.kwargs!r}, target={self.target!r}, "
-            f"contexts={_fmt_contexts(self.contexts)})"
-        )
+    @abc.abstractmethod
+    def _call(
+        self,
+        context: Callable[[torch.nn.Module], ContextManager[None]],
+        bundle: ActivationBundle,
+    ) -> list[Any]:
+        """Invoke the callable under the given context."""
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        results: dict[StreamKey, ActivationDataset] = {}
-
         for context in self.contexts:
             bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
-            with context:
-                if not self.args and not self.kwargs:
-                    # A node with no inputs (e.g. a buffer/constant producer) is
-                    # called exactly once with no arguments.
-                    outputs = [self.module()]
-                else:
-                    outputs = [self.module(*args, **kwargs) for args, kwargs in bundle]
-            results[context] = ActivationDataset(outputs)
-
-        register.store_all(self.target, results)
+            outputs = self._call(context, bundle)
+            register.store(self.target, context, ActivationDataset(outputs))
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -423,40 +416,117 @@ class CallModule(Instruction):
 
 
 @dataclasses.dataclass(frozen=True)
+class CallModule(Call):
+    """Call a module on batched data, entering the context around each invocation."""
+
+    module: torch.nn.Module
+
+    def __repr__(self) -> str:
+        return (
+            f"CallModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
+            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
+            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
+        )
+
+    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
+        with context(self.module):
+            if not bundle:
+                return [self.module()]
+            return [self.module(*args, **kwargs) for args, kwargs in bundle]
+
+
+@dataclasses.dataclass(frozen=True)
+class CallFunction(Call):
+    """Call a free function on batched data."""
+
+    fn: Callable[..., Any]
+
+    def __repr__(self) -> str:
+        return (
+            f"CallFunction(fn={_fmt_callable(self.fn)}, args={list(self.args)!r}, "
+            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
+            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
+        )
+
+    def _call(self, _context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
+        if not bundle:
+            return [self.fn()]
+        return [self.fn(*args, **kwargs) for args, kwargs in bundle]
+
+
+@dataclasses.dataclass(frozen=True)
+class CallMethod(Call):
+    """Call a bound method on batched data."""
+
+    method: Callable[..., Any]
+
+    def __repr__(self) -> str:
+        return (
+            f"CallMethod(method={_fmt_callable(self.method)}, args={list(self.args)!r}, "
+            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
+            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
+        )
+
+    def _call(self, _context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
+        if not bundle:
+            return [self.method()]
+        return [self.method(*args, **kwargs) for args, kwargs in bundle]
+
+
+@dataclasses.dataclass(frozen=True)
+class BundleSpec:
+    """One bundle handed to a delegate: which refs to gather, under which context.
+
+    A data-flow declaration names both halves, and they vary together: one flow
+    may want the region's inputs under an unquantized context while the next wants
+    the region's output under a quantized one. Pairing them here keeps a ref from
+    being gathered under a context that never produced it.
+
+    Args:
+        context: The context to resolve the refs under.
+        args: Positional refs to gather.
+        kwargs: Keyword refs to gather.
+    """
+
+    context: StreamKey
+    args: Sequence[_BaseRef]
+    kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
+
+
+@dataclasses.dataclass(frozen=True)
 class OptimizeModule(Instruction):
     """Optimize a module in-place using batched data from the register.
 
-    Builds one `ActivationBundle` per context from the register and the node's
-    positional/keyword inputs, then invokes the user-supplied delegate as
-    `fn(module, *bundles_per_context)`. Inside the delegate, iterating each bundle
-    yields `(args, kwargs)` per batch — typically called as `module(*args, **kwargs)`.
+    Invokes `fn(self.module, *bundles)`, one `ActivationBundle` per declared data
+    flow, in declaration order. Each bundle carries the data that its flow asked
+    for, gathered under the context that flow named.
     """
 
     module: torch.nn.Module
-    args: Sequence[_BaseRef]
-    kwargs: Mapping[str, _BaseRef]
-    delegate: Delegate
+    fn: Callable[..., None]
+    bundles: Sequence[BundleSpec]
 
     def __repr__(self) -> str:
-        delegate = (
-            f"Delegate(fn={_fmt_callable(self.delegate.fn)}, "
-            f"contexts={_fmt_contexts(self.delegate.contexts)})"
-        )
+        args = [ref for bundle in self.bundles for ref in bundle.args]
+        kwargs = {key: ref for bundle in self.bundles for key, ref in bundle.kwargs.items()}
+        contexts = [bundle.context for bundle in self.bundles]
         return (
-            f"OptimizeModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
-            f"kwargs={dict(self.kwargs)!r}, delegate={delegate})"
+            f"OptimizeModule(module={_fmt_module(self.module)}, args={args!r}, "
+            f"kwargs={kwargs!r}, fn={_fmt_callable(self.fn)}, "
+            f"contexts={_fmt_contexts(contexts)})"
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         bundles = [
-            ActivationBundle.gather(register, context, self.args, self.kwargs)
-            for context in self.delegate.contexts
+            ActivationBundle.gather(register, spec.context, spec.args, spec.kwargs)
+            for spec in self.bundles
         ]
-        self.delegate.fn(self.module, *bundles)
+        self.fn(self.module, *bundles)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
-        yield from self.args
-        yield from self.kwargs.values()
+        for spec in self.bundles:
+            yield from spec.args
+            yield from spec.kwargs.values()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -601,40 +671,6 @@ Instructions: TypeAlias = Sequence[Instruction]
 InstructionPass: TypeAlias = Callable[[Instructions], Instructions]
 
 
-def _propagate_contexts(graph: GraphModule, order: list[NodeRef]) -> Mapping[_BaseRef, Contexts]:
-    """Determine which execution contexts each node needs based on downstream usage.
-
-    Contexts flow backward through he graph, where the forward path is defined by `order`.t
-
-    Args:
-        graph: GraphModule to analyze.
-        order: Node execution order.
-
-    Returns:
-        Mapping from references to their required execution contexts.
-    """
-    node_contexts: dict[_BaseRef, set[StreamKey]] = defaultdict(set)
-
-    # Seed outputs with the default context so the forward pass always produces results.
-    if graph._outputs:
-        for out in graph._outputs:
-            node_contexts[out.unwrap_ref()] |= {DEFAULT_CONTEXT}
-
-    # Propagate backwards to the graph and ensure if a child node depends on context X
-    # the parent will also depend on context X.
-    for node_ref in reversed(order):
-        node = graph.node(node_ref)
-
-        # Node arguments represent parents in the graph. Propagate contexts to them.
-        for node_input in graph.node_inputs(node_ref):
-            node_contexts[node_input] |= node_contexts[node_ref]
-
-            if node.delegate is not None:
-                node_contexts[node_input] |= set(node.delegate.contexts)
-
-    return {ref: list(contexts) for ref, contexts in node_contexts.items()}
-
-
 @dataclasses.dataclass(frozen=True)
 class InstructionProgram:
     """A scheduled program consisting of instructions and input metadata.
@@ -650,16 +686,14 @@ class InstructionProgram:
     @property
     def contexts(self) -> Contexts:
         """All contexts used in program."""
-        all_contexts = set()
+        all_contexts: set[StreamKey] = set()
 
         for instruction in self.instructions:
             match instruction:
-                case CallModule(contexts=contexts):
-                    all_contexts.update(set(contexts))
-                case OptimizeModule(delegate=delegate):
-                    all_contexts.update(set(delegate.contexts))
-                case StoreValue(contexts=contexts):
-                    all_contexts.update(set(contexts))
+                case Call(contexts=contexts) | StoreValue(contexts=contexts):
+                    all_contexts.update(contexts)
+                case OptimizeModule(bundles=bundles):
+                    all_contexts.update(spec.context for spec in bundles)
                 case _:
                     pass
 
@@ -672,7 +706,7 @@ class InstructionEngine:
 
     This engine runs instructions in order using a register-based approach
     to track intermediate values and activations. Instructions are generated
-    by an InstructionScheduler during the scheduling phase.
+    by the scheduler during the scheduling phase.
     """
 
     @staticmethod
@@ -819,44 +853,6 @@ def lifetime_management_pass(instructions: Instructions) -> Instructions:
             new_instructions.append(DeleteRegisterEntries(targets=to_delete))
 
     return tuple(new_instructions)
-
-
-def optimization_only_pass(instructions: Instructions) -> Instructions:
-    """Keep only instructions needed for optimization.
-
-    This filters out any CallModule whose output is not needed for downstream optimization, which
-    might include ReturnOutputs if upstream instructions have been removed.
-    If no OptimizeModule instructions are present, returns instructions unchanged.
-
-    Args:
-        instructions: Sequence of instructions to analyze.
-
-    Returns:
-        Filtered instruction sequence.
-    """
-    has_optimize = any(isinstance(i, OptimizeModule) for i in instructions)
-    if not has_optimize:
-        return instructions
-
-    required_values: set[_BaseRef] = set()
-    retained_instructions: list[Instruction] = []
-
-    # Instructions can only depend on outputs from earlier instructions.
-    # Iterate over instructions in reverse to determine dependency relationships.
-    for instruction in reversed(instructions):
-        if isinstance(instruction, OptimizeModule):
-            # Any dependency of OptimizeModule must be retained.
-            retained_instructions.append(instruction)
-            required_values.update(instruction.uses())
-        else:
-            outputs = set(instruction.produces())
-            if outputs & required_values:
-                # If this instruction produces any output required, directly or indirectly,
-                # by an OptimizeModule, retain this instruction and its dependencies.
-                retained_instructions.append(instruction)
-                required_values.update(instruction.uses())
-
-    return tuple(reversed(retained_instructions))
 
 
 def _weight_offloading_pass(
@@ -1037,22 +1033,22 @@ def _cancel_redundant_activation_moves(
     (via ``uses()``), the pending move for that ref is flushed: emitted only if
     the ref's tracked device differs from the move's target.
 
-    Device state is tracked for CallModule outputs:
-    - ``nn.Module`` calls produce on ``compute_device`` (MoveModule guarantees this).
-    - Non-Module callables (aten ops) inherit the device of their inputs when
-      all inputs agree; otherwise the output device is left unknown.
+    Device state is tracked for Call outputs:
+    - ``CallModule`` outputs are on ``compute_device`` (MoveModule guarantees this).
+    - ``CallFunction``/``CallMethod`` outputs inherit the device of their inputs
+      when all inputs agree; otherwise the output device is left unknown.
     """
     ref_device: dict[_BaseRef, torch.device] = {}
     pending: dict[_BaseRef, MoveActivations] = {}
     result: list[Instruction] = []
 
     def _infer_output_device(instr: Instruction) -> None:
-        if not isinstance(instr, CallModule):
+        if isinstance(instr, CallModule):
+            ref_device[instr.target.unwrap_ref()] = compute_device
+            return
+        if not isinstance(instr, (CallFunction, CallMethod)):
             return
         key = instr.target.unwrap_ref()
-        if isinstance(instr.module, torch.nn.Module):
-            ref_device[key] = compute_device
-            return
         devs = {ref_device[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_device}
         if len(devs) == 1:
             ref_device[key] = devs.pop()
@@ -1081,163 +1077,6 @@ def _cancel_redundant_activation_moves(
             result.append(move)
 
     return tuple(result)
-
-
-class InstructionScheduler:
-    """Schedules instruction sequences from GraphModule structure.
-
-    Analyzes graph dependencies to determine node execution order and generates
-    instructions for each node.
-
-    Args:
-        ordering_strategy: Strategy for determining node execution order. Defaults to topological sort.
-    """
-
-    def __init__(
-        self,
-        ordering_strategy: Callable[[GraphModule], list[NodeRef]] | None = None,
-    ) -> None:
-        self._ordering_strategy = ordering_strategy or topological_sort
-        self._node_contexts: Mapping[_BaseRef, Contexts] = {}
-
-    def schedule(self, graph: GraphModule) -> InstructionProgram:
-        """Schedule node execution and build an instruction program.
-
-        Args:
-            graph: GraphModule to schedule execution for.
-
-        Returns:
-            InstructionProgram ready for pass application and execution.
-        """
-        order = self._ordering_strategy(graph)
-
-        self._node_contexts = _propagate_contexts(graph, order)
-        try:
-            instructions = self._schedule(graph, order)
-        finally:
-            self._node_contexts = {}
-
-        return InstructionProgram(instructions=instructions, input_refs=graph._inputs)
-
-    def _schedule(self, graph: GraphModule, order: list[NodeRef]) -> Instructions:
-        """Schedule instructions from ordered nodes.
-
-        Args:
-            graph: GraphModule containing nodes.
-            order: Node execution order.
-
-        Returns:
-            Sequence of Instructions in execution order.
-        """
-        instructions: list[Instruction] = []
-
-        for node_ref in order:
-            instructions.extend(self._schedule_node(node_ref, graph))
-
-        if graph._outputs:
-            return_instruction, output_prerequisites = self._schedule_return(graph._outputs)
-            instructions.extend(output_prerequisites + [return_instruction])
-
-        return tuple(instructions)
-
-    def _schedule_node(self, node_ref: NodeRef, graph: GraphModule) -> list[Instruction]:
-        """Schedule instructions for a single node.
-
-        Args:
-            node_ref: reference to node to be scheduled.
-            graph: GraphModule containing nodes.
-
-        Returns:
-            List of instructions to execute this node.
-        """
-        instructions: list[Instruction] = []
-
-        node = graph.node(node_ref)
-
-        args = []
-        for arg in node.args:
-            ref_id, new_instructions = self._schedule_ref_id(arg)
-            instructions.extend(new_instructions)
-            args.append(ref_id)
-
-        kwargs = {}
-        for key, arg in node.kwargs.items():
-            ref_id, new_instructions = self._schedule_ref_id(arg)
-            instructions.extend(new_instructions)
-            kwargs[key] = ref_id
-
-        # Inject optimization if specified
-        if node.delegate is not None and isinstance(node.target, torch.nn.Module):
-            instructions.append(
-                OptimizeModule(module=node.target, args=args, kwargs=kwargs, delegate=node.delegate)
-            )
-
-        # Always execute the module to cache activations
-        instructions.append(
-            CallModule(
-                module=node.target,
-                args=args,
-                kwargs=kwargs,
-                target=node_ref,
-                contexts=self._node_contexts.get(node_ref, []),
-            )
-        )
-
-        return instructions
-
-    def _schedule_return(
-        self, outputs: list[NodeRef | AttributeRef]
-    ) -> tuple[ReturnOutputs, list[Instruction]]:
-        """Schedule return instruction for graph outputs.
-
-        Compiles all output references to register slots.
-
-        Args:
-            outputs: List of output references from the graph.
-
-        Returns:
-            Tuple of (ReturnOutputs instruction, prerequisite instructions for output preparation).
-            Prerequisite instructions handle attribute extraction for AttributeRef outputs.
-        """
-        output_refs = []
-        prerequisites: list[Instruction] = []
-
-        for output_ref in outputs:
-            ref, new_instructions = self._schedule_ref_id(output_ref)
-            prerequisites.extend(new_instructions)
-            output_refs.append(ref)
-
-        return ReturnOutputs(outputs=output_refs), prerequisites
-
-    def _schedule_ref_id(self, ref: _BaseRef) -> tuple[_BaseRef, list[Instruction]]:
-        """Schedule instructions to resolve a reference to a register slot or constant value.
-
-        NodeRef/InputRef are already usable register keys. Const adds a StoreConstant so the value
-        is populated under that key. AttributeRef appends a LoadAttribute such that its register key won't
-        overwrite the base reference slot.
-
-        Args:
-            ref: Reference whose runtime value must be resolved.
-
-        Returns:
-            The original reference and the instructions required to materialize its value.
-        """
-        match ref:
-            case NodeRef() | InputRef():
-                return ref, []
-            case Const():
-                # Store the value of the constant directly to the register.
-                contexts = list(self._node_contexts.get(ref, set())) or [DEFAULT_CONTEXT]
-                store_instruction = StoreValue(target=ref, value=ref, contexts=contexts)
-                return ref, [store_instruction]
-            case AttributeRef(reference=attr_ref, attribute=attr):
-                base_ref, base_instructions = self._schedule_ref_id(attr_ref)
-                # Allocate the extracted value under the AttributeRef so the base output stays intact.
-                load_instruction = LoadAttribute(source=base_ref, target=ref, attribute=attr)
-                return ref, [*base_instructions, load_instruction]
-            case _BaseRef():
-                msg = f"Unsupported reference type: {type(ref).__name__}"
-                raise TypeError(msg)
 
 
 class OffloadingStrategy(abc.ABC):

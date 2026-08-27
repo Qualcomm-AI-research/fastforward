@@ -5,16 +5,14 @@ import dataclasses
 import uuid
 
 from contextlib import nullcontext
-from typing import Any, Collection
+from typing import Any
 
 import pytest
 import syrupy
 import torch
 
 from fastforward._orchestration.graph_module import (
-    DEFAULT_CONTEXT,
     Const,
-    Delegate,
     GraphModule,
     InputRef,
     NodeRef,
@@ -24,10 +22,11 @@ from fastforward._orchestration.instruction_engine import (
     ActivationBundle,
     ActivationDataset,
     ActivationRegister,
+    BundleSpec,
+    CallFunction,
     CallModule,
     InstructionEngine,
     InstructionPasses,
-    InstructionScheduler,
     LoadAttribute,
     MoveActivations,
     MoveModule,
@@ -39,10 +38,18 @@ from fastforward._orchestration.instruction_engine import (
     _cancel_redundant_activation_moves,
     _weight_offloading_pass,
     lifetime_management_pass,
-    optimization_only_pass,
 )
+from fastforward._orchestration.scheduler import ref_load_instructions, schedule
 
 from ._models import Add, AddConstant, ReturnTuple
+
+
+def _noop_context(_: Any) -> nullcontext[None]:
+    return nullcontext()
+
+
+def _noop_context_alt(_: Any) -> nullcontext[None]:
+    return nullcontext()
 
 
 def test_merge_zips_datasets_together() -> None:
@@ -138,7 +145,7 @@ def test_call_module_broadcasts_single_batch_to_match_n_batches() -> None:
 
 def test_call_module_with_no_inputs_calls_module_once() -> None:
     # GIVEN a CallModule with no positional and no keyword refs
-    context = nullcontext()
+    context = _noop_context
     target = NodeRef(id=uuid.uuid4(), name="const_producer")
 
     sentinel = torch.tensor([42.0])
@@ -146,7 +153,7 @@ def test_call_module_with_no_inputs_calls_module_once() -> None:
     def produce() -> torch.Tensor:
         return sentinel
 
-    instr = CallModule(module=produce, args=[], kwargs={}, target=target, contexts=[context])
+    instr = CallModule(module=produce, args=[], kwargs={}, target=target, contexts=[context])  # type: ignore[arg-type]
     register = ActivationRegister()
 
     # WHEN the instruction executes
@@ -163,19 +170,20 @@ def test_call_module_single_tensor_arg() -> None:
     # GIVEN a simple linear module
     module = torch.nn.Linear(5, 3)
 
-    # GIVEN a register with a single tensor batch in context-aware format
+    # GIVEN a register with a single tensor batch stored under one context
     input_ref = InputRef(uuid.uuid4(), "input")
     target_ref = NodeRef(uuid.uuid4(), "target")
+    context = _noop_context
     register = ActivationRegister()
-    register.store(input_ref, DEFAULT_CONTEXT, ActivationDataset([torch.randn(2, 5)]))
+    register.store(input_ref, context, ActivationDataset([torch.randn(2, 5)]))
 
-    # GIVEN a CallModule instruction with single arg and default context
+    # GIVEN a CallModule instruction with a single arg and one context
     instruction = CallModule(
         module=module,
         args=[input_ref],
         kwargs={},
         target=target_ref,
-        contexts=[DEFAULT_CONTEXT],
+        contexts=[context],
     )
 
     # WHEN we execute the instruction
@@ -183,24 +191,24 @@ def test_call_module_single_tensor_arg() -> None:
 
     # THEN the output should be computed correctly
     assert target_ref in register
-    output_dataset = register.load(target_ref, DEFAULT_CONTEXT)
+    output_dataset = register.load(target_ref, context)
     assert len(output_dataset) == 1
     assert output_dataset.batches[0].shape == (2, 3)
 
 
-def test_activation_register_store_all_merges_across_producers() -> None:
+def test_activation_register_keeps_one_entry_per_context() -> None:
     # GIVEN two producers writing the same ref under different contexts
     ref = NodeRef(id=uuid.uuid4(), name="shared")
-    original = nullcontext()
-    quantized = nullcontext()
+    original = _noop_context
+    quantized = _noop_context_alt
     original_data = ActivationDataset([torch.tensor([1.0])])
     quantized_data = ActivationDataset([torch.tensor([2.0])])
 
     register = ActivationRegister()
 
-    # WHEN each producer calls store_all with a single-context mapping
-    register.store_all(ref, {original: original_data})
-    register.store_all(ref, {quantized: quantized_data})
+    # WHEN each producer stores under its own context
+    register.store(ref, original, original_data)
+    register.store(ref, quantized, quantized_data)
 
     # THEN both contexts remain readable; the second write did not overwrite
     # the first.
@@ -208,45 +216,41 @@ def test_activation_register_store_all_merges_across_producers() -> None:
     assert register.load(ref, quantized) is quantized_data
 
 
-def test_activation_register_delete_drops_every_stream_for_ref() -> None:
-    # GIVEN a ref stored under two streams
+def test_activation_register_delete_drops_every_context_for_ref() -> None:
+    # GIVEN a ref stored under two contexts
     ref = NodeRef(id=uuid.uuid4(), name="shared")
-    original = nullcontext()
-    quantized = nullcontext()
+    original = _noop_context
+    quantized = _noop_context_alt
     register = ActivationRegister()
-    register.store_all(
-        ref,
-        {
-            original: ActivationDataset([torch.tensor([1.0])]),
-            quantized: ActivationDataset([torch.tensor([2.0])]),
-        },
-    )
+    register.store(ref, original, ActivationDataset([torch.tensor([1.0])]))
+    register.store(ref, quantized, ActivationDataset([torch.tensor([2.0])]))
 
     # WHEN the ref is deleted without a context (the whole-ref mode)
     register.delete(ref)
 
-    # THEN both streams are gone
+    # THEN both contexts are gone
     assert ref not in register
 
 
-def test_activation_register_delete_targeted_drops_only_one_stream() -> None:
-    # GIVEN a ref stored under two streams
+def test_activation_register_delete_targeted_drops_only_one_context() -> None:
+    # GIVEN a ref stored under two contexts
     ref = NodeRef(id=uuid.uuid4(), name="shared")
-    original = nullcontext()
-    quantized = nullcontext()
+    original = _noop_context
+    quantized = _noop_context_alt
     original_data = ActivationDataset([torch.tensor([1.0])])
     quantized_data = ActivationDataset([torch.tensor([2.0])])
     register = ActivationRegister()
-    register.store_all(ref, {original: original_data, quantized: quantized_data})
+    register.store(ref, original, original_data)
+    register.store(ref, quantized, quantized_data)
 
-    # WHEN one stream is deleted by context
+    # WHEN one context is deleted
     register.delete(ref, original)
 
-    # THEN the other stream is still readable, and the ref itself remains
+    # THEN the other context is still readable, and the ref itself remains
     assert ref in register
     assert register.load(ref, quantized) is quantized_data
 
-    # AND deleting the last stream drops the ref entirely
+    # AND deleting the last context drops the ref entirely
     register.delete(ref, quantized)
     assert ref not in register
 
@@ -260,7 +264,7 @@ def test_prepare_input_register_validates_inputs() -> None:
     z = graph.add_input("z")
 
     # WHEN we bind with mixed positional and keyword args
-    context = nullcontext()
+    context = _noop_context
     register = InstructionEngine.prepare_input_register(
         graph._inputs, args=(10, 20), kwargs={"z": 30}, contexts=[context]
     )
@@ -294,7 +298,7 @@ def test_prepare_input_register_validates_inputs() -> None:
 
 def test_return_outputs_unpacking() -> None:
     """Test ReturnOutputs behavior: always returns dict[context, tuple[batches]]."""
-    context = nullcontext()
+    context = _noop_context
     ref1 = NodeRef(id=uuid.uuid4(), name="n1")
     ref2 = NodeRef(id=uuid.uuid4(), name="n2")
 
@@ -339,11 +343,10 @@ def test_instruction_generator_linear_layers(snapshot: syrupy.assertion.Snapshot
     graph.add_output(node_2)
 
     # WHEN we schedule execution
-    scheduler = InstructionScheduler()
-    engine = scheduler.schedule(graph)
+    program = schedule(graph)
 
     # THEN the engine contains: CallModule(node1), CallModule(node2), ReturnOutputs
-    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
+    assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
 
 
 def test_instruction_generator_with_attribute_ref(
@@ -359,71 +362,11 @@ def test_instruction_generator_with_attribute_ref(
     graph.add_output(identity_node)
 
     # WHEN we schedule execution
-    scheduler = InstructionScheduler()
-    engine = scheduler.schedule(graph)
+    program = schedule(graph)
 
     # THEN the engine contains: CallModule(tuple_node), LoadAttribute(extract [0]),
     # CallModule(identity), ReturnOutputs
-    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
-
-
-def test_instruction_generator_with_optimization_spec(
-    snapshot: syrupy.assertion.SnapshotAssertion,
-) -> None:
-    """Test that SubgraphSpec with optimization function injects OptimizeModule instruction."""
-    # GIVEN a simple graph with two nodes
-    graph = GraphModule()
-    inputs = graph.add_input("x")
-    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
-    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
-    graph.add_output(node_2)
-
-    # GIVEN a SubgraphSpec that targets node_1 with an optimization function
-    def dummy_optimize(module: torch.nn.Module, dataset: Collection[Any]) -> None:
-        pass
-
-    delegate = Delegate(fn=dummy_optimize, contexts=[nullcontext()])
-    graph._nodes[node_1.id] = dataclasses.replace(graph._nodes[node_1.id], delegate=delegate)
-
-    # WHEN we schedule execution with the spec
-    scheduler = InstructionScheduler()
-    engine = scheduler.schedule(graph)
-
-    # THEN the engine contains: OptimizeModule(node_1), CallModule(node_1), CallModule(node_2),
-    # ReturnOutputs, and the OptimizeModule delegate is the one we injected (repr can't prove
-    # identity, so that part stays a plain assertion)
-    assert isinstance(engine.instructions[0], OptimizeModule)
-    assert engine.instructions[0].delegate.fn is dummy_optimize
-    assert snapshot == "\n".join(repr(instruction) for instruction in engine.instructions)
-
-
-def test_optimization_only_pass(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
-    """Test that optimization_only_pass keeps only instructions needed for optimization."""
-    # GIVEN a graph with optimization on node_1 and node_3, but not node_2
-    graph = GraphModule()
-    inputs = graph.add_input("x")
-    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
-    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
-    node_3 = graph.add_node("node_3", torch.nn.Identity(), [node_2])
-    graph.add_output(node_3)
-
-    def dummy_optimize(module: torch.nn.Module, dataset: Collection[Any]) -> None:
-        pass
-
-    delegate = Delegate(fn=dummy_optimize, contexts=[nullcontext()])
-    graph._nodes[node_1.id] = dataclasses.replace(graph._nodes[node_1.id], delegate=delegate)
-    graph._nodes[node_3.id] = dataclasses.replace(graph._nodes[node_3.id], delegate=delegate)
-
-    # WHEN instructions are scheduled with the optimization_only_pass
-    program = InstructionScheduler().schedule(graph)
-    program = InstructionPasses.apply(program, [optimization_only_pass])
-    instructions = program.instructions
-
-    # THEN the resulting instructions should be:
-    # OptimizeModule(node_1) -> CallModule(node_1) -> CallModule(node_2) -> OptimizeModule(node_3)
-    # CallModule(node_3) is removed since nothing downstream depends on it, and because of that
-    # ReturnOutputs is also removed.
-    assert snapshot == "\n".join(repr(instruction) for instruction in instructions)
+    assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
 
 
 def test_lifetime_management_pass(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
@@ -436,7 +379,7 @@ def test_lifetime_management_pass(snapshot: syrupy.assertion.SnapshotAssertion) 
     graph.add_output(node_2)
 
     # WHEN instructions are scheduled with the lifetime_management_pass
-    program = InstructionScheduler().schedule(graph)
+    program = schedule(graph)
     program = InstructionPasses.apply(program, [lifetime_management_pass])
     instructions = program.instructions
 
@@ -454,72 +397,13 @@ def test_instruction_passes_no_passes() -> None:
     node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
     graph.add_output(node_2)
 
-    program = InstructionScheduler().schedule(graph)
+    program = schedule(graph)
 
     # WHEN no passes are applied (passes defaulting to None)
     result = InstructionPasses.apply(program)
 
     # THEN the instructions are unchanged
     assert result.instructions == program.instructions
-
-
-def test_local_error_multiple_contexts() -> None:
-    """Test that context requirements propagate backward only to dependencies, not all nodes."""
-    # GIVEN a graph with two branches (x -> node_1 -> node_2 -> out, x -> node_3 -> out)
-    graph = GraphModule()
-    inputs = graph.add_input("x")
-    node_1 = graph.add_node("node_1", torch.nn.Identity(), [inputs])
-    node_2 = graph.add_node("node_2", torch.nn.Identity(), [node_1])
-    node_3 = graph.add_node("node_3", torch.nn.Identity(), [inputs])
-    graph.add_output(node_2, node_3)
-
-    # GIVEN node_2 requires two contexts for execution
-    def opt_node_2(
-        module: torch.nn.Module,
-        default_bundle: ActivationBundle,
-        quantized_bundle: ActivationBundle,
-    ) -> None:
-        pass
-
-    class DummyQuantizedContext:
-        def __enter__(self) -> None:
-            return
-
-        def __exit__(self, *args: Any) -> None:
-            return
-
-    null_context = nullcontext()
-    quant_context = DummyQuantizedContext()
-
-    delegate_2 = Delegate(fn=opt_node_2, contexts=[null_context, quant_context])
-    graph._nodes[node_2.id] = dataclasses.replace(graph._nodes[node_2.id], delegate=delegate_2)
-
-    # WHEN we schedule the graph
-    scheduler = InstructionScheduler()
-    instructions = scheduler.schedule(graph).instructions
-
-    # THEN CallModule(node_1) should run in both contexts as it is required for OptimizeModule(node_2)
-    # but the order in which they are defined does not matter.
-    call_node_1 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_1)
-    for context in call_node_1.contexts:
-        assert context in {quant_context, null_context, DEFAULT_CONTEXT}
-
-    # THEN OptimizeModule(node_2) should have both contexts in its delegate
-    # and order DOES matter.
-    opt_node_2_instr = next(
-        i
-        for i in instructions
-        if isinstance(i, OptimizeModule) and i.module is graph._nodes[node_2.id].target
-    )
-    assert opt_node_2_instr.delegate.contexts == [null_context, quant_context]
-
-    # THEN CallModule(node_2) should run in default context (forward pass always produces output).
-    call_node_2 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_2)
-    assert call_node_2.contexts == [DEFAULT_CONTEXT]
-
-    # THEN node_3 should run in default context since it was not part of any optimize dependency
-    call_node_3 = next(i for i in instructions if isinstance(i, CallModule) and i.target == node_3)
-    assert call_node_3.contexts == [DEFAULT_CONTEXT]
 
 
 def test_graph_execution_with_const_argument() -> None:
@@ -534,7 +418,7 @@ def test_graph_execution_with_const_argument() -> None:
     node = graph.add_node("add_const", AddConstant(), [inputs, const_value])
     graph.add_output(node)
 
-    # WHEN we execute the graph (which internally calls program.contexts)
+    # WHEN we execute the graph (which internally calls program.streams)
     # THEN it should not raise AttributeError and should execute correctly
     result = graph(torch.tensor([1.0, 2.0, 3.0]))
 
@@ -562,7 +446,7 @@ def test_move_parameters_moves_module_and_has_no_register_refs() -> None:
 def test_move_activations_moves_register_entry_and_reports_ref() -> None:
     # GIVEN a register entry with a tensor dataset
     ref = NodeRef(id=uuid.uuid4(), name="ref")
-    context = nullcontext()
+    context = _noop_context
     ds = ActivationDataset([torch.randn(2, 3)])
     register = ActivationRegister()
     register.store(ref, context, ds)
@@ -616,8 +500,7 @@ def test_weight_offloading_pass_post_restore_uses_per_parameter_devices() -> Non
     inp = graph.add_input("x")
     graph.add_node("linear", module, [inp])
 
-    scheduler = InstructionScheduler()
-    base_instructions = scheduler.schedule(graph).instructions
+    base_instructions = schedule(graph).instructions
 
     cpu = torch.device("cpu")
 
@@ -650,7 +533,7 @@ def _two_linear_graph() -> tuple[GraphModule, torch.nn.Linear, torch.nn.Linear]:
 def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
     # GIVEN a two-linear graph and its base instruction stream
     graph, m1, m2 = _two_linear_graph()
-    base = InstructionScheduler().schedule(graph).instructions
+    base = schedule(graph).instructions
     compute = torch.device("cuda:0")
     storage = torch.device("cpu")
 
@@ -679,7 +562,7 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
 def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storage() -> None:
     # GIVEN a two-linear graph and its base instruction stream
     graph, _, _ = _two_linear_graph()
-    base = InstructionScheduler().schedule(graph).instructions
+    base = schedule(graph).instructions
     compute = torch.device("cuda:0")
     storage = torch.device("cpu")
 
@@ -711,13 +594,14 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
 
     linear = torch.nn.Linear(4, 4)
     linear_out = NodeRef(uuid.uuid4(), "linear_out")
+    context = _noop_context
     instructions = (
         CallModule(
             module=linear,
             args=(),
             kwargs={},
             target=linear_out,
-            contexts=(nullcontext(),),
+            contexts=[context],
         ),
         MoveActivations(device=storage, register_ref=linear_out),
         MoveActivations(device=compute, register_ref=linear_out),
@@ -755,34 +639,35 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
     aten_a_out = NodeRef(uuid.uuid4(), "aten_a_out")
     aten_b_out = NodeRef(uuid.uuid4(), "aten_b_out")
 
+    context = _noop_context
     instructions = (
         # (a) unknown producer
-        CallModule(
-            module=lambda: torch.arange(8),
+        CallFunction(
+            fn=lambda: torch.arange(8),
             args=(),
             kwargs={},
             target=arange_out,
-            contexts=(nullcontext(),),
+            contexts=[context],
         ),
         MoveActivations(device=storage, register_ref=arange_out),
         MoveActivations(device=compute, register_ref=arange_out),
         # (b) aten chain: src moved to compute by _weight_offloading_pass
         MoveActivations(device=compute, register_ref=src),
-        CallModule(
-            module=torch.transpose,
+        CallFunction(
+            fn=torch.transpose,
             args=(src,),
             kwargs={},
             target=aten_a_out,
-            contexts=(nullcontext(),),
+            contexts=[context],
         ),
         MoveActivations(device=storage, register_ref=aten_a_out),
         MoveActivations(device=compute, register_ref=aten_a_out),
-        CallModule(
-            module=torch.transpose,
+        CallFunction(
+            fn=torch.transpose,
             args=(aten_a_out,),
             kwargs={},
             target=aten_b_out,
-            contexts=(nullcontext(),),
+            contexts=[context],
         ),
         MoveActivations(device=storage, register_ref=aten_b_out),
         MoveActivations(device=compute, register_ref=aten_b_out),
@@ -842,18 +727,9 @@ def test_move_to_device_plain_dict_stays_plain_dict() -> None:
     assert moved["b"].shape == (4,)
 
 
-##########
-# ActivationBundle
-#
-# `ActivationBundle` is the per-context call-construction view handed to a delegate.
-# It carries positional and keyword `ActivationDataset`s and yields `(args, kwargs)`
-# per batch.
-##########
-
-
 def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> None:
     # GIVEN a register populated with two positional refs under one context
-    context = nullcontext()
+    context = _noop_context
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
     register = ActivationRegister()
@@ -869,7 +745,7 @@ def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> Non
 
 def test_activation_bundle_kwargs_only_yields_empty_args_and_kwargs_dict() -> None:
     # GIVEN refs populated under one context, surfaced only as kwargs on the bundle
-    context = nullcontext()
+    context = _noop_context
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     ref_y = NodeRef(id=uuid.uuid4(), name="y")
     register = ActivationRegister()
@@ -890,7 +766,7 @@ def test_activation_bundle_kwargs_only_yields_empty_args_and_kwargs_dict() -> No
 
 def test_activation_bundle_mixed_args_and_kwargs_align_per_batch() -> None:
     # GIVEN a register with one positional ref and one kwarg ref
-    context = nullcontext()
+    context = _noop_context
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
     register = ActivationRegister()
@@ -906,7 +782,7 @@ def test_activation_bundle_mixed_args_and_kwargs_align_per_batch() -> None:
 
 def test_activation_bundle_const_refs_are_wrapped_inline() -> None:
     # GIVEN one register-backed positional ref alongside a Const used as kwarg
-    context = nullcontext()
+    context = _noop_context
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     register = ActivationRegister()
     register.store(ref_x, context, ActivationDataset([1, 2]))
@@ -922,7 +798,7 @@ def test_activation_bundle_const_refs_are_wrapped_inline() -> None:
 
 def test_activation_bundle_broadcasts_singletons_against_n_length_streams() -> None:
     # GIVEN one stream of length 1 and one of length 3 in the register
-    context = nullcontext()
+    context = _noop_context
     ref_single = NodeRef(id=uuid.uuid4(), name="single")
     ref_multi = NodeRef(id=uuid.uuid4(), name="multi")
     register = ActivationRegister()
@@ -938,7 +814,7 @@ def test_activation_bundle_broadcasts_singletons_against_n_length_streams() -> N
 
 def test_activation_bundle_length_mismatch_raises() -> None:
     # GIVEN two refs with incompatible lengths (no singleton to broadcast)
-    context = nullcontext()
+    context = _noop_context
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
     register = ActivationRegister()
@@ -952,7 +828,7 @@ def test_activation_bundle_length_mismatch_raises() -> None:
 
 def test_activation_bundle_empty_inputs_has_zero_length() -> None:
     # GIVEN an empty register and no refs
-    bundle = ActivationBundle.gather(ActivationRegister(), nullcontext(), args=[], kwargs={})
+    bundle = ActivationBundle.gather(ActivationRegister(), _noop_context, args=[], kwargs={})
 
     # THEN the bundle is empty and iterates to nothing
     assert list(bundle) == []
@@ -960,7 +836,7 @@ def test_activation_bundle_empty_inputs_has_zero_length() -> None:
 
 def test_optimize_module_passes_kwargs_to_delegate() -> None:
     # GIVEN a register holding one positional and two keyword activations under one context
-    context = nullcontext()
+    context = _noop_context
     ref_hidden = NodeRef(id=uuid.uuid4(), name="hidden")
     ref_mask = NodeRef(id=uuid.uuid4(), name="mask")
     ref_pos = NodeRef(id=uuid.uuid4(), name="pos")
@@ -978,11 +854,11 @@ def test_optimize_module_passes_kwargs_to_delegate() -> None:
     def delegate(_module: torch.nn.Module, bundle: ActivationBundle) -> None:
         seen.extend(list(bundle))
 
+    kwargs = {"attention_mask": ref_mask, "position_embeddings": ref_pos}
     instr = OptimizeModule(
         module=torch.nn.Identity(),
-        args=[ref_hidden],
-        kwargs={"attention_mask": ref_mask, "position_embeddings": ref_pos},
-        delegate=Delegate(fn=delegate, contexts=[context]),
+        fn=delegate,
+        bundles=(BundleSpec(context=context, args=[ref_hidden], kwargs=kwargs),),
     )
 
     # WHEN the instruction executes
@@ -1004,11 +880,12 @@ def test_optimize_module_uses_yields_kwarg_refs() -> None:
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
     ref_c = NodeRef(id=uuid.uuid4(), name="c")
+    context = _noop_context
+    kwargs = {"b": ref_b, "c": ref_c}
     instr = OptimizeModule(
         module=torch.nn.Identity(),
-        args=[ref_a],
-        kwargs={"b": ref_b, "c": ref_c},
-        delegate=Delegate(fn=lambda *_a, **_k: None, contexts=[nullcontext()]),
+        fn=lambda *_a, **_k: None,
+        bundles=(BundleSpec(context=context, args=[ref_a], kwargs=kwargs),),
     )
 
     # WHEN we enumerate refs `uses()` reports
@@ -1022,20 +899,12 @@ def test_optimize_module_uses_yields_kwarg_refs() -> None:
 
 def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
     # GIVEN two contexts and one ref produced under each
-    ctx_a = nullcontext()
-
-    class _Ctx:
-        def __enter__(self) -> None:
-            return
-
-        def __exit__(self, *args: Any) -> None:
-            return
-
-    ctx_b = _Ctx()
+    context_a = _noop_context
+    context_b = _noop_context_alt
     ref_x = NodeRef(id=uuid.uuid4(), name="x")
     register = ActivationRegister()
-    register.store(ref_x, ctx_a, ActivationDataset([1, 2]))
-    register.store(ref_x, ctx_b, ActivationDataset([10, 20]))
+    register.store(ref_x, context_a, ActivationDataset([1, 2]))
+    register.store(ref_x, context_b, ActivationDataset([10, 20]))
 
     received: list[ActivationBundle] = []
 
@@ -1046,9 +915,11 @@ def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
 
     instr = OptimizeModule(
         module=torch.nn.Identity(),
-        args=[ref_x],
-        kwargs={},
-        delegate=Delegate(fn=delegate, contexts=[ctx_a, ctx_b]),
+        fn=delegate,
+        bundles=(
+            BundleSpec(context=context_a, args=[ref_x]),
+            BundleSpec(context=context_b, args=[ref_x]),
+        ),
     )
 
     # WHEN the instruction executes
@@ -1077,7 +948,7 @@ def test_prepare_input_register_too_many_positionals_raises() -> None:
     # THEN it raises on the positional-count mismatch
     with pytest.raises(TypeError, match="Expected 1 positional"):
         InstructionEngine.prepare_input_register(
-            graph._inputs, args=(10, 20), kwargs={}, contexts=[nullcontext()]
+            graph._inputs, args=(10, 20), kwargs={}, contexts=[_noop_context]
         )
 
 
@@ -1086,17 +957,15 @@ def test_schedule_ref_id_unknown_reference_type_raises() -> None:
     class _UnknownRef(_BaseRef):
         pass
 
-    scheduler = InstructionScheduler()
-
     # WHEN the scheduler tries to resolve it
     # THEN the exhaustiveness guard rejects the unsupported reference type
     with pytest.raises(TypeError, match="Unsupported reference type"):
-        scheduler._schedule_ref_id(_UnknownRef())
+        ref_load_instructions(_UnknownRef(), _noop_context)
 
 
 def test_load_attribute_extracts_dict_key_item() -> None:
     # GIVEN a register whose dataset batches are dicts (item access via [key])
-    context = nullcontext()
+    context = _noop_context
     source = NodeRef(id=uuid.uuid4(), name="source")
     target = NodeRef(id=uuid.uuid4(), name="target")
     register = ActivationRegister()
@@ -1111,13 +980,12 @@ def test_load_attribute_extracts_dict_key_item() -> None:
 
 def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
     # GIVEN batches that are objects without __getitem__ (so batch["x"] raises TypeError)
-    import dataclasses
 
     @dataclasses.dataclass
     class Out:
         logits: int
 
-    context = nullcontext()
+    context = _noop_context
     source = NodeRef(id=uuid.uuid4(), name="source")
     target = NodeRef(id=uuid.uuid4(), name="target")
     register = ActivationRegister()
@@ -1175,7 +1043,7 @@ def test_activation_dataset_from_value_passthrough_when_already_dataset() -> Non
 def test_store_value_uses_reports_its_target() -> None:
     # GIVEN a StoreValue writing under a target ref
     target = NodeRef(id=uuid.uuid4(), name="t")
-    instr = StoreValue(target=target, value=123, contexts=[nullcontext()])
+    instr = StoreValue(target=target, value=123, contexts=[_noop_context])
 
     # WHEN we enumerate the refs it uses
     # THEN the target is reported (offloading liveness depends on this)

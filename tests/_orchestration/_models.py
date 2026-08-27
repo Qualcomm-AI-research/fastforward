@@ -20,10 +20,6 @@ import torch
 
 from fastforward._orchestration.graph_module import GraphModule
 
-# ---------------------------------------------------------------------------
-# Graph-module / instruction-engine models (built via `to_graph_module()`).
-# ---------------------------------------------------------------------------
-
 
 class Add(torch.nn.Module):
     """Placeholder due to lack of torch.nn.Add()."""
@@ -155,11 +151,6 @@ class TinyModel(torch.nn.Module):
         self.conv = torch.nn.Conv2d(3, 3, 1)
 
 
-# ---------------------------------------------------------------------------
-# Small helper modules.
-# ---------------------------------------------------------------------------
-
-
 class ConstReturn(torch.nn.Module):
     """A model that returns only a constant value."""
 
@@ -198,11 +189,6 @@ class RNGTensor(torch.nn.Module):
     def forward(self) -> torch.Tensor:
         """Return a fresh random tensor."""
         return torch.randn(5)
-
-
-# ---------------------------------------------------------------------------
-# Small attention / MLP / decoder family (built via `to_graph_module()`).
-# ---------------------------------------------------------------------------
 
 
 class SmallAttn(torch.nn.Module):
@@ -314,6 +300,73 @@ class TwoLayerModel(torch.nn.Module):
         return graph
 
 
+class ResidualDecoderLayer(torch.nn.Module):
+    """Decoder layer with a residual around the attention and around the MLP.
+
+    A residual makes a node read both its predecessor and the value before it, so
+    the number of paths from the input to the output doubles per block. A scheduler
+    that reasons over paths instead of over nodes therefore becomes exponential on
+    this shape, while `DecoderLayer` keeps one path and hides the difference.
+    """
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.attn = SmallAttn(dim)
+        self.mlp = SmallMLP(dim)
+
+    def forward(self, x: torch.Tensor) -> Any:
+        """Forward pass: h = x + attn(x); h + mlp(h)."""
+        hidden = x + self.attn(x)
+        return hidden + self.mlp(hidden)
+
+    def to_graph_module(self) -> GraphModule:
+        """Transform 'ResidualDecoderLayer' to a GraphModule."""
+        graph = GraphModule()
+        inp = graph.add_input("x")
+        (attn_out,) = graph.add_subgraph(
+            "attn", self.attn.to_graph_module(), [inp], original_module=self.attn
+        )
+        hidden = graph.add_node("attn_add", Add(), [inp, attn_out])
+        (mlp_out,) = graph.add_subgraph(
+            "mlp", self.mlp.to_graph_module(), [hidden], original_module=self.mlp
+        )
+        out = graph.add_node("mlp_add", Add(), [hidden, mlp_out])
+        graph.add_output(out)
+        return graph
+
+
+class ResidualStack(torch.nn.Module):
+    """A stack of `depth` residual decoder layers, named `layer_0`, `layer_1`, ...."""
+
+    def __init__(self, depth: int = 4, dim: int = 8) -> None:
+        super().__init__()
+        # `blocks` keeps the concrete type that `to_graph_module` needs; `ModuleList`
+        # registers the same objects so that `named_modules` finds them.
+        self.blocks: list[ResidualDecoderLayer] = [ResidualDecoderLayer(dim) for _ in range(depth)]
+        self.layers = torch.nn.ModuleList(self.blocks)
+
+    def forward(self, x: torch.Tensor) -> Any:
+        """Forward pass through every layer in turn."""
+        out: Any = x
+        for block in self.blocks:
+            out = block(out)
+        return out
+
+    def to_graph_module(self) -> GraphModule:
+        """Transform 'ResidualStack' to a GraphModule."""
+        graph = GraphModule()
+        first, *rest = self.blocks
+        (ref,) = graph.add_subgraph(
+            "layer_0", first.to_graph_module(), [graph.add_input("x")], original_module=first
+        )
+        for index, block in enumerate(rest, start=1):
+            (ref,) = graph.add_subgraph(
+                f"layer_{index}", block.to_graph_module(), [ref], original_module=block
+            )
+        graph.add_output(ref)
+        return graph
+
+
 class DualOutLayer(torch.nn.Module):
     """Layer with two output leaves consumed independently downstream."""
 
@@ -360,11 +413,6 @@ class DualOutModel(torch.nn.Module):
         out = graph.add_node("combine", self.combine, [merged])
         graph.add_output(out)
         return graph
-
-
-# ---------------------------------------------------------------------------
-# Tracer-shape probes (exercise specific torch.export / FX behaviours).
-# ---------------------------------------------------------------------------
 
 
 class TinyMLP(torch.nn.Module):
@@ -499,14 +547,6 @@ class DeviceCastModel(torch.nn.Module):
         """Multiply by a buffer cast to the input's runtime device."""
         assert isinstance(self.inv_freq, torch.Tensor)
         return x * self.inv_freq.float().to(x.device)
-
-
-# ---------------------------------------------------------------------------
-# Llama-shaped "toy" family. Mirrors HuggingFace LlamaForCausalLM naming so the
-# GPTQ notebook's mpath patterns (e.g. "*/q_proj", "*/gate_proj") match the same
-# way: model.layers.{i}.self_attn.{q,k,v,o}_proj / .mlp.{gate,up,down}_proj.
-# Only the structure matters — the math is a stand-in (no real attention/SiLU).
-# ---------------------------------------------------------------------------
 
 
 class ToyAttention(torch.nn.Module):

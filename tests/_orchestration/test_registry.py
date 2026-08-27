@@ -236,7 +236,7 @@ def test_resolve_with_explicit_specs(tiny_model: TinyModel) -> None:
 
     # THEN the spec's target is resolved against the model
     assert [s.region for s in result] == [model.conv]
-    assert all(s.delegate.fn is _dummy_algorithm for s in result)
+    assert all(s.fn is _dummy_algorithm for s in result)
 
     # THEN the spec's flows are carried through to the resolved region
     assert [s.flows for s in result] == [flows]

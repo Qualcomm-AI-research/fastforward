@@ -58,10 +58,14 @@ def test_bare_context_manager_reuses_registered() -> None:
 
 
 @pytest.mark.parametrize("cache", [True, False], ids=["cached", "uncached"])
-def test_cache_is_carried_through(cache: bool) -> None:
+@pytest.mark.parametrize("context", ["original", "quantized"], ids=["original", "quantized"])
+def test_cache_is_carried_through(context: str, cache: bool) -> None:
+    if context == "original" and not cache:
+        pytest.skip("guarded by test_original_with_cache_false_is_rejected")
+
     # GIVEN an explicit cache choice
     # WHEN building a flow with it
-    flow = InputActivations("quantized", cache=cache)
+    flow = InputActivations(context, cache=cache)
 
     # THEN the flow reports that choice
     assert flow.cache is cache
