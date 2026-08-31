@@ -7,7 +7,12 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.quantization.gptq import column_quantizer, gptq, update_partial_range
+from fastforward.quantization.gptq import (
+    calculate_hessian,
+    column_quantizer,
+    gptq,
+    update_partial_range,
+)
 
 
 def _calibrated_quantizer(
@@ -175,3 +180,37 @@ def test_gptq_recomputes_grouped_scales_from_error_corrected_weights() -> None:
     )
     actual_group1_scale = module.weight_quantizer.scale.data.view(16, 4)[:, 1]
     assert not torch.allclose(actual_group1_scale, static_scale.to(actual_group1_scale.dtype))
+
+
+def test_calculate_hessian_does_not_modify_input_activations() -> None:
+    # GIVEN float32 activations already on the module's device, so the `.to()` inside
+    # `calculate_hessian` is a no-op and the reshape/transpose yield views
+    module = ff.nn.QuantizedLinear(32, 16, bias=False)
+    activations = [torch.randn(2, 8, 32) for _ in range(3)]
+    expected = [activation.clone() for activation in activations]
+    dataset: list[tuple[tuple[Any, ...], dict[str, Any]]] = [
+        ((activation,), {}) for activation in activations
+    ]
+
+    # WHEN we build the Hessian
+    calculate_hessian(module, dataset)
+
+    # THEN the caller's activations are unchanged
+    for activation, original in zip(activations, expected):
+        torch.testing.assert_close(activation, original, rtol=0, atol=0)
+
+
+def test_calculate_hessian_is_repeatable_for_a_shared_dataset() -> None:
+    # GIVEN one dataset read twice, as the orchestrator hands the same tensor objects
+    # to every module that reads an activation (q_proj/k_proj/v_proj share their input)
+    module = ff.nn.QuantizedLinear(32, 16, bias=False)
+    dataset: list[tuple[tuple[Any, ...], dict[str, Any]]] = [
+        ((torch.randn(2, 8, 32),), {}) for _ in range(4)
+    ]
+
+    # WHEN two modules build a Hessian from it in turn
+    first = calculate_hessian(module, dataset)
+    second = calculate_hessian(module, dataset)
+
+    # THEN the second reader sees the same Hessian as the first
+    torch.testing.assert_close(first, second)

@@ -306,7 +306,8 @@ def calculate_hessian(
         hessian.mul_(n_samples / (n_samples + x.shape[1]))
         n_samples += x.shape[1]
 
-        x.mul_(math.sqrt(2.0 / n_samples))
+        # Not in-place: `x` can be a view of an activation that other layers also read.
+        x = x * math.sqrt(2.0 / n_samples)
         hessian.add_(x @ x.transpose(0, 1))
 
     # Handle dead neurons (zero diagonal in Hessian).
