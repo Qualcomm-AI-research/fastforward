@@ -33,10 +33,11 @@ import collections
 import dataclasses
 
 from collections.abc import Iterator, Mapping, Sequence
-from typing import override
 
 import attrs
 import torch
+
+from typing_extensions import override
 
 from fastforward._orchestration.data_flow import (
     ANY,
