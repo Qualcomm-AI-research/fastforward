@@ -13,6 +13,7 @@ dmypy.json
 .ruff_cache
 .mkdocs_cache
 **/uv.lock
+gguf_exports/
 
 .vscode/*
 .idea/*

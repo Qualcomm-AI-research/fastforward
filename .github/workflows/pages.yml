@@ -43,8 +43,23 @@ jobs:
         run: ./scripts/verify --notebook-copyright
 
       - run: |
-          apt update -qq && apt install -y jq
+          apt update -qq
+          apt install -y ca-certificates curl jq
           python3 -m pip install uv
+
+      - name: Cache llama.cpp
+        uses: actions/cache@v4
+        with:
+          path: build/llama.cpp
+          key: llama-cpp-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-llama-cpp.sh') }}
+
+      - name: Install llama.cpp
+        run: |
+          LLAMA_CPP_BIN_DIR="$(./scripts/install-llama-cpp.sh)"
+          LLAMA_CPP_REV="$(./scripts/install-llama-cpp.sh --revision)"
+          echo "${LLAMA_CPP_BIN_DIR}" >> "${GITHUB_PATH}"
+          echo "LLAMA_CPP_REV=${LLAMA_CPP_REV}" >> "${GITHUB_ENV}"
+
       - name: Install torch matching default versions
         run: |
           VER_TORCH=$(python3 scripts/versions.py default --field torch)
@@ -60,6 +75,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export PYTHONPATH="$PYTHONPATH:$PWD/docs/examples"
+          export MKDOCS_JUPYTER_CACHE_DIR="${MKDOCS_JUPYTER_CACHE_DIR:-.mkdocs_cache/mkdocs-jupyter}/llama-cpp-${LLAMA_CPP_REV}"
           DOCS_VERSION=''
           if [ "${{ github.event_name }}" = "push" ] ; then
             DOCS_VERSION="$DOCS_VERSION ${{ github.ref_name }}"

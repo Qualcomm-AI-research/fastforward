@@ -71,6 +71,16 @@ hide:
 
 
 
+-   :material-file-export:{ .lg .middle } __GGUF Export Examples__
+
+    ---
+
+    Export Qwen3 with min/max calibration and GPTQ using the built-in adapter.
+
+    [:octicons-arrow-right-24: GGUF export](export_gguf_examples.nb.py)
+
+
+
 -   :material-magic-staff:{ .lg .middle } __Autoquant Qwen__
 
     ---
