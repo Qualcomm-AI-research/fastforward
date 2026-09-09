@@ -681,6 +681,49 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
     assert snapshot == "\n".join(repr(instruction) for instruction in result)
 
 
+def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() -> None:
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+    source_ref = NodeRef(uuid.uuid4(), "source_ref")
+    out_ref = NodeRef(uuid.uuid4(), "out_ref")
+    module = torch.nn.Linear(4, 4)
+
+    # GIVEN an instruction stream spanning two flows, each re-producing source_ref from scratch
+    instructions: tuple[Any, ...] = (
+        CallFunction(
+            fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context]
+        ),
+        MoveActivations(device=compute, register_ref=source_ref),
+        CallModule(
+            module=module, args=(source_ref,), kwargs={}, target=out_ref, contexts=[_noop_context]
+        ),
+        MoveActivations(device=storage, register_ref=out_ref),
+        CallFunction(
+            fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context_alt]
+        ),
+        MoveActivations(device=compute, register_ref=source_ref),
+        CallModule(
+            module=module,
+            args=(source_ref,),
+            kwargs={},
+            target=out_ref,
+            contexts=[_noop_context_alt],
+        ),
+        MoveActivations(device=storage, register_ref=out_ref),
+    )
+
+    # WHEN the cancellation pass runs
+    result = _cancel_redundant_activation_moves(instructions, compute)
+
+    # THEN both moves of source_ref to compute survive
+    moves = [
+        i
+        for i in result
+        if isinstance(i, MoveActivations) and i.device == compute and i.register_ref is source_ref
+    ]
+    assert len(moves) == 2
+
+
 def test_move_to_device_preserves_dict_subclass_type() -> None:
     """_move_to_device on a dict subclass must return an instance of the same subclass.
 

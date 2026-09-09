@@ -1052,6 +1052,8 @@ def _cancel_redundant_activation_moves(
         devs = {ref_device[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_device}
         if len(devs) == 1:
             ref_device[key] = devs.pop()
+        else:
+            ref_device.pop(key, None)
 
     def _flush(ref: _BaseRef) -> None:
         key = ref.unwrap_ref()
