@@ -927,8 +927,8 @@ def _activation_offloading_pass(
 ) -> Instructions:
     """Insert `MoveActivations` instructions to move register entries between devices.
 
-    Before each `CallModule`/`OptimizeModule`, moves input activations to `compute_device`.
-    After each `CallModule`, moves the output activation to `storage_device`.
+    Before each `Call`/`OptimizeModule`, moves input activations to `compute_device`.
+    After each `Call`, moves the output activation to `storage_device`.
 
     If we have an instruction stream that goes through two linear layers L1 -> L2, the pass would add
     MoveAct(in, compute), Call(L1), MoveAct(out1, storage), MoveAct(out1, compute), Call(L2), MoveAct(out2, storage).
@@ -944,7 +944,7 @@ def _activation_offloading_pass(
     new_instructions: list[Instruction] = []
 
     for instruction in instructions:
-        if isinstance(instruction, (CallModule, OptimizeModule)):
+        if isinstance(instruction, (Call, OptimizeModule)):
             for ref in instruction.uses():
                 if isinstance(ref.unwrap_ref(), Const):
                     continue
@@ -952,8 +952,8 @@ def _activation_offloading_pass(
 
             new_instructions.append(instruction)
 
-            # Only CallModule produces an ActivationDataset.
-            if isinstance(instruction, CallModule):
+            # `OptimizeModule` optimizes in place; only a `Call` stores an ActivationDataset.
+            if isinstance(instruction, Call):
                 new_instructions.append(
                     MoveActivations(device=storage_device, register_ref=instruction.target)
                 )

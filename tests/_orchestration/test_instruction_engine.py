@@ -16,6 +16,7 @@ from fastforward._orchestration.graph_module import (
     GraphModule,
     InputRef,
     NodeRef,
+    Op,
     _BaseRef,
 )
 from fastforward._orchestration.instruction_engine import (
@@ -584,6 +585,44 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
             after = result[idx + 1]
             assert isinstance(after, MoveActivations)
             assert after.device == storage and after.register_ref == instruction.target
+
+
+def test_activation_offloading_pass_moves_activations_for_free_functions() -> None:
+    # GIVEN a graph where a free function adds a module output to an attribute read
+    module = torch.nn.Linear(4, 4)
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    linear = graph.add_node("linear", module, [inp])
+    attr = graph.add_node("table", lambda: torch.zeros(4), [], op=Op.get_attr)
+    add = graph.add_node("add", torch.add, [attr, linear], op=Op.call_function)
+    graph.add_output(add)
+
+    base = schedule(graph).instructions
+    compute = torch.device("cuda:0")
+    storage = torch.device("cpu")
+
+    # WHEN we apply the activation offloading pass
+    result = _activation_offloading_pass(base, compute, storage)
+
+    # THEN every call, not only every module call, has inputs on compute and output on storage
+    calls = [i for i in result if isinstance(i, (CallModule, CallFunction))]
+    assert len(calls) == 3
+
+    for idx, instruction in enumerate(result):
+        if not isinstance(instruction, (CallModule, CallFunction)):
+            continue
+
+        used = {ref for ref in instruction.uses() if not isinstance(ref.unwrap_ref(), Const)}
+        moved_to_compute = {
+            i.register_ref
+            for i in result[:idx]
+            if isinstance(i, MoveActivations) and i.device == compute
+        }
+        assert used <= moved_to_compute
+
+        after = result[idx + 1]
+        assert isinstance(after, MoveActivations)
+        assert after.device == storage and after.register_ref == instruction.target
 
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
