@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from collections.abc import Mapping
 from typing import Any
 
 import torch
@@ -93,13 +94,17 @@ def layerwise_optimize(
     *,
     targets: registry.TargetType | None = None,
     graph: GraphModule | None = None,
+    sample_args: tuple[Any, ...] = (),
+    sample_kwargs: Mapping[str, Any] | None = None,
     offloading: OffloadingStrategy | None = None,
-    **kwargs: Any,
 ) -> None:
     """Run layer-wise optimization on a model.
 
     Traces the model, resolves targets, reduces the graph to the optimization path,
     schedules an instruction program, applies passes, and executes with optional offloading.
+
+    When `graph` is None the model is traced, which needs one example input: give it through
+    `sample_args`, `sample_kwargs`, or both.
 
     Args:
         model: The model to optimize.
@@ -109,13 +114,30 @@ def layerwise_optimize(
         targets: Override which modules to target (uses registry default if None).
             Cannot be combined with explicit AlgorithmSpec(s).
         graph: Pre-built GraphModule (traces model if None).
+        sample_args: Positional example inputs for tracing.
+        sample_kwargs: Keyword example inputs for tracing.
         offloading: Optional strategy for device offloading during execution.
-        **kwargs: Additional arguments forwarded to trace.
+
+    Raises:
+        TypeError: If `graph` is None and no example input is given, or if `graph` and an
+            example input are both given.
     """
     # (1) Trace if no static graph provided
+    has_sample = bool(sample_args) or bool(sample_kwargs)
+    if graph is None and not has_sample:
+        msg = (
+            "layerwise_optimize needs an example input to trace the model. Pass sample_args "
+            "and/or sample_kwargs, or pass an already traced graph through graph=."
+        )
+        raise TypeError(msg)
+    if graph is not None and has_sample:
+        msg = "Cannot combine graph= with sample_args/sample_kwargs."
+        raise TypeError(msg)
+
+    sample_kwargs = sample_kwargs or {}
+
     if graph is None:
-        example_input = data[0] if isinstance(data, list) else data
-        graph = trace(model, example_input, **kwargs)
+        graph = trace(model, *sample_args, **sample_kwargs)
 
     # (2) Resolve targets and reduce graph
     match algorithm:
@@ -142,4 +164,4 @@ def layerwise_optimize(
     passes: list[InstructionPass] = [lifetime_management_pass]
 
     with _ExecutionContext(graph, program, passes=passes, offloading=offloading):
-        graph(data, **kwargs)
+        graph(data)

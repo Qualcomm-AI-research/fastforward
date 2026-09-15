@@ -16,7 +16,7 @@ from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 from torch import nn
 
-from ._models import TwoLinear
+from ._models import KwargForward, TwoLinear
 from .conftest import make_flows, sgd_step
 
 pytestmark = pytest.mark.skipif(
@@ -41,7 +41,7 @@ def test_layerwise_optimize_targets_only_selected_module(two_linear: TwoLinear) 
     )
 
     # WHEN we run the public layerwise_optimize
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN fc1's weights changed and fc2's did not (target resolution + reduction)
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -69,6 +69,57 @@ def test_layerwise_optimize_with_prebuilt_graph_skips_tracing(two_linear: TwoLin
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
 
 
+def test_layerwise_optimize_without_sample_or_graph_raises(two_linear: TwoLinear) -> None:
+    # GIVEN a model and calibration data, but no example input and no graph
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+    spec = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+
+    # WHEN we omit both, there is nothing to trace with
+    # THEN a TypeError is raised instead of a guess at the example input
+    with pytest.raises(TypeError, match="needs an example input"):
+        ff.layerwise_optimize(model, calibration, spec)
+
+
+def test_layerwise_optimize_with_graph_and_sample_raises(two_linear: TwoLinear) -> None:
+    # GIVEN a model with a pre-built graph
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+    graph = trace(model, calibration[0])
+    spec = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+
+    # WHEN we also pass an example input, which the given graph would never use
+    # THEN a TypeError is raised
+    with pytest.raises(TypeError, match="Cannot combine graph="):
+        ff.layerwise_optimize(model, calibration, spec, graph=graph, sample_args=(calibration[0],))
+
+
+@pytest.mark.slow
+def test_layerwise_optimize_traces_with_both_sample_args_and_kwargs() -> None:
+    # GIVEN a model whose forward takes one positional and one keyword-only input
+    model = KwargForward().eval()
+    calibration = [{"x": torch.randn(2, 4), "scale": torch.randn(2, 4)} for _ in range(3)]
+    initial_w = model.fc.weight.data.clone()
+
+    spec = AlgorithmSpec(
+        fn=functools.partial(sgd_step, lr=0.1),
+        selector=normalize([model.fc]),
+        flows=make_flows(),
+    )
+
+    # WHEN the example input is split over sample_args and sample_kwargs
+    ff.layerwise_optimize(
+        model,
+        calibration,
+        spec,
+        sample_args=(calibration[0]["x"],),
+        sample_kwargs={"scale": calibration[0]["scale"]},
+    )
+
+    # THEN the model traced and the targeted layer was optimized
+    assert not torch.allclose(initial_w, model.fc.weight.data)
+
+
 def test_layerwise_optimize_with_offloading_runs_execution_context(two_linear: TwoLinear) -> None:
     # GIVEN a model, calibration data, and a CPU-to-CPU offloading strategy
     model = two_linear.eval()
@@ -89,6 +140,7 @@ def test_layerwise_optimize_with_offloading_runs_execution_context(two_linear: T
         model,
         calibration,
         spec,
+        sample_args=(calibration[0],),
         offloading=OffloadEverything(compute_device=cpu, storage_device=cpu),
     )
 
@@ -111,7 +163,7 @@ def test_layerwise_optimize_calls_algorithm_once_per_target(two_linear: TwoLinea
     spec = AlgorithmSpec(fn=spy, selector=normalize([model.fc1, model.fc2]), flows=make_flows())
 
     # WHEN we optimize
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN the algorithm ran exactly once per targeted module
     assert seen == [model.fc1, model.fc2]
@@ -129,7 +181,9 @@ def test_layerwise_optimize_override_restores_registry_state(two_linear: TwoLine
         calibration = [torch.randn(2, 8) for _ in range(2)]
 
         # WHEN layerwise_optimize runs with a `targets` override
-        ff.layerwise_optimize(model, calibration, algorithm, targets=[model.fc1])
+        ff.layerwise_optimize(
+            model, calibration, algorithm, targets=[model.fc1], sample_args=(calibration[0],)
+        )
 
         # THEN the original Conv2d registration is restored after the override exits
         assert registry._registry[algorithm] == spec_before
@@ -151,7 +205,7 @@ def test_layerwise_optimize_with_explicit_spec(two_linear: TwoLinear) -> None:
     )
 
     # WHEN we pass the spec directly (no register() needed)
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN fc1's weights changed and fc2's did not
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -177,7 +231,7 @@ def test_layerwise_optimize_with_multiple_specs(two_linear: TwoLinear) -> None:
     )
 
     # WHEN we pass both specs as a list
-    ff.layerwise_optimize(model, calibration, [spec_fc1, spec_fc2])
+    ff.layerwise_optimize(model, calibration, [spec_fc1, spec_fc2], sample_args=(calibration[0],))
 
     # THEN both modules were optimized
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -195,7 +249,7 @@ def test_layerwise_optimize_overlapping_specs_raises(two_linear: TwoLinear) -> N
     # WHEN we pass overlapping specs
     # THEN a ValueError is raised
     with pytest.raises(ValueError, match="Overlapping nodes"):
-        ff.layerwise_optimize(model, calibration, [spec1, spec2])
+        ff.layerwise_optimize(model, calibration, [spec1, spec2], sample_args=(calibration[0],))
 
 
 def test_layerwise_optimize_with_span_region(two_linear: TwoLinear) -> None:
@@ -214,7 +268,7 @@ def test_layerwise_optimize_with_span_region(two_linear: TwoLinear) -> None:
     )
 
     # WHEN we optimize with a Span region
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN fc1 is optimized (it's inside the span) and fc2 is not
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -237,7 +291,7 @@ def test_layerwise_optimize_entire_graph_span(two_linear: TwoLinear) -> None:
     )
 
     # WHEN we optimize spanning the whole graph
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN all weights changed
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
@@ -257,7 +311,7 @@ def test_layerwise_optimize_fn_receives_correct_params_and_batches(two_linear: T
     spec = AlgorithmSpec(fn=spy, selector=normalize([model.fc1]), flows=make_flows())
 
     # WHEN we optimize
-    ff.layerwise_optimize(model, calibration, spec)
+    ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
 
     # THEN the fn received fc1's parameters by identity and the correct batch count
     assert id(model.fc1.weight) in received["param_ids"]  # type: ignore[operator]

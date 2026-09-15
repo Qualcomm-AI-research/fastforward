@@ -199,7 +199,12 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
         ff.layerwise_optimize(
-            gptq_model, calibration_set, gptq_fn, targets=gptq_targets, offloading=offloading
+            gptq_model,
+            calibration_set,
+            gptq_fn,
+            targets=gptq_targets,
+            sample_args=(calibration_set[0],),
+            offloading=offloading,
         )
     with ff.strict_quantization(False):
         gptq_perplexity = _evaluate(gptq_model, validation_set, device)
@@ -228,7 +233,13 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
             flows=[InputActivations("quantized")],
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
-        ff.layerwise_optimize(gptq_q_model, calibration_set, spec, offloading=offloading)
+        ff.layerwise_optimize(
+            gptq_q_model,
+            calibration_set,
+            spec,
+            sample_args=(calibration_set[0],),
+            offloading=offloading,
+        )
     with ff.strict_quantization(False):
         gptq_q_perplexity = _evaluate(gptq_q_model, validation_set, device)
     del gptq_q_model
@@ -327,7 +338,12 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
         ff.layerwise_optimize(
-            gptq_model, calibration_set, gptq_fn, targets=gptq_targets, offloading=offloading
+            gptq_model,
+            calibration_set,
+            gptq_fn,
+            targets=gptq_targets,
+            sample_args=(calibration_set[0],),
+            offloading=offloading,
         )
     with ff.strict_quantization(False):
         gptq_perplexity = _evaluate(gptq_model, validation_set, device)
@@ -356,7 +372,13 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
             flows=[InputActivations("quantized")],
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
-        ff.layerwise_optimize(gptq_q_model, calibration_set, spec, offloading=offloading)
+        ff.layerwise_optimize(
+            gptq_q_model,
+            calibration_set,
+            spec,
+            sample_args=(calibration_set[0],),
+            offloading=offloading,
+        )
     with ff.strict_quantization(False):
         gptq_q_perplexity = _evaluate(gptq_q_model, validation_set, device)
     del gptq_q_model
