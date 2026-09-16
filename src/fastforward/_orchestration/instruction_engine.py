@@ -31,10 +31,11 @@ from fastforward._orchestration.graph_module import (
 )
 
 # Distinguishes data produced under different execution conditions for the same node.
-StreamKey: TypeAlias = Callable[[torch.nn.Module], ContextManager[None]]
+# A node without a module (a free function or a method call) passes None.
+StreamKey: TypeAlias = Callable[[torch.nn.Module | None], ContextManager[None]]
 
 # Ordered sequence of context managers that an instruction executes under.
-Contexts: TypeAlias = Sequence[Callable[[torch.nn.Module], ContextManager[None]]]
+Contexts: TypeAlias = Sequence[Callable[[torch.nn.Module | None], ContextManager[None]]]
 
 
 def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
@@ -396,7 +397,7 @@ class Call(Instruction, abc.ABC):
     @abc.abstractmethod
     def _call(
         self,
-        context: Callable[[torch.nn.Module], ContextManager[None]],
+        context: Callable[[torch.nn.Module | None], ContextManager[None]],
         bundle: ActivationBundle,
     ) -> list[Any]:
         """Invoke the callable under the given context."""
@@ -448,10 +449,11 @@ class CallFunction(Call):
             f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
         )
 
-    def _call(self, _context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
-        if not bundle:
-            return [self.fn()]
-        return [self.fn(*args, **kwargs) for args, kwargs in bundle]
+    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
+        with context(None):
+            if not bundle:
+                return [self.fn()]
+            return [self.fn(*args, **kwargs) for args, kwargs in bundle]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -467,10 +469,11 @@ class CallMethod(Call):
             f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
         )
 
-    def _call(self, _context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
-        if not bundle:
-            return [self.method()]
-        return [self.method(*args, **kwargs) for args, kwargs in bundle]
+    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
+        with context(None):
+            if not bundle:
+                return [self.method()]
+            return [self.method(*args, **kwargs) for args, kwargs in bundle]
 
 
 @dataclasses.dataclass(frozen=True)

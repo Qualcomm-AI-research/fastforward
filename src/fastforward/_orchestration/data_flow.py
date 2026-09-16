@@ -60,7 +60,7 @@ class FlowGenerator:
     """
 
     key: str
-    context: Callable[[torch.nn.Module], ContextManager[None]]
+    context: Callable[[torch.nn.Module | None], ContextManager[None]]
     order: int
     pinned: bool = False
 
@@ -84,15 +84,22 @@ def register_generator(generator: FlowGenerator) -> FlowGenerator:
     return generator
 
 
-def _disable_quantization(module: torch.nn.Module) -> ContextManager[None]:
+def _disable_quantization(module: torch.nn.Module | None) -> ContextManager[None]:
+    """Disable quantization on `module`, or do nothing without one.
+
+    A `call_function`/`call_method` node holds no module, so there is nothing
+    to disable; entering the returned context is then a no-op.
+    """
+    if module is None:
+        return nullcontext()
     return ff.disable_quantization(module)
 
 
-def _quantized_context(_: torch.nn.Module) -> ContextManager[None]:
+def _quantized_context(_: torch.nn.Module | None) -> ContextManager[None]:
     return nullcontext()
 
 
-def _any_context(_: torch.nn.Module) -> ContextManager[None]:
+def _any_context(_: torch.nn.Module | None) -> ContextManager[None]:
     return nullcontext()
 
 
@@ -124,7 +131,7 @@ def _to_generator(value: str | FlowGenerator | ContextManager[None]) -> FlowGene
     if key not in _generators:
         # Add anonymous context manager if not existing yet.
         def _anon_context(
-            _: torch.nn.Module, _cm: ContextManager[None] = cm
+            _: torch.nn.Module | None, _cm: ContextManager[None] = cm
         ) -> ContextManager[None]:
             return _cm
 

@@ -5,7 +5,7 @@ import dataclasses
 import uuid
 
 from contextlib import nullcontext
-from typing import Any
+from typing import Any, ContextManager
 
 import pytest
 import syrupy
@@ -25,6 +25,7 @@ from fastforward._orchestration.instruction_engine import (
     ActivationRegister,
     BundleSpec,
     CallFunction,
+    CallMethod,
     CallModule,
     InstructionEngine,
     InstructionPasses,
@@ -195,6 +196,94 @@ def test_call_module_single_tensor_arg() -> None:
     output_dataset = register.load(target_ref, context)
     assert len(output_dataset) == 1
     assert output_dataset.batches[0].shape == (2, 3)
+
+
+def test_call_function_enters_its_own_context_across_ambient_no_grad() -> None:
+    # GIVEN every step in the chain asks for gradients to be turned on
+    def enable_grad_context(_: torch.nn.Module | None) -> ContextManager[None]:
+        return torch.enable_grad()
+
+    fc1 = torch.nn.Linear(4, 4)
+    fc2 = torch.nn.Linear(4, 4)
+    input_ref = InputRef(uuid.uuid4(), "x")
+    fc1_out = NodeRef(uuid.uuid4(), "fc1_out")
+    relu_out = NodeRef(uuid.uuid4(), "relu_out")
+    fc2_out = NodeRef(uuid.uuid4(), "fc2_out")
+
+    register = ActivationRegister()
+    register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
+
+    call_fc1 = CallModule(
+        module=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+    )
+    call_relu = CallFunction(
+        fn=torch.relu, args=[fc1_out], kwargs={}, target=relu_out, contexts=[enable_grad_context]
+    )
+    call_fc2 = CallModule(
+        module=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+    )
+
+    # WHEN we run the chain inside a block that turns gradients off
+    with torch.no_grad():
+        call_fc1.execute(register)
+        call_relu.execute(register)
+        call_fc2.execute(register)
+
+    # THEN the relu step keeps its gradients, because it asked for them itself
+    relu_result = register.load(relu_out, enable_grad_context).batches[0]
+    assert relu_result.requires_grad
+    assert relu_result.grad_fn is not None
+
+    # AND the step after it can still trace its gradients back through relu
+    fc2_result = register.load(fc2_out, enable_grad_context).batches[0]
+    assert fc2_result.requires_grad
+    assert fc2_result.grad_fn is not None
+
+
+def test_call_method_enters_its_own_context_across_ambient_no_grad() -> None:
+    # GIVEN every step in the chain asks for gradients to be turned on
+    def enable_grad_context(_: torch.nn.Module | None) -> ContextManager[None]:
+        return torch.enable_grad()
+
+    fc1 = torch.nn.Linear(4, 4)
+    fc2 = torch.nn.Linear(4, 4)
+    input_ref = InputRef(uuid.uuid4(), "x")
+    fc1_out = NodeRef(uuid.uuid4(), "fc1_out")
+    relu_out = NodeRef(uuid.uuid4(), "relu_out")
+    fc2_out = NodeRef(uuid.uuid4(), "fc2_out")
+
+    register = ActivationRegister()
+    register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
+
+    call_fc1 = CallModule(
+        module=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+    )
+    call_relu = CallMethod(
+        method=torch.Tensor.relu,
+        args=[fc1_out],
+        kwargs={},
+        target=relu_out,
+        contexts=[enable_grad_context],
+    )
+    call_fc2 = CallModule(
+        module=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+    )
+
+    # WHEN we run the chain inside a block that turns gradients off
+    with torch.no_grad():
+        call_fc1.execute(register)
+        call_relu.execute(register)
+        call_fc2.execute(register)
+
+    # THEN the relu step keeps its gradients, because it asked for them itself
+    relu_result = register.load(relu_out, enable_grad_context).batches[0]
+    assert relu_result.requires_grad
+    assert relu_result.grad_fn is not None
+
+    # AND the step after it can still trace its gradients back through relu
+    fc2_result = register.load(fc2_out, enable_grad_context).batches[0]
+    assert fc2_result.requires_grad
+    assert fc2_result.grad_fn is not None
 
 
 def test_activation_register_keeps_one_entry_per_context() -> None:

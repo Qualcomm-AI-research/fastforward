@@ -160,14 +160,14 @@ def _assert_reads_produced(program: InstructionProgram) -> None:
                 assert not missing, f"refs not in register: {missing}"
 
 
-def _plain_context() -> Callable[[torch.nn.Module], ContextManager[None]]:
+def _plain_context() -> Callable[[torch.nn.Module | None], ContextManager[None]]:
     """A context factory that constrains nothing, with an identity of its own.
 
     The scheduler keys a stream on the factory object, so two generators that
     share one factory are one stream. Each test generator needs its own.
     """
 
-    def context(_: torch.nn.Module) -> ContextManager[None]:
+    def context(_: torch.nn.Module | None) -> ContextManager[None]:
         return nullcontext()
 
     return context
@@ -641,7 +641,7 @@ def test_single_use_context_entered_once_per_call(two_linear: TwoLinear) -> None
     entries: list[int] = []
 
     @contextmanager
-    def single_use(_: torch.nn.Module) -> Iterator[None]:
+    def single_use(_: torch.nn.Module | None) -> Iterator[None]:
         entries.append(1)
         yield
 
