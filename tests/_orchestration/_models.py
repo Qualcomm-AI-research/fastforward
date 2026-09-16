@@ -605,3 +605,39 @@ class ToyLlama(torch.nn.Module):
         for layer in self.layers:
             x = layer(x)
         return x
+
+
+class CastingBlock(torch.nn.Module):
+    """Block that casts a parameter mid-forward, between two child module calls.
+
+    `torch.export` emits a side-effect-only guard next to the cast. The guard carries no
+    `nn_module_stack`, so it lands in root scope and cuts this block's node range in two.
+    Used to verify that `trace` removes the guard before `unflatten`, so the block stays
+    one non-leaf call site.
+    """
+
+    def __init__(self, dim: int) -> None:
+        super().__init__()
+        self.fc1 = torch.nn.Linear(dim, dim)
+        self.fc2 = torch.nn.Linear(dim, dim)
+        self.scale = torch.nn.Parameter(torch.ones(dim))
+
+    def forward(self, x: torch.Tensor, temb: torch.Tensor) -> torch.Tensor:
+        """Forward pass with a dtype cast between the two linear layers."""
+        h = self.fc1(x)
+        h = h + (self.scale + temb.float())
+        return self.fc2(h)  # type: ignore[no-any-return]
+
+
+class CastingBlockStack(torch.nn.Module):
+    """Wan-shaped stack: an `nn.ModuleList` of blocks that each cast mid-forward."""
+
+    def __init__(self, dim: int = 8, n_blocks: int = 2) -> None:
+        super().__init__()
+        self.blocks = torch.nn.ModuleList([CastingBlock(dim) for _ in range(n_blocks)])
+
+    def forward(self, x: torch.Tensor, temb: torch.Tensor) -> torch.Tensor:
+        """Forward pass: run the input through each block in order."""
+        for block in self.blocks:
+            x = block(x, temb)
+        return x

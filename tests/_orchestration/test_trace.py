@@ -13,6 +13,7 @@ from fastforward._orchestration.graph_module import (
 )
 from fastforward._orchestration.trace import (
     _MIN_TORCH_VERSION,
+    _is_export_guard,
     _make_dict,
     _make_list,
     _make_slice,
@@ -23,6 +24,8 @@ from packaging.version import Version
 from torch import nn
 
 from ._models import (
+    CastingBlock,
+    CastingBlockStack,
     CatModel,
     DeviceCastModel,
     KwargForward,
@@ -523,6 +526,39 @@ def test_trace_keeps_dtype_layout_cast_device_agnostic(device_cast_model: Device
     with torch.no_grad():
         expected = model(example)
         got = graph(example)
+
+    torch.testing.assert_close(got, expected)
+
+
+def test_trace_removes_export_guards_so_blocks_stay_non_leaf() -> None:
+    """torch.export emits a side-effect-only guard beside each cast; ff.trace removes it."""
+    # GIVEN a stack of blocks that each cast a tensor mid-forward
+    model = CastingBlockStack(dim=8, n_blocks=2).eval()
+    x = torch.randn(1, 8)
+    temb = torch.randn(8, dtype=torch.float16)
+
+    # WHEN torch.export captures the casts, it emits one guard next to each of them
+    exported = torch.export.export(model, args=(x, temb))
+    guards = [node for node in exported.graph_module.graph.nodes if _is_export_guard(node)]
+    assert len(guards) == 2, "torch.export should emit one guard per cast"
+
+    # THEN ff.trace removes the guards, so none of them reaches the graph
+    graph = trace(model, x, temb)
+    assert [node for node in graph._nodes.values() if "_assert" in str(node.target)] == []
+
+    # AND each block stays a non-leaf graph module, so its children keep their own nodes
+    block0, block1 = model.blocks[0], model.blocks[1]
+    assert isinstance(block0, CastingBlock)
+    assert isinstance(block1, CastingBlock)
+    assert graph.get_submodule("blocks.0.fc1") is block0.fc1
+    assert graph.get_submodule("blocks.1.fc2") is block1.fc2
+    assert graph.node_ref(block0.fc1).name == "blocks.0.fc1"
+    assert graph.node_ref(block1.fc2).name == "blocks.1.fc2"
+
+    # AND the forward pass through the GraphModule matches eager CastingBlockStack.forward()
+    with torch.no_grad():
+        expected = model(x, temb)
+        got = graph(x, temb)
 
     torch.testing.assert_close(got, expected)
 

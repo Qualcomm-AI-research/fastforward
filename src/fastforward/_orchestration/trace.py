@@ -104,24 +104,74 @@ def _make_get_attr(root: nn.Module, attr_path: str) -> Callable[[], Any]:
     return _get
 
 
-def _strip_hardcoded_device_placements(module: nn.Module) -> None:
-    """Make the unflattened graph device-agnostic.
+_EXPORT_GUARD_OPS = frozenset({
+    # every `aten.to.*`: dtype cast, device move, memory-format change
+    "aten._assert_tensor_metadata",
+    # unbacked symint (`nonzero`, `.item()`, ...), or an explicit `torch._check`
+    "aten._assert_scalar",
+    "aten.sym_constrain_range",
+    "aten.sym_constrain_range_for_size",
+    # an explicit `torch._assert_async`; never emitted by export itself
+    "aten._assert_async",
+})
 
-    torch.export bakes the tracing device into dtype casts (e.g. ``.float()``
-    becomes ``aten.to.dtype_layout(dtype=float32, device='cpu')``). We strip the
-    device kwarg so the cast preserves whatever device the tensor is already on.
+
+def _is_export_guard(node: fx.Node) -> bool:
+    """True for a side-effect-only guard that records a trace-time assumption.
+
+    A guard returns nothing, so it has no users and cannot contribute to the module's output.
+    Ops are matched on their overload packet (`aten._assert_scalar`), so every overload of a
+    listed op counts.
     """
-    for submod in module.modules():
-        graph = getattr(submod, "graph", None)
-        if not isinstance(graph, fx.Graph):
-            continue
-        modified = False
-        for node in graph.nodes:
-            if node.op == "call_function" and "device" in node.kwargs and "dtype" in node.kwargs:
-                node.kwargs = {k: v for k, v in node.kwargs.items() if k != "device"}
-                modified = True
-        if modified and isinstance(submod, fx.GraphModule):
-            submod.recompile()
+    if node.op != "call_function" or node.users:
+        return False
+    packet = getattr(node.target, "overloadpacket", None)
+    return packet is not None and str(packet) in _EXPORT_GUARD_OPS
+
+
+def _strip_export_artifacts(graph: fx.Graph) -> None:
+    """Remove what `torch.export` records about the trace-time environment.
+
+    Export traces one example input, so the graph keeps the properties of that input. Two
+    such records are removed:
+
+    * Side-effect-only guards (`aten._assert_*`, `aten.sym_constrain_range_*`) that assert a
+      later input still matches the traced one. FF orchestration uses the eager modules, so
+      they guard nothing, and they do harm: a guard inside a submodule belongs to the top-level
+      model, so `unflatten` rebuilds the submodule as two partial calls with no children left
+      inside, and the trace reads it as a leaf.
+    * A `device` kwarg on a cast, which pins the cast to the trace device. Without the kwarg,
+      the cast keeps the device that the tensor already has.
+
+    Args:
+        graph: The flat graph of an exported program, modified in place.
+    """
+    for node in list(graph.nodes):
+        if _is_export_guard(node):
+            graph.erase_node(node)
+        elif node.op == "call_function" and "device" in node.kwargs and "dtype" in node.kwargs:
+            node.kwargs = {k: v for k, v in node.kwargs.items() if k != "device"}
+
+
+def _export_and_unflatten(
+    module: nn.Module,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    preserve: tuple[str, ...] = (),
+) -> nn.Module:
+    """Export `module`, remove the trace-time artefacts, and rebuild the module tree."""
+    exported_program = torch.export.export(
+        module, args=args, kwargs=kwargs, preserve_module_call_signature=preserve
+    )
+    _strip_export_artifacts(exported_program.graph_module.graph)
+    exported_program.graph_module.recompile()
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Attempted to insert a get_attr Node with no underlying reference",
+            category=UserWarning,
+        )
+        return torch.export.unflatten(exported_program)
 
 
 def _prepare_output(spec: pytree.TreeSpec) -> Callable[..., Any]:
@@ -509,8 +559,7 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
     ]
 
     with ff.disable_quantization(module), _placeholder_uninitialized_params(module):
-        exported_program = torch.export.export(module, args=args, kwargs=kwargs)
-        unflattened = torch.export.unflatten(exported_program)
+        unflattened = _export_and_unflatten(module, args, kwargs)
 
         fold_fqns = tuple(
             name
@@ -518,18 +567,8 @@ def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
             if _is_non_leaf_graph_module(mod) and name and _fold_needs_preservation(mod)
         )
         if fold_fqns:
-            exported_program = torch.export.export(
-                module, args=args, kwargs=kwargs, preserve_module_call_signature=fold_fqns
-            )
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message="Attempted to insert a get_attr Node with no underlying reference",
-                    category=UserWarning,
-                )
-                unflattened = torch.export.unflatten(exported_program)
+            unflattened = _export_and_unflatten(module, args, kwargs, preserve=fold_fqns)
 
-        _strip_hardcoded_device_placements(unflattened)
         out_spec = _capture_out_spec(module, unflattened, args, kwargs)
 
     builder = _GraphBuilder(
