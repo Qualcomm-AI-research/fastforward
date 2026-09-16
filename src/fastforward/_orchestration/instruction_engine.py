@@ -928,10 +928,10 @@ def _weight_offloading_pass(
 def _activation_offloading_pass(
     instructions: Instructions, compute_device: torch.device, storage_device: torch.device
 ) -> Instructions:
-    """Insert `MoveActivations` instructions to move register entries between devices.
+    """Insert `MoveActivations` instructions around each `Call` to move register entries.
 
-    Before each `Call`/`OptimizeModule`, moves input activations to `compute_device`.
-    After each `Call`, moves the output activation to `storage_device`.
+    Before each `Call`, moves input activations to `compute_device`. After each `Call`,
+    moves the output activation to `storage_device`.
 
     If we have an instruction stream that goes through two linear layers L1 -> L2, the pass would add
     MoveAct(in, compute), Call(L1), MoveAct(out1, storage), MoveAct(out1, compute), Call(L2), MoveAct(out2, storage).
@@ -947,19 +947,16 @@ def _activation_offloading_pass(
     new_instructions: list[Instruction] = []
 
     for instruction in instructions:
-        if isinstance(instruction, (Call, OptimizeModule)):
+        if isinstance(instruction, Call):
             for ref in instruction.uses():
                 if isinstance(ref.unwrap_ref(), Const):
                     continue
                 new_instructions.append(MoveActivations(device=compute_device, register_ref=ref))
 
             new_instructions.append(instruction)
-
-            # `OptimizeModule` optimizes in place; only a `Call` stores an ActivationDataset.
-            if isinstance(instruction, Call):
-                new_instructions.append(
-                    MoveActivations(device=storage_device, register_ref=instruction.target)
-                )
+            new_instructions.append(
+                MoveActivations(device=storage_device, register_ref=instruction.target)
+            )
         else:
             new_instructions.append(instruction)
 

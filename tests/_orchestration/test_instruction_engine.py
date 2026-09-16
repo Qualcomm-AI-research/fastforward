@@ -649,6 +649,25 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
     assert {i.module for i in post_restore} == {m1, m2}
 
 
+def test_activation_offloading_pass_leaves_optimize_bundles_alone() -> None:
+    # GIVEN a stream that optimizes a module from two cached activations
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    ref_b = NodeRef(id=uuid.uuid4(), name="b")
+    base = (
+        OptimizeModule(
+            module=torch.nn.Linear(4, 4),
+            fn=lambda *_a, **_k: None,
+            bundles=(BundleSpec(context=_noop_context, args=[ref_a], kwargs={"b": ref_b}),),
+        ),
+    )
+
+    # WHEN we apply the activation offloading pass
+    result = _activation_offloading_pass(base, torch.device("cuda:0"), torch.device("cpu"))
+
+    # THEN nothing is moved, because the algorithm chooses what it loads and when
+    assert result == base
+
+
 def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storage() -> None:
     # GIVEN a two-linear graph and its base instruction stream
     graph, _, _ = _two_linear_graph()
