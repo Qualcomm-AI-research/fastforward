@@ -41,6 +41,7 @@ from fastforward._orchestration.instruction_engine import (
     _weight_offloading_pass,
     lifetime_management_pass,
 )
+from fastforward._orchestration.location import DeviceLocation
 from fastforward._orchestration.scheduler import ref_load_instructions, schedule
 
 from ._models import Add, AddConstant, ReturnTuple
@@ -520,7 +521,7 @@ def test_graph_execution_with_const_argument() -> None:
 def test_move_parameters_moves_module_and_has_no_register_refs() -> None:
     # GIVEN a linear module on CPU
     module = torch.nn.Linear(5, 3)
-    instruction = MoveModule(device=torch.device("cpu"), module=module)
+    instruction = MoveModule(location=DeviceLocation(torch.device("cpu")), module=module)
 
     # WHEN we execute and inspect uses/produces
     register = ActivationRegister()
@@ -540,7 +541,7 @@ def test_move_activations_moves_register_entry_and_reports_ref() -> None:
     ds = ActivationDataset([torch.randn(2, 3)])
     register = ActivationRegister()
     register.store(ref, context, ds)
-    instruction = MoveActivations(device=torch.device("cpu"), register_ref=ref)
+    instruction = MoveActivations(location=DeviceLocation(torch.device("cpu")), register_ref=ref)
 
     # WHEN we execute and inspect uses/produces
     instruction.execute(register)
@@ -558,8 +559,8 @@ def test_move_parameters_with_dict_moves_each_parameter_to_its_device() -> None:
     assert module.bias.device == torch.device("cpu")
 
     # WHEN we execute MoveParameters with a per-parameter dict
-    device_map = {"weight": torch.device("cpu"), "bias": torch.device("cpu")}
-    instruction = MoveModule(device=device_map, module=module)
+    cpu = DeviceLocation(torch.device("cpu"))
+    instruction = MoveModule(location={"weight": cpu, "bias": cpu}, module=module)
     register = ActivationRegister()
     instruction.execute(register)
 
@@ -573,8 +574,9 @@ def test_move_parameters_with_dict_ignores_unmapped_parameters() -> None:
     module = torch.nn.Linear(4, 2)
 
     # WHEN we execute MoveParameters with a dict that only maps 'weight'
-    device_map = {"weight": torch.device("cpu")}
-    instruction = MoveModule(device=device_map, module=module)
+    instruction = MoveModule(
+        location={"weight": DeviceLocation(torch.device("cpu"))}, module=module
+    )
     register = ActivationRegister()
     instruction.execute(register)
 
@@ -592,20 +594,20 @@ def test_weight_offloading_pass_post_restore_uses_per_parameter_devices() -> Non
 
     base_instructions = schedule(graph).instructions
 
-    cpu = torch.device("cpu")
+    cpu = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the weight offloading pass
     result = _weight_offloading_pass(base_instructions, cpu, cpu, graph)
 
-    # THEN the last instruction(s) are MoveParameters with a dict device (post_restore)
-    post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.device, dict)]
+    # THEN the last instruction(s) are MoveParameters with a per-parameter map (post_restore)
+    post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.location, dict)]
     assert len(post_restore) == 1
     assert post_restore[0].module is module
-    # AND the dict contains entries for both weight and bias
-    device_map = post_restore[0].device
-    assert isinstance(device_map, dict)
-    assert "weight" in device_map
-    assert "bias" in device_map
+    # AND the map contains entries for both weight and bias
+    location_map = post_restore[0].location
+    assert isinstance(location_map, dict)
+    assert "weight" in location_map
+    assert "bias" in location_map
 
 
 def _two_linear_graph() -> tuple[GraphModule, torch.nn.Linear, torch.nn.Linear]:
@@ -624,15 +626,15 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
     # GIVEN a two-linear graph and its base instruction stream
     graph, m1, m2 = _two_linear_graph()
     base = schedule(graph).instructions
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the weight offloading pass
     result = _weight_offloading_pass(base, compute, storage, graph)
 
     # THEN the stream starts by offloading every module to storage
     pre_offload = result[:2]
-    assert all(isinstance(i, MoveModule) and i.device == storage for i in pre_offload)
+    assert all(isinstance(i, MoveModule) and i.location == storage for i in pre_offload)
     assert {i.module for i in pre_offload} == {m1, m2}  # type: ignore[attr-defined]
 
     # AND every module call is wrapped: load to compute before, offload to storage after
@@ -640,12 +642,12 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
         if isinstance(instruction, CallModule):
             before, after = result[idx - 1], result[idx + 1]
             assert isinstance(before, MoveModule)
-            assert before.device == compute and before.module is instruction.module
+            assert before.location == compute and before.module is instruction.module
             assert isinstance(after, MoveModule)
-            assert after.device == storage and after.module is instruction.module
+            assert after.location == storage and after.module is instruction.module
 
     # AND the stream ends by restoring every module to its per-parameter devices
-    post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.device, dict)]
+    post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.location, dict)]
     assert {i.module for i in post_restore} == {m1, m2}
 
 
@@ -662,7 +664,9 @@ def test_activation_offloading_pass_leaves_optimize_bundles_alone() -> None:
     )
 
     # WHEN we apply the activation offloading pass
-    result = _activation_offloading_pass(base, torch.device("cuda:0"), torch.device("cpu"))
+    result = _activation_offloading_pass(
+        base, DeviceLocation(torch.device("cuda:0")), DeviceLocation(torch.device("cpu"))
+    )
 
     # THEN nothing is moved, because the algorithm chooses what it loads and when
     assert result == base
@@ -672,8 +676,8 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
     # GIVEN a two-linear graph and its base instruction stream
     graph, _, _ = _two_linear_graph()
     base = schedule(graph).instructions
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(base, compute, storage)
@@ -686,13 +690,13 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
             moved_to_compute = {
                 i.register_ref
                 for i in result[:idx]
-                if isinstance(i, MoveActivations) and i.device == compute
+                if isinstance(i, MoveActivations) and i.location == compute
             }
             assert used <= moved_to_compute
 
             after = result[idx + 1]
             assert isinstance(after, MoveActivations)
-            assert after.device == storage and after.register_ref == instruction.target
+            assert after.location == storage and after.register_ref == instruction.target
 
 
 def test_activation_offloading_pass_moves_activations_for_free_functions() -> None:
@@ -706,8 +710,8 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     graph.add_output(add)
 
     base = schedule(graph).instructions
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(base, compute, storage)
@@ -724,20 +728,20 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
         moved_to_compute = {
             i.register_ref
             for i in result[:idx]
-            if isinstance(i, MoveActivations) and i.device == compute
+            if isinstance(i, MoveActivations) and i.location == compute
         }
         assert used <= moved_to_compute
 
         after = result[idx + 1]
         assert isinstance(after, MoveActivations)
-        assert after.device == storage and after.register_ref == instruction.target
+        assert after.location == storage and after.register_ref == instruction.target
 
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
-    # GIVEN an instruction stream where an nn.Module produces output on compute_device,
+    # GIVEN an instruction stream where an nn.Module produces output on the compute location,
     # followed by an activation round-trip and a MoveModule round-trip
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
 
     linear = torch.nn.Linear(4, 4)
     linear_out = NodeRef(uuid.uuid4(), "linear_out")
@@ -750,10 +754,10 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
             target=linear_out,
             contexts=[context],
         ),
-        MoveActivations(device=storage, register_ref=linear_out),
-        MoveActivations(device=compute, register_ref=linear_out),
-        MoveModule(device=storage, module=linear),
-        MoveModule(device=compute, module=linear),
+        MoveActivations(location=storage, register_ref=linear_out),
+        MoveActivations(location=compute, register_ref=linear_out),
+        MoveModule(location=storage, module=linear),
+        MoveModule(location=compute, module=linear),
     )
 
     # WHEN the cancellation passes run
@@ -773,10 +777,10 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
     snapshot: syrupy.assertion.SnapshotAssertion,
 ) -> None:
     # GIVEN a mixed instruction stream:
-    #   (a) an aten op with no inputs — output device is unknown
+    #   (a) an aten op with no inputs — output location is unknown
     #   (b) an aten op chain where inputs are on compute — state propagates
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
 
     # (a) aten op with no inputs: state unknown → compute move must survive
     arange_out = NodeRef(uuid.uuid4(), "arange_out")
@@ -796,10 +800,10 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
             target=arange_out,
             contexts=[context],
         ),
-        MoveActivations(device=storage, register_ref=arange_out),
-        MoveActivations(device=compute, register_ref=arange_out),
+        MoveActivations(location=storage, register_ref=arange_out),
+        MoveActivations(location=compute, register_ref=arange_out),
         # (b) aten chain: src moved to compute by _weight_offloading_pass
-        MoveActivations(device=compute, register_ref=src),
+        MoveActivations(location=compute, register_ref=src),
         CallFunction(
             fn=torch.transpose,
             args=(src,),
@@ -807,8 +811,8 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
             target=aten_a_out,
             contexts=[context],
         ),
-        MoveActivations(device=storage, register_ref=aten_a_out),
-        MoveActivations(device=compute, register_ref=aten_a_out),
+        MoveActivations(location=storage, register_ref=aten_a_out),
+        MoveActivations(location=compute, register_ref=aten_a_out),
         CallFunction(
             fn=torch.transpose,
             args=(aten_a_out,),
@@ -816,8 +820,8 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
             target=aten_b_out,
             contexts=[context],
         ),
-        MoveActivations(device=storage, register_ref=aten_b_out),
-        MoveActivations(device=compute, register_ref=aten_b_out),
+        MoveActivations(location=storage, register_ref=aten_b_out),
+        MoveActivations(location=compute, register_ref=aten_b_out),
     )
 
     # WHEN the cancellation pass runs
@@ -829,8 +833,8 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
 
 
 def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() -> None:
-    compute = torch.device("cuda:0")
-    storage = torch.device("cpu")
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
     source_ref = NodeRef(uuid.uuid4(), "source_ref")
     out_ref = NodeRef(uuid.uuid4(), "out_ref")
     module = torch.nn.Linear(4, 4)
@@ -840,15 +844,15 @@ def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() ->
         CallFunction(
             fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context]
         ),
-        MoveActivations(device=compute, register_ref=source_ref),
+        MoveActivations(location=compute, register_ref=source_ref),
         CallModule(
             module=module, args=(source_ref,), kwargs={}, target=out_ref, contexts=[_noop_context]
         ),
-        MoveActivations(device=storage, register_ref=out_ref),
+        MoveActivations(location=storage, register_ref=out_ref),
         CallFunction(
             fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context_alt]
         ),
-        MoveActivations(device=compute, register_ref=source_ref),
+        MoveActivations(location=compute, register_ref=source_ref),
         CallModule(
             module=module,
             args=(source_ref,),
@@ -856,7 +860,7 @@ def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() ->
             target=out_ref,
             contexts=[_noop_context_alt],
         ),
-        MoveActivations(device=storage, register_ref=out_ref),
+        MoveActivations(location=storage, register_ref=out_ref),
     )
 
     # WHEN the cancellation pass runs
@@ -866,55 +870,9 @@ def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() ->
     moves = [
         i
         for i in result
-        if isinstance(i, MoveActivations) and i.device == compute and i.register_ref is source_ref
+        if isinstance(i, MoveActivations) and i.location == compute and i.register_ref is source_ref
     ]
     assert len(moves) == 2
-
-
-def test_move_to_device_preserves_dict_subclass_type() -> None:
-    """_move_to_device on a dict subclass must return an instance of the same subclass.
-
-    HuggingFace ModelOutput (e.g. CausalLMOutputWithPast) inherits from OrderedDict.
-    When MoveActivations moves the graph output to storage_device, it calls
-    _move_to_device on this dict-like object. The `case dict()` branch used to
-    reconstruct via a plain `{k: v}` comprehension, losing the custom type. This
-    broke `out.logits` attribute access on the model output.
-    """
-    from collections import OrderedDict
-
-    from fastforward._orchestration.instruction_engine import _move_to_device
-
-    # GIVEN a dict subclass mimicking HuggingFace's ModelOutput pattern
-    class FakeModelOutput(OrderedDict[str, object]):
-        @property
-        def logits(self) -> object:
-            return self["logits"]
-
-    output = FakeModelOutput(logits=torch.randn(1, 4, 8), past_key_values=None)
-
-    # WHEN we move it to a device
-    moved = _move_to_device(output, torch.device("cpu"))
-
-    # THEN the type is preserved (not collapsed to plain dict)
-    assert type(moved) is FakeModelOutput, (
-        f"Expected FakeModelOutput, got {type(moved).__name__}. "
-        f"_move_to_device must preserve dict subclass types."
-    )
-    # AND attribute access works
-    assert hasattr(moved, "logits")
-    assert moved["logits"].shape == (1, 4, 8)  # type: ignore[attr-defined]
-
-
-def test_move_to_device_plain_dict_stays_plain_dict() -> None:
-    """_move_to_device on a plain dict returns a plain dict (no regression)."""
-    from fastforward._orchestration.instruction_engine import _move_to_device
-
-    value = {"a": torch.randn(2, 3), "b": torch.randn(4)}
-    moved = _move_to_device(value, torch.device("cpu"))
-
-    assert type(moved) is dict
-    assert moved["a"].shape == (2, 3)
-    assert moved["b"].shape == (4,)
 
 
 def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> None:
@@ -1186,28 +1144,6 @@ def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
 
     # THEN the attribute is read via getattr on each batch
     assert register.load(target, context).batches == [1, 2]
-
-
-def test_move_to_device_recurses_into_nested_tuples_and_lists() -> None:
-    # GIVEN a value mixing nested tuples and lists of tensors (plus a non-tensor leaf)
-    from fastforward._orchestration.instruction_engine import _move_to_device
-
-    value = ([torch.randn(2, 3), (torch.randn(4), "scalar")], torch.randn(1))
-
-    # WHEN we move it to a device
-    moved = _move_to_device(value, torch.device("cpu"))
-
-    # THEN container structure is preserved recursively and tensors are moved
-    assert isinstance(moved, tuple)
-    inner_list, outer_tensor = moved
-    assert isinstance(inner_list, list)
-    assert inner_list[0].device == torch.device("cpu")
-    inner_tuple = inner_list[1]
-    assert isinstance(inner_tuple, tuple)
-    assert inner_tuple[0].device == torch.device("cpu")
-    # THEN non-tensor leaves pass through untouched
-    assert inner_tuple[1] == "scalar"
-    assert outer_tensor.device == torch.device("cpu")
 
 
 def test_activation_dataset_contains_checks_membership() -> None:

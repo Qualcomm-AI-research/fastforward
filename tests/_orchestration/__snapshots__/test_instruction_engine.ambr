@@ -2,10 +2,10 @@
 # name: test_cancel_pass_preserves_necessary_moves_for_non_module_callables
   '''
   CallFunction(fn=<lambda>, args=[], kwargs={}, target=NodeRef(arange_out), contexts=[_noop_context], cache=False)
-  MoveActivations(device=device(type='cuda', index=0), register_ref=NodeRef(linear_out))
+  MoveActivations(location=DeviceLocation('cuda:0'), register_ref=NodeRef(linear_out))
   CallFunction(fn=transpose, args=[NodeRef(linear_out)], kwargs={}, target=NodeRef(aten_a_out), contexts=[_noop_context], cache=False)
   CallFunction(fn=transpose, args=[NodeRef(aten_a_out)], kwargs={}, target=NodeRef(aten_b_out), contexts=[_noop_context], cache=False)
-  MoveActivations(device=device(type='cuda', index=0), register_ref=NodeRef(arange_out))
+  MoveActivations(location=DeviceLocation('cuda:0'), register_ref=NodeRef(arange_out))
   '''
 # ---
 # name: test_instruction_generator_linear_layers

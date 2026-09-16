@@ -29,6 +29,7 @@ from fastforward._orchestration.graph_module import (
     Op,
     _BaseRef,
 )
+from fastforward._orchestration.location import DeviceLocation, Location
 
 # Distinguishes data produced under different execution conditions for the same node.
 # A node without a module (a free function or a method call) passes None.
@@ -574,97 +575,67 @@ class DeleteRegisterEntries(Instruction):
 
 @dataclasses.dataclass(frozen=True)
 class MoveModule(Instruction):
-    """Move module parameters and buffers to a target device.
+    """Move module parameters and buffers to a target location.
 
     Args:
-        device: Target device for all parameters and buffers, or a mapping from name to device.
-            When a mapping is provided, each named parameter/buffer is moved to its corresponding
-            device.
+        location: Target location for all parameters and buffers, or a mapping from name
+            to location. When a mapping is provided, each named parameter/buffer is moved
+            to its corresponding location.
         module: Module whose parameters and buffers will be moved.
     """
 
-    device: torch.device | dict[str, torch.device]
+    location: Location | Mapping[str, Location]
     module: torch.nn.Module
 
     def __repr__(self) -> str:
-        return f"MoveModule(device={self.device!r}, module={_fmt_module(self.module)})"
+        return f"MoveModule(location={self.location!r}, module={_fmt_module(self.module)})"
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102, ARG002
-        if isinstance(self.device, dict):
+        if isinstance(self.location, Mapping):
             for name, parameter in self.module.named_parameters():
-                if name in self.device:
-                    parameter.data = parameter.data.to(device=self.device[name])
+                if (location := self.location.get(name)) is not None:
+                    parameter.data = location.receive(parameter.data)
             for name, buffer in self.module.named_buffers():
-                if name in self.device:
-                    buffer.data = buffer.data.to(device=self.device[name])
+                if (location := self.location.get(name)) is not None:
+                    buffer.data = location.receive(buffer.data)
         else:
             for parameter in self.module.parameters():
-                parameter.data = parameter.data.to(device=self.device)
+                parameter.data = self.location.receive(parameter.data)
             for buffer in self.module.buffers():
-                buffer.data = buffer.data.to(device=self.device)
+                buffer.data = self.location.receive(buffer.data)
 
 
-def _move_to_device(value: Any, device: torch.device) -> Any:
-    """Recursively move tensors in nested structures to `device`.
-
-    Args:
-        value: A tensor, tuple, list, dict, or other value.
-        device: Target device.
-
-    Returns:
-        The value with all tensors moved to `device`. Non-tensor leaves are returned as-is.
-    """
-    match value:
-        case torch.Tensor():
-            return value.to(device=device)
-        case tuple():
-            return tuple(_move_to_device(v, device) for v in value)
-        case list():
-            return [_move_to_device(v, device) for v in value]
-        case dict() if type(value) is not dict:
-            # Try to preserve true dict subclass types (e.g. HF outputs).
-            moved = {k: _move_to_device(v, device) for k, v in value.items()}
-            try:
-                return type(value)(moved)
-            except TypeError:
-                pass
-            return moved
-        case dict():
-            return {k: _move_to_device(v, device) for k, v in value.items()}
-    return value
-
-
-def _move_register_entries_to_device(
-    register: ActivationRegister, ref: _BaseRef, device: torch.device
+def _place_register_entries(
+    register: ActivationRegister, ref: _BaseRef, location: Location
 ) -> None:
-    """Move register entry for `ref` to `device` in-place.
+    """Place register entry for `ref` at `location` in-place.
 
     Args:
         register: The activation register.
         ref: Reference whose entry should be moved.
-        device: Target device.
+        location: Target location.
     """
     for context, dataset in register.items_for(ref):
         moved = dataclasses.replace(
-            dataset, batches=[_move_to_device(batch, device) for batch in dataset.batches]
+            dataset, batches=[location.place(batch) for batch in dataset.batches]
         )
         register.store(ref, context, moved)
 
 
 @dataclasses.dataclass(frozen=True)
 class MoveActivations(Instruction):
-    """Move a single activation register entry to a target device.
+    """Move a single activation register entry to a target location.
 
     Args:
-        device: Target device for the move.
+        location: Target location for the move.
         register_ref: Reference whose register entry will be moved.
     """
 
-    device: torch.device
+    location: Location
     register_ref: _BaseRef
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        _move_register_entries_to_device(register, self.register_ref, self.device)
+        _place_register_entries(register, self.register_ref, self.location)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield self.register_ref
@@ -860,27 +831,27 @@ def lifetime_management_pass(instructions: Instructions) -> Instructions:
 
 def _weight_offloading_pass(
     instructions: Instructions,
-    compute_device: torch.device,
-    storage_device: torch.device,
+    compute: Location,
+    storage: Location,
     graph: GraphModule,
 ) -> Instructions:
-    """Insert `MoveModule` instructions to move module weights between devices.
+    """Insert `MoveModule` instructions to move module weights between locations.
 
     First, record the original device placement of all weights so the model can be restored
-    to its initial state after the pass (`post_restore`). Next, move each weight to `storage_device`
+    to its initial state after the pass (`post_restore`). Next, move each weight to `storage`
     to perform the actual offload. Finally, wrap each `CallModule`/`OptimizeModule` with the appropriate
-    device placement: `compute_device` for execution and `storage_device` for storage.
+    placement: `compute` for execution and `storage` for storage.
 
     If we have a instruction stream that goes through two linear layers L1 -> L2, the pass would add
     offload(L1), Offload(L2), Load(L1), Call(L1), Offload(L1), Load(L2), Call(L2), offload(L2), Load(L1), Load(L2).
 
     NB: We need access to `GraphModule` because during optimization not all parameters have
-    to be present in the instruction stream even if they are still possibly on `compute_device`.
+    to be present in the instruction stream even if they are still possibly on `compute`.
 
     Args:
         instructions: Sequence of instructions to analyze.
-        compute_device: Compute device, where `CallModule`/`OptimizeModule` execution happens.
-        storage_device: Storage device, where we 'offload' to.
+        compute: Where `CallModule`/`OptimizeModule` execution happens.
+        storage: Where we 'offload' to.
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
     Returns:
@@ -894,19 +865,21 @@ def _weight_offloading_pass(
         )
     )
 
-    # Ensure `post_restore` maps each parameter back to its individual original device.
-    original_devices: dict[torch.nn.Module, dict[str, torch.device]] = {}
+    # Ensure `post_restore` maps each parameter back to its individual original location.
+    original_locations: dict[torch.nn.Module, dict[str, Location]] = {}
     for m in all_modules:
-        param_devices = {name: param.device for name, param in m.named_parameters()}
-        param_devices.update({name: buf.device for name, buf in m.named_buffers()})
-        if param_devices:
-            original_devices[m] = param_devices
+        locations: dict[str, Location] = {
+            name: DeviceLocation(param.device) for name, param in m.named_parameters()
+        }
+        locations.update({name: DeviceLocation(buf.device) for name, buf in m.named_buffers()})
+        if locations:
+            original_locations[m] = locations
 
     post_restore = [
-        MoveModule(device=param_devices, module=m) for m, param_devices in original_devices.items()
+        MoveModule(location=locations, module=m) for m, locations in original_locations.items()
     ]
 
-    pre_offload = [MoveModule(device=storage_device, module=m) for m in all_modules]
+    pre_offload = [MoveModule(location=storage, module=m) for m in all_modules]
 
     new_instructions: list[Instruction] = [*pre_offload]
 
@@ -915,9 +888,9 @@ def _weight_offloading_pass(
             case CallModule(module=module) | OptimizeModule(module=module) if isinstance(
                 module, torch.nn.Module
             ):
-                new_instructions.append(MoveModule(device=compute_device, module=module))
+                new_instructions.append(MoveModule(location=compute, module=module))
                 new_instructions.append(instruction)
-                new_instructions.append(MoveModule(device=storage_device, module=module))
+                new_instructions.append(MoveModule(location=storage, module=module))
             case _:
                 new_instructions.append(instruction)
 
@@ -926,20 +899,20 @@ def _weight_offloading_pass(
 
 
 def _activation_offloading_pass(
-    instructions: Instructions, compute_device: torch.device, storage_device: torch.device
+    instructions: Instructions, compute: Location, storage: Location
 ) -> Instructions:
     """Insert `MoveActivations` instructions around each `Call` to move register entries.
 
-    Before each `Call`, moves input activations to `compute_device`. After each `Call`,
-    moves the output activation to `storage_device`.
+    Before each `Call`, moves input activations to `compute`. After each `Call`, moves the
+    output activation to `storage`.
 
     If we have an instruction stream that goes through two linear layers L1 -> L2, the pass would add
     MoveAct(in, compute), Call(L1), MoveAct(out1, storage), MoveAct(out1, compute), Call(L2), MoveAct(out2, storage).
 
     Args:
         instructions: Sequence of instructions to analyze.
-        compute_device: Device to move activations to before execution.
-        storage_device: Device to move activations to after execution.
+        compute: Where activations are moved to before execution.
+        storage: Where activations are moved to after execution.
 
     Returns:
         New instruction sequence with `MoveActivations` instructions inserted.
@@ -951,11 +924,11 @@ def _activation_offloading_pass(
             for ref in instruction.uses():
                 if isinstance(ref.unwrap_ref(), Const):
                     continue
-                new_instructions.append(MoveActivations(device=compute_device, register_ref=ref))
+                new_instructions.append(MoveActivations(location=compute, register_ref=ref))
 
             new_instructions.append(instruction)
             new_instructions.append(
-                MoveActivations(device=storage_device, register_ref=instruction.target)
+                MoveActivations(location=storage, register_ref=instruction.target)
             )
         else:
             new_instructions.append(instruction)
@@ -965,49 +938,49 @@ def _activation_offloading_pass(
 
 def _offloading_pass(
     instructions: Instructions,
-    compute_device: torch.device,
-    storage_device: torch.device,
+    compute: Location,
+    storage: Location,
     graph: GraphModule,
 ) -> Instructions:
-    """Insert device placement instructions around `CallModule` and `OptimizeModule`.
+    """Insert placement instructions around `CallModule` and `OptimizeModule`.
 
     Composes `_weight_offloading_pass` and `_activation_offloading_pass` to handle both
     module weight movement and activation register entry movement.
 
     Args:
         instructions: Original instruction sequence.
-        compute_device: Device to move data to before execution.
-        storage_device: Device to move data to after execution.
+        compute: Where data is moved to before execution.
+        storage: Where data is moved to after execution.
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
     Returns:
-        New instruction sequence with device placement instructions inserted.
+        New instruction sequence with placement instructions inserted.
     """
-    instructions = _weight_offloading_pass(instructions, compute_device, storage_device, graph)
-    instructions = _activation_offloading_pass(instructions, compute_device, storage_device)
+    instructions = _weight_offloading_pass(instructions, compute, storage, graph)
+    instructions = _activation_offloading_pass(instructions, compute, storage)
 
     # Cancel out compute(M1) -> storage(M1) -> compute(M1) placements for any module M1.
-    instructions = _cancel_module_round_trips(instructions, compute_device, storage_device)
+    instructions = _cancel_module_round_trips(instructions, compute, storage)
 
-    # Drop activation moves that the tracked device state proves redundant.
-    instructions = _cancel_redundant_activation_moves(instructions, compute_device)
+    # Drop activation moves that the tracked location state proves redundant.
+    instructions = _cancel_redundant_activation_moves(instructions, compute)
     return instructions
 
 
 def _cancel_module_round_trips(
-    instructions: Instructions, compute_device: torch.device, storage_device: torch.device
+    instructions: Instructions, compute: Location, storage: Location
 ) -> Instructions:
     """Cancel adjacent MoveModule round-trips."""
-    device_pair = {compute_device, storage_device}
+    location_pair = {compute, storage}
 
     def _is_round_trip(left: Instruction, right: Instruction) -> bool:
         return (
             isinstance(left, MoveModule)
             and isinstance(right, MoveModule)
             and left.module is right.module
-            and isinstance(left.device, torch.device)
-            and isinstance(right.device, torch.device)
-            and {left.device, right.device} == device_pair
+            and isinstance(left.location, Location)
+            and isinstance(right.location, Location)
+            and {left.location, right.location} == location_pair
         )
 
     result: list[Instruction] = []
@@ -1023,7 +996,7 @@ def _cancel_module_round_trips(
 
 
 def _cancel_redundant_activation_moves(
-    instructions: Instructions, compute_device: torch.device
+    instructions: Instructions, compute: Location
 ) -> Instructions:
     """Cancel redundant MoveActivations via buffer-and-flush.
 
@@ -1031,39 +1004,41 @@ def _cancel_redundant_activation_moves(
     Consecutive moves on the same ref overwrite each other in the buffer, so
     round-trips collapse naturally. When a non-move instruction consumes a ref
     (via ``uses()``), the pending move for that ref is flushed: emitted only if
-    the ref's tracked device differs from the move's target.
+    the ref's tracked location differs from the move's target.
 
-    Device state is tracked for Call outputs:
-    - ``CallModule`` outputs are on ``compute_device`` (MoveModule guarantees this).
-    - ``CallFunction``/``CallMethod`` outputs inherit the device of their inputs
-      when all inputs agree; otherwise the output device is left unknown.
+    Location state is tracked for Call outputs:
+    - ``CallModule`` outputs are on ``compute`` (MoveModule guarantees this).
+    - ``CallFunction``/``CallMethod`` outputs inherit the location of their inputs
+      when all inputs agree; otherwise the output location is left unknown.
     """
-    ref_device: dict[_BaseRef, torch.device] = {}
+    ref_location: dict[_BaseRef, Location] = {}
     pending: dict[_BaseRef, MoveActivations] = {}
     result: list[Instruction] = []
 
-    def _infer_output_device(instr: Instruction) -> None:
+    def _infer_output_location(instr: Instruction) -> None:
         if isinstance(instr, CallModule):
-            ref_device[instr.target.unwrap_ref()] = compute_device
+            ref_location[instr.target.unwrap_ref()] = compute
             return
         if not isinstance(instr, (CallFunction, CallMethod)):
             return
         key = instr.target.unwrap_ref()
-        devs = {ref_device[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_device}
-        if len(devs) == 1:
-            ref_device[key] = devs.pop()
+        locations = {
+            ref_location[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_location
+        }
+        if len(locations) == 1:
+            ref_location[key] = locations.pop()
         else:
-            ref_device.pop(key, None)
+            ref_location.pop(key, None)
 
     def _flush(ref: _BaseRef) -> None:
         key = ref.unwrap_ref()
         if (move := pending.pop(key, None)) is not None:
-            if ref_device.get(key) != move.device:
+            if ref_location.get(key) != move.location:
                 result.append(move)
-                ref_device[key] = move.device
+                ref_location[key] = move.location
 
     def _is_redundant(move: MoveActivations) -> bool:
-        return ref_device.get(move.register_ref.unwrap_ref()) == move.device
+        return ref_location.get(move.register_ref.unwrap_ref()) == move.location
 
     for instr in instructions:
         if isinstance(instr, MoveActivations):
@@ -1072,7 +1047,7 @@ def _cancel_redundant_activation_moves(
             for ref in instr.uses():
                 _flush(ref)
             result.append(instr)
-            _infer_output_device(instr)
+            _infer_output_location(instr)
 
     for move in pending.values():
         if not _is_redundant(move):
@@ -1085,13 +1060,13 @@ class OffloadingStrategy(abc.ABC):
     """Abstract base for offloading strategies.
 
     An offloading strategy controls how module weights and activations are moved
-    between devices during graph execution. Implement `create_instruction_pass` to
+    between locations during graph execution. Implement `create_instruction_pass` to
     insert the appropriate `MoveModule` and `MoveActivations` instructions.
     """
 
     @abc.abstractmethod
     def create_instruction_pass(self, graph: GraphModule) -> InstructionPass:
-        """Return an instruction pass that inserts device-movement instructions.
+        """Return an instruction pass that inserts placement instructions.
 
         Args:
             graph: The GraphModule being scheduled.
@@ -1118,7 +1093,10 @@ class OffloadEverything(OffloadingStrategy):
     storage_device: torch.device = dataclasses.field(default_factory=lambda: torch.device("cpu"))
 
     def create_instruction_pass(self, graph: GraphModule) -> InstructionPass:  # noqa: D102
+        compute = DeviceLocation(self.compute_device)
+        storage = DeviceLocation(self.storage_device)
+
         def _pass(instructions: Instructions) -> Instructions:
-            return _offloading_pass(instructions, self.compute_device, self.storage_device, graph)
+            return _offloading_pass(instructions, compute, storage, graph)
 
         return _pass
