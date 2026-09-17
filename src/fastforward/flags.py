@@ -105,6 +105,14 @@ get_sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.getter
 sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.context
 del _sdpa_torch_fallback_allowed
 
+# If True, use the fused quantize-dequantize op when available, bypassing
+# `QuantizedTensor` for static affine quantization.
+_qdq_mode = _context_flag("qdq_mode", False)
+set_qdq_mode = _qdq_mode.setter
+get_qdq_mode = _qdq_mode.getter
+qdq_mode = _qdq_mode.context
+del _qdq_mode
+
 # remove _context_flag as we want to collect created flags in this file and not
 # add them left and right.
 del _context_flag

@@ -66,6 +66,20 @@ def affine_dequantize_fn(
     return AffineDequantizeFn.apply(data, scale, offset, tile_size, dtype)  # type: ignore[no-any-return]
 
 
+def affine_static_qdq_fn(
+    data: torch.Tensor,
+    scale: float | torch.Tensor,
+    offset: float | torch.Tensor | None,
+    tile_size: torch.Size | Literal["data_shape"],
+    num_bits: int,
+    quantized_dtype: torch.dtype | None,
+) -> torch.Tensor:
+    dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
+    scale = tensor_or_none(scale, dtype=dtype, device=data.device)
+    offset = tensor_or_none(offset, dtype=dtype, device=data.device)
+    return AffineStaticQdqFn.apply(data, scale, offset, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
+
+
 class AffineStaticQuantizeFn(torch.autograd.Function):
     @staticmethod
     @override
@@ -157,3 +171,41 @@ class AffineDequantizeFn(torch.autograd.Function):
         ctx: Any, output_grad: torch.Tensor
     ) -> tuple[torch.Tensor, None, None, None, None]:
         return (output_grad, None, None, None, None)
+
+
+class AffineStaticQdqFn(torch.autograd.Function):
+    @staticmethod
+    @override
+    def forward(
+        ctx: Any,
+        data: torch.Tensor,
+        scale: torch.Tensor,
+        offset: torch.Tensor | None,
+        tile_size: torch.Size | Literal["data_shape"],
+        num_bits: int,
+        quantized_dtype: torch.dtype | None,
+    ) -> torch.Tensor:
+        quant_dtype = quantized_dtype or data.dtype
+        ctx.save_for_backward(data, scale, offset)
+        tile_size = data.shape if tile_size == "data_shape" else tile_size
+        ctx.tile_size = tile_size
+        ctx.num_bits = num_bits
+        return torch.ops.fastforward.affine_static_qdq(  # type: ignore[no-any-return]
+            data, scale, tile_size, num_bits, quant_dtype, offset
+        )
+
+    @staticmethod
+    @override
+    @torch.autograd.function.once_differentiable
+    def backward(
+        ctx: Any, output_grad: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, None, None, None]:
+        data, scale, offset = ctx.saved_tensors
+        tile_size = ctx.tile_size
+        num_bits = ctx.num_bits
+        grads = torch.ops.fastforward.affine_quantize_backward(
+            data, output_grad, scale, tile_size, num_bits, offset
+        )
+        data_grad, scale_grad, offset_grad_ = grads
+        offset_grad = offset_grad_ if offset is not None else None
+        return (data_grad, scale_grad, offset_grad, None, None, None)

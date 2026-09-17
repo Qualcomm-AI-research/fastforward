@@ -22,7 +22,12 @@ from fastforward.quantization.function import (
     QuantizationParameters,
 )
 
-from ._autograd import affine_dequantize_fn, affine_dynamic_quantize_fn, affine_static_quantize_fn
+from ._autograd import (
+    affine_dequantize_fn,
+    affine_dynamic_quantize_fn,
+    affine_static_qdq_fn,
+    affine_static_quantize_fn,
+)
 
 if TYPE_CHECKING:
     from fastforward.quantized_tensor import QuantizedTensor
@@ -76,9 +81,9 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         # of using the `match` function because dynamo does not
         # support this custom case.
         if ff.get_export_mode():
-            # In the export case this function will return a standard torch.Tensor instead
-            # of a QuantizedTensor. We ignore the type error due to how entangled the QuantizedTensor
-            # return is with the rest of the codebase.
+            # In the export case this function will return a standard torch.Tensor
+            # instead of a QuantizedTensor. We ignore the type error due to how
+            # entangled the QuantizedTensor return is with the rest of the codebase.
             return cls._export_quantize(data, params)  # type: ignore[return-value]
 
         match params:
@@ -125,6 +130,17 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         cls, data: torch.Tensor, params: StaticAffineQuantParams
     ) -> "QuantizedTensor":
         tile_size = params.granularity.tile_size(data.shape)
+        if ff.get_qdq_mode():
+            # In qdq case we return a standard torch.Tensor and ignore the type error.
+            return affine_static_qdq_fn(  # type: ignore[return-value]
+                data,
+                params.scale,
+                params.offset,
+                tile_size,
+                params.num_bits,
+                params.quantized_dtype or data.dtype,
+            )
+
         quantized_data = affine_static_quantize_fn(
             data,
             params.scale,

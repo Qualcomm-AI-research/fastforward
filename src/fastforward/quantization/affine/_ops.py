@@ -65,6 +65,32 @@ def affine_dequantize_op(
     return dequantized
 
 
+@custom_quant_op("affine_static_qdq")
+@conditional_compile
+def affine_static_qdq_op(
+    data: torch.Tensor,
+    scale: torch.Tensor,
+    tile_size: SizeT,
+    num_bits: float,
+    output_dtype: torch.dtype | None = None,
+    offset: torch.Tensor | None = None,
+) -> torch.Tensor:
+    scale = scale.reshape(-1)
+    offset = _infer_offset(offset, scale)
+    tile_size = torch.Size(tile_size)
+
+    min_threshold = -(2 ** (num_bits - 1))
+    max_threshold = -min_threshold - 1
+    row_representation = tiled_tensor.tiles_to_rows(data, tile_size)
+    quantized = round_ste(row_representation / scale[:, None] - offset[:, None])
+    quantized = torch.clamp(quantized, min_threshold, max_threshold)
+    dequantized = (quantized + offset[:, None]) * scale[:, None]
+    dequantized = tiled_tensor.rows_to_tiles(dequantized, data.shape, tile_size)
+    if output_dtype:
+        dequantized = dequantized.to(output_dtype)
+    return dequantized
+
+
 @custom_quant_op("affine_quantize_backward")
 @conditional_compile
 def affine_quantize_backward_op(
@@ -179,6 +205,19 @@ def affine_dequantize_meta(
     output_dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
     del scale, tile_size, offset, output_dtype
+    return torch.empty_like(input)
+
+
+@register_quant_fake("affine_static_qdq")
+def affine_static_qdq_meta(
+    input: torch.Tensor,
+    scale: torch.Tensor,
+    tile_size: SizeT,
+    num_bits: float,
+    output_dtype: torch.dtype | None = None,
+    offset: torch.Tensor | None = None,
+) -> torch.Tensor:
+    del scale, tile_size, num_bits, output_dtype, offset
     return torch.empty_like(input)
 
 
