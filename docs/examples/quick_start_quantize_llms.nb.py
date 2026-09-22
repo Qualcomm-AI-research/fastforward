@@ -21,7 +21,7 @@
 # ### Install Dependencies
 # First, make sure you have all the necessary dependencies installed. You can do this by running the following command:
 # ```
-# pip install transformers==5.9.0 sentencepiece==0.2.1 datasets==4.8.5
+# pip install transformers==5.10.4 sentencepiece==0.2.1 datasets==4.8.5
 # ```
 # For instructions on installing `fastforward`, please refer to the project's documentation and/or readme.
 #

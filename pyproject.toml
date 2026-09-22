@@ -44,7 +44,7 @@ test = [
 ]
 models-deps = [
   "datasets>=2.20",
-  "transformers==5.9.0",
+  "transformers==5.10.4",
   "tokenizers",
   "tqdm",
   "types-tqdm",
