@@ -4,6 +4,7 @@ FROM nvidia/cuda:${VER_CUDA}.0-base-ubuntu22.04
 ENV VIRTUAL_ENV=/opt/venv \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    UV_LINK_MODE=copy \
     REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 RUN apt update && \
@@ -64,11 +65,13 @@ RUN export VER_CUDA_SHORT="$(echo $VER_CUDA | awk -F'.' '{print $1$2}')" \
 WORKDIR /workspace
 COPY pyproject.toml /workspace/
 
-# Install dependencies without syncing with uv to avoid force-installing latest
-# version of all dependencies (so that latest torch is not installed on top).
+# Install dependencies without replacing the selected torch build. The source
+# checkout is mounted and installed in editable mode when the container starts.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install -e . --group dev --group docs --group test
+    uv pip install -r pyproject.toml --group dev --group docs --group test
 
-ENV PYTHONPYCACHEPREFIX=/tmp
-ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") && exec $0 "$@"
+# Keep the runtime cache separate from the user's mounted home and build cache.
+ENV PYTHONPYCACHEPREFIX=/tmp \
+    UV_CACHE_DIR=/tmp/uv-cache
+ENTRYPOINT (set -x ; ls ~/.vscode-server/ || sudo mkdir -m a=rwx -p "$(readlink ~/.vscode-server)" ; ls ~/.config/JetBrains/ || sudo mkdir -m a=rwx -p "$(readlink ~/.config/JetBrains)") ; ./scripts/rebuild && exec $0 "$@"
 CMD bash

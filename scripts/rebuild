@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
-export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/opt/venv}"
-uv sync --inexact --no-default-groups --group dev --group test --group test-regression --group docs --project "${1:-.}"
+set -euo pipefail
+
+# Dependencies and build tools are installed by the image. Only register the
+# mounted checkout here, preserving the image's selected torch/CUDA build.
+uv pip install --python "${UV_PROJECT_ENVIRONMENT:-${VIRTUAL_ENV:-/opt/venv}}/bin/python" \
+    --no-deps --no-build-isolation --editable "${1:-.}"
