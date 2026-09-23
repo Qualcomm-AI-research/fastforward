@@ -30,14 +30,12 @@ from fastforward._orchestration.instruction_engine import (
     InstructionEngine,
     InstructionPasses,
     LoadAttribute,
-    MoveActivations,
     MoveModule,
     OptimizeModule,
     ReturnOutputs,
     StoreValue,
     _activation_offloading_pass,
     _cancel_module_round_trips,
-    _cancel_redundant_activation_moves,
     _weight_offloading_pass,
     lifetime_management_pass,
 )
@@ -538,24 +536,6 @@ def test_move_parameters_moves_module_and_has_no_register_refs() -> None:
     assert list(instruction.produces()) == []
 
 
-def test_move_activations_moves_register_entry_and_reports_ref() -> None:
-    # GIVEN a register entry with a tensor dataset
-    ref = NodeRef(id=uuid.uuid4(), name="ref")
-    context = _noop_context
-    ds = ActivationDataset([torch.randn(2, 3)])
-    register = ActivationRegister()
-    register.store(ref, context, ds)
-    instruction = MoveActivations(location=DeviceLocation(torch.device("cpu")), register_ref=ref)
-
-    # WHEN we execute and inspect uses/produces
-    instruction.execute(register)
-
-    # THEN the dataset is on CPU, uses() yields the ref, produces() is empty
-    assert register.load(ref, context).batches[0].device == torch.device("cpu")
-    assert list(instruction.uses()) == [ref]
-    assert list(instruction.produces()) == []
-
-
 def test_move_parameters_with_dict_moves_each_parameter_to_its_device() -> None:
     # GIVEN a linear module whose weight and bias are both on CPU
     module = torch.nn.Linear(4, 2)
@@ -688,7 +668,6 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
 
     # THEN calls place batches themselves
     assert len(result) == len(base)
-    assert not any(isinstance(instruction, MoveActivations) for instruction in result)
     for instruction in result:
         if isinstance(instruction, CallModule):
             assert instruction.input_location == compute
@@ -716,7 +695,6 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     calls = [i for i in result if isinstance(i, (CallModule, CallFunction))]
     assert len(calls) == 3
 
-    assert not any(isinstance(instruction, MoveActivations) for instruction in result)
     for instruction in calls:
         assert instruction.input_location == compute
         assert instruction.output_location == storage
@@ -724,7 +702,7 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
     # GIVEN an instruction stream where an nn.Module produces output on the compute location,
-    # followed by an activation round-trip and a MoveModule round-trip
+    # followed by a MoveModule round-trip
     compute = DeviceLocation(torch.device("cuda:0"))
     storage = DeviceLocation(torch.device("cpu"))
 
@@ -739,133 +717,16 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
             target=linear_out,
             contexts=[context],
         ),
-        MoveActivations(location=storage, register_ref=linear_out),
-        MoveActivations(location=compute, register_ref=linear_out),
         MoveModule(location=storage, module=linear),
         MoveModule(location=compute, module=linear),
     )
 
-    # WHEN the cancellation passes run
+    # WHEN the cancellation pass runs
     result = _cancel_module_round_trips(instructions, compute, storage)
-    result = _cancel_redundant_activation_moves(result, compute)
 
-    # THEN the activation round-trip is eliminated (output already on compute)
-    activation_moves = [i for i in result if isinstance(i, MoveActivations)]
-    assert activation_moves == []
-
-    # AND the adjacent MoveModule round-trip is eliminated
+    # THEN the adjacent MoveModule round-trip is eliminated
     module_moves = [i for i in result if isinstance(i, MoveModule)]
     assert module_moves == []
-
-    # A reader on the compute device needs the stored output moved there.
-    offloaded_call = dataclasses.replace(instructions[0], output_location=storage)
-    move = MoveActivations(location=compute, register_ref=linear_out)
-    assert _cancel_redundant_activation_moves([offloaded_call, move], compute) == (
-        offloaded_call,
-        move,
-    )
-
-
-def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
-    snapshot: syrupy.assertion.SnapshotAssertion,
-) -> None:
-    # GIVEN a mixed instruction stream:
-    #   (a) an aten op with no inputs — output location is unknown
-    #   (b) an aten op chain where inputs are on compute — state propagates
-    compute = DeviceLocation(torch.device("cuda:0"))
-    storage = DeviceLocation(torch.device("cpu"))
-
-    # (a) aten op with no inputs: state unknown → compute move must survive
-    arange_out = NodeRef(uuid.uuid4(), "arange_out")
-
-    # (b) aten chain: src is on compute → both aten outputs are on compute → round-trips cancel
-    src = NodeRef(uuid.uuid4(), "linear_out")
-    aten_a_out = NodeRef(uuid.uuid4(), "aten_a_out")
-    aten_b_out = NodeRef(uuid.uuid4(), "aten_b_out")
-
-    context = _noop_context
-    instructions = (
-        # (a) unknown producer
-        CallFunction(
-            caller=lambda: torch.arange(8),
-            args=(),
-            kwargs={},
-            target=arange_out,
-            contexts=[context],
-        ),
-        MoveActivations(location=storage, register_ref=arange_out),
-        MoveActivations(location=compute, register_ref=arange_out),
-        # (b) aten chain: src moved to compute by _weight_offloading_pass
-        MoveActivations(location=compute, register_ref=src),
-        CallFunction(
-            caller=torch.transpose,
-            args=(src,),
-            kwargs={},
-            target=aten_a_out,
-            contexts=[context],
-        ),
-        MoveActivations(location=storage, register_ref=aten_a_out),
-        MoveActivations(location=compute, register_ref=aten_a_out),
-        CallFunction(
-            caller=torch.transpose,
-            args=(aten_a_out,),
-            kwargs={},
-            target=aten_b_out,
-            contexts=[context],
-        ),
-        MoveActivations(location=storage, register_ref=aten_b_out),
-        MoveActivations(location=compute, register_ref=aten_b_out),
-    )
-
-    # WHEN the cancellation pass runs
-    result = _cancel_redundant_activation_moves(instructions, compute)
-
-    # THEN the compute move for the unknown producer survives (can't prove it's on compute),
-    # and the aten chain's round-trips are all eliminated (state is known to be compute)
-    assert snapshot == "\n".join(repr(instruction) for instruction in result)
-
-
-def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() -> None:
-    compute = DeviceLocation(torch.device("cuda:0"))
-    storage = DeviceLocation(torch.device("cpu"))
-    source_ref = NodeRef(uuid.uuid4(), "source_ref")
-    out_ref = NodeRef(uuid.uuid4(), "out_ref")
-    module = torch.nn.Linear(4, 4)
-
-    # GIVEN an instruction stream spanning two flows, each re-producing source_ref from scratch
-    instructions: tuple[Any, ...] = (
-        CallFunction(
-            caller=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context]
-        ),
-        MoveActivations(location=compute, register_ref=source_ref),
-        CallModule(
-            caller=module, args=(source_ref,), kwargs={}, target=out_ref, contexts=[_noop_context]
-        ),
-        MoveActivations(location=storage, register_ref=out_ref),
-        CallFunction(
-            caller=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context_alt]
-        ),
-        MoveActivations(location=compute, register_ref=source_ref),
-        CallModule(
-            caller=module,
-            args=(source_ref,),
-            kwargs={},
-            target=out_ref,
-            contexts=[_noop_context_alt],
-        ),
-        MoveActivations(location=storage, register_ref=out_ref),
-    )
-
-    # WHEN the cancellation pass runs
-    result = _cancel_redundant_activation_moves(instructions, compute)
-
-    # THEN both moves of source_ref to compute survive
-    moves = [
-        i
-        for i in result
-        if isinstance(i, MoveActivations) and i.location == compute and i.register_ref is source_ref
-    ]
-    assert len(moves) == 2
 
 
 def test_activation_bundle_args_only_yields_args_tuple_and_empty_kwargs() -> None:

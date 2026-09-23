@@ -588,42 +588,6 @@ class MoveModule(Instruction):
                 buffer.data = self.location.receive(buffer.data)
 
 
-def _place_register_entries(
-    register: ActivationRegister, ref: _BaseRef, location: Location
-) -> None:
-    """Place register entry for `ref` at `location` in-place.
-
-    Args:
-        register: The activation register.
-        ref: Reference whose entry should be moved.
-        location: Target location.
-    """
-    for context, dataset in register.items_for(ref):
-        moved = dataclasses.replace(
-            dataset, batches=[location.place(batch) for batch in dataset.batches]
-        )
-        register.store(ref, context, moved)
-
-
-@dataclasses.dataclass(frozen=True)
-class MoveActivations(Instruction):
-    """Move a single activation register entry to a target location.
-
-    Args:
-        location: Target location for the move.
-        register_ref: Reference whose register entry will be moved.
-    """
-
-    location: Location
-    register_ref: _BaseRef
-
-    def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        _place_register_entries(register, self.register_ref, self.location)
-
-    def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
-        yield self.register_ref
-
-
 Instructions: TypeAlias = Sequence[Instruction]
 InstructionPass: TypeAlias = Callable[[Instructions], Instructions]
 
@@ -936,9 +900,6 @@ def _offloading_pass(
 
     # Cancel out compute(M1) -> storage(M1) -> compute(M1) placements for any module M1.
     instructions = _cancel_module_round_trips(instructions, compute, storage)
-
-    # Drop activation moves that the tracked location state proves redundant.
-    instructions = _cancel_redundant_activation_moves(instructions, compute)
     return instructions
 
 
@@ -966,71 +927,6 @@ def _cancel_module_round_trips(
         else:
             result.append(instructions[i])
             i += 1
-
-    return tuple(result)
-
-
-def _cancel_redundant_activation_moves(
-    instructions: Instructions, compute: Location
-) -> Instructions:
-    """Cancel redundant MoveActivations via buffer-and-flush.
-
-    MoveActivations instructions are buffered instead of emitted immediately.
-    Consecutive moves on the same ref overwrite each other in the buffer, so
-    round-trips collapse naturally. When a non-move instruction consumes a ref
-    (via ``uses()``), the pending move for that ref is flushed: emitted only if
-    the ref's tracked location differs from the move's target.
-
-    Location state is tracked for Call outputs using an explicit `output_location`
-    when set. Otherwise:
-    - ``CallModule`` outputs are on ``compute`` (MoveModule guarantees this).
-    - ``CallFunction``/``CallMethod`` outputs inherit the location of their inputs
-      when all inputs agree; otherwise the output location is left unknown.
-    """
-    ref_location: dict[_BaseRef, Location] = {}
-    pending: dict[_BaseRef, MoveActivations] = {}
-    result: list[Instruction] = []
-
-    def _infer_output_location(instr: Instruction) -> None:
-        if isinstance(instr, Call) and instr.output_location is not None:
-            ref_location[instr.target.unwrap_ref()] = instr.output_location
-            return
-        if isinstance(instr, CallModule):
-            ref_location[instr.target.unwrap_ref()] = compute
-            return
-        if not isinstance(instr, (CallFunction, CallMethod)):
-            return
-        key = instr.target.unwrap_ref()
-        locations = {
-            ref_location[a.unwrap_ref()] for a in instr.args if a.unwrap_ref() in ref_location
-        }
-        if len(locations) == 1:
-            ref_location[key] = locations.pop()
-        else:
-            ref_location.pop(key, None)
-
-    def _flush(ref: _BaseRef) -> None:
-        key = ref.unwrap_ref()
-        if (move := pending.pop(key, None)) is not None:
-            if ref_location.get(key) != move.location:
-                result.append(move)
-                ref_location[key] = move.location
-
-    def _is_redundant(move: MoveActivations) -> bool:
-        return ref_location.get(move.register_ref.unwrap_ref()) == move.location
-
-    for instr in instructions:
-        if isinstance(instr, MoveActivations):
-            pending[instr.register_ref.unwrap_ref()] = instr
-        else:
-            for ref in instr.uses():
-                _flush(ref)
-            result.append(instr)
-            _infer_output_location(instr)
-
-    for move in pending.values():
-        if not _is_redundant(move):
-            result.append(move)
 
     return tuple(result)
 
