@@ -41,7 +41,7 @@ from fastforward._orchestration.instruction_engine import (
     _weight_offloading_pass,
     lifetime_management_pass,
 )
-from fastforward._orchestration.location import DeviceLocation
+from fastforward._orchestration.location import DeviceLocation, Location
 from fastforward._orchestration.scheduler import ref_load_instructions, schedule
 
 from ._models import Add, AddConstant, ReturnTuple
@@ -686,21 +686,13 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(base, compute, storage)
 
-    # THEN each module call has its used activations moved to compute somewhere before it,
-    # and its output activation moved to storage directly after it
-    for idx, instruction in enumerate(result):
+    # THEN calls place batches themselves
+    assert len(result) == len(base)
+    assert not any(isinstance(instruction, MoveActivations) for instruction in result)
+    for instruction in result:
         if isinstance(instruction, CallModule):
-            used = {ref for ref in instruction.uses() if not isinstance(ref.unwrap_ref(), Const)}
-            moved_to_compute = {
-                i.register_ref
-                for i in result[:idx]
-                if isinstance(i, MoveActivations) and i.location == compute
-            }
-            assert used <= moved_to_compute
-
-            after = result[idx + 1]
-            assert isinstance(after, MoveActivations)
-            assert after.location == storage and after.register_ref == instruction.target
+            assert instruction.input_location == compute
+            assert instruction.output_location == storage
 
 
 def test_activation_offloading_pass_moves_activations_for_free_functions() -> None:
@@ -724,21 +716,10 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     calls = [i for i in result if isinstance(i, (CallModule, CallFunction))]
     assert len(calls) == 3
 
-    for idx, instruction in enumerate(result):
-        if not isinstance(instruction, (CallModule, CallFunction)):
-            continue
-
-        used = {ref for ref in instruction.uses() if not isinstance(ref.unwrap_ref(), Const)}
-        moved_to_compute = {
-            i.register_ref
-            for i in result[:idx]
-            if isinstance(i, MoveActivations) and i.location == compute
-        }
-        assert used <= moved_to_compute
-
-        after = result[idx + 1]
-        assert isinstance(after, MoveActivations)
-        assert after.location == storage and after.register_ref == instruction.target
+    assert not any(isinstance(instruction, MoveActivations) for instruction in result)
+    for instruction in calls:
+        assert instruction.input_location == compute
+        assert instruction.output_location == storage
 
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
@@ -775,6 +756,14 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
     # AND the adjacent MoveModule round-trip is eliminated
     module_moves = [i for i in result if isinstance(i, MoveModule)]
     assert module_moves == []
+
+    # A reader on the compute device needs the stored output moved there.
+    offloaded_call = dataclasses.replace(instructions[0], output_location=storage)
+    move = MoveActivations(location=compute, register_ref=linear_out)
+    assert _cancel_redundant_activation_moves([offloaded_call, move], compute) == (
+        offloaded_call,
+        move,
+    )
 
 
 def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
@@ -1190,3 +1179,45 @@ def test_load_attribute_uses_and_produces_report_source_and_target() -> None:
     # THEN uses() reports the source and produces() reports the target
     assert list(instr.uses()) == [source]
     assert list(instr.produces()) == [target]
+
+
+def test_call_places_each_batch_before_loading_the_next() -> None:
+    # GIVEN two input batches and locations that record each load and store
+    events: list[str] = []
+
+    class RecordingLocation(Location):
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def receive(self, tensor: torch.Tensor) -> torch.Tensor:
+            events.append(self.name)
+            return tensor.clone()
+
+    def square(x: torch.Tensor) -> torch.Tensor:
+        events.append("call")
+        return x.square()
+
+    input_ref = InputRef(uuid.uuid4(), "x")
+    output_ref = NodeRef(uuid.uuid4(), "square")
+    inputs = ActivationDataset([torch.tensor(1.0), torch.tensor(2.0)])
+    register = ActivationRegister()
+    register.store(input_ref, _noop_context, inputs)
+    call = CallFunction(
+        caller=square,
+        args=[input_ref],
+        kwargs={},
+        target=output_ref,
+        contexts=[_noop_context],
+    )
+    instructions = _activation_offloading_pass(
+        [call], RecordingLocation("load"), RecordingLocation("store")
+    )
+
+    # WHEN executing the call
+    InstructionEngine.run_instructions(instructions, register)
+
+    # THEN each batch is loaded, computed, and stored before the next batch is loaded
+    assert events == ["load", "call", "store", "load", "call", "store"]
+    outputs = register.load(output_ref, _noop_context)
+    torch.testing.assert_close(outputs.batches, [torch.tensor(1.0), torch.tensor(4.0)])
+    assert register.load(input_ref, _noop_context) is inputs

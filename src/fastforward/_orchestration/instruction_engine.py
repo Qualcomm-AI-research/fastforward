@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Collection,
     ContextManager,
+    Iterable,
     Iterator,
     Mapping,
     Sequence,
@@ -387,6 +388,8 @@ class Call(Instruction):
         contexts: Execution conditions to run under, one pass each.
         caller: Callable invoked for each batch.
         cache: Whether the outputs may be reused by a later reader.
+        input_location: Where to place each batch's arguments before invocation.
+        output_location: Where to place each result before collecting the next batch.
     """
 
     args: Sequence[_BaseRef]
@@ -395,23 +398,41 @@ class Call(Instruction):
     contexts: Contexts
     caller: Callable[..., Any]
     cache: bool = dataclasses.field(default=False, kw_only=True)
+    input_location: Location | None = dataclasses.field(default=None, kw_only=True)
+    output_location: Location | None = dataclasses.field(default=None, kw_only=True)
 
     def __repr__(self) -> str:
         return (
             f"{type(self).__name__}(caller={_fmt_module(self.caller)}, args={list(self.args)!r}, "
             + f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
-            + f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
+            + f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache}, "
+            + f"input_location={self.input_location!r}, output_location={self.output_location!r})"
         )
+
+    def _batches(
+        self, bundle: ActivationBundle
+    ) -> Iterator[tuple[tuple[Any, ...], dict[str, Any]]]:
+        batches: Iterable[tuple[tuple[Any, ...], dict[str, Any]]] = bundle
+        if not bundle:
+            batches = [((), {})]
+        for args, kwargs in batches:
+            if self.input_location is not None:
+                args, kwargs = self.input_location.place((args, kwargs))
+            yield args, kwargs
+            del args, kwargs
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         for context in self.contexts:
             bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
+            outputs = []
             module = self.caller if isinstance(self, CallModule) else None
             with context(module):
-                if not bundle:
-                    outputs = [self.caller()]
-                else:
-                    outputs = [self.caller(*args, **kwargs) for args, kwargs in bundle]
+                for args, kwargs in self._batches(bundle):
+                    output = self.caller(*args, **kwargs)
+                    if self.output_location is not None:
+                        output = self.output_location.place(output)
+                    outputs.append(output)
+                    del args, kwargs, output
             register.store(self.target, context, ActivationDataset(outputs))
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
@@ -863,13 +884,11 @@ def _weight_offloading_pass(
 def _activation_offloading_pass(
     instructions: Instructions, compute: Location, storage: Location
 ) -> Instructions:
-    """Insert `MoveActivations` instructions around each `Call` to move register entries.
+    """Configure input and output locations on each `Call`.
 
-    Before each `Call`, moves input activations to `compute`. After each `Call`, moves the
-    output activation to `storage`.
-
-    If we have an instruction stream that goes through two linear layers L1 -> L2, the pass would add
-    MoveAct(in, compute), Call(L1), MoveAct(out1, storage), MoveAct(out1, compute), Call(L2), MoveAct(out2, storage).
+    Before each invocation, moves input activations to `compute`. After each
+    invocation, moves the output activation to `storage`, one batch at a time.
+    Input datasets remain in the register at their existing locations.
 
     Args:
         instructions: Sequence of instructions to analyze.
@@ -877,20 +896,14 @@ def _activation_offloading_pass(
         storage: Where activations are moved to after execution.
 
     Returns:
-        New instruction sequence with `MoveActivations` instructions inserted.
+        Instructions with per-batch placement configured on calls.
     """
     new_instructions: list[Instruction] = []
 
     for instruction in instructions:
         if isinstance(instruction, Call):
-            for ref in instruction.uses():
-                if isinstance(ref.unwrap_ref(), Const):
-                    continue
-                new_instructions.append(MoveActivations(location=compute, register_ref=ref))
-
-            new_instructions.append(instruction)
             new_instructions.append(
-                MoveActivations(location=storage, register_ref=instruction.target)
+                dataclasses.replace(instruction, input_location=compute, output_location=storage)
             )
         else:
             new_instructions.append(instruction)
@@ -904,10 +917,10 @@ def _offloading_pass(
     storage: Location,
     graph: GraphModule,
 ) -> Instructions:
-    """Insert placement instructions around `CallModule` and `OptimizeModule`.
+    """Configure module placement and per-batch activation offloading.
 
     Composes `_weight_offloading_pass` and `_activation_offloading_pass` to handle both
-    module weight movement and activation register entry movement.
+    module weight movement and per-batch activation movement.
 
     Args:
         instructions: Original instruction sequence.
@@ -916,7 +929,7 @@ def _offloading_pass(
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
     Returns:
-        New instruction sequence with placement instructions inserted.
+        New instruction sequence with module and activation placement configured.
     """
     instructions = _weight_offloading_pass(instructions, compute, storage, graph)
     instructions = _activation_offloading_pass(instructions, compute, storage)
@@ -968,7 +981,8 @@ def _cancel_redundant_activation_moves(
     (via ``uses()``), the pending move for that ref is flushed: emitted only if
     the ref's tracked location differs from the move's target.
 
-    Location state is tracked for Call outputs:
+    Location state is tracked for Call outputs using an explicit `output_location`
+    when set. Otherwise:
     - ``CallModule`` outputs are on ``compute`` (MoveModule guarantees this).
     - ``CallFunction``/``CallMethod`` outputs inherit the location of their inputs
       when all inputs agree; otherwise the output location is left unknown.
@@ -978,6 +992,9 @@ def _cancel_redundant_activation_moves(
     result: list[Instruction] = []
 
     def _infer_output_location(instr: Instruction) -> None:
+        if isinstance(instr, Call) and instr.output_location is not None:
+            ref_location[instr.target.unwrap_ref()] = instr.output_location
+            return
         if isinstance(instr, CallModule):
             ref_location[instr.target.unwrap_ref()] = compute
             return
@@ -1023,19 +1040,18 @@ class OffloadingStrategy(abc.ABC):
 
     An offloading strategy controls how module weights and activations are moved
     between locations during graph execution. Implement `create_instruction_pass` to
-    insert the appropriate `MoveModule` and `MoveActivations` instructions.
+    configure module and activation placement.
     """
 
     @abc.abstractmethod
     def create_instruction_pass(self, graph: GraphModule) -> InstructionPass:
-        """Return an instruction pass that inserts placement instructions.
+        """Return an instruction pass that configures placement.
 
         Args:
             graph: The GraphModule being scheduled.
 
         Returns:
-            An `InstructionPass` that wraps the instruction sequence with the
-            appropriate placement instructions.
+            An `InstructionPass` that configures placement in the instruction sequence.
         """
 
 
@@ -1043,8 +1059,9 @@ class OffloadingStrategy(abc.ABC):
 class OffloadEverything(OffloadingStrategy):
     """Offload all module weights and activations between a compute device and a storage device.
 
-    Moves every module's weights and every activation to `storage_device` when idle,
-    and back to `compute_device` just before execution.
+    Moves every module's weights to `storage_device` when idle, and back to
+    `compute_device` just before execution. Activations are loaded and offloaded
+    one batch at a time.
 
     Args:
         compute_device: Device where computation happens (e.g. `cuda`).
