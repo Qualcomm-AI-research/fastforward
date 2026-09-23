@@ -6,9 +6,7 @@
   - Either tests cover all new and modified code paths (only happy path coverage required)
   - or no new tests are required.
 - [ ] All relevant documentation is updated (docstrings, README, tutorials).
-- [ ] All commit messages **follow the conventional commits style**, are clear, descriptive and provide context.
 - [ ] After the MR has been approved, all commits were cleaned:
-  - **follow the conventional commits style**
   - either the commits consist of a collection of clean commits
   - or they are squashed into a single clean commit.
 

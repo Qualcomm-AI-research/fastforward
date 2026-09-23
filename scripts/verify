@@ -24,6 +24,11 @@ function lint ()
   python3 -m ruff check "${COMMAND_ARGS[@]}" .
 }
 
+function conventional-commits ()
+{
+  python3 scripts/conventional_commits.py "${COMMAND_ARGS[@]}"
+}
+
 function format ()
 {
   python3 -m ruff format "${COMMAND_ARGS[@]}" .
