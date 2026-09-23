@@ -375,17 +375,17 @@ class LoadAttribute(Instruction):
 
 
 @dataclasses.dataclass(frozen=True)
-class Call(Instruction, abc.ABC):
+class Call(Instruction):
     """Execute one graph node on batched data from the register.
 
-    Handles the per-context loop, bundle gathering, and result storage. A
-    subclass adds one field for the callable it invokes and implements `_call`.
+    Handles the per-context loop, bundle gathering, and result storage.
 
     Args:
         args: Positional input refs in declaration order.
         kwargs: Keyword input refs keyed by parameter name.
         target: Ref the outputs are stored under.
         contexts: Execution conditions to run under, one pass each.
+        caller: Callable invoked for each batch.
         cache: Whether the outputs may be reused by a later reader.
     """
 
@@ -393,20 +393,25 @@ class Call(Instruction, abc.ABC):
     kwargs: dict[str, _BaseRef]
     target: _BaseRef
     contexts: Contexts
+    caller: Callable[..., Any]
     cache: bool = dataclasses.field(default=False, kw_only=True)
 
-    @abc.abstractmethod
-    def _call(
-        self,
-        context: Callable[[torch.nn.Module | None], ContextManager[None]],
-        bundle: ActivationBundle,
-    ) -> list[Any]:
-        """Invoke the callable under the given context."""
+    def __repr__(self) -> str:
+        return (
+            f"{type(self).__name__}(caller={_fmt_module(self.caller)}, args={list(self.args)!r}, "
+            + f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
+            + f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
+        )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         for context in self.contexts:
             bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
-            outputs = self._call(context, bundle)
+            module = self.caller if isinstance(self, CallModule) else None
+            with context(module):
+                if not bundle:
+                    outputs = [self.caller()]
+                else:
+                    outputs = [self.caller(*args, **kwargs) for args, kwargs in bundle]
             register.store(self.target, context, ActivationDataset(outputs))
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
@@ -417,64 +422,21 @@ class Call(Instruction, abc.ABC):
         return iter([self.target])
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class CallModule(Call):
     """Call a module on batched data, entering the context around each invocation."""
 
-    module: torch.nn.Module
-
-    def __repr__(self) -> str:
-        return (
-            f"CallModule(module={_fmt_module(self.module)}, args={list(self.args)!r}, "
-            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
-            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
-        )
-
-    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
-        with context(self.module):
-            if not bundle:
-                return [self.module()]
-            return [self.module(*args, **kwargs) for args, kwargs in bundle]
+    caller: torch.nn.Module
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class CallFunction(Call):
     """Call a free function on batched data."""
 
-    fn: Callable[..., Any]
 
-    def __repr__(self) -> str:
-        return (
-            f"CallFunction(fn={_fmt_callable(self.fn)}, args={list(self.args)!r}, "
-            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
-            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
-        )
-
-    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
-        with context(None):
-            if not bundle:
-                return [self.fn()]
-            return [self.fn(*args, **kwargs) for args, kwargs in bundle]
-
-
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class CallMethod(Call):
     """Call a bound method on batched data."""
-
-    method: Callable[..., Any]
-
-    def __repr__(self) -> str:
-        return (
-            f"CallMethod(method={_fmt_callable(self.method)}, args={list(self.args)!r}, "
-            f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
-            f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache})"
-        )
-
-    def _call(self, context: StreamKey, bundle: ActivationBundle) -> list[Any]:  # noqa: D102
-        with context(None):
-            if not bundle:
-                return [self.method()]
-            return [self.method(*args, **kwargs) for args, kwargs in bundle]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -885,7 +847,7 @@ def _weight_offloading_pass(
 
     for instruction in instructions:
         match instruction:
-            case CallModule(module=module) | OptimizeModule(module=module) if isinstance(
+            case CallModule(caller=module) | OptimizeModule(module=module) if isinstance(
                 module, torch.nn.Module
             ):
                 new_instructions.append(MoveModule(location=compute, module=module))

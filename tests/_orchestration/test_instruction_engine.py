@@ -156,7 +156,7 @@ def test_call_module_with_no_inputs_calls_module_once() -> None:
     def produce() -> torch.Tensor:
         return sentinel
 
-    instr = CallModule(module=produce, args=[], kwargs={}, target=target, contexts=[context])  # type: ignore[arg-type]
+    instr = CallModule(caller=produce, args=[], kwargs={}, target=target, contexts=[context])  # type: ignore[arg-type]
     register = ActivationRegister()
 
     # WHEN the instruction executes
@@ -182,7 +182,7 @@ def test_call_module_single_tensor_arg() -> None:
 
     # GIVEN a CallModule instruction with a single arg and one context
     instruction = CallModule(
-        module=module,
+        caller=module,
         args=[input_ref],
         kwargs={},
         target=target_ref,
@@ -215,13 +215,17 @@ def test_call_function_enters_its_own_context_across_ambient_no_grad() -> None:
     register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
 
     call_fc1 = CallModule(
-        module=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
     )
     call_relu = CallFunction(
-        fn=torch.relu, args=[fc1_out], kwargs={}, target=relu_out, contexts=[enable_grad_context]
+        caller=torch.relu,
+        args=[fc1_out],
+        kwargs={},
+        target=relu_out,
+        contexts=[enable_grad_context],
     )
     call_fc2 = CallModule(
-        module=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
     )
 
     # WHEN we run the chain inside a block that turns gradients off
@@ -257,17 +261,17 @@ def test_call_method_enters_its_own_context_across_ambient_no_grad() -> None:
     register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
 
     call_fc1 = CallModule(
-        module=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
     )
     call_relu = CallMethod(
-        method=torch.Tensor.relu,
+        caller=torch.Tensor.relu,
         args=[fc1_out],
         kwargs={},
         target=relu_out,
         contexts=[enable_grad_context],
     )
     call_fc2 = CallModule(
-        module=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
     )
 
     # WHEN we run the chain inside a block that turns gradients off
@@ -642,9 +646,9 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
         if isinstance(instruction, CallModule):
             before, after = result[idx - 1], result[idx + 1]
             assert isinstance(before, MoveModule)
-            assert before.location == compute and before.module is instruction.module
+            assert before.location == compute and before.module is instruction.caller
             assert isinstance(after, MoveModule)
-            assert after.location == storage and after.module is instruction.module
+            assert after.location == storage and after.module is instruction.caller
 
     # AND the stream ends by restoring every module to its per-parameter devices
     post_restore = [i for i in result if isinstance(i, MoveModule) and isinstance(i.location, dict)]
@@ -748,7 +752,7 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
     context = _noop_context
     instructions = (
         CallModule(
-            module=linear,
+            caller=linear,
             args=(),
             kwargs={},
             target=linear_out,
@@ -794,7 +798,7 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
     instructions = (
         # (a) unknown producer
         CallFunction(
-            fn=lambda: torch.arange(8),
+            caller=lambda: torch.arange(8),
             args=(),
             kwargs={},
             target=arange_out,
@@ -805,7 +809,7 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
         # (b) aten chain: src moved to compute by _weight_offloading_pass
         MoveActivations(location=compute, register_ref=src),
         CallFunction(
-            fn=torch.transpose,
+            caller=torch.transpose,
             args=(src,),
             kwargs={},
             target=aten_a_out,
@@ -814,7 +818,7 @@ def test_cancel_pass_preserves_necessary_moves_for_non_module_callables(
         MoveActivations(location=storage, register_ref=aten_a_out),
         MoveActivations(location=compute, register_ref=aten_a_out),
         CallFunction(
-            fn=torch.transpose,
+            caller=torch.transpose,
             args=(aten_a_out,),
             kwargs={},
             target=aten_b_out,
@@ -842,19 +846,19 @@ def test_cancel_pass_preserves_move_when_source_node_reappears_across_flows() ->
     # GIVEN an instruction stream spanning two flows, each re-producing source_ref from scratch
     instructions: tuple[Any, ...] = (
         CallFunction(
-            fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context]
+            caller=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context]
         ),
         MoveActivations(location=compute, register_ref=source_ref),
         CallModule(
-            module=module, args=(source_ref,), kwargs={}, target=out_ref, contexts=[_noop_context]
+            caller=module, args=(source_ref,), kwargs={}, target=out_ref, contexts=[_noop_context]
         ),
         MoveActivations(location=storage, register_ref=out_ref),
         CallFunction(
-            fn=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context_alt]
+            caller=lambda: None, args=(), kwargs={}, target=source_ref, contexts=[_noop_context_alt]
         ),
         MoveActivations(location=compute, register_ref=source_ref),
         CallModule(
-            module=module,
+            caller=module,
             args=(source_ref,),
             kwargs={},
             target=out_ref,

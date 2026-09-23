@@ -382,11 +382,11 @@ class Scheduler:
             instruction: Instruction
             match node.op:
                 case Op.torch_module:
-                    instruction = CallModule(module=node.target, **common)  # type: ignore[arg-type]
+                    instruction = CallModule(caller=node.target, **common)  # type: ignore[arg-type]
                 case Op.call_function | Op.get_attr:
-                    instruction = CallFunction(fn=node.target, **common)  # type: ignore[arg-type]
+                    instruction = CallFunction(caller=node.target, **common)  # type: ignore[arg-type]
                 case Op.call_method:
-                    instruction = CallMethod(method=node.target, **common)  # type: ignore[arg-type]
+                    instruction = CallMethod(caller=node.target, **common)  # type: ignore[arg-type]
             self.instructions.append(instruction)
             self.register.add(item)
 
