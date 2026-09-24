@@ -41,6 +41,7 @@ from .nodes import (
     QuantizedCall,
     QuantizedSuperCall,
     ReplacementCandidate,
+    ScalarExpression,
     UnresolvedQuantizedCall,
     is_simple_literal,
     node_asdict,
@@ -327,6 +328,23 @@ _ExpressionT = TypeVar("_ExpressionT", bound=libcst.BaseExpression)
 
 class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
     METADATA_DEPENDENCIES = (MypyTypeProvider,)
+
+    @override
+    def on_leave(
+        self, original_node: libcst.CSTNodeT, updated_node: libcst.CSTNodeT
+    ) -> libcst.CSTNodeT | libcst.RemovalSentinel | libcst.FlattenSentinel[libcst.CSTNodeT]:
+        result = super().on_leave(original_node, updated_node)
+        # Restrict wrappers to value expressions; never wrap assignment targets,
+        # identifiers, annotations, or an operator selected for replacement.
+        if (
+            isinstance(original_node, (libcst.Call, libcst.BinaryOperation, libcst.UnaryOperation))
+            and isinstance(result, libcst.BaseExpression)
+            and not isinstance(result, ReplacementCandidate)
+        ):
+            info = self.get_metadata(MypyTypeProvider, original_node, None)
+            if info is not None and info.is_proven_scalar():
+                return ScalarExpression(result)  # type: ignore[return-value]
+        return result
 
     def _determine_replacement_candidate(
         self, type_info: Sequence[TypeInfo | None], updated_node: _ExpressionT

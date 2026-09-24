@@ -36,6 +36,23 @@ class TypeInfo:
     typ: mypy.types.Type
     _checker: mypy.checker.TypeChecker = dataclasses.field(repr=False)
 
+    def is_proven_scalar(self) -> bool:
+        """Read numeric facts without a checker query; Any is not evidence."""
+
+        def numeric(typ: mypy.types.Type) -> bool:
+            proper = mypy.types.get_proper_type(typ)
+            if isinstance(proper, mypy.types.UnionType):
+                return all(numeric(item) for item in proper.items)
+            if isinstance(proper, mypy.types.LiteralType):
+                proper = proper.fallback
+            return isinstance(proper, mypy.types.Instance) and proper.type.fullname in (
+                "builtins.int",
+                "builtins.float",
+                "builtins.bool",
+            )
+
+        return numeric(self.typ)
+
     def is_subtype(self, qualified_name: str) -> bool:
         """Check if this type is a subtype of the specified qualified type.
 

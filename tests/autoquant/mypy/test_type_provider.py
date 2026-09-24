@@ -37,3 +37,24 @@ def test_mypy_type_provider() -> None:
             assert assign.value in type_data
             assert isinstance(type_data[assign.value], TypeInfo)
             assert type_data[assign.value].typ == type_data[target].typ
+
+
+@pytest.mark.slow
+def test_stored_scalar_facts_distinguish_unknown_and_mixed_types() -> None:
+    # GIVEN: Stored types for numeric values, unions, literals and unknown values.
+    cst = libcst.parse_module("""
+from typing import Any, Literal
+
+def values(integer: int, floating: float, boolean: bool, numeric: int | float,
+           optional: int | None, unknown: Any, text: str, literal: Literal[1]):
+    return integer, floating, boolean, numeric, optional, unknown, text, literal
+""")
+    metadata = libcst.MetadataWrapper(cst, unsafe_skip_copy=True).resolve(MypyTypeProvider)
+    returned = next(filter_nodes_by_type(cst, libcst.Return)).value
+    assert isinstance(returned, libcst.Tuple)
+
+    # WHEN: Read the stored proof for each returned expression.
+    proven = [metadata[element.value].is_proven_scalar() for element in returned.elements]
+
+    # THEN: Every possible type must be numeric; Any and optional types are not proofs.
+    assert proven == [True, True, True, True, False, False, False, True]

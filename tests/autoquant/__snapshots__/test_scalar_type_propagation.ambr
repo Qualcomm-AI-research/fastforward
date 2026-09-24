@@ -57,7 +57,6 @@
       q = self.quantizer_q(q)
       _r = self.num_heads % 2
       s = self.scale * 2.0
-      s = self.quantizer_s(s)
       return fastforward.nn.functional.mul(q, s, output_quantizer=self.quantizer_mul)
   
   '''
@@ -194,7 +193,6 @@
       q = self.quantizer_q(q)
       _r = self.num_heads % 2
       s = self.scale * 2.0
-      s = self.quantizer_s(s)
       return fastforward.nn.functional.mul(q, s, output_quantizer=self.quantizer_mul)
   
   '''

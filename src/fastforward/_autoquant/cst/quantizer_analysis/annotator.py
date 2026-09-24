@@ -40,6 +40,7 @@ from typing_extensions import overload
 
 from fastforward._autoquant.cst import node_processing, nodes
 from fastforward._autoquant.cst.nodes import is_simple_literal
+from fastforward._quantops import symtypes
 
 from .scope import QuantizationMetadata
 from .scope import QuantizationScope as Scope
@@ -559,10 +560,23 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         annotation to the producer of the argument. Otherwise, evaluate as usual.
         """
         node.func.visit(self)
-        for arg, quantized in _iter_quantized_arguments(node):
+        for arg, quantized, allows_scalar in _iter_quantized_arguments(node):
             arg.visit(self)
-            if quantized:
+            if quantized and not (allows_scalar and self._is_proven_scalar_operand(arg)):
                 self._ensure_quantized_node(arg)
+
+    def _is_proven_scalar_operand(self, node: libcst.BaseExpression) -> bool:
+        """Require stored numeric proof for every possible producer of an operand."""
+        if isinstance(node, nodes.ScalarExpression):
+            return True
+        if not isinstance(node, libcst.Name):
+            return False
+        assignments = tuple(self._active_scope[node.value])
+        return bool(assignments) and all(
+            isinstance(assignment.producer, nodes.GeneralAssignment)
+            and isinstance(assignment.producer.value, nodes.ScalarExpression)
+            for assignment in assignments
+        )
 
     def evaluate_For(self, node: libcst.For) -> None:
         """Evaluate a For node.
@@ -729,6 +743,8 @@ class _QuantizationAnnotator(libcst.CSTVisitor):
         quantizing Name nodes.
         """
         match node:
+            case nodes.ScalarExpression(original=original):
+                self._ensure_quantized_node(original)
             case libcst.Name(value=var):
                 self._ensure_quantized_var(var)
             case libcst.Call():
@@ -822,18 +838,17 @@ def _if_node_is_exhaustive(node: libcst.If) -> bool:
 
 def _iter_quantized_arguments(
     node: nodes.QuantizedCall,
-) -> Iterator[tuple[libcst.BaseExpression, bool]]:
+) -> Iterator[tuple[libcst.BaseExpression, bool, bool]]:
     """Iterate over the quantized arguments of a QuantizedCall node.
 
-    This function yields tuples containing the argument expression and a boolean
-    indicating whether the argument is quantized.
+    This function yields each argument, whether quantization is required, and
+    whether the schema accepts all numeric scalar types through a float alternative.
 
     Args:
         node: The QuantizedCall node to iterate over.
 
     Yields:
-         A tuple containing the argument expression and a boolean indicating
-         whether the argument is quantized.
+        The argument expression, quantization requirement, and scalar alternative.
     """
     if node.operator is None:
         return
@@ -850,7 +865,7 @@ def _iter_quantized_arguments(
             args.append(arg.value)
 
     for param, value in node.operator.bind_partial(*args, **kwargs):
-        yield value, param.quantized
+        yield value, param.quantized, symtypes.Float in param.param_type.variants()
 
 
 def _assert_subnode_is_none(node: libcst.CSTNode, attr: str) -> None:

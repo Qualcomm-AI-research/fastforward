@@ -13,6 +13,10 @@ import libcst
 class TypeInfo:
     """Fallback for TypeInfo if Mypy is not installed."""
 
+    def is_proven_scalar(self) -> bool:
+        """Missing type information is not positive scalar evidence."""
+        return False
+
 
 class MypyTypeProvider(libcst.VisitorMetadataProvider[TypeInfo]):
     """Fallback for MypyTypeProvider if Mypy is not installed."""

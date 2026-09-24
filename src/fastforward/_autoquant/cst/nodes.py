@@ -128,6 +128,25 @@ class ReplacementCandidate(libcst.BaseExpression):
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
+class ScalarExpression(libcst.BaseExpression):
+    """A proven numeric result from stored type facts, independent of syntax."""
+
+    original: libcst.BaseExpression
+
+    def _codegen_impl(self, *args: Any, **kwargs: Any) -> None:
+        self.original._codegen(*args, **kwargs)
+
+    def _visit_and_replace_children(self, visitor: libcst.CSTVisitorT) -> libcst.CSTNode:
+        return ScalarExpression(visit_required(self, "original", self.original, visitor))
+
+    def _safe_to_use_with_word_operator(self, *args: Any, **kwargs: Any) -> bool:
+        return self.original._safe_to_use_with_word_operator(*args, **kwargs)
+
+    def _check_left_right_word_concatenation_safety(self, *args: Any, **kwargs: Any) -> bool:
+        return self.original._check_left_right_word_concatenation_safety(*args, **kwargs)
+
+
+@dataclasses.dataclass(slots=True, frozen=True)
 class QuantizedCall(libcst.Call):
     """A metadata node that carries extra information and wraps a `libcst.Call`.
 
@@ -253,6 +272,8 @@ def node_asdict(node: libcst.CSTNode) -> dict[str, Any]:
 def is_simple_literal(node: libcst.CSTNode) -> bool:
     """True if node is a literal that is not a collection, False otherwise."""
     match node:
+        case ScalarExpression(original=original):
+            return is_simple_literal(original)
         case libcst.Integer() | libcst.Float() | libcst.Imaginary():
             return True
         case libcst.BaseString():
