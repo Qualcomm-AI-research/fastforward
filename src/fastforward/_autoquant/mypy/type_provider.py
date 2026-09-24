@@ -8,6 +8,9 @@ try:
     from fastforward._autoquant.mypy.type_provider_impl import (
         mypy_call_scoped_cache as mypy_call_scoped_cache,
     )
+    from fastforward._autoquant.mypy.type_provider_impl import (
+        mypy_module_context as mypy_module_context,
+    )
 except (ImportError, ModuleNotFoundError):
     from fastforward._autoquant.mypy.type_provider_fallback import (  # type: ignore[assignment]
         MypyTypeProvider as MypyTypeProvider,
@@ -17,4 +20,7 @@ except (ImportError, ModuleNotFoundError):
     )
     from fastforward._autoquant.mypy.type_provider_fallback import (
         mypy_call_scoped_cache as mypy_call_scoped_cache,
+    )
+    from fastforward._autoquant.mypy.type_provider_fallback import (
+        mypy_module_context as mypy_module_context,
     )

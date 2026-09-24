@@ -18,9 +18,9 @@ import libcst.metadata
 
 from typing_extensions import override
 
-from fastforward._autoquant.cst.passes import ConvertRelativeImports
 from fastforward._autoquant.cst.pattern import PatternRule, PatternRuleTransformer
 from fastforward._autoquant.cst.validation import ensure_type
+from fastforward._autoquant.mypy.type_provider import mypy_module_context
 from fastforward._autoquant.pass_manager import PassManager
 from fastforward._autoquant.pysource.scope import infer_scopes
 from fastforward._import import QualifiedNameReference, fully_qualified_name
@@ -272,24 +272,18 @@ class _ModuleSource:
         module_cst = libcst.parse_module(textwrap.dedent(src))
 
         module_qualified_name = fully_qualified_name(module)
-        # Convert relative imports to absolute form so downstream mypy-based
-        # analysis (which sees the source under a synthetic module name) does
-        # not choke on `from .` / `from ..` statements.
-        prefix_passes: tuple[libcst.CSTTransformer, ...] = (
-            ConvertRelativeImports(module_qualified_name),
-        )
+        passes = self._preprocessing_passes
         if self._replacement_patterns:
             pattern_transformer = PatternRuleTransformer(
                 self._replacement_patterns,
                 module_qualified_name=module_qualified_name,
             )
             # PatternRules are applied first to match against the original source
-            prefix_passes = (pattern_transformer,) + prefix_passes
-
-        passes = prefix_passes + tuple(self._preprocessing_passes)
+            passes = (pattern_transformer,) + passes
 
         pm = PassManager(passes)
-        module_cst = pm(module_cst)
+        with mypy_module_context(module_qualified_name, inspect.getsourcefile(module)):
+            module_cst = pm(module_cst)
         logger.info("SourceContext: finished preprocessing module %s", module_qualified_name)
         return module_cst
 

@@ -23,6 +23,13 @@ class MypyTypeProvider(libcst.VisitorMetadataProvider[TypeInfo]):
 
 
 @contextlib.contextmanager
+def mypy_module_context(module_name: str, module_path: str | None) -> Iterator[None]:
+    """No-op fallback for mypy_module_context if Mypy is not installed."""
+    del module_name, module_path
+    yield
+
+
+@contextlib.contextmanager
 def mypy_call_scoped_cache() -> Iterator[None]:
     """No-op fallback for mypy_call_scoped_cache if Mypy is not installed."""
     yield

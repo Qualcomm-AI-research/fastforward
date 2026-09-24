@@ -1,10 +1,13 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import importlib
 import inspect
 import math
 import os
+import sys
 
+from pathlib import Path
 from typing import Any, Callable
 
 import fastforward as ff
@@ -13,7 +16,10 @@ import pytest
 import torch
 
 from fastforward._autoquant import pysource
+from fastforward._autoquant.autoquant import default_preprocessing_passes
+from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, mypy_call_scoped_cache
 from fastforward._autoquant.pysource import source_context
+from typing_extensions import override
 
 
 @pytest.mark.slow
@@ -194,3 +200,67 @@ def _test_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
 @_test_decorator
 def _test_func_with_decorator() -> None:
     pass
+
+
+class _CaptureAssignmentTypes(libcst.CSTTransformer):
+    METADATA_DEPENDENCIES = (MypyTypeProvider,)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.types: list[str] = []
+
+    @override
+    def visit_Assign(self, node: libcst.Assign) -> None:
+        self.types.append(str(self.get_metadata(MypyTypeProvider, node.value).typ))
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("package_name", ["model", "model-v2"])
+@pytest.mark.parametrize("filename", ["modeling.py", "__init__.py"])
+@pytest.mark.parametrize("levels", [1, 2, 3])
+def test_source_context_preserves_relative_imports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    package_name: str,
+    filename: str,
+    levels: int,
+) -> None:
+    # GIVEN regular or dynamically named packages with both forms of relative import
+    root = tmp_path / "relative_imports"
+    package = root / "models" / package_name
+    package.mkdir(parents=True)
+    for directory in (root, root / "models", package):
+        (directory / "__init__.py").write_text("")
+    dependency_package = (package, root / "models", root)[levels - 1]
+    (dependency_package / "initialization.py").write_text("VALUE: int = 1\n")
+    (dependency_package / "activations.py").write_text("VALUE: int = 2\n")
+    dots = "." * levels
+    code = (
+        f"from {dots} import initialization as init\n"
+        + f"from {dots}activations import VALUE as alias\n"
+        + "value = init.VALUE + alias\n"
+    )
+    (package / filename).write_text(code)
+    name = f"relative_imports.models.{package_name}"
+    if filename != "__init__.py":
+        name += ".modeling"
+    monkeypatch.syspath_prepend(str(tmp_path))
+    try:
+        module = importlib.import_module(name)
+        capture = _CaptureAssignmentTypes()
+        passes = (capture, *default_preprocessing_passes())
+
+        # WHEN source preprocessing runs with type inference and the original imports
+        with mypy_call_scoped_cache():
+            source = pysource.SourceContext(preprocessing_passes=passes).get(name)
+            cst: libcst.CSTNode = source.cst()
+
+        # THEN imports remain unchanged and their values have concrete inferred types
+        assert module.value == 3
+        assert isinstance(cst, libcst.Module)
+        assert cst.code == code
+        assert capture.types == ["int"]
+    finally:
+        for module_name in tuple(sys.modules):
+            if module_name == "relative_imports" or module_name.startswith("relative_imports."):
+                del sys.modules[module_name]

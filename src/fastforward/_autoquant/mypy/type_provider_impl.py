@@ -5,7 +5,9 @@ import contextlib
 import contextvars
 import dataclasses
 import io
+import sysconfig
 
+from pathlib import Path
 from typing import Iterator, TypeAlias
 
 import libcst
@@ -15,6 +17,7 @@ import mypy.checker
 import mypy.checkexpr
 import mypy.errors
 import mypy.messages
+import mypy.modulefinder
 import mypy.nodes
 import mypy.options
 import mypy.subtypes
@@ -337,6 +340,35 @@ class _TypeExtractionVisitor(TraverserVisitor):
         return True
 
 
+def _get_mypy_base_dir(
+    module_name: str, module_path: str | None, python_executable: str | None
+) -> str | None:
+    """Return a local module's search root without shadowing library stubs."""
+    if module_path is None:
+        return None
+
+    # Mypy uses base_dir, rather than path, to locate sibling source modules.
+    # Derive it from the known identity without parsing package names as Python
+    # identifiers: dynamic loaders may use hyphenated directory names.
+    path = Path(module_path).absolute()
+    package_depth = module_name.count(".") + (path.stem == "__init__")
+    if not path.is_file() or package_depth >= len(path.parents):
+        return None
+
+    root = path.parents[package_depth]
+    _, site_dirs = mypy.modulefinder.get_search_dirs(python_executable)
+    library_dirs = [
+        *site_dirs,
+        sysconfig.get_path("stdlib"),
+        sysconfig.get_path("platstdlib"),
+    ]
+    # Keep library lookup on mypy's normal search paths. Promoting a
+    # library directory to user source would shadow bundled stubs.
+    if any(root.resolve() == Path(directory).resolve() for directory in library_dirs):
+        return None
+    return str(root)
+
+
 def _get_mypy_tree_and_checker(
     code: str,
 ) -> tuple[mypy.nodes.MypyFile, mypy.checkexpr.ExpressionChecker] | None:
@@ -344,7 +376,7 @@ def _get_mypy_tree_and_checker(
 
     This function builds a mypy AST from the provided code string and creates
     an expression checker that can be used for type checking. The code is treated
-    as a temporary module within mypy for evaluation purposes.
+    in its original module context, or a temporary module for standalone code.
 
     The expression checker is a mypy `NodeVisitor` that can visit arbitrary
     expression nodes in the mypy AST an return the infered type.
@@ -356,26 +388,28 @@ def _get_mypy_tree_and_checker(
         A tuple containing the mypy AST and an expression checker, or None if
         the AST could not be built
     """
+    module_name, module_path = _module_context.get()
+    cache_key = (code, module_name, module_path)
     cache = _call_scoped_cache.get()
-    if cache is not None and (cached := cache.get(code)) is not None:
+    if cache is not None and (cached := cache.get(cache_key)) is not None:
         return cached
 
-    eval_module_name = "_ff_evaluation_module__"
-    src = mypy.build.BuildSource(
-        path=None,
-        module=eval_module_name,
-        text=code,
-    )
     opts = mypy.options.Options()
     opts.show_traceback = True
     opts.preserve_asts = True
 
+    src = mypy.build.BuildSource(
+        path=module_path,
+        module=module_name,
+        text=code,
+        base_dir=_get_mypy_base_dir(module_name, module_path, opts.python_executable),
+    )
     result = mypy.build.build(
         sources=[src],
         options=opts,
     )
 
-    state = result.graph[eval_module_name]
+    state = result.graph[module_name]
 
     if state.tree is None:
         return None
@@ -392,12 +426,32 @@ def _get_mypy_tree_and_checker(
 
     typed_result = (state.tree, expr_checker)
     if cache is not None:
-        cache[code] = typed_result
+        cache[cache_key] = typed_result
     return typed_result
 
 
+_module_context: contextvars.ContextVar[tuple[str, str | None]] = contextvars.ContextVar(
+    "fastforward_autoquant_mypy_module_context", default=("_ff_evaluation_module__", None)
+)
+
+
+@contextlib.contextmanager
+def mypy_module_context(module_name: str, module_path: str | None) -> Iterator[None]:
+    """Preserve module identity while LibCST resolves mypy metadata.
+
+    The qualified name supplies the package for relative imports. The source
+    path also lets mypy distinguish package initializers from ordinary modules.
+    Context-local state supports nested preprocessing and is restored on errors.
+    """
+    token = _module_context.set((module_name, module_path))
+    try:
+        yield
+    finally:
+        _module_context.reset(token)
+
+
 _CallScopedCache: TypeAlias = dict[
-    str, tuple[mypy.nodes.MypyFile, mypy.checkexpr.ExpressionChecker]
+    tuple[str, str, str | None], tuple[mypy.nodes.MypyFile, mypy.checkexpr.ExpressionChecker]
 ]
 
 _call_scoped_cache: contextvars.ContextVar[_CallScopedCache | None] = contextvars.ContextVar(
@@ -407,11 +461,11 @@ _call_scoped_cache: contextvars.ContextVar[_CallScopedCache | None] = contextvar
 
 @contextlib.contextmanager
 def mypy_call_scoped_cache() -> Iterator[None]:
-    """Activate an in-call cache of mypy build results keyed by source string.
+    """Activate an in-call cache keyed by source text and module identity.
 
     While active, `_get_mypy_tree_and_checker(code)` returns a cached result on
-    repeated calls with the same `code`. The cache is created empty on enter
-    and discarded on exit, so it cannot outlive the surrounding call.
+    repeated calls with the same code, module name, and path. The cache is
+    created empty on enter and discarded on exit, so it cannot outlive the call.
     """
     token = _call_scoped_cache.set({})
     try:
