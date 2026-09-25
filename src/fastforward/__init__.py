@@ -47,6 +47,13 @@ from .quantization.strict_quantization import (
 from .quantized_tensor import QuantizedTensor as QuantizedTensor
 from .range_setting import estimate_ranges as estimate_ranges
 
+# `algorithms` imports `nn`, `quantization` and `range_setting` at module level, thus it must come
+# after them and the sorter must not move it up.
+# isort: off
+from . import algorithms as algorithms
+
+# isort: on
+
 __version__ = version
 
 PerTensor = granularity.PerTensor

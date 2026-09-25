@@ -22,6 +22,8 @@ import fastforward as ff
 from fastforward import mpath
 from fastforward._orchestration.data_flow import DataFlow, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
+from fastforward.algorithms.adaround import adaround
+from fastforward.quantization.gptq import gptq
 
 Algorithm: TypeAlias = Callable[..., Any]
 
@@ -332,7 +334,12 @@ def override(
 
 # We pre-register baseline methods with expected Algorithm-Target-Flow triples.
 register(
-    ff.quantization.gptq,
+    gptq,
     (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
     flows=[InputActivations("original")],
+)
+register(
+    adaround,
+    (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
+    flows=[InputActivations("original"), InputActivations("quantized")],
 )
