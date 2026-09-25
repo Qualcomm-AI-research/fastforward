@@ -247,7 +247,9 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
             if key not in self._specs:
                 msg = f"No target registered for algorithm {_algorithm_name(algorithm)!r}."
                 raise NoTargetsFound(msg)
-            spec_list = [self._specs[key]]
+            # Call the algorithm as given, so arguments bound by a `functools.partial` are
+            # kept. The registration only provides the selector and the flows.
+            spec_list = [dataclasses.replace(self._specs[key], fn=algorithm)]
 
         result: list[SubgraphSpec] = []
         for spec in spec_list:

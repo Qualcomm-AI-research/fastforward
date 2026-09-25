@@ -285,3 +285,32 @@ def test_register_by_partial_keys_on_base_function() -> None:
     spec = registry_[_dummy_algorithm_with_args]
     assert spec.fn is bound
     assert spec.fn.keywords == {"_arg": 1}
+
+
+def test_resolve_keeps_arguments_of_a_partial(tiny_model: TinyModel) -> None:
+    # GIVEN an algorithm registered by its base function
+    registry_ = _AlgorithmRegistry()
+    registry_.register(_dummy_algorithm_with_args, torch.nn.Linear, flows=make_flows())
+    bound = functools.partial(_dummy_algorithm_with_args, _arg=1)
+
+    # WHEN resolving a partial of that algorithm
+    result = registry_.resolve(tiny_model, algorithm=bound)
+
+    # THEN the partial is called, with its arguments intact
+    assert result
+    assert all(s.fn is bound for s in result)
+
+
+def test_resolve_base_function_ignores_a_registered_partial(tiny_model: TinyModel) -> None:
+    # GIVEN an algorithm registered by a partial
+    registry_ = _AlgorithmRegistry()
+    registry_.register(
+        functools.partial(_dummy_algorithm_with_args, _arg=1), torch.nn.Linear, flows=make_flows()
+    )
+
+    # WHEN resolving the bare base function
+    result = registry_.resolve(tiny_model, algorithm=_dummy_algorithm_with_args)
+
+    # THEN the base function is called, without the registered partial's arguments
+    assert result
+    assert all(s.fn is _dummy_algorithm_with_args for s in result)
