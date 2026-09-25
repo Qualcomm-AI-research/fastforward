@@ -34,6 +34,7 @@ jobs:
         id: versions
         env:
           DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+          DOCKER_REPO: ${{ vars.DOCKER_REPO }}
           DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE }}
         run: |
           test $(git hash-object .dockerignore) = 33dafa6305deba799c6f414184eb723f07ef8c1d # Reminder: if .dockerignore changes, update the tag computation below.
@@ -42,7 +43,7 @@ jobs:
             echo "VER_PYTHON=${VER_PYTHON}"
             echo "VER_TORCH=${VER_TORCH}"
             echo "VER_CUDA=${VER_CUDA}"
-            echo "IMAGE_NAME=${DOCKER_REGISTRY}/${DOCKER_IMAGE}-regr-py${VER_PYTHON}-pt${VER_TORCH}-cu${VER_CUDA}"
+            echo "IMAGE_NAME=${DOCKER_REGISTRY}/${DOCKER_REPO}/${DOCKER_IMAGE}-regr-py${VER_PYTHON}-pt${VER_TORCH}-cu${VER_CUDA}"
             echo "IMAGE_TAG=$(git ls-tree HEAD docker pyproject.toml | git hash-object --stdin | head -c 8)"
           } >> "$GITHUB_OUTPUT"
 

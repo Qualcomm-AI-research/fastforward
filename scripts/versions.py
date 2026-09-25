@@ -36,6 +36,7 @@ _FIELD_ALIASES = {
 
 def _cmd_matrix() -> None:
     docker_registry = os.environ["DOCKER_REGISTRY"]
+    docker_repo = os.environ["DOCKER_REPO"]
     docker_image = os.environ["DOCKER_IMAGE"]
     docker_tag = os.environ["IMAGE_TAG"]
 
@@ -44,7 +45,7 @@ def _cmd_matrix() -> None:
         python = entry["VER_PYTHON"]
         torch = entry["VER_TORCH"]
         cuda = entry["VER_CUDA"]
-        image_name = f"{docker_registry}/{docker_image}-py{python}-pt{torch}-cu{cuda}"
+        image_name = f"{docker_registry}/{docker_repo}/{docker_image}-py{python}-pt{torch}-cu{cuda}"
         matrix.append({**entry, "IMAGE_NAME": image_name, "IMAGE_TAG": docker_tag})
 
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:

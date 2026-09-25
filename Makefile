@@ -8,11 +8,12 @@ SHELL = /bin/bash
 ## Variables with their default value:
 
 DOCKER_REGISTRY ?=
+DOCKER_REPO ?=
 
 VER_PYTHON ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field python)
 VER_TORCH ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field torch)
 VER_CUDA ?= $(shell python3 $(CURDIR)/scripts/versions.py default --field cuda)
-IMAGE_NAME ?= $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/users/$(USER)/)fastforward-py$(VER_PYTHON)
+IMAGE_NAME ?= $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/$(DOCKER_REPO)/users/$(USER)/)fastforward-py$(VER_PYTHON)
 IMAGE_TAG ?= latest
 
 CONTAINER_NAME ?= fastforward_$(USER)
