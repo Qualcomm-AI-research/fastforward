@@ -401,8 +401,8 @@ def test_trace_node_op_invariants_hold_through_add_subgraph_inlining(
     # GIVEN a NESTED model where tensor ops live inside a submodule. add_subgraph
     # used to drop the `op` field of inlined nodes — so an aten op (call_function)
     # nested inside `block` would surface in the parent graph as Op.torch_module
-    # with an OpOverload as its `module`. That breaks OffloadEverything (it tries
-    # to .to(device) the OpOverload) and any code that assumes torch_module nodes
+    # with an OpOverload as its `module`. That breaks Offload (it tries to
+    # .to(device) the OpOverload) and any code that assumes torch_module nodes
     # wrap real nn.Modules. This test walks the inlined parent graph and pins
     # the op contract for every node.
     model = nested_with_tensor_ops.eval()

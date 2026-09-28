@@ -20,6 +20,7 @@ from typing import (
     TypeAlias,
 )
 
+import attrs
 import torch
 
 from torch.utils.data import DataLoader
@@ -28,10 +29,16 @@ from fastforward._orchestration.graph_module import (
     Const,
     GraphModule,
     InputRef,
+    NamedRef,
     Op,
     _BaseRef,
 )
-from fastforward._orchestration.location import DeviceLocation, Location
+from fastforward._orchestration.location import (
+    DeviceLocation,
+    Location,
+    LocationLike,
+    as_location,
+)
 
 # Distinguishes data produced under different execution conditions for the same node.
 # A node without a module (a free function or a method call) passes None.
@@ -39,6 +46,10 @@ StreamKey: TypeAlias = Callable[[torch.nn.Module | None], ContextManager[None]]
 
 # Ordered sequence of context managers that an instruction executes under.
 Contexts: TypeAlias = Sequence[Callable[[torch.nn.Module | None], ContextManager[None]]]
+
+# Selects a location for data by name.
+LocationPolicy: TypeAlias = Callable[[str], Location]
+LocationPolicyLike: TypeAlias = Callable[[str], LocationLike]
 
 
 def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
@@ -879,18 +890,19 @@ def _weight_offloading_pass(
 
 
 def _activation_offloading_pass(
-    instructions: Instructions, compute: Location, storage: Location
+    instructions: Instructions, compute: Location, storage: LocationPolicy
 ) -> Instructions:
     """Configure input and output locations on each `Call`.
 
     Before each invocation, moves input activations to `compute`. After each
-    invocation, moves the output activation to `storage`, one batch at a time.
+    invocation, moves the output activation to the location selected by
+    `storage`, one batch at a time.
     Input datasets remain in the register at their existing locations.
 
     Args:
         instructions: Sequence of instructions to analyze.
         compute: Where activations are moved to before execution.
-        storage: Where activations are moved to after execution.
+        storage: A callable returning the storage location for each activation name.
 
     Returns:
         Instructions with per-batch placement configured on calls.
@@ -899,8 +911,14 @@ def _activation_offloading_pass(
 
     for instruction in instructions:
         if isinstance(instruction, Call):
+            target = instruction.target.unwrap_ref()
+            assert isinstance(target, NamedRef)
             new_instructions.append(
-                dataclasses.replace(instruction, input_location=compute, output_location=storage)
+                dataclasses.replace(
+                    instruction,
+                    input_location=compute,
+                    output_location=storage(target.name),
+                )
             )
         else:
             new_instructions.append(instruction)
@@ -911,7 +929,8 @@ def _activation_offloading_pass(
 def _offloading_pass(
     instructions: Instructions,
     compute: Location,
-    storage: Location,
+    weights: Location,
+    activations: LocationPolicy,
     graph: GraphModule,
 ) -> Instructions:
     """Configure module placement and per-batch activation offloading.
@@ -922,17 +941,18 @@ def _offloading_pass(
     Args:
         instructions: Original instruction sequence.
         compute: Where data is moved to before execution.
-        storage: Where data is moved to after execution.
+        weights: Where idle module weights rest.
+        activations: A callable returning the storage location for each activation name.
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
     Returns:
         New instruction sequence with module and activation placement configured.
     """
-    instructions = _weight_offloading_pass(instructions, compute, storage, graph)
-    instructions = _activation_offloading_pass(instructions, compute, storage)
+    instructions = _weight_offloading_pass(instructions, compute, weights, graph)
+    instructions = _activation_offloading_pass(instructions, compute, activations)
 
     # Cancel out compute(M1) -> storage(M1) -> compute(M1) placements for any module M1.
-    instructions = _cancel_module_round_trips(instructions, compute, storage)
+    instructions = _cancel_module_round_trips(instructions, compute, weights)
     return instructions
 
 
@@ -984,27 +1004,78 @@ class OffloadingStrategy(abc.ABC):
         """
 
 
-@dataclasses.dataclass(frozen=True)
-class OffloadEverything(OffloadingStrategy):
-    """Offload all module weights and activations between a compute device and a storage device.
-
-    Moves every module's weights to `storage_device` when idle, and back to
-    `compute_device` just before execution. Activations are loaded and offloaded
-    one batch at a time.
+def _as_location_rule(policy: LocationLike | LocationPolicyLike) -> LocationPolicy:
+    """Convert a location or policy to a callable returning concrete locations.
 
     Args:
-        compute_device: Device where computation happens (e.g. `cuda`).
-        storage_device: Device where idle data is stored (e.g. `cpu`).
+        policy: A fixed location, or a callable selecting a location by name.
+
+    Returns:
+        A callable returning a `Location` for a given name.
+    """
+    if callable(policy):
+        return lambda name: as_location(policy(name))
+    location = as_location(policy)
+    return lambda _name: location
+
+
+@attrs.define(frozen=True)
+class Offload(OffloadingStrategy):
+    """Offload model weights and activations between computation steps.
+
+    `compute` specifies the device used for computation. `weights` and `activations`
+    specify where their respective tensors are stored between uses. Both accept a
+    `Location`, a device name or `torch.device`, or a directory path for disk storage.
+    Weights are restored to their original devices when execution finishes.
+
+    `activations` also accepts a location policy: a callable that takes an activation
+    name and returns its storage location. This allows you to be selective in which
+    activations you offload to, for example, disk or ram.
+
+    Example:
+        ```python
+        scratch = pathlib.Path("/scratch/activations")
+
+        def where(name: str) -> LocationLike:
+            # We calculate gradients at start but only need them later - store to disk.
+            return scratch if "grad" in name else "cpu"
+
+        ff.layerwise_optimize(
+            model,
+            data,
+            gptq,
+            sample_args=(data[0],),
+            offloading=Offload(compute="cuda:0", weights="cpu", activations=where),
+        )
+        ```
+
+    Args:
+        compute: Device where computation happens, e.g. `"cuda:0"`.
+        weights: Storage location for weights. Strings name devices; use a path object
+            such as `pathlib.Path` to specify a directory for disk storage.
+        activations: Storage location for activations, using the same forms as `weights`,
+            or a callable selecting a storage location by activation name.
+
+    Raises:
+        TypeError: If `compute` names something other than a device.
+        ValueError: If a string names no device at all.
     """
 
-    compute_device: torch.device
-    storage_device: torch.device = dataclasses.field(default_factory=lambda: torch.device("cpu"))
+    compute: DeviceLocation = attrs.field(
+        converter=as_location, validator=attrs.validators.instance_of(DeviceLocation)
+    )
+    weights: Location = attrs.field(
+        default=DeviceLocation(torch.device("cpu")), converter=as_location
+    )
+    activations: LocationPolicy = attrs.field(
+        default=_as_location_rule(DeviceLocation(torch.device("cpu"))),
+        converter=_as_location_rule,
+    )
 
     def create_instruction_pass(self, graph: GraphModule) -> InstructionPass:  # noqa: D102
-        compute = DeviceLocation(self.compute_device)
-        storage = DeviceLocation(self.storage_device)
-
         def _pass(instructions: Instructions) -> Instructions:
-            return _offloading_pass(instructions, compute, storage, graph)
+            return _offloading_pass(
+                instructions, self.compute, self.weights, self.activations, graph
+            )
 
         return _pass

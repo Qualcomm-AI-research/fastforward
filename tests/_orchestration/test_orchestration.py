@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # pylint: disable=missing-function-docstring
+import copy
+import dataclasses
 import functools
+
+from pathlib import Path
 
 import fastforward as ff
 import pytest
@@ -10,11 +14,14 @@ import torch
 
 from fastforward._orchestration import registry
 from fastforward._orchestration.graph_module import Region, Span
-from fastforward._orchestration.instruction_engine import ActivationBundle, OffloadEverything
+from fastforward._orchestration.instruction_engine import ActivationBundle
+from fastforward._orchestration.location import DiskLocation, LocationLike
 from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
+from fastforward.orchestration import Offload
 from packaging.version import Version
 from torch import nn
+from typing_extensions import override
 
 from ._models import KwargForward, TwoLinear
 from .conftest import make_flows, sgd_step
@@ -141,12 +148,104 @@ def test_layerwise_optimize_with_offloading_runs_execution_context(two_linear: T
         calibration,
         spec,
         sample_args=(calibration[0],),
-        offloading=OffloadEverything(compute_device=cpu, storage_device=cpu),
+        offloading=Offload(compute=cpu, weights=cpu),
     )
 
     # THEN only the targeted layer changed
     assert not torch.allclose(initial_w1, model.fc1.weight.data)
     assert torch.allclose(initial_w2, model.fc2.weight.data)
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class _CountingDiskLocation(DiskLocation):
+    """A disk location that counts the tensors it stores in files."""
+
+    stored_shapes: list[torch.Size] = dataclasses.field(default_factory=list)
+
+    @override
+    def receive(self, tensor: torch.Tensor) -> torch.Tensor:
+        self.stored_shapes.append(tensor.shape)
+        return super().receive(tensor)
+
+
+def test_file_backed_activations_match_memory_backed_results(
+    two_linear: TwoLinear, tmp_path: Path
+) -> None:
+    # GIVEN one model that keeps activations in memory and a copy that stores them in files
+    in_memory_model = two_linear.eval()
+    on_disk_model = copy.deepcopy(in_memory_model)
+    calibration_data = [torch.randn(2, 8) for _ in range(3)]
+    cpu = torch.device("cpu")
+    disk_location = _CountingDiskLocation(tmp_path)
+
+    def run(model: TwoLinear, activation_location: LocationLike) -> None:
+        spec = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc2]), flows=make_flows())
+        ff.layerwise_optimize(
+            model,
+            calibration_data,
+            spec,
+            sample_args=(calibration_data[0],),
+            offloading=Offload(compute=cpu, weights=cpu, activations=activation_location),
+        )
+
+    # WHEN we optimize both
+    run(in_memory_model, cpu)
+    run(on_disk_model, disk_location)
+
+    # THEN both layer outputs from every calibration batch were stored on disk
+    assert len(disk_location.stored_shapes) == 2 * len(calibration_data)
+
+    # THEN temporary activation files are cleaned up after execution
+    assert list(tmp_path.iterdir()) == []
+
+    # THEN file-based activation storage produces the same updated weights
+    assert torch.equal(on_disk_model.fc2.weight.data, in_memory_model.fc2.weight.data)
+
+
+def test_offloading_refuses_a_name_that_is_no_device() -> None:
+    # GIVEN a compute field that names no device
+    # WHEN we build the strategy
+    # THEN it is refused at once, before any model runs
+    with pytest.raises(ValueError, match="does not name a device"):
+        Offload(compute="gpu0")
+
+
+def test_offload_rejects_directory_as_compute_location(tmp_path: Path) -> None:
+    # GIVEN a compute field that names a directory
+    # WHEN we build the strategy
+    # THEN it is refused, because computation happens on a device
+    with pytest.raises(TypeError, match="'compute' must be"):
+        Offload(compute=tmp_path)
+
+
+def test_offloading_can_rest_weights_in_files(two_linear: TwoLinear, tmp_path: Path) -> None:
+    # GIVEN one model that rests its weights in memory and a copy that rests them in files
+    in_memory_model = two_linear.eval()
+    on_disk_model = copy.deepcopy(in_memory_model)
+    calibration_data = [torch.randn(2, 8) for _ in range(3)]
+    cpu = torch.device("cpu")
+
+    def run(model: TwoLinear, weight_location: LocationLike) -> None:
+        spec = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+        ff.layerwise_optimize(
+            model,
+            calibration_data,
+            spec,
+            sample_args=(calibration_data[0],),
+            offloading=Offload(compute=cpu, weights=weight_location),
+        )
+
+    # WHEN we optimize both
+    run(in_memory_model, cpu)
+    run(on_disk_model, tmp_path)
+
+    # THEN resting weights in files leaves the model weights unchanged
+    assert torch.equal(on_disk_model.fc1.weight.data, in_memory_model.fc1.weight.data)
+
+    # THEN the weights read from the files when the run ends, which holds the memory that
+    # the caller asked to save
+    assert on_disk_model.fc1.weight.is_shared()
+    assert list(tmp_path.iterdir()) != []
 
 
 def test_layerwise_optimize_calls_algorithm_once_per_target(two_linear: TwoLinear) -> None:

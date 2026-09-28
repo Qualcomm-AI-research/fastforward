@@ -27,7 +27,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.data_flow import InputActivations
-from fastforward._orchestration.instruction_engine import OffloadEverything
+from fastforward._orchestration.instruction_engine import Offload
 from fastforward._orchestration.registry import AlgorithmSpec, MPathSelector
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
@@ -235,7 +235,7 @@ def test_layerwise_optimize_with_adaround_runs_under_offloading() -> None:
             functools.partial(ff.algorithms.adaround, num_iterations=10),
             targets=ff.mpath.query(_TARGETS),
             sample_args=(calibration[0],),
-            offloading=OffloadEverything(compute_device=cpu, storage_device=cpu),
+            offloading=Offload(compute=cpu),
         )
 
     # THEN the targeted weights were replaced by their AdaRound result
@@ -330,7 +330,7 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
     adaround_targets = ff.mpath.query(_TARGETS)
     adaround_model = _quantized_llama(model_name, num_bits, granularity, symmetric)
     with torch.no_grad(), ff.strict_quantization(False):
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_model,
             calibration_set,
@@ -351,7 +351,7 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=ff.mpath.query(_TARGETS)),
             flows=[InputActivations("original"), InputActivations("original")],
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_sym_model,
             calibration_set,
@@ -371,7 +371,7 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=ff.mpath.query(_TARGETS)),
             flows=[InputActivations("quantized"), InputActivations("quantized")],
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_gptq_model,
             calibration_set,

@@ -15,6 +15,7 @@ from fastforward._orchestration.graph_module import (
     Const,
     GraphModule,
     InputRef,
+    NamedRef,
     NodeRef,
     Op,
     _BaseRef,
@@ -24,6 +25,7 @@ from fastforward._orchestration.instruction_engine import (
     ActivationDataset,
     ActivationRegister,
     BundleSpec,
+    Call,
     CallFunction,
     CallMethod,
     CallModule,
@@ -31,6 +33,7 @@ from fastforward._orchestration.instruction_engine import (
     InstructionPasses,
     LoadAttribute,
     MoveModule,
+    Offload,
     ReturnOutputs,
     RunDelegate,
     StoreValue,
@@ -649,7 +652,7 @@ def test_activation_offloading_pass_leaves_delegate_bundles_alone() -> None:
 
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(
-        base, DeviceLocation(torch.device("cuda:0")), DeviceLocation(torch.device("cpu"))
+        base, DeviceLocation(torch.device("cuda:0")), lambda _: DeviceLocation(torch.device("cpu"))
     )
 
     # THEN nothing is moved, because the algorithm chooses what it loads and when
@@ -664,7 +667,7 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
     storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
-    result = _activation_offloading_pass(base, compute, storage)
+    result = _activation_offloading_pass(base, compute, lambda _: storage)
 
     # THEN calls place batches themselves
     assert len(result) == len(base)
@@ -689,7 +692,7 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
-    result = _activation_offloading_pass(base, compute, storage)
+    result = _activation_offloading_pass(base, compute, lambda _: storage)
 
     # THEN every call, not only every module call, has inputs on compute and output on storage
     calls = [i for i in result if isinstance(i, (CallModule, CallFunction))]
@@ -698,6 +701,43 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     for instruction in calls:
         assert instruction.input_location == compute
         assert instruction.output_location == storage
+
+
+def test_activation_offloading_pass_rests_each_output_where_the_rule_names() -> None:
+    # GIVEN a two-linear graph and a rule that names a different place for each output
+    graph, _, _ = _two_linear_graph()
+    instructions = schedule(graph).instructions
+    compute_location = DeviceLocation(torch.device("cuda:0"))
+    first_location = DeviceLocation(torch.device("cpu"))
+    second_location = DeviceLocation(torch.device("meta"))
+
+    def activation_location(name: str) -> DeviceLocation:
+        return second_location if name == "l2" else first_location
+
+    # WHEN we apply the activation offloading pass with that rule
+    result = _activation_offloading_pass(instructions, compute_location, activation_location)
+
+    # THEN the output of each call rests where the rule named it, not in one shared place
+    for instruction in result:
+        if isinstance(instruction, CallModule):
+            target = instruction.target.unwrap_ref()
+            assert isinstance(target, NamedRef)
+            expected = second_location if target.name == "l2" else first_location
+            assert instruction.output_location == expected
+
+
+def test_offload_rests_weights_and_activations_on_the_cpu_by_default() -> None:
+    # GIVEN a two-linear graph and a strategy that only names where computation happens
+    graph, _, _ = _two_linear_graph()
+    base_instructions = schedule(graph).instructions
+    cpu_location = DeviceLocation(torch.device("cpu"))
+
+    # WHEN the strategy builds its pass
+    result = Offload(compute="cuda:0").create_instruction_pass(graph)(base_instructions)
+
+    # THEN idle weights and activations both wait on the CPU
+    assert any(isinstance(i, MoveModule) and i.location == cpu_location for i in result)
+    assert any(isinstance(i, Call) and i.output_location == cpu_location for i in result)
 
 
 def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
@@ -1066,7 +1106,7 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
         context=_noop_context,
     )
     instructions = _activation_offloading_pass(
-        [call], RecordingLocation("load"), RecordingLocation("store")
+        [call], RecordingLocation("load"), lambda _name: RecordingLocation("store")
     )
 
     # WHEN executing the call

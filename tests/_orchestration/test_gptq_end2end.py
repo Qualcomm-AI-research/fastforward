@@ -19,7 +19,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.data_flow import InputActivations
-from fastforward._orchestration.instruction_engine import OffloadEverything
+from fastforward._orchestration.instruction_engine import Offload
 from fastforward._orchestration.registry import AlgorithmSpec, MPathSelector
 
 logging.basicConfig(
@@ -197,7 +197,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
         gptq_fn = functools.partial(
             ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_model,
             calibration_set,
@@ -232,7 +232,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=gptq_q_targets),
             flows=[InputActivations("quantized")],
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_q_model,
             calibration_set,
@@ -336,7 +336,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
         gptq_fn = functools.partial(
             ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_model,
             calibration_set,
@@ -371,7 +371,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
             selector=MPathSelector(query=gptq_q_targets),
             flows=[InputActivations("quantized")],
         )
-        offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
+        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_q_model,
             calibration_set,

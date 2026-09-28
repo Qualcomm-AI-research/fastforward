@@ -23,6 +23,7 @@ from fastforward._orchestration.instruction_engine import (
     OffloadingStrategy,
     lifetime_management_pass,
 )
+from fastforward._orchestration.instruction_engine import Offload as Offload
 from fastforward._orchestration.registry import Algorithm as Algorithm
 from fastforward._orchestration.registry import AlgorithmSpec as AlgorithmSpec
 from fastforward._orchestration.registry import Selector as Selector
