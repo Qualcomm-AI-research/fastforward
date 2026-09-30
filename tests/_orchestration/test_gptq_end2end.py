@@ -195,7 +195,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
     )
     with torch.inference_mode(), ff.strict_quantization(False):
         gptq_fn = functools.partial(
-            ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
+            ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
         ff.layerwise_optimize(
@@ -225,7 +225,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
     )
     with torch.inference_mode(), ff.strict_quantization(False):
         gptq_fn = functools.partial(
-            ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
+            ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
         spec = AlgorithmSpec(
             fn=gptq_fn,
@@ -334,7 +334,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
     )
     with torch.inference_mode(), ff.strict_quantization(False):
         gptq_fn = functools.partial(
-            ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
+            ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
         offloading = OffloadEverything(compute_device=device, storage_device=torch.device("cpu"))
         ff.layerwise_optimize(
@@ -364,7 +364,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
     )
     with torch.inference_mode(), ff.strict_quantization(False):
         gptq_fn = functools.partial(
-            ff.quantization.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
+            ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
         spec = AlgorithmSpec(
             fn=gptq_fn,

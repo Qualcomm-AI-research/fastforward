@@ -4,3 +4,4 @@
 """Post-training quantization algorithms that optimize one layer at a time."""
 
 from .adaround import adaround as adaround
+from .gptq import gptq as gptq

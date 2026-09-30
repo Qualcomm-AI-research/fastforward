@@ -7,7 +7,7 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.quantization.gptq import (
+from fastforward.algorithms.gptq import (
     calculate_hessian,
     column_quantizer,
     gptq,

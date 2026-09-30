@@ -23,7 +23,7 @@ from fastforward import mpath
 from fastforward._orchestration.data_flow import DataFlow, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
-from fastforward.quantization.gptq import gptq
+from fastforward.algorithms.gptq import gptq
 
 Algorithm: TypeAlias = Callable[..., Any]
 
