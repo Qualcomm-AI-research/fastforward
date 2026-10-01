@@ -83,3 +83,10 @@ perf(orchestration): reduce graph traversal allocations
 ci(docker): enforce weekly rebuilds
 docs(export): fix typo in pipeline docstring
 ```
+
+# Self-Review
+
+Before requesting a review, perform a self-review of your changes using an AI coding
+agent, for which we recommend if possible a frontier model with code-review effort at
+a `high` level. This catches style violations, logic errors, and oversights
+early — reducing back-and-forth for trivial fixes.
