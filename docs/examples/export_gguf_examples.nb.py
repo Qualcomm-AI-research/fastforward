@@ -279,7 +279,7 @@ def optimize_with_gptq(
 ) -> None:
     """Apply the tutorial's Q4_0-compatible GPTQ configuration."""
     targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
-    gptq_fn = functools.partial(ff.quantization.gptq, perc_damp=0.05)
+    gptq_fn = functools.partial(ff.algorithms.gptq, perc_damp=0.05)
     with torch.no_grad(), ff.strict_quantization(False):
         ff.layerwise_optimize(
             model,
