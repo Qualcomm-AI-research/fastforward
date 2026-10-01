@@ -328,17 +328,16 @@ class StoreValue(Instruction):
 
     target: _BaseRef
     value: Any
-    contexts: Contexts
+    context: StreamKey
 
     def __repr__(self) -> str:
         return (
             f"StoreValue(target={self.target!r}, value={_fmt_value(self.value)}, "
-            f"contexts={_fmt_contexts(self.contexts)})"
+            f"context={_fmt_callable(self.context)})"
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        for context in self.contexts:
-            register.store(self.target, context, self.value)
+        register.store(self.target, self.context, self.value)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.target])
@@ -382,13 +381,13 @@ class LoadAttribute(Instruction):
 class Call(Instruction):
     """Execute one graph node on batched data from the register.
 
-    Handles the per-context loop, bundle gathering, and result storage.
+    Handles bundle gathering and result storage.
 
     Args:
         args: Positional input refs in declaration order.
         kwargs: Keyword input refs keyed by parameter name.
         target: Ref the outputs are stored under.
-        contexts: Execution conditions to run under, one pass each.
+        context: Execution context to run under.
         caller: Callable invoked for each batch.
         cache: Whether the outputs may be reused by a later reader.
         input_location: Where to place each batch's arguments before invocation.
@@ -398,7 +397,7 @@ class Call(Instruction):
     args: Sequence[_BaseRef]
     kwargs: dict[str, _BaseRef]
     target: _BaseRef
-    contexts: Contexts
+    context: StreamKey
     caller: Callable[..., Any]
     cache: bool = dataclasses.field(default=False, kw_only=True)
     input_location: Location | None = dataclasses.field(default=None, kw_only=True)
@@ -408,7 +407,7 @@ class Call(Instruction):
         return (
             f"{type(self).__name__}(caller={_fmt_module(self.caller)}, args={list(self.args)!r}, "
             + f"kwargs={dict(self.kwargs)!r}, target={self.target!r}, "
-            + f"contexts={_fmt_contexts(self.contexts)}, cache={self.cache}, "
+            + f"context={_fmt_callable(self.context)}, cache={self.cache}, "
             + f"input_location={self.input_location!r}, output_location={self.output_location!r})"
         )
 
@@ -425,18 +424,17 @@ class Call(Instruction):
             del args, kwargs
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        for context in self.contexts:
-            bundle = ActivationBundle.gather(register, context, self.args, self.kwargs)
-            outputs = []
-            module = self.caller if isinstance(self, CallModule) else None
-            with context(module):
-                for args, kwargs in self._batches(bundle):
-                    output = self.caller(*args, **kwargs)
-                    if self.output_location is not None:
-                        output = self.output_location.place(output)
-                    outputs.append(output)
-                    del args, kwargs, output
-            register.store(self.target, context, ActivationDataset(outputs))
+        bundle = ActivationBundle.gather(register, self.context, self.args, self.kwargs)
+        outputs = []
+        module = self.caller if isinstance(self, CallModule) else None
+        with self.context(module):
+            for args, kwargs in self._batches(bundle):
+                output = self.caller(*args, **kwargs)
+                if self.output_location is not None:
+                    output = self.output_location.place(output)
+                outputs.append(output)
+                del args, kwargs, output
+        register.store(self.target, self.context, ActivationDataset(outputs))
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -645,8 +643,8 @@ class InstructionProgram:
 
         for instruction in self.instructions:
             match instruction:
-                case Call(contexts=contexts) | StoreValue(contexts=contexts):
-                    all_contexts.update(contexts)
+                case Call(context=context) | StoreValue(context=context):
+                    all_contexts.add(context)
                 case RunDelegate(bundles=bundles, targets=targets):
                     all_contexts.update(spec.context for spec in bundles)
                     all_contexts.update(context for _, context in targets)

@@ -126,7 +126,7 @@ def _calls(program: InstructionProgram, generator: FlowGenerator | None = None) 
         instruction
         for instruction in program.instructions
         if isinstance(instruction, CallModule)
-        and (generator is None or generator.context in instruction.contexts)
+        and (generator is None or generator.context == instruction.context)
     ]
 
 
@@ -139,8 +139,8 @@ def _stream_sequence(program: InstructionProgram) -> list[object]:
     """The streams of `program`, in the order their first call appears."""
     sequence: list[object] = []
     for call in _calls(program):
-        if call.contexts[0] not in sequence:
-            sequence.append(call.contexts[0])
+        if call.context not in sequence:
+            sequence.append(call.context)
     return sequence
 
 
@@ -149,8 +149,8 @@ def _assert_reads_produced(program: InstructionProgram) -> None:
     produced: set[tuple[_BaseRef, object]] = set()
     for instruction in program.instructions:
         match instruction:
-            case CallModule(target=target, contexts=contexts):
-                produced.update((target, ctx) for ctx in contexts)
+            case CallModule(target=target, context=context):
+                produced.add((target, context))
             case RunDelegate(bundles=bundles):
                 missing = [
                     (ref, bundle.context)
@@ -367,7 +367,7 @@ def test_input_and_output_same_stream_merges_into_single_pass(two_linear: TwoLin
     }
 
     # AND all are under one context (no duplication)
-    assert {call.contexts[0] for call in calls} == {ORIGINAL.context}
+    assert {call.context for call in calls} == {ORIGINAL.context}
 
     # AND the intervention fires after the full stream
     opt_index = next(i for i, x in enumerate(program.instructions) if isinstance(x, RunDelegate))
@@ -478,7 +478,7 @@ def test_pinned_flow_calls_a_node_before_the_intervention_on_it(two_linear: TwoL
     pinned_calls = [
         (i, instruction)
         for i, instruction in enumerate(instructions)
-        if isinstance(instruction, CallModule) and ORIGINAL.context in instruction.contexts
+        if isinstance(instruction, CallModule) and ORIGINAL.context == instruction.context
     ]
     assert pinned_calls
     for index, call in pinned_calls:

@@ -154,7 +154,7 @@ def test_call_module_with_no_inputs_calls_module_once() -> None:
     def produce() -> torch.Tensor:
         return sentinel
 
-    instr = CallModule(caller=produce, args=[], kwargs={}, target=target, contexts=[context])  # type: ignore[arg-type]
+    instr = CallModule(caller=produce, args=[], kwargs={}, target=target, context=context)  # type: ignore[arg-type]
     register = ActivationRegister()
 
     # WHEN the instruction executes
@@ -184,7 +184,7 @@ def test_call_module_single_tensor_arg() -> None:
         args=[input_ref],
         kwargs={},
         target=target_ref,
-        contexts=[context],
+        context=context,
     )
 
     # WHEN we execute the instruction
@@ -213,17 +213,17 @@ def test_call_function_enters_its_own_context_across_ambient_no_grad() -> None:
     register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
 
     call_fc1 = CallModule(
-        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, context=enable_grad_context
     )
     call_relu = CallFunction(
         caller=torch.relu,
         args=[fc1_out],
         kwargs={},
         target=relu_out,
-        contexts=[enable_grad_context],
+        context=enable_grad_context,
     )
     call_fc2 = CallModule(
-        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, context=enable_grad_context
     )
 
     # WHEN we run the chain inside a block that turns gradients off
@@ -259,17 +259,17 @@ def test_call_method_enters_its_own_context_across_ambient_no_grad() -> None:
     register.store(input_ref, enable_grad_context, ActivationDataset([torch.randn(2, 4)]))
 
     call_fc1 = CallModule(
-        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, contexts=[enable_grad_context]
+        caller=fc1, args=[input_ref], kwargs={}, target=fc1_out, context=enable_grad_context
     )
     call_relu = CallMethod(
         caller=torch.Tensor.relu,
         args=[fc1_out],
         kwargs={},
         target=relu_out,
-        contexts=[enable_grad_context],
+        context=enable_grad_context,
     )
     call_fc2 = CallModule(
-        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, contexts=[enable_grad_context]
+        caller=fc2, args=[relu_out], kwargs={}, target=fc2_out, context=enable_grad_context
     )
 
     # WHEN we run the chain inside a block that turns gradients off
@@ -715,7 +715,7 @@ def test_cancel_pass_eliminates_redundant_moves_after_nn_module() -> None:
             args=(),
             kwargs={},
             target=linear_out,
-            contexts=[context],
+            context=context,
         ),
         MoveModule(location=storage, module=linear),
         MoveModule(location=compute, module=linear),
@@ -1018,7 +1018,7 @@ def test_activation_dataset_from_value_passthrough_when_already_dataset() -> Non
 def test_store_value_uses_reports_its_target() -> None:
     # GIVEN a StoreValue writing under a target ref
     target = NodeRef(id=uuid.uuid4(), name="t")
-    instr = StoreValue(target=target, value=123, contexts=[_noop_context])
+    instr = StoreValue(target=target, value=123, context=_noop_context)
 
     # WHEN we enumerate the refs it uses
     # THEN the target is reported (offloading liveness depends on this)
@@ -1063,7 +1063,7 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
         args=[input_ref],
         kwargs={},
         target=output_ref,
-        contexts=[_noop_context],
+        context=_noop_context,
     )
     instructions = _activation_offloading_pass(
         [call], RecordingLocation("load"), RecordingLocation("store")

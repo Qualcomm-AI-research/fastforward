@@ -171,7 +171,7 @@ def ref_load_instructions(ref: _BaseRef, context: StreamKey) -> list[StoreValue 
         case NodeRef() | InputRef():
             return []
         case Const():
-            return [StoreValue(target=ref, value=ref, contexts=[context])]
+            return [StoreValue(target=ref, value=ref, context=context)]
         case AttributeRef(reference=attr_ref, attribute=attr):
             base_instructions = ref_load_instructions(attr_ref, context)
             return [*base_instructions, LoadAttribute(source=attr_ref, target=ref, attribute=attr)]
@@ -376,7 +376,7 @@ class Scheduler:
                 args=list(node.args),
                 kwargs=dict(node.kwargs),
                 target=item.ref,
-                contexts=[item.generator.context],
+                context=item.generator.context,
                 cache=cache,
             )
             instruction: Instruction
