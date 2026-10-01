@@ -4,6 +4,7 @@
 
 import abc
 import dataclasses
+import functools
 import itertools
 
 from collections import defaultdict
@@ -49,6 +50,8 @@ def _fmt_module(module: torch.nn.Module | Callable[..., Any]) -> str:
 
 def _fmt_callable(fn: Callable[..., Any]) -> str:
     """Format a callable by name, without its memory address."""
+    while isinstance(fn, functools.partial):
+        fn = fn.func
     return getattr(fn, "__name__", type(fn).__name__)
 
 
@@ -481,39 +484,70 @@ class BundleSpec:
 
 
 @dataclasses.dataclass(frozen=True)
-class OptimizeModule(Instruction):
-    """Optimize a module in-place using batched data from the register.
+class RunDelegate(Instruction):
+    """Run a function once on a set of ordered data flows and optionally store the result.
 
-    Invokes `fn(self.module, *bundles)`, one `ActivationBundle` per declared data
-    flow, in declaration order. Each bundle carries the data that its flow asked
-    for, gathered under the context that flow named.
+    The function `fn` can be any callable that expects an optional module as first argument
+    and then a sequence of data flows (in order) that are converted by the scheduler
+    to `bundles`. This instruction can be used to optimize the module with an algorithm,
+    calculate statistics, etc.
+
+    If you want to store data to the register, make sure the function outputs
+    exactly as much items as there are `targets`.
+
+    Args:
+        fn: The function to call.
+        bundles: The bundles to gather for `fn`.
+        targets: The ref and context that each returned dataset is stored under.
+        module: The module whose weights must be on the compute location during the
+            call, if any.
     """
 
-    module: torch.nn.Module
-    fn: Callable[..., None]
+    fn: Callable[..., Sequence[ActivationDataset] | None]
     bundles: Sequence[BundleSpec]
+    targets: Sequence[tuple[_BaseRef, StreamKey]] = ()
+    module: torch.nn.Module | None = None
 
     def __repr__(self) -> str:
         args = [ref for bundle in self.bundles for ref in bundle.args]
         kwargs = {key: ref for bundle in self.bundles for key, ref in bundle.kwargs.items()}
         contexts = [bundle.context for bundle in self.bundles]
+        module = None if self.module is None else _fmt_module(self.module)
+        targets = [f"{ref!r}@{_fmt_callable(context)}" for ref, context in self.targets]
         return (
-            f"OptimizeModule(module={_fmt_module(self.module)}, args={args!r}, "
-            f"kwargs={kwargs!r}, fn={_fmt_callable(self.fn)}, "
-            f"contexts={_fmt_contexts(contexts)})"
+            f"CallDelegate(fn={_fmt_callable(self.fn)}, module={module}, args={args!r}, "
+            f"kwargs={kwargs!r}, contexts={_fmt_contexts(contexts)}, "
+            f"targets=[{', '.join(targets)}])"
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        bundles = [
+        fn_inputs: list[torch.nn.Module | ActivationBundle] = [
             ActivationBundle.gather(register, spec.context, spec.args, spec.kwargs)
             for spec in self.bundles
         ]
-        self.fn(self.module, *bundles)
+        if self.module is not None:
+            fn_inputs = [self.module, *fn_inputs]
+
+        results = self.fn(*fn_inputs)
+        datasets = () if results is None else results
+        if len(datasets) != len(self.targets):
+            msg = (
+                f"Delegate {_fmt_callable(self.fn)} returned {len(datasets)} datasets for "
+                f"{len(self.targets)} targets."
+            )
+            raise ValueError(msg)
+
+        for (ref, context), dataset in zip(self.targets, datasets):
+            register.store(ref, context, dataset)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         for spec in self.bundles:
             yield from spec.args
             yield from spec.kwargs.values()
+
+    def produces(self) -> Iterator[_BaseRef]:  # noqa: D102
+        for ref, _ in self.targets:
+            yield ref
 
 
 @dataclasses.dataclass(frozen=True)
@@ -613,8 +647,9 @@ class InstructionProgram:
             match instruction:
                 case Call(contexts=contexts) | StoreValue(contexts=contexts):
                     all_contexts.update(contexts)
-                case OptimizeModule(bundles=bundles):
+                case RunDelegate(bundles=bundles, targets=targets):
                     all_contexts.update(spec.context for spec in bundles)
+                    all_contexts.update(context for _, context in targets)
                 case _:
                     pass
 
@@ -832,7 +867,7 @@ def _weight_offloading_pass(
 
     for instruction in instructions:
         match instruction:
-            case CallModule(caller=module) | OptimizeModule(module=module) if isinstance(
+            case CallModule(caller=module) | RunDelegate(module=module) if isinstance(
                 module, torch.nn.Module
             ):
                 new_instructions.append(MoveModule(location=compute, module=module))

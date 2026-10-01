@@ -14,12 +14,12 @@ one. The scheduler emits:
 
     CallModule(fc1, stream=pinned)                # fc1 is the next to change, so
                                                   # take it now
-    OptimizeModule(fc1, streams=[pinned, live])   # fc1 reads x: no call
+    CallDelegate(fc1, streams=[pinned, live])     # fc1 reads x: no call
     CallModule(act, stream=pinned)                # nothing optimizes act, so it
                                                   # can wait
     CallModule(fc1, stream=live)                  # fc1 changed, so the inputs of
     CallModule(act, stream=live)                  # fc2 are stale
-    OptimizeModule(fc2, streams=[pinned, live])
+    CallDelegate(fc2, streams=[pinned, live])
 
 The pinned pair runs on the weights from before the interventions, so one pair
 serves both specs. The live pair reads the newest weights, so it runs again once
@@ -66,8 +66,8 @@ from fastforward._orchestration.instruction_engine import (
     InstructionProgram,
     Instructions,
     LoadAttribute,
-    OptimizeModule,
     ReturnOutputs,
+    RunDelegate,
     StoreValue,
     StreamKey,
 )
@@ -216,7 +216,7 @@ class OptimizeIntervention(_Intervention):
             )
 
         scheduler.instructions.append(
-            OptimizeModule(module=self.module, fn=self.spec.fn, bundles=tuple(bundles))
+            RunDelegate(fn=self.spec.fn, bundles=tuple(bundles), module=self.module)
         )
 
         # The weights of this region are now different from the ones every value
@@ -521,7 +521,7 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     """Compile `graph` and its `specs` into an `InstructionProgram`.
 
     With no `specs`, the program is a plain forward pass. With `specs`, it holds the
-    `CallModule`s each declared `DataFlow` needs and the `OptimizeModule`s that
+    `CallModule`s each declared `DataFlow` needs and the `CallDelegate`s that
     consume them, in an order that honours `order` and the mutations the
     interventions perform.
 

@@ -35,9 +35,10 @@ from fastforward._orchestration.instruction_engine import (
     InstructionEngine,
     InstructionProgram,
     LoadAttribute,
-    OptimizeModule,
     ReturnOutputs,
+    RunDelegate,
     StoreValue,
+    _fmt_callable,
     lifetime_management_pass,
 )
 from fastforward._orchestration.scheduler import (
@@ -74,7 +75,7 @@ def _spec(region: torch.nn.Module, *flows: DataFlow) -> SubgraphSpec:
 def _named_optimize(name: str) -> Callable[..., None]:
     """Build a no-op intervention that names its own region.
 
-    `OptimizeModule` prints the class of its module and the name of its function,
+    `CallDelegate` prints the class of its module and the name of its function,
     never the region. Without a distinct name, the interventions of `q_proj`,
     `k_proj` and `v_proj` all print the same text, and a snapshot could not tell
     them apart.
@@ -113,8 +114,8 @@ def _region_name(instruction: object) -> str:
     match instruction:
         case CallModule():
             return repr(instruction.target)
-        case OptimizeModule():
-            return instruction.fn.__name__
+        case RunDelegate():
+            return _fmt_callable(instruction.fn)
         case _:
             return type(instruction).__name__
 
@@ -129,9 +130,9 @@ def _calls(program: InstructionProgram, generator: FlowGenerator | None = None) 
     ]
 
 
-def _optimizes(program: InstructionProgram) -> list[OptimizeModule]:
+def _optimizes(program: InstructionProgram) -> list[RunDelegate]:
     """The interventions of `program`, in the order they run."""
-    return [i for i in program.instructions if isinstance(i, OptimizeModule)]
+    return [i for i in program.instructions if isinstance(i, RunDelegate)]
 
 
 def _stream_sequence(program: InstructionProgram) -> list[object]:
@@ -144,13 +145,13 @@ def _stream_sequence(program: InstructionProgram) -> list[object]:
 
 
 def _assert_reads_produced(program: InstructionProgram) -> None:
-    """Assert every NodeRef an OptimizeModule reads was produced by a prior CallModule."""
+    """Assert every NodeRef a CallDelegate reads was produced by a prior CallModule."""
     produced: set[tuple[_BaseRef, object]] = set()
     for instruction in program.instructions:
         match instruction:
             case CallModule(target=target, contexts=contexts):
                 produced.update((target, ctx) for ctx in contexts)
-            case OptimizeModule(bundles=bundles):
+            case RunDelegate(bundles=bundles):
                 missing = [
                     (ref, bundle.context)
                     for bundle in bundles
@@ -346,7 +347,7 @@ def test_placement_does_not_depend_on_cache(two_layer_model: TwoLayerModel) -> N
     # already done may be reused; the generator alone decides where a call goes.
     assert cached == uncached
     # AND both hold work, so two empty programs cannot pass the comparison.
-    assert sum(1 for kind, _ in cached if kind == "OptimizeModule") == 12
+    assert sum(1 for kind, _ in cached if kind == "RunDelegate") == 12
 
 
 def test_input_and_output_same_stream_merges_into_single_pass(two_linear: TwoLinear) -> None:
@@ -369,7 +370,7 @@ def test_input_and_output_same_stream_merges_into_single_pass(two_linear: TwoLin
     assert {call.contexts[0] for call in calls} == {ORIGINAL.context}
 
     # AND the intervention fires after the full stream
-    opt_index = next(i for i, x in enumerate(program.instructions) if isinstance(x, OptimizeModule))
+    opt_index = next(i for i, x in enumerate(program.instructions) if isinstance(x, RunDelegate))
     last_call = max(i for i, x in enumerate(program.instructions) if isinstance(x, CallModule))
     assert opt_index > last_call
 
@@ -472,7 +473,7 @@ def test_pinned_flow_calls_a_node_before_the_intervention_on_it(two_linear: TwoL
     optimize_at: dict[_BaseRef, int] = {
         graph.node_ref(instruction.module): i
         for i, instruction in enumerate(instructions)
-        if isinstance(instruction, OptimizeModule)
+        if isinstance(instruction, RunDelegate) and instruction.module is not None
     }
     pinned_calls = [
         (i, instruction)
@@ -511,7 +512,7 @@ def test_live_flow_calls_a_node_after_the_intervention_on_it(
     optimize_fc1 = next(
         i
         for i, instruction in enumerate(instructions)
-        if isinstance(instruction, OptimizeModule) and instruction.module is two_linear.fc1
+        if isinstance(instruction, RunDelegate) and instruction.module is two_linear.fc1
     )
     fc1_ref = graph.node_ref(two_linear.fc1)
     fc1_calls = [

@@ -31,8 +31,8 @@ from fastforward._orchestration.instruction_engine import (
     InstructionPasses,
     LoadAttribute,
     MoveModule,
-    OptimizeModule,
     ReturnOutputs,
+    RunDelegate,
     StoreValue,
     _activation_offloading_pass,
     _cancel_module_round_trips,
@@ -635,12 +635,12 @@ def test_weight_offloading_pass_offloads_all_and_wraps_each_call() -> None:
     assert {i.module for i in post_restore} == {m1, m2}
 
 
-def test_activation_offloading_pass_leaves_optimize_bundles_alone() -> None:
+def test_activation_offloading_pass_leaves_delegate_bundles_alone() -> None:
     # GIVEN a stream that optimizes a module from two cached activations
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
     base = (
-        OptimizeModule(
+        RunDelegate(
             module=torch.nn.Linear(4, 4),
             fn=lambda *_a, **_k: None,
             bundles=(BundleSpec(context=_noop_context, args=[ref_a], kwargs={"b": ref_b}),),
@@ -836,7 +836,7 @@ def test_activation_bundle_empty_inputs_has_zero_length() -> None:
     assert list(bundle) == []
 
 
-def test_optimize_module_passes_kwargs_to_delegate() -> None:
+def test_call_delegate_passes_kwargs_to_delegate() -> None:
     # GIVEN a register holding one positional and two keyword activations under one context
     context = _noop_context
     ref_hidden = NodeRef(id=uuid.uuid4(), name="hidden")
@@ -853,12 +853,11 @@ def test_optimize_module_passes_kwargs_to_delegate() -> None:
 
     seen: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
 
-    def delegate(_module: torch.nn.Module, bundle: ActivationBundle) -> None:
+    def delegate(bundle: ActivationBundle) -> None:
         seen.extend(list(bundle))
 
     kwargs = {"attention_mask": ref_mask, "position_embeddings": ref_pos}
-    instr = OptimizeModule(
-        module=torch.nn.Identity(),
+    instr = RunDelegate(
         fn=delegate,
         bundles=(BundleSpec(context=context, args=[ref_hidden], kwargs=kwargs),),
     )
@@ -877,15 +876,14 @@ def test_optimize_module_passes_kwargs_to_delegate() -> None:
     assert torch.equal(kwargs1["position_embeddings"], torch.tensor([0.2]))
 
 
-def test_optimize_module_uses_yields_kwarg_refs() -> None:
-    # GIVEN an OptimizeModule with both positional and keyword refs
+def test_call_delegate_uses_yields_kwarg_refs() -> None:
+    # GIVEN a CallDelegate with both positional and keyword refs
     ref_a = NodeRef(id=uuid.uuid4(), name="a")
     ref_b = NodeRef(id=uuid.uuid4(), name="b")
     ref_c = NodeRef(id=uuid.uuid4(), name="c")
     context = _noop_context
     kwargs = {"b": ref_b, "c": ref_c}
-    instr = OptimizeModule(
-        module=torch.nn.Identity(),
+    instr = RunDelegate(
         fn=lambda *_a, **_k: None,
         bundles=(BundleSpec(context=context, args=[ref_a], kwargs=kwargs),),
     )
@@ -899,7 +897,7 @@ def test_optimize_module_uses_yields_kwarg_refs() -> None:
     assert ref_c in used
 
 
-def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
+def test_call_delegate_receives_one_bundle_per_context() -> None:
     # GIVEN two contexts and one ref produced under each
     context_a = _noop_context
     context_b = _noop_context_alt
@@ -910,13 +908,10 @@ def test_optimize_module_delegate_receives_one_bundle_per_context() -> None:
 
     received: list[ActivationBundle] = []
 
-    def delegate(
-        _module: torch.nn.Module, bundle_a: ActivationBundle, bundle_b: ActivationBundle
-    ) -> None:
+    def delegate(bundle_a: ActivationBundle, bundle_b: ActivationBundle) -> None:
         received.extend([bundle_a, bundle_b])
 
-    instr = OptimizeModule(
-        module=torch.nn.Identity(),
+    instr = RunDelegate(
         fn=delegate,
         bundles=(
             BundleSpec(context=context_a, args=[ref_x]),
@@ -1082,3 +1077,49 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
     outputs = register.load(output_ref, _noop_context)
     torch.testing.assert_close(outputs.batches, [torch.tensor(1.0), torch.tensor(4.0)])
     assert register.load(input_ref, _noop_context) is inputs
+
+
+def test_call_delegate_stores_one_returned_dataset_per_target() -> None:
+    # GIVEN a delegate that returns one dataset for each of two targets
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    ref_y = NodeRef(id=uuid.uuid4(), name="y")
+    ref_z = NodeRef(id=uuid.uuid4(), name="z")
+    register = ActivationRegister()
+    register.store(ref_x, _noop_context, ActivationDataset([1, 2]))
+
+    def delegate(bundle: ActivationBundle) -> list[ActivationDataset]:
+        values = [args[0] for args, _ in bundle]
+        return [
+            ActivationDataset([v * 10 for v in values]),
+            ActivationDataset([v + 1 for v in values]),
+        ]
+
+    instr = RunDelegate(
+        fn=delegate,
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        targets=((ref_y, _noop_context), (ref_z, _noop_context_alt)),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN each dataset is stored under its own ref and context
+    assert register.load(ref_y, _noop_context).batches == [10, 20]
+    assert register.load(ref_z, _noop_context_alt).batches == [2, 3]
+    assert list(instr.produces()) == [ref_y, ref_z]
+
+
+def test_call_delegate_rejects_a_wrong_number_of_datasets() -> None:
+    # GIVEN a delegate that returns nothing for one declared target
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    register = ActivationRegister()
+    register.store(ref_x, _noop_context, ActivationDataset([1]))
+    instr = RunDelegate(
+        fn=lambda _bundle: None,
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        targets=((NodeRef(id=uuid.uuid4(), name="y"), _noop_context),),
+    )
+
+    # WHEN / THEN the instruction executes and rejects the result
+    with pytest.raises(ValueError, match="returned 0 datasets for 1 targets"):
+        instr.execute(register)
