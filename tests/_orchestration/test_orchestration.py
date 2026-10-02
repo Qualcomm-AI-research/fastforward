@@ -242,10 +242,9 @@ def test_offloading_can_rest_weights_in_files(two_linear: TwoLinear, tmp_path: P
     # THEN resting weights in files leaves the model weights unchanged
     assert torch.equal(on_disk_model.fc1.weight.data, in_memory_model.fc1.weight.data)
 
-    # THEN the weights read from the files when the run ends, which holds the memory that
-    # the caller asked to save
-    assert on_disk_model.fc1.weight.is_shared()
-    assert list(tmp_path.iterdir()) != []
+    # THEN the model is restored to ordinary device storage and temporary files are removed
+    assert not on_disk_model.fc1.weight.is_shared()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_layerwise_optimize_calls_algorithm_once_per_target(two_linear: TwoLinear) -> None:

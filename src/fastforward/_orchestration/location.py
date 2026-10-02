@@ -64,7 +64,14 @@ class DeviceLocation(Location):
     device: torch.device
 
     def receive(self, tensor: torch.Tensor) -> torch.Tensor:  # noqa: D102
-        return tensor.to(device=self.device)
+        received = tensor.to(device=self.device)
+        if received.device.type == "cpu":
+            data = received.raw_data if isinstance(received, QuantizedTensor) else received
+            # File-based tensors also have "cpu" type, but will have a `filename`.
+            # Copy these into CPU mem to remove the mmap dependency.
+            if data.untyped_storage().filename is not None:
+                received = received.clone()
+        return received
 
     def __repr__(self) -> str:
         return f"DeviceLocation({str(self.device)!r})"

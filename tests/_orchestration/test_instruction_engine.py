@@ -5,6 +5,7 @@ import dataclasses
 import uuid
 
 from contextlib import nullcontext
+from pathlib import Path
 from typing import Any, ContextManager
 
 import pytest
@@ -42,7 +43,7 @@ from fastforward._orchestration.instruction_engine import (
     _weight_offloading_pass,
     lifetime_management_pass,
 )
-from fastforward._orchestration.location import DeviceLocation, Location
+from fastforward._orchestration.location import DeviceLocation, DiskLocation, Location
 from fastforward._orchestration.scheduler import ref_load_instructions, schedule
 
 from ._models import Add, AddConstant, ReturnTuple
@@ -570,6 +571,47 @@ def test_move_parameters_with_dict_ignores_unmapped_parameters() -> None:
     # THEN weight is moved but bias is untouched (still on CPU in this case)
     assert module.weight.device == torch.device("cpu")
     assert module.bias.device == torch.device("cpu")
+
+
+@pytest.mark.parametrize("per_tensor", [False, True])
+def test_move_module_to_cpu_releases_parameter_and_buffer_files(
+    tmp_path: Path, per_tensor: bool
+) -> None:
+    # GIVEN a module with parameters and a buffer offloaded to disk
+    module = torch.nn.Linear(4, 2)
+    module.register_buffer("running", torch.randn(2))
+    expected = {name: tensor.clone() for name, tensor in module.state_dict().items()}
+    register = ActivationRegister()
+    MoveModule(location=DiskLocation(tmp_path), module=module).execute(register)
+    assert len(list(tmp_path.iterdir())) == len(expected)
+
+    # WHEN it is loaded for computation or restored using individual locations
+    cpu = DeviceLocation(torch.device("cpu"))
+    location = {name: cpu for name in expected} if per_tensor else cpu
+    MoveModule(location=location, module=module).execute(register)
+
+    # THEN parameters and buffers retain their values without keeping files alive
+    assert list(tmp_path.iterdir()) == []
+    for name, tensor in module.state_dict().items():
+        assert torch.equal(tensor, expected[name])
+        assert tensor.untyped_storage().filename is None
+
+
+def test_move_module_with_dict_reuses_ordinary_device_storage() -> None:
+    # GIVEN parameters and a buffer already in ordinary CPU memory
+    module = torch.nn.Linear(4, 2)
+    module.register_buffer("running", torch.randn(2))
+    original = module.state_dict()
+    cpu = DeviceLocation(torch.device("cpu"))
+
+    # WHEN their original device placement is restored
+    MoveModule(location={name: cpu for name in original}, module=module).execute(
+        ActivationRegister()
+    )
+
+    # THEN restoration does not allocate redundant copies of parameters or buffers
+    for name, tensor in module.state_dict().items():
+        assert tensor.data_ptr() == original[name].data_ptr()
 
 
 def test_weight_offloading_pass_post_restore_uses_per_parameter_devices() -> None:

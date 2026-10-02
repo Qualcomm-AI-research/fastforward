@@ -79,6 +79,60 @@ def test_device_location_receives_a_tensor_on_its_device() -> None:
     assert received.device == torch.device("cpu")
 
 
+@pytest.mark.parametrize("is_quantized", [False, True])
+@pytest.mark.parametrize(
+    "target_device",
+    [
+        "cpu",
+        pytest.param(
+            "cuda:0",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA"),
+        ),
+    ],
+)
+def test_device_loading_releases_disk_storage(
+    tmp_path: Path, target_device: str, is_quantized: bool
+) -> None:
+    # GIVEN a tensor whose data lives in a file
+    original_tensor = random_quantized((4, 8)) if is_quantized else torch.randn(4, 8)
+    disk_tensor = DiskLocation(tmp_path).receive(original_tensor)
+
+    # WHEN it is loaded into device memory and the offloaded reference is released
+    loaded_tensor = DeviceLocation(torch.device(target_device)).receive(disk_tensor)
+    del disk_tensor
+
+    # THEN the file is released while the loaded tensor remains usable
+    assert list(tmp_path.iterdir()) == []
+    assert loaded_tensor.device == torch.device(target_device)
+    if is_quantized:
+        assert isinstance(loaded_tensor, QuantizedTensor)
+        assert torch.equal(loaded_tensor.dequantize().cpu(), original_tensor.dequantize())
+    else:
+        assert torch.equal(loaded_tensor.cpu(), original_tensor)
+
+
+def test_device_loading_preserves_disk_storage_while_a_view_needs_it(tmp_path: Path) -> None:
+    # GIVEN a view that still needs the offloaded data
+    disk_tensor = DiskLocation(tmp_path).receive(torch.arange(8.0))
+    disk_view = disk_tensor[::2]
+
+    # WHEN the tensor is loaded and its offloaded reference is released
+    loaded_tensor = DeviceLocation(torch.device("cpu")).receive(disk_tensor)
+    del disk_tensor
+
+    # THEN the view keeps the file alive and does not alias the loaded data
+    loaded_tensor.add_(10)
+    assert torch.equal(disk_view, torch.arange(0.0, 8.0, 2.0))
+    assert len(list(tmp_path.iterdir())) == 1
+
+    # WHEN the last view is released, as with register cleanup inserted by lifetime_management_pass
+    del disk_view
+
+    # THEN the file is removed even though the loaded tensor is still alive
+    assert list(tmp_path.iterdir()) == []
+    assert torch.equal(loaded_tensor, torch.arange(8.0) + 10)
+
+
 def test_place_reaches_tensors_inside_nested_containers() -> None:
     # GIVEN a value that mixes nested tuples and lists of tensors with a non-tensor leaf
     value = ([torch.randn(2, 3), (torch.randn(4), "scalar")], torch.randn(1))
