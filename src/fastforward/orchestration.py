@@ -10,6 +10,10 @@ from typing import Any
 import torch
 
 from fastforward._orchestration import registry
+from fastforward._orchestration.data_flow import Gradient as Gradient
+from fastforward._orchestration.data_flow import InputActivations as InputActivations
+from fastforward._orchestration.data_flow import ModelOutputs as ModelOutputs
+from fastforward._orchestration.data_flow import OutputActivations as OutputActivations
 from fastforward._orchestration.graph_module import (
     GraphModule,
     reduce_resolution,

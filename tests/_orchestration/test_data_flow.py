@@ -2,15 +2,19 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 from contextlib import nullcontext
+from typing import Any, Iterator
 
 import pytest
+import torch
 
 from fastforward._orchestration.data_flow import (
     ANY,
     ORIGINAL,
     QUANTIZED,
     FlowGenerator,
+    Gradient,
     InputActivations,
+    ModelOutputs,
     OutputActivations,
     register_generator,
 )
@@ -109,3 +113,59 @@ def test_register_anonymous_generator() -> None:
 
     # THEN the default order is lowest
     assert flow.generator.order == 0
+
+
+def _loss(**_: object) -> Iterator[torch.Tensor]:
+    yield torch.zeros(())
+
+
+def test_gradient_runs_under_the_generator_of_its_model_outputs() -> None:
+    # WHEN declaring a gradient that reads the original outputs and a label value
+    flow = Gradient(_loss, logits=ModelOutputs("original"), labels=[torch.tensor([1])])
+
+    # THEN the flow runs under the generator of the outputs
+    assert flow.generator is ORIGINAL
+
+
+def _other_loss(**_: object) -> Iterator[torch.Tensor]:
+    yield torch.zeros(())
+
+
+def test_gradients_with_the_same_loss_and_sources_are_equal() -> None:
+    # GIVEN a gradient with a label value
+    labels = [torch.tensor([1])]
+    gradient = Gradient(_loss, outputs=ModelOutputs("original"), labels=labels)
+
+    # THEN a gradient with the same function, equal outputs and the same labels
+    # object is equal, and has the same hash
+    same = Gradient(_loss, outputs=ModelOutputs(ORIGINAL), labels=labels)
+    assert gradient == same
+    assert hash(gradient) == hash(same)
+
+    # THEN another function or an equal copy of the labels gives another gradient
+    assert gradient != Gradient(_other_loss, outputs=ModelOutputs("original"), labels=labels)
+    assert gradient != Gradient(_loss, outputs=ModelOutputs("original"), labels=list(labels))
+
+
+@pytest.mark.parametrize(
+    ("f", "sources", "error", "match"),
+    [
+        (object(), {"outputs": ModelOutputs("original")}, TypeError, "callable"),
+        (_loss, {"outputs": ModelOutputs("quantized")}, NotImplementedError, "pinned"),
+        (
+            _loss,
+            {"a": ModelOutputs("original"), "b": ModelOutputs("quantized")},
+            ValueError,
+            "one generator",
+        ),
+        (_loss, {"labels": [1, 2]}, ValueError, "one generator"),
+    ],
+    ids=["not-callable", "not-pinned", "mixed-generators", "no-model-outputs"],
+)
+def test_unsupported_gradients_are_rejected(
+    f: Any, sources: dict[str, Any], error: type[Exception], match: str
+) -> None:
+    # WHEN declaring a gradient that the scheduler cannot produce
+    # THEN the declaration itself is rejected
+    with pytest.raises(error, match=match):
+        Gradient(f, **sources)

@@ -30,13 +30,37 @@ flows = [
 flows = [InputActivations("quantized")]  # x'
 ```
 
-Kinds of flow today: `InputActivations`, `OutputActivations`.
+
+An algorithm can also ask for the gradient of a scalar objective at the output of
+its region. YAQA, for example, needs the gradients of the original model:
+
+```python
+fisher = Gradient(empirical_nll, logits=ModelOutputs("original"), labels=loader)
+flows = [InputActivations("original"), fisher]
+# The algorithm is called as fn(module, inputs, output_grads).
+```
+The function is called once per run, iterates the data itself, and yields
+one real scalar loss per batch:
+
+```python
+def empirical_nll(logits, labels):
+    for ((out,), _), target in zip(logits, labels):
+        yield torch.nn.functional.cross_entropy(out, target)
+```
+
+All regions that read equal `Gradient` flows share one call of the function and
+one backward step per node. The gradients show the weights from before every
+mutation, so only a pinned generator is supported, and the model must be in eval
+mode.
+
+Kinds of flow today: `InputActivations`, `OutputActivations`, `Gradient`.
 """
 
 import abc
 
 from contextlib import nullcontext
-from typing import Callable, ContextManager
+from types import MappingProxyType
+from typing import Any, Callable, ContextManager, Iterable, Mapping
 
 import attrs
 import torch
@@ -180,3 +204,104 @@ class InputActivations(DataFlow):
 @attrs.define(frozen=True, repr=False)
 class OutputActivations(DataFlow):
     """The activations leaving the region's output boundary."""
+
+
+def _to_sources(sources: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Freeze the source mapping owned by a `Gradient`, because its hash reads it."""
+    return MappingProxyType(sources)
+
+
+def _sources_key(sources: Mapping[str, Any]) -> frozenset[tuple[str, Any]]:
+    """Compare `ModelOutputs` sources by value and other sources by identity.
+
+    Other sources can be tensors and data loaders, which have no reliable equality.
+    """
+    return frozenset(
+        (name, value if isinstance(value, ModelOutputs) else id(value))
+        for name, value in sources.items()
+    )
+
+
+@attrs.define(frozen=True)
+class ModelOutputs:
+    """The graph outputs of the model, under one flow generator.
+
+    Args:
+        generator: The flow generator the outputs are produced under.
+    """
+
+    generator: FlowGenerator = attrs.field(converter=_to_generator)
+
+
+@attrs.define(frozen=True, repr=False, init=False)
+class Gradient(DataFlow):
+    """The gradient of a scalar loss with respect to the output of the region.
+
+    The scheduler calls `f(**sources)` one time per run. `f` iterates over the
+    batches and yields one scalar loss per batch. For each batch, the region
+    receives dL/dy, with y the output of the region.
+
+    The backward pass goes through the model under the generator of the
+    `ModelOutputs` sources. That generator becomes the generator of this flow,
+    so all `ModelOutputs` sources must use the same generator.
+
+    Regions that read equal gradients share one call of `f` and one backward pass.
+    Two gradients are equal when they have the same `f`, equal `ModelOutputs`
+    sources, and the same objects as other sources.
+
+    The backward pass runs each node a second time, so the model must be in eval mode.
+    A functional call, like `F.dropout(x, p, training=...)`, keeps the `training` value
+    it got when the graph was made. If it fixes `training=True`, the gradients do not
+    match the forward pass. This is not supported.
+
+    Args:
+        f: The loss function. It yields one real scalar loss per batch.
+        **sources: The keyword arguments of `f`. A `ModelOutputs` source becomes
+            a series of model outputs, one item per batch. Other values (e.g. a
+            label data loader) go to `f` without change.
+    """
+
+    f: Callable[..., Iterable[torch.Tensor]] = attrs.field(
+        kw_only=True, validator=attrs.validators.is_callable()
+    )
+    sources: Mapping[str, Any] = attrs.field(kw_only=True, converter=_to_sources, eq=_sources_key)
+
+    def __init__(self, f: Callable[..., Iterable[torch.Tensor]], /, **sources: Any) -> None:
+        generators = {
+            source.generator for source in sources.values() if isinstance(source, ModelOutputs)
+        }
+        if len(generators) != 1:
+            keys = sorted(generator.key for generator in generators)
+            msg = f"Gradient must read ModelOutputs of one generator, but reads {keys}."
+            raise ValueError(msg)
+        self.__attrs_init__(generators.pop(), f=f, sources=sources)
+
+    def __attrs_post_init__(self) -> None:
+        """Reject a gradient that the scheduler cannot produce.
+
+        Raises:
+            NotImplementedError: If the generator is not pinned.
+        """
+        super().__attrs_post_init__()
+        if not self.generator.pinned:
+            msg = (
+                f"Flow of {self.generator.key!r} is not pinned, but gradients are only "
+                f"implemented for pinned generators."
+            )
+            raise NotImplementedError(msg)
+
+    @property
+    def outputs(self) -> dict[str, ModelOutputs]:
+        """The sources that read model outputs, in declaration order."""
+        return {
+            name: value for name, value in self.sources.items() if isinstance(value, ModelOutputs)
+        }
+
+    @property
+    def values(self) -> dict[str, Any]:
+        """The sources that reach `f` unchanged."""
+        return {
+            name: value
+            for name, value in self.sources.items()
+            if not isinstance(value, ModelOutputs)
+        }
