@@ -186,13 +186,13 @@ class _Intervention(abc.ABC):
     """A scheduled graph intervention that might mutate model state.
 
     An intervention could be an algorithm that the scheduler inserts (e.g. for
-    optimizing a `module`, or performing a statistical analysis on data `flows`).
-    The scheduler ensures each intervention's data flows are satisfied before emitting it.
+    optimizing a `module`, or performing a statistical analysis on data `flows`). Each
+    intervention satisfies its data flows through the scheduler, then emits itself.
+
+    Args:
+        flows: The data the intervention reads.
     """
 
-    region: NodeRef
-    module: torch.nn.Module
-    spec: SubgraphSpec
     flows: list[FlowPlan]
 
     @abc.abstractmethod
@@ -203,8 +203,15 @@ class _Intervention(abc.ABC):
 class OptimizeIntervention(_Intervention):
     """An intervention that optimizes a region's weights in-place."""
 
+    region: NodeRef
+    module: torch.nn.Module
+    spec: SubgraphSpec
+
     @override
     def schedule(self, scheduler: Scheduler) -> None:
+        scheduler.schedule_expiring_values(self.region)
+        scheduler.schedule_flows(self.flows, f"on {self.region!r}")
+
         bundles: list[BundleSpec] = []
         for plan in self.flows:
             scheduler.schedule_loads(list(plan.refs()), plan.generator)
@@ -421,28 +428,33 @@ class Scheduler:
             scheduled.add(plan.generator)
             self.schedule_value(self.timeline.value(region, plan.generator), cache=plan.cache)
 
-    def schedule_intervention(self, intervention: _Intervention) -> None:
-        """Satisfy every data flow of one intervention, then emit it.
+    def schedule_flows(self, flows: Sequence[FlowPlan], owner: str) -> None:
+        """Schedule the calls that put every value `flows` read in the register.
 
         Args:
-            intervention: The graph intervention to schedule.
+            flows: The flows of one intervention.
+            owner: Names the intervention in an error, for example `"on fc1"`.
 
         Raises:
             RuntimeError: If a flow asks for data the program can no longer produce.
         """
-        self.schedule_expiring_values(intervention.region)
-
-        for plan in sorted(intervention.flows, key=lambda plan: plan.order):
+        for plan in sorted(flows, key=lambda plan: plan.order):
             for demand in self.demands_of(plan):
                 if not self.can_produce(demand):
                     msg = (
-                        f"Cannot produce {demand!r} for the {plan.generator.key!r} flow on "
-                        f"{intervention.region!r}: an earlier intervention has already replaced "
-                        f"the weights it reads."
+                        f"Cannot produce {demand!r} for the {plan.generator.key!r} flow "
+                        f"{owner}: an earlier intervention has already replaced the weights "
+                        f"it reads."
                     )
                     raise RuntimeError(msg)
                 self.schedule_value(demand, cache=plan.cache)
 
+    def schedule_intervention(self, intervention: _Intervention) -> None:
+        """Schedule one intervention, and drop the pending demands it has produced.
+
+        Args:
+            intervention: The graph intervention to schedule.
+        """
         intervention.schedule(self)
         self._pending = [entry for entry in self._pending if entry[1] not in self.register]
 
@@ -566,8 +578,7 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
         ValueError: If two generators in use share an `order`, if a spec declares
             an `ANY` flow, or if a node outside a region reads a weight of that region.
     """
-    interventions: list[_Intervention] = []
-
+    optimizations: list[OptimizeIntervention] = []
     # Collect the requirements of every spec into interventions.
     for spec in specs:
         module = spec.resolve(graph).target
@@ -577,15 +588,20 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
             msg = f"Spec on {region!r} declares an ANY flow. ANY is reserved for plain forward passes."
             raise ValueError(msg)
 
-        interventions.append(
+        optimizations.append(
             OptimizeIntervention(
-                region=region, module=module, spec=spec, flows=bind_flows(graph, region, spec.flows)
+                region=region,
+                module=module,
+                spec=spec,
+                flows=bind_flows(graph, region, spec.flows),
             )
         )
 
-    # Interventions run in graph order, a region's inputs must already be generated.
+    # Optimizations run in graph order, a region's inputs must already be generated.
     topo_index = {ref: i for i, ref in enumerate(graph.topo_order)}
-    interventions.sort(key=lambda intervention: topo_index[intervention.region])
+    optimizations.sort(key=lambda intervention: topo_index[intervention.region])
+
+    interventions: list[_Intervention] = list(optimizations)
     _check_order_unambiguous(interventions)
     _check_no_shared_weights(graph, [intervention.region for intervention in interventions])
 
