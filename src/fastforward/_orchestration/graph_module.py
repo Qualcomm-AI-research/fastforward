@@ -23,7 +23,7 @@ from typing import (
 import torch
 
 if TYPE_CHECKING:
-    from fastforward._orchestration.data_flow import DataFlow
+    from fastforward._orchestration.data_flow import DataFlow, Gradient
     from fastforward._orchestration.instruction_engine import InstructionEngine
 
 
@@ -123,6 +123,56 @@ class AttributeRef(_BaseRef):
         """Split the ref into its base ref and the path from the base to the part it names."""
         base, path = self.reference.unwrap_path()
         return base, (*path, self.attribute)
+
+
+@dataclasses.dataclass(frozen=True)
+class GradientRef(_BaseRef):
+    """Reference to the value of a gradient flow at a node output or graph input.
+
+    Args:
+        reference: The node or graph input whose value the gradient is taken at.
+        gradient: The gradient flow, whose objective the gradient is taken of.
+    """
+
+    reference: NodeRef | InputRef
+    gradient: Gradient
+
+    def __repr__(self) -> str:
+        return f"GradientRef({self.reference!r})"
+
+
+@dataclasses.dataclass(frozen=True)
+class LossGradRef(_BaseRef):
+    """Reference to the gradient of the loss with respect to one graph output.
+
+    Args:
+        gradient: The gradient flow whose loss is differentiated.
+        name: The name that the objective reads the model outputs under.
+        position: The position of the graph output.
+    """
+
+    gradient: Gradient
+    name: str
+    position: int
+
+    def __repr__(self) -> str:
+        return f"LossGradRef({self.name}, {self.position})"
+
+
+@dataclasses.dataclass(frozen=True)
+class VJPRef(_BaseRef):
+    """Reference to the gradients that one node sends to its arguments, keyed by argument.
+
+    Args:
+        reference: The node that the gradient runs back through.
+        gradient: The gradient flow, whose objective the gradient is taken of.
+    """
+
+    reference: NodeRef
+    gradient: Gradient
+
+    def __repr__(self) -> str:
+        return f"VJPRef({self.reference!r})"
 
 
 def remap_subgraph_reference(
@@ -351,13 +401,13 @@ class GraphModule(torch.nn.Module):
         self._program: Any = None
         self._engine: InstructionEngine | None = None
         self._topo_order: list[NodeRef] | None = None
-        self._node_consumers: dict[uuid.UUID, list[NodeRef]] | None = None
+        self._readers: dict[uuid.UUID, list[tuple[NodeRef, int | str, _BaseRef]]] | None = None
 
     def _invalidate_caches(self) -> None:
         """Reset cached derived state after graph mutation."""
         self._engine = None
         self._topo_order = None
-        self._node_consumers = None
+        self._readers = None
 
     @property
     def topo_order(self) -> list[NodeRef]:
@@ -388,25 +438,28 @@ class GraphModule(torch.nn.Module):
                     seen.add(arg_base.id)
                     yield arg_base
 
-    def _node_consumer_index(self) -> dict[uuid.UUID, list[NodeRef]]:
-        """Map each node id to the nodes that consume it, cached until the graph is mutated.
+    def readers(self, ref: NodeRef | InputRef) -> list[tuple[NodeRef, int | str, _BaseRef]]:
+        """Return each argument of a node that reads `ref`, cached until the graph is mutated.
+
+        An entry `(node, argument, read)` means that `node` receives `read` as its
+        positional argument `argument: int`, or its keyword argument `argument: str`.
+        `read` is `ref` itself or a part of it: for `y = layer(h[0], mask=m)`, `h` gets
+        `(layer, 0, h[0])` and `m` gets `(layer, "mask", m)`.
 
         Without the index, every `node_outputs` call scans the whole graph, so a
         forward closure over `n` nodes costs O(n^2). Building it once costs one scan.
         """
-        if self._node_consumers is None:
-            consumers: dict[uuid.UUID, list[NodeRef]] = {}
+        if self._readers is None:
+            readers: dict[uuid.UUID, list[tuple[NodeRef, int | str, _BaseRef]]] = {}
             for node_id, node in self._nodes.items():
-                seen: set[uuid.UUID] = set()
-                for arg in (*node.args, *node.kwargs.values()):
-                    if not isinstance(arg_base := arg.unwrap_ref(), NodeRef):
-                        continue
-                    if arg_base.id in seen:
-                        continue
-                    seen.add(arg_base.id)
-                    consumers.setdefault(arg_base.id, []).append(self._node_refs[node_id])
-            self._node_consumers = consumers
-        return self._node_consumers
+                arguments: dict[int | str, _BaseRef] = dict(enumerate(node.args))
+                arguments.update(node.kwargs)
+                for argument, read in arguments.items():
+                    if isinstance(base := read.unwrap_ref(), NodeRef | InputRef):
+                        entry = (self._node_refs[node_id], argument, read)
+                        readers.setdefault(base.id, []).append(entry)
+            self._readers = readers
+        return self._readers.get(ref.id, [])
 
     def node_outputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that use `node_ref` as input.
@@ -417,8 +470,7 @@ class GraphModule(torch.nn.Module):
         Returns:
             Iterator yielding NodeRef objects for each output node.
         """
-        node = self._nodes[node_ref.id]
-        yield from self._node_consumer_index().get(node.id, ())
+        yield from dict.fromkeys(node for node, _, _ in self.readers(node_ref))
 
     def node_ref(self, module: torch.nn.Module) -> NodeRef:
         """Return the NodeRef for the given module instance.

@@ -29,10 +29,13 @@ from torch.utils.data import DataLoader
 from fastforward._orchestration.graph_module import (
     AttributePath,
     Const,
+    GradientRef,
     GraphModule,
     InputRef,
+    LossGradRef,
     NamedRef,
     Op,
+    VJPRef,
     _BaseRef,
 )
 from fastforward._orchestration.location import (
@@ -1180,6 +1183,21 @@ def _weight_offloading_pass(
     return tuple(new_instructions)
 
 
+def _activation_name(ref: _BaseRef) -> str:
+    """Return the name of the activation that the value under `ref` belongs to.
+
+    A gradient is stored like the activation it is taken at, so the activation policy
+    treats both the same way.
+    """
+    match ref:
+        case NamedRef(name=name) | LossGradRef(name=name):
+            return name
+        case GradientRef(reference=reference) | VJPRef(reference=reference):
+            return reference.name
+    msg = f"{ref!r} belongs to no activation."
+    raise TypeError(msg)
+
+
 def _activation_offloading_pass(
     instructions: Instructions, compute: Location, storage: LocationPolicy
 ) -> Instructions:
@@ -1202,13 +1220,12 @@ def _activation_offloading_pass(
 
     for instruction in instructions:
         if isinstance(instruction, Call):
-            target = instruction.target.unwrap_ref()
-            assert isinstance(target, NamedRef)
+            name = _activation_name(instruction.target.unwrap_ref())
             new_instructions.append(
                 dataclasses.replace(
                     instruction,
                     input_location=compute,
-                    output_location=storage(target.name),
+                    output_location=storage(name),
                 )
             )
         else:

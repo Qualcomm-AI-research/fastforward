@@ -1,9 +1,12 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import dataclasses
+import pathlib
+
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
-from typing import ContextManager
+from typing import Any, ContextManager
 
 import attrs
 import pytest
@@ -16,7 +19,9 @@ from fastforward._orchestration.data_flow import (
     QUANTIZED,
     DataFlow,
     FlowGenerator,
+    Gradient,
     InputActivations,
+    ModelOutputs,
     OutputActivations,
     register_generator,
 )
@@ -39,8 +44,10 @@ from fastforward._orchestration.instruction_engine import (
     RunDelegate,
     StoreValue,
     _fmt_callable,
+    _offloading_pass,
     lifetime_management_pass,
 )
+from fastforward._orchestration.location import DeviceLocation, DiskLocation
 from fastforward._orchestration.scheduler import (
     OptimizeIntervention,
     Scheduler,
@@ -633,6 +640,32 @@ def test_region_without_shared_weights_in_a_tied_model_is_scheduled() -> None:
     InstructionEngine().run(program, torch.tensor([[1, 2]]))
 
 
+def test_gradient_flow_on_a_region_that_shares_a_weight_is_rejected() -> None:
+    # GIVEN a gradient flow on a region whose weight another node also reads
+    model = TiedHead().eval()
+    graph = trace(model, torch.tensor([[1, 2]]))
+    gradient = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling, THEN the shared weight is still found. The gradient step
+    # itself is no region, so the check must skip it instead of failing on it.
+    with pytest.raises(ValueError, match="shares a weight"):
+        schedule(graph, specs=[_spec(model.emb, gradient)])
+
+
+def test_gradient_flow_on_a_region_without_shared_weights_is_scheduled() -> None:
+    # GIVEN a gradient flow on a region that does not read the tied weights
+    model = TiedHead().eval()
+    sample = torch.tensor([[1, 2]])
+    graph = trace(model, sample)
+    gradient = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling
+    program = schedule(graph, specs=[_spec(model.fc, gradient)])
+
+    # THEN the program runs
+    InstructionEngine().run(program, sample)
+
+
 def test_output_activations_delivers_region_output(two_linear: TwoLinear) -> None:
     # GIVEN a region optimized against its own inputs (x) and its own output (Wx),
     # both from before any weight changed
@@ -763,6 +796,218 @@ def test_flow_reading_an_attribute_of_a_node_schedules_the_node() -> None:
     assert kinds.index("CallModule") < kinds.index("LoadAttribute")
     assert [call.target for call in _calls(program)] == [tuple_node]
     InstructionEngine().run(program, torch.randn(2, 8))
+
+
+def _square_loss(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
+    """Yield a different nonlinear loss of the model outputs for each batch."""
+    for idx, ((output,), _) in enumerate(outputs):
+        yield _square_reference(idx, output)
+
+
+def _square_reference(idx: int, output: torch.Tensor) -> torch.Tensor:
+    return ((idx + 1) * output.square() + output).sum()
+
+
+def _autograd(
+    model: torch.nn.Module,
+    regions: list[torch.nn.Module],
+    batches: list[torch.Tensor],
+    loss: Callable[[int, torch.Tensor], torch.Tensor] = _square_reference,
+) -> dict[torch.nn.Module, list[torch.Tensor]]:
+    """The gradient of `loss` at the output of each region, by full-model autograd."""
+    grads: dict[torch.nn.Module, list[torch.Tensor]] = {region: [] for region in regions}
+    for idx, batch in enumerate(batches):
+        outputs: dict[torch.nn.Module, torch.Tensor] = {}
+        hooks = [
+            region.register_forward_hook(lambda m, _, out: outputs.__setitem__(m, out))
+            for region in regions
+        ]
+        with torch.enable_grad():
+            values = torch.autograd.grad(loss(idx, model(batch)), [outputs[r] for r in regions])
+        for hook in hooks:
+            hook.remove()
+        for region, value in zip(regions, values):
+            grads[region].append(value)
+    return grads
+
+
+@attrs.define
+class _Recorder:
+    """An intervention that records the gradients it reads, then changes its weights."""
+
+    reads: dict[torch.nn.Module, list[Any]] = attrs.field(factory=dict)
+
+    def __call__(self, module: torch.nn.Module, gradients: ActivationBundle) -> None:
+        self.reads[module] = [args[0] for args, _ in gradients]
+        with torch.no_grad():
+            for parameter in module.parameters():
+                parameter.add_(1.0)
+
+
+def _run(program: InstructionProgram, *args: Any) -> None:
+    instructions = lifetime_management_pass(program.instructions)
+    InstructionEngine().run(dataclasses.replace(program, instructions=instructions), *args)
+
+
+def _assert_close(left: list[torch.Tensor], right: list[torch.Tensor]) -> None:
+    assert len(left) == len(right)
+    for one, two in zip(left, right):
+        torch.testing.assert_close(one, two)
+
+
+@pytest.mark.parametrize(
+    ("make", "regions", "width"),
+    [
+        (TwoLinear, ["fc1", "fc2"], 8),
+        (ResidualStack, ["layers.0.attn.out_proj", "layers.1.mlp.up", "layers.2.attn.q_proj"], 8),
+        pytest.param(
+            TwoLayerModel,
+            ["layer_0.attn.v_proj", "layer_0.mlp.down", "layer_1.attn.q_proj", "layer_1.mlp.up"],
+            8,
+            marks=pytest.mark.slow,
+        ),
+    ],
+    ids=["chain", "residual", "decoder"],
+)
+def test_gradients_agree_with_autograd_after_interventions(
+    make: Callable[[], torch.nn.Module], regions: list[str], width: int
+) -> None:
+    # GIVEN regions that read the gradients at their outputs, and change their weights.
+    # In the residual model, an output reaches the loss through more than one consumer.
+    model = make().eval()
+    modules = [model.get_submodule(name) for name in regions]
+    batches = [torch.randn(2, 3, width) for _ in range(2)]
+    expected = _autograd(model, modules, batches)
+    recorder = _Recorder()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+    specs = [SubgraphSpec(region=module, fn=recorder, flows=[flow]) for module in modules]
+
+    # WHEN scheduling and running
+    _run(schedule(trace(model, batches[0]), specs), batches)
+
+    # THEN every region reads the gradients of the original model, also after an
+    # earlier region changed a weight
+    for module in modules:
+        _assert_close(recorder.reads[module], expected[module])
+
+
+@pytest.mark.parametrize("storage", ["cpu", "disk"])
+def test_gradients_with_offloading(storage: str, tmp_path: pathlib.Path) -> None:
+    # GIVEN a residual model, and a storage location for weights and activations
+    model = ResidualStack(depth=2).eval()
+    region = model.get_submodule("layers.0.mlp.up")
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+    expected = _autograd(model, [region], batches)
+    recorder = _Recorder()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+    graph = trace(model, batches[0])
+    location = DiskLocation(tmp_path) if storage == "disk" else DeviceLocation(torch.device("cpu"))
+    program = schedule(graph, [SubgraphSpec(region=region, fn=recorder, flows=[flow])])
+
+    # WHEN running with offloading
+    compute = DeviceLocation(torch.device("cpu"))
+    instructions = _offloading_pass(
+        program.instructions, compute, location, lambda _: location, graph
+    )
+    _run(dataclasses.replace(program, instructions=instructions), batches)
+
+    # THEN the region reads the gradients of the original model
+    _assert_close(recorder.reads[region], expected[region])
+
+
+class _LastOfTuple(torch.nn.Module):
+    """`fc2` reads the last item of a tuple, so the gradient reaches `fc1` through `[-1]`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc1 = torch.nn.Linear(8, 8)
+        self.pair = ReturnTuple()
+        self.fc2 = torch.nn.Linear(8, 4)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc2(pair(fc1(x))[-1])."""
+        return self.fc2(self.pair(self.fc1(x))[-1])  # type: ignore[no-any-return]
+
+
+def test_gradients_through_a_negative_index() -> None:
+    # GIVEN a graph where a node reads the last item of a tuple, and a region before the tuple
+    model = _LastOfTuple().eval()
+    graph = GraphModule()
+    fc1 = graph.add_node("fc1", model.fc1, [graph.add_input("x")])
+    pair = graph.add_node("pair", model.pair, [fc1])
+    graph.add_output(graph.add_node("fc2", model.fc2, [pair[-1]]))
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+    expected = _autograd(model, [model.fc1], batches)
+    recorder = _Recorder()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling and running
+    _run(schedule(graph, [SubgraphSpec(region=model.fc1, fn=recorder, flows=[flow])]), batches)
+
+    # THEN the region reads the gradients of the original model
+    _assert_close(recorder.reads[model.fc1], expected[model.fc1])
+
+
+def test_equal_gradients_call_the_objective_once(two_linear: TwoLinear) -> None:
+    # GIVEN two equal gradients with a label value on two regions, and a gradient
+    # of another objective that the second region also reads
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(2)]
+    calls: list[tuple[str, object]] = []
+    labels = object()
+
+    def square(outputs: ActivationBundle, labels: object) -> Iterator[torch.Tensor]:
+        calls.append(("square", labels))
+        yield from _square_loss(outputs)
+
+    def total(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
+        calls.append(("total", None))
+        for (output,), _ in outputs:
+            yield output.sum()
+
+    shared = Gradient(square, outputs=ModelOutputs(ORIGINAL), labels=labels)
+    equal = Gradient(square, outputs=ModelOutputs(ORIGINAL), labels=labels)
+    other = Gradient(total, outputs=ModelOutputs(ORIGINAL))
+    reads: dict[torch.nn.Module, list[list[torch.Tensor]]] = {}
+
+    def record(module: torch.nn.Module, *gradients: ActivationBundle) -> None:
+        reads[module] = [[args[0] for args, _ in flow] for flow in gradients]
+
+    specs = [
+        SubgraphSpec(region=model.fc1, fn=record, flows=[shared]),
+        SubgraphSpec(region=model.fc2, fn=record, flows=[equal, other]),
+    ]
+
+    # WHEN scheduling and running
+    _run(schedule(trace(model, batches[0]), specs), batches)
+
+    # THEN the equal gradients share one call
+    assert sorted(name for name, _ in calls) == ["square", "total"]
+
+    # THEN the label value reaches the objective unchanged
+    assert ("square", labels) in calls
+
+    # THEN each gradient is the gradient of its own objective
+    expected = _autograd(model, [model.fc1, model.fc2], batches)
+    totals = _autograd(model, [model.fc2], batches, lambda _, output: output.sum())
+    _assert_close(reads[model.fc1][0], expected[model.fc1])
+    _assert_close(reads[model.fc2][0], expected[model.fc2])
+    _assert_close(reads[model.fc2][1], totals[model.fc2])
+
+
+def test_only_gradient_flows_require_eval_mode(two_linear: TwoLinear) -> None:
+    # GIVEN a model in training mode
+    graph = _traced_two_linear(two_linear)
+    two_linear.train()
+    gradient = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling activation flows, THEN it succeeds
+    schedule(graph, [_spec(two_linear.fc1, InputActivations(ORIGINAL))])
+
+    # WHEN scheduling a gradient flow, THEN it fails, because a VJP would not see the
+    # same forward pass
+    with pytest.raises(ValueError, match="eval mode"):
+        schedule(graph, [_spec(two_linear.fc1, gradient)])
 
 
 def _register_size(program: InstructionProgram) -> int:
