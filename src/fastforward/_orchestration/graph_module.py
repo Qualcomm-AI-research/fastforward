@@ -27,6 +27,10 @@ if TYPE_CHECKING:
     from fastforward._orchestration.instruction_engine import InstructionEngine
 
 
+# Attribute names and item keys that lead from a value to a part of it.
+AttributePath: TypeAlias = tuple[str | int, ...]
+
+
 @dataclasses.dataclass(frozen=True)
 class _BaseRef:
     """Base class for all references - provides attribute access."""
@@ -40,6 +44,10 @@ class _BaseRef:
     def unwrap_ref(self) -> _BaseRef:
         """Extract the base NodeRef or InputRef."""
         return self
+
+    def unwrap_path(self) -> tuple[_BaseRef, AttributePath]:
+        """Split the ref into its base ref and the path from the base to the part it names."""
+        return self, ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -110,6 +118,11 @@ class AttributeRef(_BaseRef):
         if isinstance(self.reference, AttributeRef):
             return self.reference.unwrap_ref()
         return self.reference
+
+    def unwrap_path(self) -> tuple[_BaseRef, AttributePath]:
+        """Split the ref into its base ref and the path from the base to the part it names."""
+        base, path = self.reference.unwrap_path()
+        return base, (*path, self.attribute)
 
 
 def remap_subgraph_reference(

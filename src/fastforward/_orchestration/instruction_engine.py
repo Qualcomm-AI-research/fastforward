@@ -22,10 +22,12 @@ from typing import (
 
 import attrs
 import torch
+import torch.utils._pytree as pytree
 
 from torch.utils.data import DataLoader
 
 from fastforward._orchestration.graph_module import (
+    AttributePath,
     Const,
     GraphModule,
     InputRef,
@@ -354,6 +356,20 @@ class StoreValue(Instruction):
         return iter([self.target])
 
 
+def get_attribute(value: Any, attribute: str | int) -> Any:
+    """Return the item or attribute `attribute` of `value`.
+
+    An int is an index. A str is a key of a mapping (dict, etc.), or else an
+    attribute of a structured object (dataclass, namedtuple, etc.).
+    """
+    if isinstance(attribute, int):
+        return value[attribute]
+    try:
+        return value[attribute]
+    except (KeyError, TypeError):
+        return getattr(value, attribute)
+
+
 @dataclasses.dataclass(frozen=True)
 class LoadAttribute(Instruction):
     """Load an attribute/index from a register value and store result."""
@@ -368,18 +384,7 @@ class LoadAttribute(Instruction):
 
     def _extract_attribute(self, dataset: ActivationDataset) -> ActivationDataset:
         """Extract attribute/item from each batch in the dataset."""
-        match self.attribute:
-            case int() as idx:
-                batches = [batch[idx] for batch in dataset]
-            case str() as key:
-                # Item access for mappings (dict, etc.)
-                try:
-                    batches = [batch[key] for batch in dataset]
-                except (KeyError, TypeError):
-                    # Attribute access for structured objects (dataclass, namedtuple, etc.)
-                    batches = [getattr(batch, key) for batch in dataset]
-
-        return ActivationDataset(batches)
+        return ActivationDataset([get_attribute(batch, self.attribute) for batch in dataset])
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         return iter([self.source])
@@ -437,15 +442,19 @@ class Call(Instruction):
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         bundle = ActivationBundle.gather(register, self.context, self.args, self.kwargs)
         outputs = []
-        module = self.caller if isinstance(self, CallModule) else None
+        module = self.caller if isinstance(self.caller, torch.nn.Module) else None
         with self.context(module):
             for args, kwargs in self._batches(bundle):
-                output = self.caller(*args, **kwargs)
+                output = self._single_batch(args, kwargs)
                 if self.output_location is not None:
                     output = self.output_location.place(output)
                 outputs.append(output)
                 del args, kwargs, output
         register.store(self.target, self.context, ActivationDataset(outputs))
+
+    def _single_batch(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+        """Return the output of one batch."""
+        return self.caller(*args, **kwargs)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -559,6 +568,130 @@ class RunDelegate(Instruction):
             yield ref
 
 
+def loss_grad_outputs(
+    objective: Callable[..., Iterable[torch.Tensor]],
+    names: Sequence[str],
+    values: Mapping[str, Any],
+    *outputs: ActivationBundle,
+) -> list[ActivationDataset]:
+    """Call an objective once and return the gradient of each output stream it reads.
+
+    Invokes `objective(**outputs, **values)` under `torch.enable_grad()`. Each item of
+    `outputs` goes to `objective` under the name at the same position in `names`, and
+    its floating-point leaves are made differentiable once per call. `values` go to
+    `objective` unchanged. `objective` iterates the model outputs itself and yields one
+    real scalar loss per batch. The gradient of an output batch is the gradient of the
+    loss of that batch, with `None` for leaves that are not floating-point tensors or
+    that have no path to the loss. `objective` places its data itself, so each
+    gradient is where its output leaf is.
+
+    Each item of `outputs` holds the graph outputs as positional streams.
+
+    Args:
+        objective: The objective.
+        names: The name that `objective` receives each item of `outputs` under.
+        values: Other values that `objective` receives unchanged, keyed by name.
+        outputs: The model outputs that `objective` reads, one item per name.
+
+    Returns:
+        One gradient dataset per output stream, in the order of `outputs`.
+
+    Raises:
+        ValueError: If the streams have different batch counts, if `objective` does not
+            yield one real scalar loss per batch, or if the loss of a batch reads
+            a different batch.
+    """
+    name = _fmt_callable(objective)
+
+    # The flattened batches of each output stream, with differentiable leaves.
+    streams: list[list[tuple[list[Any], pytree.TreeSpec]]] = []
+    differentiable: dict[str, ActivationBundle] = {}
+    for key, output in zip(names, outputs, strict=True):
+        datasets = []
+        for dataset in output.args:
+            stream = [_differentiable_leaves(batch) for batch in dataset]
+            streams.append(stream)
+            datasets.append(ActivationDataset([pytree.tree_unflatten(*batch) for batch in stream]))
+        differentiable[key] = ActivationBundle(args=tuple(datasets), kwargs={})
+
+    n_batches = len(streams[0]) if streams else 0
+    if any(len(stream) != n_batches for stream in streams):
+        msg = f"The sources of objective {name} have different batch counts."
+        raise ValueError(msg)
+
+    # Every differentiable leaf, with the index of the batch it belongs to.
+    owned = [
+        (idx, leaf)
+        for stream in streams
+        for idx, (leaves, _) in enumerate(stream)
+        for leaf in leaves
+        if _is_differentiable(leaf)
+    ]
+    grad_outputs: list[list[Any]] = [[] for _ in streams]
+
+    n_losses = 0
+    with torch.enable_grad():
+        for idx, loss in enumerate(objective(**differentiable, **values)):
+            n_losses = idx + 1
+            _check_loss(name, idx, loss, n_batches)
+            grads = _batch_grads(name, idx, loss, owned)
+            for stream, stream_grad_outputs in zip(streams, grad_outputs):
+                leaves, spec = stream[idx]
+                stream_grad_outputs.append(
+                    pytree.tree_unflatten([grads.get(id(leaf)) for leaf in leaves], spec)
+                )
+            del loss, grads
+
+    if n_losses != n_batches:
+        msg = f"Objective {name} yielded {n_losses} losses for {n_batches} batches."
+        raise ValueError(msg)
+
+    return [ActivationDataset(stream_grad_outputs) for stream_grad_outputs in grad_outputs]
+
+
+def _check_loss(name: str, idx: int, loss: Any, n_batches: int) -> None:
+    """Raise if `loss` is not a real scalar for batch `idx` of `n_batches`."""
+    if idx >= n_batches:
+        msg = f"Objective {name} yielded more losses than its {n_batches} batches."
+        raise ValueError(msg)
+    if not (isinstance(loss, torch.Tensor) and loss.ndim == 0 and loss.is_floating_point()):
+        description = (
+            f"a tensor of shape {tuple(loss.shape)} and dtype {loss.dtype}"
+            if isinstance(loss, torch.Tensor)
+            else type(loss).__name__
+        )
+        msg = (
+            f"Objective {name} must yield one real scalar loss per batch, "
+            f"but batch {idx} gave {description}."
+        )
+        raise ValueError(msg)
+
+
+def _batch_grads(
+    name: str, idx: int, loss: torch.Tensor, owned: list[tuple[int, torch.Tensor]]
+) -> dict[int, torch.Tensor]:
+    """Return the gradient of `loss` for each leaf it reaches, keyed by leaf `id`.
+
+    Raises:
+        ValueError: If `loss` reaches a leaf of a batch other than `idx`.
+    """
+    if not loss.requires_grad or not owned:
+        return {}
+    # With `allow_unused`, a leaf the loss does not reach gets None.
+    results: Sequence[torch.Tensor | None] = torch.autograd.grad(
+        loss, [leaf for _, leaf in owned], allow_unused=True
+    )
+    grads: dict[int, torch.Tensor] = {}
+    for (owner, leaf), grad in zip(owned, results):
+        if grad is None:
+            continue
+        if owner != idx:
+            msg = f"The loss of batch {idx} of objective {name} depends on batch {owner}."
+            raise ValueError(msg)
+        grads[id(leaf)] = grad
+    return grads
+
+
 @dataclasses.dataclass(frozen=True)
 class ReturnOutputs(Instruction):
     """Return output values from the register.
@@ -629,6 +762,164 @@ class MoveModule(Instruction):
                 parameter.data = self.location.receive(parameter.data)
             for buffer in self.module.buffers():
                 buffer.data = self.location.receive(buffer.data)
+
+
+def _is_differentiable(leaf: Any) -> bool:
+    """Return whether `leaf` gets a gradient: only floating-point tensors do."""
+    return isinstance(leaf, torch.Tensor) and leaf.is_floating_point()
+
+
+def _differentiable_leaves(value: Any) -> tuple[list[Any], pytree.TreeSpec]:
+    """Flatten `value`, with its floating-point leaves as fresh autograd leaves."""
+    leaves, spec = pytree.tree_flatten(value)
+    leaves = [
+        leaf.detach().requires_grad_() if _is_differentiable(leaf) else leaf for leaf in leaves
+    ]
+    return leaves, spec
+
+
+def sum_grad_outputs(*grad_outputs: Any) -> Any:
+    """Add the gradient contributions of one value, leaf by leaf.
+
+    Each contribution has the structure of the value, or is `None` as a whole. A `None`
+    leaf is no contribution, and a leaf with no contribution at all stays `None`.
+
+    Args:
+        grad_outputs: The contributions of one batch.
+
+    Returns:
+        The total gradient of the batch.
+    """
+
+    def add(*leaves: torch.Tensor | None) -> torch.Tensor | None:
+        present = [leaf for leaf in leaves if leaf is not None]
+        return functools.reduce(torch.add, present) if present else None
+
+    present = [grad_output for grad_output in grad_outputs if grad_output is not None]
+    if not present:
+        return None
+    return pytree.tree_map(add, *present, is_leaf=lambda leaf: leaf is None)
+
+
+def _key_part(key: Any) -> str | int:
+    """Return the item or attribute that one pytree key path entry names, as `get_attribute` reads it."""
+    match key:
+        case pytree.SequenceKey(idx=idx):
+            return idx
+        case pytree.MappingKey(key=str() | int() as item):
+            return item
+        case pytree.GetAttrKey(name=name):
+            return name
+    msg = f"Unsupported pytree key {key!r}."
+    raise TypeError(msg)
+
+
+def _non_negative(path: AttributePath, output: Any) -> AttributePath:
+    """Return `path` with each negative index replaced by the index it names in `output`."""
+    parts: list[str | int] = []
+    for part in path:
+        if isinstance(part, int) and part < 0:
+            part += len(output)
+        parts.append(part)
+        output = get_attribute(output, part)
+    return tuple(parts)
+
+
+def assemble_grad_output(paths: Sequence[AttributePath], output: Any, *grad_outputs: Any) -> Any:
+    """Build the gradient of `output` from the gradients of its parts.
+
+    Each gradient belongs to the part of `output` at the path at the same position in
+    `paths`; `()` is the full output. Contributions to one leaf are added, and a leaf
+    with no contribution gets `None`.
+
+    Args:
+        paths: The path from `output` to the part that each gradient belongs to.
+        output: One batch of the value the gradient is for.
+        grad_outputs: The gradient of each part, or `None` as a whole for no contribution.
+
+    Returns:
+        The gradient of the batch, with the structure of `output`, or `None` if no
+        part has a gradient.
+    """
+    keyed, spec = pytree.tree_flatten_with_path(output)
+    keys = [tuple(_key_part(key) for key in keypath) for keypath, _ in keyed]
+
+    def place(path: AttributePath, grad_output: Any) -> Any:
+        path = _non_negative(path, output)
+        leaves = [
+            functools.reduce(get_attribute, key[len(path) :], grad_output)
+            if grad_output is not None and key[: len(path)] == path
+            else None
+            for key in keys
+        ]
+        return pytree.tree_unflatten(leaves, spec)
+
+    return sum_grad_outputs(
+        *(place(path, grad_output) for path, grad_output in zip(paths, grad_outputs, strict=True))
+    )
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class CallVJP(Call):
+    """Run one node backward: store the gradients of its inputs for the gradient of its output.
+
+    For each batch, the node runs again under `torch.enable_grad()` on detached copies
+    of its floating-point inputs, so the Vector-Jacobian Product (VJP) never follows an
+    autograd graph a stored input already has, and only one local graph exists at a time.
+    The stored value of each batch maps each argument of the node, by position or by keyword,
+    to its gradient, with the structure of the argument. Leaves that are not floating-point
+    tensors, and leaves with no path to the gradient of the output, get `None`.
+
+    The last ref in `args` is the gradient of the output, not an input of the node. It has
+    the structure of the output, and a `None` leaf, or `None` as a whole, gives no
+    contribution.
+    """
+
+    def _single_batch(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+        """Return the gradient of each argument of one batch, keyed by position or keyword."""
+        args, grad_output = args[:-1], args[-1]
+        arguments: dict[int | str, Any] = dict(enumerate(args))
+        arguments.update(kwargs)
+        leaves, spec = pytree.tree_flatten(arguments)
+        grads: list[torch.Tensor | None] = [None] * len(leaves)
+        differentiable = [idx for idx, leaf in enumerate(leaves) if _is_differentiable(leaf)]
+        if not differentiable or all(leaf is None for leaf in pytree.tree_leaves(grad_output)):
+            return pytree.tree_unflatten(grads, spec)
+
+        inputs = list(leaves)
+        for idx in differentiable:
+            inputs[idx] = leaves[idx].detach().requires_grad_()
+        with torch.enable_grad():
+            # The node gets copies, so an in-place operation changes neither a leaf that
+            # requires grad nor the stored activation. The copies are made with grad
+            # enabled, so that they stay connected to the leaves under an ambient `no_grad`.
+            copies = [
+                inputs[idx].clone() if idx in differentiable else leaf
+                for idx, leaf in enumerate(inputs)
+            ]
+            call = pytree.tree_unflatten(copies, spec)
+            output = self.caller(
+                *(call[idx] for idx in range(len(args))), **{key: call[key] for key in kwargs}
+            )
+
+        outputs: list[torch.Tensor] = []
+        grad_outputs: list[torch.Tensor] = []
+
+        def pair(leaf: torch.Tensor | None, value: Any) -> None:
+            if leaf is not None and isinstance(value, torch.Tensor) and value.requires_grad:
+                outputs.append(value)
+                grad_outputs.append(leaf)
+
+        pytree.tree_map(pair, grad_output, output, is_leaf=lambda leaf: leaf is None)
+        del output
+
+        if outputs:
+            results = torch.autograd.grad(
+                outputs, [inputs[idx] for idx in differentiable], grad_outputs, allow_unused=True
+            )
+            for idx, grad in zip(differentiable, results):
+                grads[idx] = grad
+        return pytree.tree_unflatten(grads, spec)
 
 
 Instructions: TypeAlias = Sequence[Instruction]
@@ -830,7 +1121,7 @@ def _weight_offloading_pass(
 
     First, record the original device placement of all weights so the model can be restored
     to its initial state after the pass (`post_restore`). Next, move each weight to `storage`
-    to perform the actual offload. Finally, wrap each `CallModule`/`OptimizeModule` with the appropriate
+    to perform the actual offload. Finally, wrap each `CallModule`, `CallVJP` and `CallDelegate` with the appropriate
     placement: `compute` for execution and `storage` for storage.
 
     If we have a instruction stream that goes through two linear layers L1 -> L2, the pass would add
@@ -841,7 +1132,7 @@ def _weight_offloading_pass(
 
     Args:
         instructions: Sequence of instructions to analyze.
-        compute: Where `CallModule`/`OptimizeModule` execution happens.
+        compute: Where `CallModule`, `CallVJP` and `CallDelegate` execution happens.
         storage: Where we 'offload' to.
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
@@ -876,9 +1167,9 @@ def _weight_offloading_pass(
 
     for instruction in instructions:
         match instruction:
-            case CallModule(caller=module) | RunDelegate(module=module) if isinstance(
-                module, torch.nn.Module
-            ):
+            case (
+                CallModule(caller=module) | CallVJP(caller=module) | RunDelegate(module=module)
+            ) if isinstance(module, torch.nn.Module):
                 new_instructions.append(MoveModule(location=compute, module=module))
                 new_instructions.append(instruction)
                 new_instructions.append(MoveModule(location=storage, module=module))

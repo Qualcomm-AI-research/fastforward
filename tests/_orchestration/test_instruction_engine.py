@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import functools
 import uuid
 
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any, ContextManager
+from typing import Any, Callable, ContextManager, Iterator
 
 import pytest
 import syrupy
@@ -30,6 +31,7 @@ from fastforward._orchestration.instruction_engine import (
     CallFunction,
     CallMethod,
     CallModule,
+    CallVJP,
     InstructionEngine,
     InstructionPasses,
     LoadAttribute,
@@ -41,7 +43,10 @@ from fastforward._orchestration.instruction_engine import (
     _activation_offloading_pass,
     _cancel_module_round_trips,
     _weight_offloading_pass,
+    assemble_grad_output,
     lifetime_management_pass,
+    loss_grad_outputs,
+    sum_grad_outputs,
 )
 from fastforward._orchestration.location import DeviceLocation, DiskLocation, Location
 from fastforward._orchestration.scheduler import ref_load_instructions, schedule
@@ -1205,3 +1210,226 @@ def test_call_delegate_rejects_a_wrong_number_of_datasets() -> None:
     # WHEN / THEN the instruction executes and rejects the result
     with pytest.raises(ValueError, match="returned 0 datasets for 1 targets"):
         instr.execute(register)
+
+
+def _stored(register: ActivationRegister, batches: list[Any]) -> NodeRef:
+    ref = NodeRef(id=uuid.uuid4(), name="value")
+    register.store(ref, _noop_context, ActivationDataset(batches))
+    return ref
+
+
+def _vjp(caller: Callable[..., Any], args: list[Any], grad_output: Any, **kwargs: Any) -> Any:
+    """Run one `CallVJP` on one batch and return the gradient of each argument."""
+    register = ActivationRegister()
+    instr = CallVJP(
+        caller=caller,
+        args=[_stored(register, [arg]) for arg in [*args, grad_output]],
+        kwargs={key: _stored(register, [value]) for key, value in kwargs.items()},
+        target=NodeRef(id=uuid.uuid4(), name="grads"),
+        context=_noop_context,
+    )
+    instr.execute(register)
+    return register.load(instr.target, _noop_context).batches[0]
+
+
+def test_call_vjp_matches_autograd_for_args_and_kwargs() -> None:
+    # GIVEN a node with a positional and a keyword input, where `x` has a grad_fn
+    def node(x: torch.Tensor, *, scale: torch.Tensor) -> torch.Tensor:
+        return (x * scale).tanh()
+
+    leaf = torch.randn(4, requires_grad=True)
+    x, scale, grad_output = 2 * leaf, torch.randn(4), torch.randn(4)
+
+    # WHEN we run its VJP
+    grads = _vjp(node, [x], grad_output, scale=scale)
+
+    # THEN the gradients match autograd and keep the structure of the inputs
+    x_ref, scale_ref = x.detach().requires_grad_(), scale.clone().requires_grad_()
+    expected = torch.autograd.grad(node(x_ref, scale=scale_ref), [x_ref, scale_ref], grad_output)
+    torch.testing.assert_close(grads[0], expected[0])
+    torch.testing.assert_close(grads["scale"], expected[1])
+
+    # THEN they do not follow the autograd graph that `x` already has
+    assert grads[0].grad_fn is None
+    assert leaf.grad is None
+
+
+def test_call_vjp_gives_none_for_non_float_and_unused_inputs() -> None:
+    # GIVEN a node of a float tensor, an int index, a bool mask and an unused input
+    def node(x: torch.Tensor, index: torch.Tensor, mask: torch.Tensor, _: torch.Tensor) -> Any:
+        return x[index] * mask
+
+    args = [torch.randn(4), torch.tensor([0, 2]), torch.tensor([True, False]), torch.randn(2)]
+
+    # WHEN we run its VJP
+    grads = _vjp(node, args, torch.ones(2))
+
+    # THEN only the float input that the output reads has a gradient
+    torch.testing.assert_close(grads[0], torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    assert grads[1] is None and grads[2] is None and grads[3] is None
+
+
+def test_call_vjp_ignores_missing_grad_outputs() -> None:
+    # GIVEN a node with a tuple output
+    def node(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return x, 3 * x
+
+    # WHEN we run its VJP without a gradient of its output
+    grads = _vjp(node, [torch.randn(3)], None)
+
+    # THEN the input gets no gradient
+    assert grads[0] is None
+
+    # AND with a gradient for only one part of the output, only that part contributes
+    grads = _vjp(node, [torch.randn(3)], (torch.ones(3), None))
+    torch.testing.assert_close(grads[0], torch.ones(3))
+
+
+def test_call_vjp_works_across_ambient_no_grad() -> None:
+    # GIVEN a node, and a caller that disabled gradients (as `layerwise_optimize` callers do)
+    def node(x: torch.Tensor, *, scale: torch.Tensor) -> torch.Tensor:
+        return (x * scale).tanh()
+
+    x, scale, grad_output = torch.randn(4), torch.randn(4), torch.randn(4)
+
+    # WHEN we run its VJP under `torch.no_grad`
+    with torch.no_grad():
+        grads = _vjp(node, [x], grad_output, scale=scale)
+
+    # THEN the gradients match autograd
+    x_ref, scale_ref = x.clone().requires_grad_(), scale.clone().requires_grad_()
+    expected = torch.autograd.grad(node(x_ref, scale=scale_ref), [x_ref, scale_ref], grad_output)
+    torch.testing.assert_close(grads[0], expected[0])
+    torch.testing.assert_close(grads["scale"], expected[1])
+
+
+def test_call_vjp_supports_in_place_nodes() -> None:
+    # GIVEN a node that changes its input in place
+    relu = torch.nn.ReLU(inplace=True)
+    x = torch.tensor([-1.0, 2.0])
+    stored = x.clone()
+
+    # WHEN we run its VJP
+    grads = _vjp(relu, [x], torch.ones(2))
+
+    # THEN the gradient matches autograd
+    torch.testing.assert_close(grads[0], torch.tensor([0.0, 1.0]))
+
+    # THEN the stored input does not change
+    torch.testing.assert_close(x, stored)
+
+
+def test_sum_grad_outputs_adds_present_leaves() -> None:
+    # GIVEN contributions with missing leaves, and one that is None as a whole
+    a = (torch.tensor(1.0), None, None)
+    b = None
+    c = (torch.tensor(2.0), torch.tensor(5.0), None)
+
+    # WHEN we add them
+    first, second, third = sum_grad_outputs(a, b, c)
+
+    # THEN present leaves are added
+    torch.testing.assert_close(first, torch.tensor(3.0))
+    torch.testing.assert_close(second, torch.tensor(5.0))
+
+    # THEN a leaf with no contribution stays None
+    assert third is None
+    assert sum_grad_outputs(None, None) is None
+
+
+def test_assemble_grad_output_places_part_grad_outputs_in_the_output_structure() -> None:
+    # GIVEN an output with two parts, and gradients for one part, the full output and
+    # nothing
+    output = (torch.zeros(2), {"y": torch.zeros(3)})
+    part = torch.tensor([1.0, 2.0])
+    full = (torch.ones(2), {"y": torch.ones(3)})
+
+    # WHEN we assemble them
+    first, second = assemble_grad_output([(0,), (), (1, "y")], output, part, full, None)
+
+    # THEN each leaf adds the gradients of the parts that hold it
+    torch.testing.assert_close(first, torch.tensor([2.0, 3.0]))
+    torch.testing.assert_close(second["y"], torch.ones(3))
+
+
+def test_assemble_grad_output_counts_a_negative_index_from_the_end() -> None:
+    # GIVEN a nested output, and gradients for parts named by negative indices, with two
+    # names for the last leaf
+    output = (torch.zeros(2), (torch.zeros(2), torch.zeros(2)))
+    first = torch.tensor([1.0, 2.0])
+    last = torch.tensor([3.0, 4.0])
+
+    # WHEN we assemble them
+    head, (middle, tail) = assemble_grad_output(
+        [(-2,), (-1, -1), (1, 1)], output, first, last, last
+    )
+
+    # THEN each negative index names the same part as its positive index
+    torch.testing.assert_close(head, first)
+    assert middle is None
+    torch.testing.assert_close(tail, 2 * last)
+
+
+def _loss_grads(objective: Callable[..., Any], outputs: list[Any], **values: Any) -> list[Any]:
+    """Run `loss_grad_outputs` on one output stream and return its gradients."""
+    register = ActivationRegister()
+    target = NodeRef(id=uuid.uuid4(), name="grad_output")
+    RunDelegate(
+        fn=functools.partial(loss_grad_outputs, objective, ["logits"], values),
+        bundles=[BundleSpec(_noop_context, [_stored(register, outputs)])],
+        targets=[(target, _noop_context)],
+    ).execute(register)
+    return register.load(target, _noop_context).batches
+
+
+def test_loss_is_called_once_and_int_outputs_get_no_gradient() -> None:
+    # GIVEN an objective that reads model outputs with an int leaf, and a label value
+    labels: list[object] = []
+    outputs = [{"logits": torch.randn(3), "ids": torch.tensor([1, 2])} for _ in range(2)]
+
+    def objective(logits: ActivationBundle, label: object) -> Iterator[torch.Tensor]:
+        labels.append(label)
+        for (output,), _ in logits:
+            yield output["logits"].square().sum() + output["ids"].sum()
+
+    label = object()
+
+    # WHEN we compute the gradients
+    grad_outputs = _loss_grads(objective, outputs, label=label)
+
+    # THEN the objective is called once with the value unchanged
+    assert labels == [label]
+
+    # THEN each batch gets the gradient of its own loss
+    for output, grad_output in zip(outputs, grad_outputs):
+        torch.testing.assert_close(grad_output["logits"], 2 * output["logits"])
+
+    # THEN the int leaf gets None
+    assert all(grad_output["ids"] is None for grad_output in grad_outputs)
+
+
+def _cross_batch(logits: ActivationBundle) -> Iterator[torch.Tensor]:
+    batches = [output for (output,), _ in logits]
+    yield batches[0].sum()
+    yield batches[0].sum() + batches[1].sum()
+
+
+@pytest.mark.parametrize(
+    ("objective", "match"),
+    [
+        (lambda logits: iter([torch.tensor(0.0)]), "losses"),
+        (lambda logits: iter([torch.tensor(0.0)] * 3), "losses"),
+        (lambda logits: (torch.ones(2) for _ in logits), "real scalar"),
+        (lambda logits: (1.0 for _ in logits), "real scalar"),
+        (_cross_batch, "batch 1 .* depends on batch 0"),
+    ],
+    ids=["too-few", "too-many", "not-scalar", "not-tensor", "cross-batch"],
+)
+def test_loss_grad_outputs_rejects_invalid_losses(
+    objective: Callable[..., Any], match: str
+) -> None:
+    # GIVEN an objective that does not yield one real scalar loss per batch of its own
+    # WHEN we compute the gradients of two batches
+    # THEN it fails
+    with pytest.raises(ValueError, match=match):
+        _loss_grads(objective, [torch.randn(3) for _ in range(2)])
