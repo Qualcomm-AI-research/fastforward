@@ -50,7 +50,15 @@ from fastforward._orchestration.scheduler import (
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
 
-from ._models import ResidualStack, ReturnTuple, TwoLayerModel, TwoLinear
+from ._models import (
+    ResidualStack,
+    ReturnTuple,
+    TiedBranches,
+    TiedHead,
+    TiedMatmul,
+    TwoLayerModel,
+    TwoLinear,
+)
 
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
@@ -567,6 +575,62 @@ def test_unproducible_pinned_demand_is_refused(two_linear: TwoLinear) -> None:
     # scheduler emitted instead would silently be the wrong data.
     with pytest.raises(RuntimeError, match="Cannot produce"):
         scheduler.schedule_intervention(intervention)
+
+
+@pytest.mark.parametrize(
+    ("model_type", "region", "sample"),
+    [
+        (TiedHead, "emb", torch.tensor([[1, 2]])),
+        (TiedHead, "head", torch.tensor([[1, 2]])),
+        (TiedMatmul, "emb", torch.tensor([[1, 2]])),
+        (TiedBranches, "left", torch.randn(2, 4)),
+    ],
+)
+def test_region_that_shares_a_weight_outside_the_region_is_rejected(
+    model_type: type[torch.nn.Module], region: str, sample: torch.Tensor
+) -> None:
+    # GIVEN a region whose weight another node also reads, as a module or as a
+    # plain tensor
+    model = model_type().eval()
+    graph = trace(model, sample)
+
+    # WHEN scheduling an intervention on the region
+    # THEN it fails, because changing the weight also changes the other node
+    with pytest.raises(ValueError, match="shares a weight"):
+        schedule(graph, specs=[_spec(model.get_submodule(region), InputActivations(ORIGINAL))])
+
+
+def test_region_that_shares_a_weight_inside_the_region_is_scheduled() -> None:
+    # GIVEN a region containing both readers of a tied weight, with no sharing
+    # outside the region
+    region = TiedHead()
+    model = torch.nn.Sequential(region, torch.nn.Linear(10, 4)).eval()
+    sample = torch.tensor([[1, 2]])
+    graph = trace(model, sample)
+    reduced, specs = reduce_resolution(
+        graph, [_spec(region, InputActivations(ORIGINAL), OutputActivations(ORIGINAL))]
+    )
+
+    # WHEN scheduling an intervention on the whole region
+    program = schedule(reduced, specs=specs)
+
+    # THEN the intervention is scheduled and the program runs, including the
+    # region's forward pass to produce its requested output activations
+    [optimize] = _optimizes(program)
+    assert optimize.module is region
+    InstructionEngine().run(program, sample)
+
+
+def test_region_without_shared_weights_in_a_tied_model_is_scheduled() -> None:
+    # GIVEN a model with tied weights, and a region that does not read them
+    model = TiedHead().eval()
+    graph = trace(model, torch.tensor([[1, 2]]))
+
+    # WHEN scheduling an intervention on the region
+    program = schedule(graph, specs=[_spec(model.fc, InputActivations(ORIGINAL))])
+
+    # THEN the program runs
+    InstructionEngine().run(program, torch.tensor([[1, 2]]))
 
 
 def test_output_activations_delivers_region_output(two_linear: TwoLinear) -> None:

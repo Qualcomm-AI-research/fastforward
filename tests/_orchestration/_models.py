@@ -731,3 +731,46 @@ class BufferCounter(torch.nn.Module):
         assert isinstance(self.count, torch.Tensor)
         self.count.add_(1)
         return self.fc(x) * self.count  # type: ignore[no-any-return]
+
+
+class TiedHead(torch.nn.Module):
+    """Embedding whose weight is tied to the output head, as in many language models."""
+
+    def __init__(self, vocab: int = 10, dim: int = 4) -> None:
+        super().__init__()
+        self.emb = torch.nn.Embedding(vocab, dim)
+        self.fc = torch.nn.Linear(dim, dim)
+        self.head = torch.nn.Linear(dim, vocab, bias=False)
+        self.head.weight = self.emb.weight
+
+    def forward(self, ids: torch.Tensor) -> torch.Tensor:
+        """Forward pass: head(fc(emb(ids))), with head and emb sharing one weight."""
+        return self.head(self.fc(self.emb(ids)))  # type: ignore[no-any-return]
+
+
+class TiedBranches(torch.nn.Module):
+    """Two parallel layers that share one weight, so neither is downstream of the other."""
+
+    def __init__(self, dim: int = 4) -> None:
+        super().__init__()
+        self.left = torch.nn.Linear(dim, dim)
+        self.right = torch.nn.Linear(dim, dim)
+        self.right.weight = self.left.weight
+        self.out = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: out(left(x) + right(x)), with left and right sharing one weight."""
+        return self.out(self.left(x) + self.right(x))  # type: ignore[no-any-return]
+
+
+class TiedMatmul(torch.nn.Module):
+    """Embedding whose weight the forward pass reads again as a plain tensor."""
+
+    def __init__(self, vocab: int = 10, dim: int = 4) -> None:
+        super().__init__()
+        self.emb = torch.nn.Embedding(vocab, dim)
+        self.fc = torch.nn.Linear(dim, dim)
+
+    def forward(self, ids: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc(emb(ids)) @ emb.weight.T."""
+        return self.fc(self.emb(ids)) @ self.emb.weight.T  # type: ignore[no-any-return]

@@ -51,6 +51,7 @@ from fastforward._orchestration.graph_module import (
     Const,
     GraphModule,
     InputRef,
+    Node,
     NodeRef,
     Op,
     SubgraphSpec,
@@ -517,6 +518,34 @@ def _check_order_unambiguous(interventions: Sequence[_Intervention]) -> None:
             raise ValueError(msg)
 
 
+def _node_parameters(node: Node) -> frozenset[int]:
+    """Return the identities of the parameters that `node` reads.
+
+    A module node reads the parameters of its module. A `get_attr` node reads the
+    tensor it returns, which is a parameter when a model uses its weight directly.
+    """
+    if isinstance(node.target, torch.nn.Module):
+        return frozenset(id(param) for param in node.target.parameters())
+    if node.op is Op.get_attr and isinstance(value := node.target(), torch.nn.Parameter):
+        return frozenset({id(value)})
+    return frozenset()
+
+
+def _check_no_shared_weights(graph: GraphModule, regions: Sequence[NodeRef]) -> None:
+    """Ensure that no node outside a region reads a weight of that region.
+
+    An intervention on a tied weight also changes every other node that reads it, so
+    the result of the optimization is ambiguous.
+    """
+    parameters = {node: _node_parameters(graph.node(node)) for node in graph.topo_order}
+    for region in regions:
+        owned = _node_parameters(graph.node(region))
+        for node, params in parameters.items():
+            if node != region and params & owned:
+                msg = f"Region {region!r} shares a weight with {node!r}. Untie the weights or remove the region from the targets."
+                raise ValueError(msg)
+
+
 def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> InstructionProgram:
     """Compile `graph` and its `specs` into an `InstructionProgram`.
 
@@ -534,8 +563,8 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
         The instruction program to run.
 
     Raises:
-        ValueError: If two generators in use share an `order`, or if a spec declares
-            an `ANY` flow.
+        ValueError: If two generators in use share an `order`, if a spec declares
+            an `ANY` flow, or if a node outside a region reads a weight of that region.
     """
     interventions: list[_Intervention] = []
 
@@ -558,6 +587,7 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     topo_index = {ref: i for i, ref in enumerate(graph.topo_order)}
     interventions.sort(key=lambda intervention: topo_index[intervention.region])
     _check_order_unambiguous(interventions)
+    _check_no_shared_weights(graph, [intervention.region for intervention in interventions])
 
     instructions = Scheduler(graph).run(interventions)
 
