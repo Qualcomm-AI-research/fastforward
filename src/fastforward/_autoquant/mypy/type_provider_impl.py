@@ -10,7 +10,6 @@ import sysconfig
 from pathlib import Path
 from typing import Iterator, TypeAlias
 
-import libcst
 import libcst.metadata
 import mypy.build
 import mypy.checker
@@ -26,20 +25,23 @@ import mypy.types
 from typing_extensions import override
 
 from fastforward._autoquant.mypy.traverser import TraverserVisitor
+from fastforward._autoquant.tsp.client import StaleSnapshotError, TypeClient
+from fastforward._autoquant.tsp.context import current_module, module_context
+from fastforward._autoquant.tsp.type_provider_impl import TspTypeProvider, make_call_scoped_cache
+from fastforward._autoquant.tsp.types import TypeInfo as TypeInfo
 
 CodeRange = libcst.metadata.CodeRange
 CodePosition = libcst.metadata.CodePosition
-PositionProvider = libcst.metadata.PositionProvider
+mypy_module_context = module_context
 
 
 @dataclasses.dataclass
-class TypeInfo:
-    """Type information."""
+class _MypyTypeOperations:
+    """Preserve native mypy type operations behind the shared metadata interface."""
 
-    typ: mypy.types.Type
     _checker: mypy.checker.TypeChecker = dataclasses.field(repr=False)
 
-    def is_proven_scalar(self) -> bool:
+    def is_proven_scalar(self, typ: mypy.types.Type) -> bool:
         """Read numeric facts without a checker query; Any is not evidence."""
 
         def numeric(typ: mypy.types.Type) -> bool:
@@ -54,26 +56,27 @@ class TypeInfo:
                 "builtins.bool",
             )
 
-        return numeric(self.typ)
+        return numeric(typ)
 
-    def is_subtype(self, qualified_name: str) -> bool:
+    def is_subtype(self, typ: mypy.types.Type, qualified_name: str) -> bool:
         """Check if this type is a subtype of the specified qualified type.
 
         Args:
+            typ: The native mypy type to inspect.
             qualified_name: The fully qualified name of the potential supertype.
 
         Returns:
             True if this type is a subtype of the specified type, False otherwise.
         """
-        if isinstance(self.typ, mypy.types.AnyType):
+        if isinstance(typ, mypy.types.AnyType):
             return True
         try:
-            typ = self._checker.named_type(qualified_name)
-            return mypy.subtypes.is_subtype(self.typ, typ)
+            supertype = self._checker.named_type(qualified_name)
+            return mypy.subtypes.is_subtype(typ, supertype)
         except KeyError:
             return False
 
-    def is_sequence_of_subtype(self, qualified_name: str) -> bool:
+    def is_sequence_of_subtype(self, typ: mypy.types.Type, qualified_name: str) -> bool:
         """Check if this type is a subtype of `Sequence[<qualified_name>]`.
 
         Callers that accept collections of a given element type (e.g.
@@ -88,82 +91,80 @@ class TypeInfo:
         a strict `Sequence[Tensor]` check would otherwise leave the call
         unquantized when mypy has partial information.
         """
-        if isinstance(self.typ, mypy.types.AnyType):
+        if isinstance(typ, mypy.types.AnyType):
             return True
 
         try:
             elem_type = self._checker.named_type(qualified_name)
             seq_type = self._checker.named_generic_type("typing.Sequence", [elem_type])
-            if mypy.subtypes.is_subtype(self.typ, seq_type):
+            if mypy.subtypes.is_subtype(typ, seq_type):
                 return True
         except KeyError:
             pass
 
-        if isinstance(self.typ, mypy.types.Instance) and self.typ.args:
-            if all(isinstance(arg, mypy.types.AnyType) for arg in self.typ.args):
+        if isinstance(typ, mypy.types.Instance) and typ.args:
+            if all(isinstance(arg, mypy.types.AnyType) for arg in typ.args):
                 try:
                     any_elem = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
                     seq_of_any = self._checker.named_generic_type("typing.Sequence", [any_elem])
-                    return mypy.subtypes.is_subtype(self.typ, seq_of_any)
+                    return mypy.subtypes.is_subtype(typ, seq_of_any)
                 except KeyError:
                     return False
 
         return False
 
 
-_ProvidedType: TypeAlias = TypeInfo
-
-
-class MypyTypeProvider(libcst.VisitorMetadataProvider[_ProvidedType]):
-    """A metadata provider that uses mypy to extract type information from Python code.
-
-    This provider analyzes the code using mypy's type checker and associates type
-    information with corresponding CST nodes. It depends on the PositionProvider
-    to map between CST nodes and their positions in the source code.
-
-    The provider works by:
-    1. Running mypy on the provided code to generate a typed AST
-    2. Traversing the mypy AST to extract type information for each node
-    3. Mapping the type information back to CST nodes based on code positions
-
-    Type information is made available as metadata that can be retrieved for
-    each CST node that has a corresponding type in the mypy analysis.
-    """
-
-    METADATA_DEPENDENCIES = (PositionProvider,)
+class MypyClient(TypeClient):
+    """Adapt native mypy analysis to the shared document and type-query lifecycle."""
 
     def __init__(self) -> None:
-        super().__init__()
-        self._range_type_map: dict[CodeRange, mypy.types.Type] = {}
-        self._type_checker: mypy.checker.TypeChecker | None = None
+        self._documents: dict[str, dict[CodeRange, TypeInfo]] = {}
+        self._snapshot = 0
 
     @override
-    def visit_Module(self, node: libcst.Module) -> bool | None:
-        if (mypy_state := _get_mypy_tree_and_checker(node.code)) is None:
-            # Mypy failed, we cannot provide type information
-            return False
-
-        mypy_tree, expr_checker = mypy_state
-        self._type_checker = expr_checker.chk
-
-        visitor = _TypeExtractionVisitor(expr_checker, range_type_map=self._range_type_map)
-        visitor.visit(mypy_tree)
-
-        return True
+    def open_document(self, uri: str, text: str) -> None:
+        self._snapshot += 1
+        self._documents[uri] = {}
+        state = _get_mypy_tree_and_checker(text)
+        if state is None:
+            return
+        tree, checker = state
+        types: dict[CodeRange, mypy.types.Type] = {}
+        _TypeExtractionVisitor(checker, range_type_map=types).visit(tree)
+        operations = _MypyTypeOperations(checker.chk)
+        self._documents[uri] = {
+            code_range: TypeInfo(typ, operations) for code_range, typ in types.items()
+        }
 
     @override
-    def on_visit(self, node: libcst.CSTNode) -> bool:
-        # If this node's code range has a corresponding type in
-        # _range_type_map, associate that type with this node
-        coderange = self.get_metadata(PositionProvider, node, None)
-        typ = self._range_type_map.get(coderange, None)
+    def close_document(self, uri: str) -> None:
+        self._documents.pop(uri, None)
+        self._snapshot += 1
 
-        if coderange is not None and typ is not None:  # type: ignore[redundant-expr]
-            checker = self._type_checker
-            assert checker is not None
-            self.set_metadata(node, TypeInfo(typ, checker))
+    @override
+    def get_snapshot(self) -> int:
+        return self._snapshot
 
-        return super().on_visit(node)
+    @override
+    def get_computed_type(self, uri: str, code_range: CodeRange, snapshot: int) -> TypeInfo | None:
+        if snapshot != self._snapshot:
+            msg = "The mypy analysis snapshot is no longer current."
+            raise StaleSnapshotError(msg)
+        return self._documents.get(uri, {}).get(code_range)
+
+    @override
+    def close(self) -> None:
+        self._documents.clear()
+        self._snapshot += 1
+
+
+class MypyTypeProvider(TspTypeProvider):
+    """Collect mypy types using the same metadata provider as remote TSP backends."""
+
+    CLIENT_FACTORY = MypyClient
+
+
+_mypy_client_scope = make_call_scoped_cache(MypyClient)
 
 
 _BUILTIN_CONSTRUCTORS: dict[str, str] = {
@@ -388,7 +389,7 @@ def _get_mypy_tree_and_checker(
         A tuple containing the mypy AST and an expression checker, or None if
         the AST could not be built
     """
-    module_name, module_path = _module_context.get()
+    module_name, module_path = current_module()
     cache_key = (code, module_name, module_path)
     cache = _call_scoped_cache.get()
     if cache is not None and (cached := cache.get(cache_key)) is not None:
@@ -433,26 +434,6 @@ def _get_mypy_tree_and_checker(
     return typed_result
 
 
-_module_context: contextvars.ContextVar[tuple[str, str | None]] = contextvars.ContextVar(
-    "fastforward_autoquant_mypy_module_context", default=("_ff_evaluation_module__", None)
-)
-
-
-@contextlib.contextmanager
-def mypy_module_context(module_name: str, module_path: str | None) -> Iterator[None]:
-    """Preserve module identity while LibCST resolves mypy metadata.
-
-    The qualified name supplies the package for relative imports. The source
-    path also lets mypy distinguish package initializers from ordinary modules.
-    Context-local state supports nested preprocessing and is restored on errors.
-    """
-    token = _module_context.set((module_name, module_path))
-    try:
-        yield
-    finally:
-        _module_context.reset(token)
-
-
 _CallScopedCache: TypeAlias = dict[
     tuple[str, str, str | None], tuple[mypy.nodes.MypyFile, mypy.checkexpr.ExpressionChecker]
 ]
@@ -472,6 +453,7 @@ def mypy_call_scoped_cache() -> Iterator[None]:
     """
     token = _call_scoped_cache.set({})
     try:
-        yield
+        with _mypy_client_scope():
+            yield
     finally:
         _call_scoped_cache.reset(token)

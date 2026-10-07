@@ -2,31 +2,19 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import contextlib
-import dataclasses
 
 from typing import Iterator
 
 import libcst
 
+from fastforward._autoquant.tsp.context import module_context
+from fastforward._autoquant.tsp.types import TypeInfo as TypeInfo
 
-@dataclasses.dataclass
-class TypeInfo:
-    """Fallback for TypeInfo if Mypy is not installed."""
-
-    def is_proven_scalar(self) -> bool:
-        """Missing type information is not positive scalar evidence."""
-        return False
+mypy_module_context = module_context
 
 
 class MypyTypeProvider(libcst.VisitorMetadataProvider[TypeInfo]):
     """Fallback for MypyTypeProvider if Mypy is not installed."""
-
-
-@contextlib.contextmanager
-def mypy_module_context(module_name: str, module_path: str | None) -> Iterator[None]:
-    """No-op fallback for mypy_module_context if Mypy is not installed."""
-    del module_name, module_path
-    yield
 
 
 @contextlib.contextmanager

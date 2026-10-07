@@ -1,6 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import contextlib
 import pathlib
 
 from pathlib import Path
@@ -13,10 +14,12 @@ import pytest
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
 from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
 from fastforward._autoquant.mypy.type_provider_impl import (
+    MypyClient,
     _get_mypy_tree_and_checker,
     mypy_call_scoped_cache,
     mypy_module_context,
 )
+from fastforward._autoquant.tsp.client import StaleSnapshotError
 
 
 @pytest.mark.slow
@@ -68,6 +71,34 @@ def values(integer: int, floating: float, boolean: bool, numeric: int | float,
 
     # THEN: Every possible type must be numeric; Any and optional types are not proofs.
     assert proven == [True, True, True, True, False, False, False, True]
+
+
+@pytest.mark.slow
+def test_mypy_client_rejects_stale_snapshots() -> None:
+    """Prevent closed-document types from being read through an old snapshot.
+
+    Mypy has no TSP snapshots of its own; its adapter maintains them to obey the
+    shared client contract. Closing a document must invalidate previous queries
+    and remove its metadata so later analysis cannot reuse stale types.
+    """
+    # GIVEN an analyzed document and its snapshot.
+    with contextlib.closing(MypyClient()) as client:
+        client.open_document("file:///first.py", "value = 1\n")
+        snapshot = client.get_snapshot()
+        code_range = libcst.metadata.CodeRange(
+            libcst.metadata.CodePosition(1, 8), libcst.metadata.CodePosition(1, 9)
+        )
+        assert client.get_computed_type("file:///first.py", code_range, snapshot) is not None
+
+        # WHEN closing the document invalidates the analysis state.
+        client.close_document("file:///first.py")
+
+        # THEN its previous types cannot leak into subsequent queries.
+        with pytest.raises(StaleSnapshotError, match="no longer current"):
+            client.get_computed_type("file:///first.py", code_range, snapshot)
+        assert (
+            client.get_computed_type("file:///first.py", code_range, client.get_snapshot()) is None
+        )
 
 
 @pytest.mark.slow

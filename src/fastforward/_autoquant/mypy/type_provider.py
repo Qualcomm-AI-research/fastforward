@@ -15,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
     from fastforward._autoquant.mypy.type_provider_fallback import (  # type: ignore[assignment]
         MypyTypeProvider as MypyTypeProvider,
     )
-    from fastforward._autoquant.mypy.type_provider_fallback import (  # type: ignore[assignment]
+    from fastforward._autoquant.mypy.type_provider_fallback import (
         TypeInfo as TypeInfo,
     )
     from fastforward._autoquant.mypy.type_provider_fallback import (

@@ -37,13 +37,13 @@ from fastforward._autoquant.function_utils import (
     resolve_method_owner_and_name,
 )
 from fastforward._autoquant.import_collision import resolve_import_collisions
-from fastforward._autoquant.mypy.type_provider import mypy_call_scoped_cache
 from fastforward._autoquant.name_allocation import (
     QuantizedClassNameAllocator,
     RenameHelperRefsTransformer,
 )
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol
+from fastforward._autoquant.tsp_provider import type_inference_scope
 from fastforward._import import fully_qualified_name
 from fastforward._quantops import optable
 from fastforward.nn.quantized_module import QuantizedModule
@@ -461,7 +461,7 @@ def autoquant_with_defaults(
     replacement_patterns: Iterable[PatternRule] = (),
     ignore_exceptions: bool = True,
 ) -> str:
-    with mypy_call_scoped_cache():
+    with type_inference_scope():
         return autoquant(
             module=module,
             source_context=default_source_context(

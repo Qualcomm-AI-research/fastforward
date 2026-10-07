@@ -23,9 +23,9 @@ from fastforward._autoquant.cst.node_creation import (
     get_quantized_function_counterpart,
 )
 from fastforward._autoquant.function_context import FunctionContext
-from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
 from fastforward._autoquant.pybuilder import QuantizerReferenceCollection
 from fastforward._autoquant.pysource.scope import ImportSymbol, ScopeProvider
+from fastforward._autoquant.tsp_provider import TypeInfo, TypeProvider
 from fastforward._quantops import OperatorTable
 from fastforward._quantops.optable import (
     OPS_LIBCST_TO_TORCH_MAPPING,
@@ -278,7 +278,7 @@ _ExpressionT = TypeVar("_ExpressionT", bound=libcst.BaseExpression)
 
 
 class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
-    METADATA_DEPENDENCIES = (MypyTypeProvider,)
+    METADATA_DEPENDENCIES = (TypeProvider,)
 
     @override
     def on_leave(
@@ -292,7 +292,7 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
             and isinstance(result, libcst.BaseExpression)
             and not isinstance(result, ReplacementCandidate)
         ):
-            info = self.get_metadata(MypyTypeProvider, original_node, None)
+            info = self.get_metadata(TypeProvider, original_node, None)
             if info is not None and info.is_proven_scalar():
                 return ScalarExpression(result)  # type: ignore[return-value]
         return result
@@ -335,7 +335,7 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
     ) -> libcst.BaseExpression:
         type_info = []
         for arg in original_node.args:
-            type_info.append(self.get_metadata(MypyTypeProvider, arg, None))
+            type_info.append(self.get_metadata(TypeProvider, arg, None))
 
         result = self._determine_replacement_candidate(type_info, updated_node)
         return result or super().leave_Call(original_node, updated_node)
@@ -346,7 +346,7 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
         original_node: libcst.UnaryOperation,
         updated_node: libcst.UnaryOperation,
     ) -> libcst.BaseExpression:
-        expr_type_info = self.get_metadata(MypyTypeProvider, original_node.expression, None)
+        expr_type_info = self.get_metadata(TypeProvider, original_node.expression, None)
         type_info = [expr_type_info]
 
         result = self._determine_replacement_candidate(type_info, updated_node)
@@ -358,8 +358,8 @@ class ExtendedMarkReplacementCandidates(MarkReplacementCandidates):
         original_node: libcst.BinaryOperation,
         updated_node: libcst.BinaryOperation,
     ) -> libcst.BaseExpression:
-        lhs_type_info = self.get_metadata(MypyTypeProvider, original_node.left, None)
-        rhs_type_info = self.get_metadata(MypyTypeProvider, original_node.right, None)
+        lhs_type_info = self.get_metadata(TypeProvider, original_node.left, None)
+        rhs_type_info = self.get_metadata(TypeProvider, original_node.right, None)
         type_info = [lhs_type_info, rhs_type_info]
 
         result = self._determine_replacement_candidate(type_info, updated_node)

@@ -20,9 +20,9 @@ from typing_extensions import override
 
 from fastforward._autoquant.cst.pattern import PatternRule, PatternRuleTransformer
 from fastforward._autoquant.cst.validation import ensure_type
-from fastforward._autoquant.mypy.type_provider import mypy_module_context
 from fastforward._autoquant.pass_manager import PassManager
 from fastforward._autoquant.pysource.scope import infer_scopes
+from fastforward._autoquant.tsp.context import module_context
 from fastforward._import import QualifiedNameReference, fully_qualified_name
 
 logger = logging.getLogger(__name__)
@@ -282,7 +282,7 @@ class _ModuleSource:
             passes = (pattern_transformer,) + passes
 
         pm = PassManager(passes)
-        with mypy_module_context(module_qualified_name, inspect.getsourcefile(module)):
+        with module_context(module_qualified_name, inspect.getsourcefile(module)):
             module_cst = pm(module_cst)
         logger.info("SourceContext: finished preprocessing module %s", module_qualified_name)
         return module_cst
