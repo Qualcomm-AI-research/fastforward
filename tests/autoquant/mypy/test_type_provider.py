@@ -1,76 +1,67 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
+"""Check behavior specific to the native mypy adapter.
+
+Common inference checks live in tests/autoquant/test_type_provider.py and use the
+selected backend. These checks intentionally use mypy for its native inheritance
+semantics, snapshot bookkeeping, cached analysis objects, and bundled stubs.
+"""
 
 import contextlib
 import pathlib
 
-from pathlib import Path
 from types import ModuleType
 
-import fastforward as ff
 import libcst
 import pytest
 
 from fastforward._autoquant.cst.filter import filter_nodes_by_type
-from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, TypeInfo
+from fastforward._autoquant.mypy.type_provider import MypyTypeProvider
 from fastforward._autoquant.mypy.type_provider_impl import (
     MypyClient,
     _get_mypy_tree_and_checker,
     mypy_call_scoped_cache,
-    mypy_module_context,
 )
 from fastforward._autoquant.tsp.client import StaleSnapshotError
+from fastforward._autoquant.tsp.context import module_context
+from fastforward._autoquant.tsp.types import TypeInfo
 
 
 @pytest.mark.slow
-def test_mypy_type_provider() -> None:
-    # Given: A simple Python code snippet with type annotations
-    (code,) = ff.testing.string.dedent_strip("""
-    a: float = 3.14
-    b: float = 2.7
-    c = a + b
-    """)
-    cst = libcst.parse_module(code)
+def test_shared_mypy_provider_preserves_native_subtyping() -> None:
+    """Keep mypy's inheritance semantics when wrapping its types in shared metadata.
 
-    # When: We resolve the MypyTypeProvider metadata
-    type_data = libcst.MetadataWrapper(cst, unsafe_skip_copy=True).resolve(MypyTypeProvider)
-    assert type_data is not None
-
-    # Then: The type provider should correctly infer types for all assignments
-    node_types = (libcst.Assign, libcst.AnnAssign)
-    assign_nodes = list(filter_nodes_by_type(cst, node_types))
-    assert len(assign_nodes) == 3
-    for assign in assign_nodes:
-        assert isinstance(assign, node_types)
-        target = assign.target if isinstance(assign, libcst.AnnAssign) else assign.targets[0]
-        assert target in type_data
-        assert isinstance(type_data[target], TypeInfo)
-
-        if assign.value is not None:
-            assert assign.value in type_data
-            assert isinstance(type_data[assign.value], TypeInfo)
-            assert type_data[assign.value].typ == type_data[target].typ
-
-
-@pytest.mark.slow
-def test_stored_scalar_facts_distinguish_unknown_and_mixed_types() -> None:
-    # GIVEN: Stored types for numeric values, unions, literals and unknown values.
-    cst = libcst.parse_module("""
-from typing import Any, Literal
-
-def values(integer: int, floating: float, boolean: bool, numeric: int | float,
-           optional: int | None, unknown: Any, text: str, literal: Literal[1]):
-    return integer, floating, boolean, numeric, optional, unknown, text, literal
+    A native Child must still match Base, including inside a sequence. Remote
+    TSP descriptions lack this inheritance information, so this regression
+    belongs to the mypy adapter rather than the common provider contract.
+    """
+    # GIVEN inheritance and sequence types that require native checker semantics.
+    module = libcst.parse_module("""
+from typing import Any
+class Base: pass
+class Child(Base): pass
+class Other: pass
+def values(child: Child, other: Other, children: list[Child], others: list[Other], unknown: Any):
+    return child, other, children, others, unknown
 """)
-    metadata = libcst.MetadataWrapper(cst, unsafe_skip_copy=True).resolve(MypyTypeProvider)
-    returned = next(filter_nodes_by_type(cst, libcst.Return)).value
+
+    # WHEN mypy types are collected through the common provider.
+    metadata = libcst.MetadataWrapper(module, unsafe_skip_copy=True).resolve(MypyTypeProvider)
+    returned = next(filter_nodes_by_type(module, libcst.Return)).value
     assert isinstance(returned, libcst.Tuple)
+    infos = [metadata[element.value] for element in returned.elements]
+    name = "_ff_evaluation_module__.Base"
 
-    # WHEN: Read the stored proof for each returned expression.
-    proven = [metadata[element.value].is_proven_scalar() for element in returned.elements]
-
-    # THEN: Every possible type must be numeric; Any and optional types are not proofs.
-    assert proven == [True, True, True, True, False, False, False, True]
+    # THEN the shared metadata retains subclass, sequence, and Any behavior.
+    assert all(isinstance(info, TypeInfo) for info in infos)
+    assert [info.is_subtype(name) for info in infos] == [True, False, False, False, True]
+    assert [info.is_sequence_of_subtype(name) for info in infos] == [
+        False,
+        False,
+        True,
+        False,
+        True,
+    ]
 
 
 @pytest.mark.slow
@@ -102,17 +93,23 @@ def test_mypy_client_rejects_stale_snapshots() -> None:
 
 
 @pytest.mark.slow
-def test_mypy_module_context_restored_after_error() -> None:
+def test_mypy_analysis_cache_is_restored_after_nested_module_error() -> None:
+    """Reuse the outer mypy analysis after a nested conversion fails.
+
+    Identical code analyzed under different module names needs distinct cached
+    mypy trees. Restoring the shared module context must recover the exact outer
+    cached result, including after an exception, without rebuilding its analysis.
+    """
     # GIVEN standalone code analyzed outside any source module
     code = "value: int = 1\n"
     with mypy_call_scoped_cache():
         standalone = _get_mypy_tree_and_checker(code)
 
         # WHEN nested module analysis exits with an exception
-        with mypy_module_context("outer.model", None):
+        with module_context("outer.model", None):
             outer = _get_mypy_tree_and_checker(code)
             with pytest.raises(RuntimeError, match="analysis failed"):
-                with mypy_module_context("inner.model", None):
+                with module_context("inner.model", None):
                     inner = _get_mypy_tree_and_checker(code)
                     assert inner is not None
                     assert inner[0].fullname == "inner.model"
@@ -130,43 +127,19 @@ def test_mypy_module_context_restored_after_error() -> None:
 
 
 @pytest.mark.slow
-def test_mypy_cache_distinguishes_source_paths(tmp_path: Path) -> None:
-    # GIVEN identical source and module names with dependencies in different roots
-    code = "from .dependency import value\nresult = value\n"
-    paths = []
-    for root, value in (("first", "1"), ("second", '"text"')):
-        package = tmp_path / root / "cache_package"
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("")
-        (package / "dependency.py").write_text(f"value = {value}\n")
-        path = package / "model.py"
-        path.write_text(code)
-        paths.append(path)
-
-    # WHEN both sources are analyzed within the same cache scope
-    inferred_types = []
-    with mypy_call_scoped_cache():
-        for path in paths:
-            with mypy_module_context("cache_package.model", str(path)):
-                cst = libcst.parse_module(code)
-                metadata = libcst.MetadataWrapper(cst, unsafe_skip_copy=True).resolve(
-                    MypyTypeProvider
-                )
-                assignment = next(filter_nodes_by_type(cst, libcst.Assign))
-                inferred_types.append(str(metadata[assignment.value].typ))
-
-    # THEN each import resolves against its own source root, without stale types
-    assert inferred_types == ["int", "str"]
-
-
-@pytest.mark.slow
 @pytest.mark.parametrize("module", [libcst, pathlib])
 def test_mypy_library_module_preserves_library_stubs(module: ModuleType) -> None:
+    """Keep library source paths from shadowing mypy's bundled dependency stubs.
+
+    Analyzing a library module changes mypy's import search roots. Its typeshed
+    imports must still resolve, for both a third-party package and the standard
+    library, or Autoquant cannot analyze code from those libraries.
+    """
     # GIVEN library source that uses a typeshed-provided module
     code = "from typing_extensions import final\n@final\nclass Example:\n    pass\n"
 
     # WHEN mypy analyzes source under the library module's identity
-    with mypy_module_context(module.__name__, module.__file__):
+    with module_context(module.__name__, module.__file__):
         result = _get_mypy_tree_and_checker(code)
 
     # THEN library source directories do not shadow mypy's bundled stubs

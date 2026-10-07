@@ -17,8 +17,8 @@ import torch
 
 from fastforward._autoquant import pysource
 from fastforward._autoquant.autoquant import default_preprocessing_passes
-from fastforward._autoquant.mypy.type_provider import MypyTypeProvider, mypy_call_scoped_cache
 from fastforward._autoquant.pysource import source_context
+from fastforward._autoquant.tsp_provider import TypeInfo, TypeProvider, type_inference_scope
 from typing_extensions import override
 
 
@@ -203,15 +203,15 @@ def _test_func_with_decorator() -> None:
 
 
 class _CaptureAssignmentTypes(libcst.CSTTransformer):
-    METADATA_DEPENDENCIES = (MypyTypeProvider,)
+    METADATA_DEPENDENCIES = (TypeProvider,)
 
     def __init__(self) -> None:
         super().__init__()
-        self.types: list[str] = []
+        self.types: list[TypeInfo] = []
 
     @override
     def visit_Assign(self, node: libcst.Assign) -> None:
-        self.types.append(str(self.get_metadata(MypyTypeProvider, node.value).typ))
+        self.types.append(self.get_metadata(TypeProvider, node.value))
 
 
 @pytest.mark.slow
@@ -225,6 +225,12 @@ def test_source_context_preserves_relative_imports(
     filename: str,
     levels: int,
 ) -> None:
+    """Resolve imported values using the original package during preprocessing.
+
+    Losing the source module's identity breaks relative imports and leaves
+    Autoquant without usable operand types. The selected backend must infer the
+    imported integer sum while preprocessing preserves the original source.
+    """
     # GIVEN regular or dynamically named packages with both forms of relative import
     root = tmp_path / "relative_imports"
     package = root / "models" / package_name
@@ -251,7 +257,7 @@ def test_source_context_preserves_relative_imports(
         passes = (capture, *default_preprocessing_passes())
 
         # WHEN source preprocessing runs with type inference and the original imports
-        with mypy_call_scoped_cache():
+        with type_inference_scope():
             source = pysource.SourceContext(preprocessing_passes=passes).get(name)
             cst: libcst.CSTNode = source.cst()
 
@@ -259,7 +265,9 @@ def test_source_context_preserves_relative_imports(
         assert module.value == 3
         assert isinstance(cst, libcst.Module)
         assert cst.code == code
-        assert capture.types == ["int"]
+        assert len(capture.types) == 1
+        assert capture.types[0].is_subtype("builtins.int")
+        assert capture.types[0].is_proven_scalar()
     finally:
         for module_name in tuple(sys.modules):
             if module_name == "relative_imports" or module_name.startswith("relative_imports."):
