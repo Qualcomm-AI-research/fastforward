@@ -205,8 +205,10 @@ Key sub-choices:
   debuggable), and keeps control flow, loops, and comments intact.
 - **libcst (CST) over AST.** Preserves formatting/comments through the
   round-trip.
-- **Optional mypy type inference** to decide which variables are quantized
-  ("quant vs. nonquant").
+- **Optional, pluggable type inference** to decide which variables are
+  quantized ("quant vs. nonquant"). Isolating the type checker lets us upgrade
+  it and evaluate faster alternatives while keeping the transformation
+  passes and public API stable.
 - **Correct operation order under variable reassignment.** SSA-like versioning
   and walrus-bound temporaries avoid re-quantizing shared subexpressions and
   keep quantizer insertion at safe points.
@@ -295,7 +297,7 @@ registered in the default registry.
 | Core | Strict mode + overrides | Implemented |
 | Core | No in-place ops; export-mode dequantize | Implemented |
 | Modules | Dual-inheritance modules + quantizer stubs (deferred spec) | Implemented |
-| Autoquant | Source transpilation (libcst, optional mypy, SSA order) | Implemented |
+| Autoquant | Source transpilation (libcst, pluggable type backend, SSA order) | Implemented |
 | Autoquant | Policy-driven / reports / agent-in-loop | Roadmap |
 | Orchestration | Graph IR + instruction VM + multi-context delegates | Implemented |
 | Orchestration | Lifetime management + offload passes | Implemented |
