@@ -24,12 +24,17 @@ from packaging.version import Version
 from torch import nn
 
 from ._models import (
+    BufferCounter,
     CastingBlock,
     CastingBlockStack,
     CatModel,
     DeviceCastModel,
+    InPlaceReadBetweenWrites,
+    InPlaceRotary,
     KwargForward,
     MixedOps,
+    ModuleReadsBetweenWrites,
+    ModuleReadsSnapshot,
     MultiAxisIndex,
     NestedMLP,
     NestedWithTensorOps,
@@ -561,6 +566,101 @@ def test_trace_removes_export_guards_so_blocks_stay_non_leaf() -> None:
         got = graph(x, temb)
 
     torch.testing.assert_close(got, expected)
+
+
+def _in_place_ops(graph: GraphModule) -> list[str]:
+    """Names of the nodes that overwrite a tensor in place."""
+    return [
+        node.name
+        for node in graph._nodes.values()
+        if (schema := getattr(node.target, "_schema", None)) is not None and schema.is_mutable
+    ]
+
+
+def test_trace_runs_in_place_writes_before_their_reads(in_place_rotary: InPlaceRotary) -> None:
+    # GIVEN a block that allocates a buffer, writes its lanes in place, and then reads it
+    model = in_place_rotary.eval()
+    x, cos, sin = torch.randn(2, 3, 8), torch.randn(2, 3, 4), torch.randn(2, 3, 4)
+    with torch.no_grad():
+        expected = model(x, cos, sin)
+
+    # WHEN the model is traced
+    graph = trace(model, x, cos, sin)
+
+    # THEN the allocation and the writes are one node, so no loose in-place op is left
+    assert _in_place_ops(graph) == []
+    order = [ref.name for ref in graph.topo_order]
+    assert [name for name in order if name.endswith("_writes_call_function")] == [
+        "empty_like_writes_call_function"
+    ]
+
+    # THEN that node runs before the node that reads the buffer
+    assert order.index("empty_like_writes_call_function") < order.index("type_as_call_function")
+    assert order.index("type_as_call_function") < order.index("fc_out")
+
+    # THEN the forward pass through the graph equals eager, with no uninitialised memory read
+    with torch.no_grad():
+        got = graph(x, cos, sin)
+    torch.testing.assert_close(got, expected, atol=0, rtol=0)
+
+
+def test_trace_keeps_tensor_op_that_reads_between_in_place_writes(
+    in_place_read_between_writes: InPlaceReadBetweenWrites,
+) -> None:
+    # GIVEN a block that sums a half-written buffer before it writes the other half
+    model = in_place_read_between_writes.eval()
+    x = torch.randn(2, 3, 8)
+    with torch.no_grad():
+        expected = model(x)
+
+    # WHEN the model is traced
+    graph = trace(model, x)
+
+    # THEN the sum runs inside the fused node, so it sees the half-written buffer
+    assert _in_place_ops(graph) == []
+    with torch.no_grad():
+        got = graph(x)
+    torch.testing.assert_close(got, expected, atol=0, rtol=0)
+
+
+def test_trace_rejects_module_that_reads_between_in_place_writes(
+    module_reads_between_writes: ModuleReadsBetweenWrites,
+) -> None:
+    # GIVEN a block that passes a half-written buffer to a child module before the last write
+    model = module_reads_between_writes.eval()
+
+    # WHEN the model is traced
+    # THEN the trace fails, because a child module cannot run inside the fused node
+    with pytest.raises(NotImplementedError, match="reads it between two writes"):
+        trace(model, torch.randn(2, 3, 8))
+
+
+def test_trace_keeps_module_that_reads_independent_snapshot(
+    module_reads_snapshot: ModuleReadsSnapshot,
+) -> None:
+    # GIVEN a block that passes an independent clone of a buffer to a child module
+    model = module_reads_snapshot.eval()
+    x = torch.randn(2, 3, 8)
+    with torch.no_grad():
+        expected = model(x)
+
+    # WHEN the model is traced
+    graph = trace(model, x)
+
+    # THEN the module stays outside the fused node and the result matches eager
+    with torch.no_grad():
+        got = graph(x)
+    torch.testing.assert_close(got, expected, atol=0, rtol=0)
+
+
+def test_trace_warns_about_in_place_write_to_buffer(buffer_counter: BufferCounter) -> None:
+    # GIVEN a block that updates a registered buffer in place
+    model = buffer_counter.eval()
+
+    # WHEN the model is traced
+    # THEN the trace warns that it does not order the write against the reads of the buffer
+    with pytest.warns(UserWarning, match=r"writes in place to a buffer \('count'\)"):
+        trace(model, torch.randn(2, 8))
 
 
 def test_trace_synthesizes_container_node_for_list_arg(cat_model: CatModel) -> None:

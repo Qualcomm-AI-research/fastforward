@@ -641,3 +641,93 @@ class CastingBlockStack(torch.nn.Module):
         for block in self.blocks:
             x = block(x, temb)
         return x
+
+
+class InPlaceRotary(torch.nn.Module):
+    """Writes the even and odd lanes of a fresh buffer in place, as a rotary embedding does.
+
+    `torch.export` keeps `torch.empty_like` and the in-place writes. No data edge links the
+    writes to the later read of the buffer, so a dataflow schedule can read it too early.
+    """
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc_in = torch.nn.Linear(dim, dim)
+        self.fc_out = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+        """Rotate the pairs of the projected input and project the result."""
+        h = self.fc_in(x)
+        x1, x2 = h.unflatten(-1, (-1, 2)).unbind(-1)
+        out = torch.empty_like(h)
+        out[..., 0::2] = x1 * cos - x2 * sin
+        out[..., 1::2] = x1 * sin + x2 * cos
+        return self.fc_out(out.type_as(h))  # type: ignore[no-any-return]
+
+
+class InPlaceReadBetweenWrites(torch.nn.Module):
+    """Reads a half-written buffer with a tensor op, then writes the other half."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc_in = torch.nn.Linear(dim, dim)
+        self.fc_out = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Write the first half, sum it into the second half, and project the buffer."""
+        h = self.fc_in(x)
+        half = h.shape[-1] // 2
+        buffer = torch.zeros_like(h)
+        buffer[..., :half] = h[..., :half]
+        buffer[..., half:] = h[..., half:] * buffer.sum()
+        return self.fc_out(buffer)  # type: ignore[no-any-return]
+
+
+class ModuleReadsBetweenWrites(torch.nn.Module):
+    """Passes a half-written buffer to a child module, then writes the other half."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc_in = torch.nn.Linear(dim, dim)
+        self.fc_mid = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Write the first half, project the buffer, then write the second half."""
+        h = self.fc_in(x)
+        half = h.shape[-1] // 2
+        buffer = torch.zeros_like(h)
+        buffer[..., :half] = h[..., :half]
+        mid = self.fc_mid(buffer)
+        buffer[..., half:] = h[..., half:]
+        return mid + buffer  # type: ignore[no-any-return]
+
+
+class ModuleReadsSnapshot(torch.nn.Module):
+    """Passes an independent clone of a buffer to a child module, then writes the buffer."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Snapshot the buffer, project the snapshot, then write the buffer in place."""
+        buffer = x.clone()
+        snapshot = buffer.clone()
+        y = self.fc(snapshot)
+        buffer.add_(1)
+        return y + buffer  # type: ignore[no-any-return]
+
+
+class BufferCounter(torch.nn.Module):
+    """Updates a registered buffer in place during forward."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(dim, dim)
+        self.register_buffer("count", torch.zeros(1))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Increment the counter and scale the projection by it."""
+        assert isinstance(self.count, torch.Tensor)
+        self.count.add_(1)
+        return self.fc(x) * self.count  # type: ignore[no-any-return]

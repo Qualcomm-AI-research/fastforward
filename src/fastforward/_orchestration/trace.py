@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+import operator
 import re
 import warnings
 import weakref
@@ -153,6 +154,231 @@ def _strip_export_artifacts(graph: fx.Graph) -> None:
             node.kwargs = {k: v for k, v in node.kwargs.items() if k != "device"}
 
 
+def _op_schema(node: fx.Node) -> torch._C.FunctionSchema | None:
+    """Return the schema of an ATen op node, or None for any other node."""
+    if node.op != "call_function":
+        return None
+    schema = getattr(node.target, "_schema", None)
+    return schema if isinstance(schema, torch._C.FunctionSchema) else None
+
+
+def _schema_arguments(
+    node: fx.Node, schema: torch._C.FunctionSchema
+) -> Iterator[tuple[torch._C.Argument, Any]]:
+    """Pair every argument of `node` with its entry in the op schema."""
+    yield from zip(schema.arguments, node.args)
+    by_name = {argument.name: argument for argument in schema.arguments}
+    for name, value in node.kwargs.items():
+        yield by_name[name], value
+
+
+def _written_nodes(node: fx.Node) -> list[fx.Node]:
+    """Return the tensors that `node` overwrites in place."""
+    schema = _op_schema(node)
+    if schema is None or not schema.is_mutable:
+        return []
+    return [
+        value
+        for argument, value in _schema_arguments(node, schema)
+        if argument.alias_info is not None
+        and argument.alias_info.is_write
+        and isinstance(value, fx.Node)
+    ]
+
+
+def _aliased_node(node: fx.Node) -> fx.Node | None:
+    """Return the direct base of node: the tensor it views, writes in place, or takes a part of.
+
+    This is the tensor written by an in-place op, or the tensor viewed by a view op
+    (`slice`, `view`, `unbind`, ...). The result of `getitem` shares the storage of its
+    container.
+    """
+    if node.op == "call_function" and node.target is operator.getitem:
+        container = node.args[0]
+        return container if isinstance(container, fx.Node) else None
+    schema = _op_schema(node)
+    if schema is None or not any(ret.alias_info is not None for ret in schema.returns):
+        return None
+    if schema.is_mutable:
+        candidates = _written_nodes(node)
+    else:
+        candidates = [
+            value
+            for argument, value in _schema_arguments(node, schema)
+            if argument.alias_info is not None and isinstance(value, fx.Node)
+        ]
+    return candidates[0] if candidates else None
+
+
+def _make_fused_call(fused: fx.GraphModule, name: str) -> Callable[..., Any]:
+    """Bridge a fused fx graph into a plain function, so that it is not a module node."""
+
+    def _call(*inputs: Any) -> Any:
+        return fused(*inputs)
+
+    _call.__name__ = name
+    return _call
+
+
+def _in_place_clusters(graph: fx.Graph) -> list[tuple[fx.Node, list[fx.Node]]]:
+    """Group each tensor that is overwritten in place with the nodes that must stay in order.
+
+    An in-place write has no consumers, so the graph has no edge from the write to the nodes
+    that read the tensor afterwards. For example:
+
+        x = torch.zeros_like(h)
+        x[..., :] = a
+        y = x * 2
+
+    The assignment becomes a `slice` and a `copy_`. The graph has the edges
+    `zeros_like -> slice -> copy_` and `zeros_like -> mul`. Nothing links `copy_` to `mul`, so
+    a scheduler can run `zeros_like`, `mul`, and only then `copy_`. Then `y` is computed from
+    the zeros and not from `a`.
+
+    This function ensures that the in-place ops are clustered correctly in-order.
+
+    Returns:
+        One `(root, cluster)` pair per overwritten tensor. `root` is the node that creates the
+            tensor. `cluster` is sorted in graph order
+
+    Raises:
+        NotImplementedError: If a node that is not a plain tensor op (for example a child module)
+            reads the tensor between two writes, or if two clusters overlap.
+    """
+    nodes = list(graph.nodes)
+    position = {node: index for index, node in enumerate(nodes)}
+
+    # Figure out the data root of each node, if possible. Views share the same root,
+    # other objects are its own roots.
+    root_of: dict[fx.Node, fx.Node] = {}
+    for node in nodes:
+        base = _aliased_node(node)
+        root_of[node] = root_of.get(base, base) if base is not None else node
+
+    # Given the data roots, figure out what nodes write in-place to it.
+    writes: dict[fx.Node, list[fx.Node]] = {}
+    for node in nodes:
+        for target in _written_nodes(node):
+            writes.setdefault(root_of[target], []).append(node)
+
+    clusters: list[tuple[fx.Node, list[fx.Node]]] = []
+    claimed: set[fx.Node] = set()
+    for root, writers in writes.items():
+        # We cannot write in-place to graph inputs / buffers or child modules.
+        if root.op != "call_function":
+            kind = {
+                "placeholder": "a graph input",
+                "get_attr": "a buffer",
+                "call_module": "a child module output",
+            }[root.op]
+            warnings.warn(
+                f"Node {writers[0].name!r} writes in place to {kind} ({root.name!r}). The trace does "
+                "not order it against the reads of that tensor.",
+            )
+            continue
+
+        # Init the clusters with the root node and all "viewing" nodes.
+        last = max(position[writer] for writer in writers)
+        cluster = {node for node in nodes[: last + 1] if root_of[node] is root}
+        # A reader of the shared storage must stay in order. The consumers of a reader's fresh
+        # output (for example a clone) only stay in order if they feed a later write.
+        views = set(cluster)
+        feeds_write = set(writers)
+        for node in reversed(nodes[position[root] : last + 1]):
+            if any(user in feeds_write for user in node.users):
+                feeds_write.add(node)
+        for node in nodes[position[root] : last + 1]:
+            if node in cluster:
+                continue
+            reads_storage = any(arg in views for arg in node.all_input_nodes)
+            if not (
+                reads_storage
+                or (node in feeds_write and any(a in cluster for a in node.all_input_nodes))
+            ):
+                continue
+            # anything that will end up reading from the cluster is also pulled in.
+            # (except if it is part of another cluster or a child module).
+            if node.op != "call_function" or node in claimed or _written_nodes(node):
+                msg = (
+                    f"Cannot keep the order of the in-place writes to {root.name!r}: "
+                    f"node {node.name!r} reads it between two writes and cannot be fused."
+                )
+                raise NotImplementedError(msg)
+            cluster.add(node)
+
+        # Clusters cannot overlap since we fuse each to a distinct node.
+        if overlap := cluster & claimed:
+            msg = f"In-place writes to {root.name!r} overlap with {next(iter(overlap)).name!r}."
+            raise NotImplementedError(msg)
+        claimed |= cluster
+        clusters.append((root, sorted(cluster, key=position.__getitem__)))
+    return clusters
+
+
+def _fuse_in_place_writes(graph: fx.Graph) -> None:
+    """Replace each cluster of in-place writes with one node that runs the cluster in order.
+
+    `_in_place_clusters` finds the nodes that must stay together. This function turns each
+    cluster into a single `call_function` node named `<root>_writes`:
+
+    - The inputs are the nodes outside the cluster that the cluster reads.
+    - The outputs are the cluster nodes that nodes outside the cluster use.
+    - The body is a copy of the cluster nodes in graph order.
+
+    Every user outside the cluster reads its value from the fused node through
+    `operator.getitem`. This gives it a data edge to the fused node, so it runs after the last
+    write. The original cluster nodes are then erased.
+
+    Args:
+        graph: A graph with ATen ops, modified in place.
+    """
+    for root, cluster in _in_place_clusters(graph):
+        members = set(cluster)
+        inputs = list(
+            dict.fromkeys(
+                arg for node in cluster for arg in node.all_input_nodes if arg not in members
+            )
+        )
+        outputs = [node for node in cluster if any(user not in members for user in node.users)]
+
+        # Given cluster inputs and outputs, create a new fx.Graph.
+        body = fx.Graph()
+        env: dict[fx.Node, fx.Node] = {arg: body.placeholder(arg.name) for arg in inputs}
+        for node in cluster:
+            env[node] = body.node_copy(node, env.__getitem__)
+        body.output(tuple(env[node] for node in outputs))
+        fused = _make_fused_call(fx.GraphModule(nn.Module(), body), f"{root.name}_writes")
+
+        # Insert the fx.Graph as a fused call after the cluster runs.
+        with graph.inserting_after(cluster[-1]):
+            call = graph.create_node(
+                "call_function", fused, tuple(inputs), name=f"{root.name}_writes"
+            )
+
+        # Nodes that need to access cluster-internal nodes will be rewired through a `getitem` call.`
+        anchor = call
+        items: list[fx.Node] = []
+        for index, node in enumerate(outputs):
+            with graph.inserting_after(anchor):
+                item = graph.call_function(operator.getitem, (call, index))
+            items.append(item)
+            node.replace_all_uses_with(item, delete_user_cb=lambda user: user not in members)
+            anchor = item
+        # Users that ran before the last write now depend on the fused node, so move them after it.
+        late = set(items)
+        for node in list(graph.nodes):
+            if node is call:
+                break
+            if node not in members and any(arg in late for arg in node.all_input_nodes):
+                late.add(node)
+                anchor.append(node)
+                anchor = node
+
+        # Now erase the original cluster nodes in reverse order (remove users before their inputs).
+        for node in reversed(cluster):
+            graph.erase_node(node)
+
+
 def _export_and_unflatten(
     module: nn.Module,
     args: tuple[Any, ...],
@@ -171,7 +397,11 @@ def _export_and_unflatten(
             message="Attempted to insert a get_attr Node with no underlying reference",
             category=UserWarning,
         )
-        return torch.export.unflatten(exported_program)
+        unflattened = torch.export.unflatten(exported_program)
+    for submodule in unflattened.modules():
+        if _is_non_leaf_graph_module(submodule):
+            _fuse_in_place_writes(cast(fx.Graph, submodule.graph))
+    return unflattened
 
 
 def _prepare_output(spec: pytree.TreeSpec) -> Callable[..., Any]:

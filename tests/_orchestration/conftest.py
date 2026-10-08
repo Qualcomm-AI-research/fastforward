@@ -20,12 +20,17 @@ from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward._orchestration.instruction_engine import ActivationBundle
 
 from ._models import (
+    BufferCounter,
     CatModel,
     DeviceCastModel,
     DualOutModel,
+    InPlaceReadBetweenWrites,
+    InPlaceRotary,
     KwargForward,
     MixedOps,
     Model,
+    ModuleReadsBetweenWrites,
+    ModuleReadsSnapshot,
     MultiAxisIndex,
     MultiOutputModel,
     NestedMLP,
@@ -185,3 +190,33 @@ def nested_with_tensor_ops_fixture() -> NestedWithTensorOps:
 def device_cast_model_fixture() -> DeviceCastModel:
     """Fresh `DeviceCastModel` module (device-following buffer cast)."""
     return DeviceCastModel()
+
+
+@pytest.fixture(name="in_place_rotary")
+def in_place_rotary_fixture() -> InPlaceRotary:
+    """Fresh `InPlaceRotary` that writes a new buffer in place before reading it."""
+    return InPlaceRotary()
+
+
+@pytest.fixture(name="in_place_read_between_writes")
+def in_place_read_between_writes_fixture() -> InPlaceReadBetweenWrites:
+    """Fresh `InPlaceReadBetweenWrites` that reads a half-written buffer with a tensor op."""
+    return InPlaceReadBetweenWrites()
+
+
+@pytest.fixture(name="module_reads_between_writes")
+def module_reads_between_writes_fixture() -> ModuleReadsBetweenWrites:
+    """Fresh `ModuleReadsBetweenWrites` that passes a half-written buffer to a child module."""
+    return ModuleReadsBetweenWrites()
+
+
+@pytest.fixture(name="module_reads_snapshot")
+def module_reads_snapshot_fixture() -> ModuleReadsSnapshot:
+    """Fresh `ModuleReadsSnapshot` that passes an independent clone to a child module."""
+    return ModuleReadsSnapshot()
+
+
+@pytest.fixture(name="buffer_counter")
+def buffer_counter_fixture() -> BufferCounter:
+    """Fresh `BufferCounter` that updates a registered buffer in place."""
+    return BufferCounter()
