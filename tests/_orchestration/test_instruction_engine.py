@@ -13,10 +13,12 @@ import pytest
 import syrupy
 import torch
 
+from fastforward._orchestration.data_flow import Gradient, ModelOutputs
 from fastforward._orchestration.graph_module import (
     Const,
     GraphModule,
     InputRef,
+    LossGradRef,
     NamedRef,
     NodeRef,
     Op,
@@ -61,6 +63,18 @@ def _noop_context(_: Any) -> nullcontext[None]:
 
 def _noop_context_alt(_: Any) -> nullcontext[None]:
     return nullcontext()
+
+
+class _RecordingLocation(Location):
+    """Location that appends its name to `events` for each tensor it places, and copies it."""
+
+    def __init__(self, name: str, events: list[str]) -> None:
+        self.name = name
+        self.events = events
+
+    def receive(self, tensor: torch.Tensor) -> torch.Tensor:
+        self.events.append(self.name)
+        return tensor.clone()
 
 
 def test_merge_zips_datasets_together() -> None:
@@ -725,6 +739,50 @@ def test_activation_offloading_pass_leaves_delegate_bundles_alone() -> None:
     assert result == base
 
 
+def test_activation_offloading_pass_places_data_of_delegates_with_targets() -> None:
+    # GIVEN a delegate that stores a result
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    ref_out = NodeRef(id=uuid.uuid4(), name="out")
+    base = (
+        RunDelegate(
+            fn=lambda _bundle: [ActivationDataset([0])],
+            bundles=(BundleSpec(context=_noop_context, args=[ref_a]),),
+            targets=((ref_out, _noop_context),),
+        ),
+    )
+    compute = DeviceLocation(torch.device("cuda:0"))
+    storage = DeviceLocation(torch.device("cpu"))
+
+    # WHEN we apply the activation offloading pass
+    (result,) = _activation_offloading_pass(base, compute, lambda _: storage)
+
+    # THEN the delegate reads its batches at compute and stores its result at storage
+    assert isinstance(result, RunDelegate)
+    assert result.input_location == compute
+    assert result.output_location == storage
+
+
+def test_activation_offloading_pass_leaves_the_objective_of_a_gradient_flow_alone() -> None:
+    # GIVEN the delegate that runs the objective of a gradient flow and stores its gradients
+    ref_out = NodeRef(id=uuid.uuid4(), name="out")
+    gradient = Gradient(lambda logits: iter(()), logits=ModelOutputs("original"))
+    base = (
+        RunDelegate(
+            fn=lambda _bundle: [ActivationDataset([0])],
+            bundles=(BundleSpec(context=_noop_context, args=[ref_out]),),
+            targets=((LossGradRef(gradient, "logits", 0), _noop_context),),
+        ),
+    )
+
+    # WHEN we apply the activation offloading pass
+    result = _activation_offloading_pass(
+        base, DeviceLocation(torch.device("cuda:0")), lambda _: DeviceLocation(torch.device("cpu"))
+    )
+
+    # THEN nothing is moved, because the objective places its data itself
+    assert result == base
+
+
 def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storage() -> None:
     # GIVEN a two-linear graph and its base instruction stream
     graph, _, _ = _two_linear_graph()
@@ -1191,14 +1249,6 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
     # GIVEN two input batches and locations that record each load and store
     events: list[str] = []
 
-    class RecordingLocation(Location):
-        def __init__(self, name: str) -> None:
-            self.name = name
-
-        def receive(self, tensor: torch.Tensor) -> torch.Tensor:
-            events.append(self.name)
-            return tensor.clone()
-
     def square(x: torch.Tensor) -> torch.Tensor:
         events.append("call")
         return x.square()
@@ -1216,7 +1266,9 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
         context=_noop_context,
     )
     instructions = _activation_offloading_pass(
-        [call], RecordingLocation("load"), lambda _name: RecordingLocation("store")
+        [call],
+        _RecordingLocation("load", events),
+        lambda _name: _RecordingLocation("store", events),
     )
 
     # WHEN executing the call
@@ -1529,3 +1581,75 @@ def test_loss_grad_outputs_rejects_invalid_losses(
     # THEN it fails
     with pytest.raises(ValueError, match=match):
         _loss_grads(objective, [torch.randn(3) for _ in range(2)])
+
+
+def test_call_delegate_without_locations_moves_nothing() -> None:
+    # GIVEN a delegate with targets and no locations, as without an offloading strategy
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    ref_y = NodeRef(id=uuid.uuid4(), name="y")
+    stored = ActivationDataset([torch.tensor(1.0), torch.tensor(2.0)])
+    register = ActivationRegister()
+    register.store(ref_x, _noop_context, stored)
+    instr = RunDelegate(
+        fn=lambda bundle: [ActivationDataset([args[0] for args, _ in bundle])],
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        targets=((ref_y, _noop_context),),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN the delegate read and stored the very same batch objects
+    result = register.load(ref_y, _noop_context)
+    assert all(a is b for a, b in zip(result.batches, stored.batches))
+
+
+def test_call_delegate_places_each_input_batch_when_the_function_reads_it() -> None:
+    # GIVEN a delegate with an input location, whose function reads the bundle batch by batch
+    events: list[str] = []
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    register = ActivationRegister()
+    stored = ActivationDataset([torch.tensor(1.0), torch.tensor(2.0)])
+    register.store(ref_x, _noop_context, stored)
+
+    def delegate(bundle: ActivationBundle) -> None:
+        for _ in bundle:
+            events.append("use")
+
+    instr = RunDelegate(
+        fn=delegate,
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        input_location=_RecordingLocation("load", events),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN a batch moves only when the function reaches it, and the register keeps its batches
+    assert events == ["load", "use", "load", "use"]
+    assert register.load(ref_x, _noop_context) is stored
+
+
+def test_call_delegate_places_each_returned_batch_at_the_output_location() -> None:
+    # GIVEN a delegate that returns its input batches and has an output location
+    events: list[str] = []
+    ref_x = NodeRef(id=uuid.uuid4(), name="x")
+    ref_y = NodeRef(id=uuid.uuid4(), name="y")
+    stored = ActivationDataset([torch.tensor(1.0), torch.tensor(2.0)])
+    register = ActivationRegister()
+    register.store(ref_x, _noop_context, stored)
+    instr = RunDelegate(
+        fn=lambda bundle: [ActivationDataset([args[0] for args, _ in bundle])],
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        targets=((ref_y, _noop_context),),
+        output_location=_RecordingLocation("store", events),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN every returned batch is placed, and the register holds the placed copies
+    assert events == ["store", "store"]
+    result = register.load(ref_y, _noop_context)
+    torch.testing.assert_close(result.batches, stored.batches)
+    assert all(a is not b for a, b in zip(result.batches, stored.batches))

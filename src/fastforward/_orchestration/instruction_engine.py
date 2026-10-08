@@ -29,6 +29,7 @@ from torch.utils.data import DataLoader
 from fastforward._orchestration.graph_module import (
     AttributePath,
     Const,
+    FlowOpRef,
     GradientRef,
     GraphModule,
     InputRef,
@@ -239,10 +240,13 @@ class ActivationBundle:
     Constructed via `gather`, which resolves a node's `_BaseRef` args and kwargs
     against the register, broadcasts singletons against N-length streams, and
     bundles them. `Const` refs are wrapped on the fly.
+
+    If `location` is set, iteration places each batch there right before it is yielded.
     """
 
     args: tuple[ActivationDataset, ...]
     kwargs: Mapping[str, ActivationDataset]
+    location: Location | None = None
 
     @classmethod
     def gather(
@@ -251,6 +255,7 @@ class ActivationBundle:
         context: StreamKey,
         args: Sequence[_BaseRef],
         kwargs: Mapping[str, _BaseRef],
+        location: Location | None = None,
     ) -> "ActivationBundle":
         """Resolve refs from the register under one context key, broadcast, and bundle.
 
@@ -259,6 +264,8 @@ class ActivationBundle:
             context: The context key under which to resolve each ref.
             args: Positional input refs in declaration order.
             kwargs: Keyword input refs keyed by parameter name.
+            location: Where iteration places each batch before it yields it. Batches
+                are not moved if `None`.
 
         Returns:
             An `ActivationBundle` whose positional and keyword streams are broadcast
@@ -278,6 +285,7 @@ class ActivationBundle:
         return cls(
             args=tuple(broadcasted[:n_args]),
             kwargs=dict(zip(kwarg_datasets.keys(), broadcasted[n_args:])),
+            location=location,
         )
 
     def __len__(self) -> int:
@@ -307,7 +315,10 @@ class ActivationBundle:
         for i in range(length):
             args = tuple(ds.batches[i] for ds in self.args)
             kwargs = {name: ds.batches[i] for name, ds in self.kwargs.items()}
+            if self.location is not None:
+                args, kwargs = self.location.place((args, kwargs))
             yield args, kwargs
+            del args, kwargs
 
 
 @dataclasses.dataclass(frozen=True)
@@ -506,16 +517,23 @@ class BundleSpec:
     unwrap: bool = False
 
 
-def _gather(spec: BundleSpec, register: ActivationRegister) -> Any:
-    """Return what a delegate receives for `spec`: a bundle, or the value of an unwrapped spec."""
+def _gather(
+    spec: BundleSpec, register: ActivationRegister, location: Location | None = None
+) -> Any:
+    """Return what a delegate receives for `spec`, placed at `location` if it is set.
+
+    That is a bundle, or the value of an unwrapped spec.
+    """
     if not spec.unwrap:
-        return ActivationBundle.gather(register, spec.context, spec.args, spec.kwargs)
+        return ActivationBundle.gather(
+            register, spec.context, spec.args, spec.kwargs, location=location
+        )
 
     (ref,) = spec.args
 
     # The result of an op is always a single batch (even if that batch is an iterable).
     (result,) = register.load(ref, spec.context).batches
-    return result
+    return result if location is None else location.place(result)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -530,18 +548,25 @@ class RunDelegate(Instruction):
     If you want to store data to the register, make sure the function outputs
     exactly as much items as there are `targets`.
 
+    The offloading pass places the data of a delegate with `targets`, see
+    `_activation_offloading_pass`.
+
     Args:
         fn: The function to call.
         bundles: The bundles to gather for `fn`.
         targets: The ref and context that each returned dataset is stored under.
         module: The module whose weights must be on the compute location during the
             call, if any.
+        input_location: Where `fn` finds each batch of the bundles.
+        output_location: Where each returned batch is placed before it is stored.
     """
 
     fn: Callable[..., Sequence[ActivationDataset] | None]
     bundles: Sequence[BundleSpec]
     targets: Sequence[tuple[_BaseRef, StreamKey]] = ()
     module: torch.nn.Module | None = None
+    input_location: Location | None = dataclasses.field(default=None, kw_only=True)
+    output_location: Location | None = dataclasses.field(default=None, kw_only=True)
 
     def __repr__(self) -> str:
         args = [ref for bundle in self.bundles for ref in bundle.args]
@@ -556,7 +581,9 @@ class RunDelegate(Instruction):
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        fn_inputs: list[Any] = [_gather(spec, register) for spec in self.bundles]
+        fn_inputs: list[Any] = [
+            _gather(spec, register, self.input_location) for spec in self.bundles
+        ]
         if self.module is not None:
             fn_inputs = [self.module, *fn_inputs]
 
@@ -570,6 +597,8 @@ class RunDelegate(Instruction):
             raise ValueError(msg)
 
         for (ref, context), dataset in zip(self.targets, datasets):
+            if self.output_location is not None:
+                dataset = ActivationDataset([self.output_location.place(b) for b in dataset])
             register.store(ref, context, dataset)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
@@ -1234,15 +1263,30 @@ def _activation_name(ref: _BaseRef) -> str:
     raise TypeError(msg)
 
 
+def _is_data_operation(delegate: RunDelegate) -> bool:
+    """Return whether `delegate` has `targets`, other than objective gradients or `FlowOp` results.
+
+    The objective of a gradient flow places its data itself, see `loss_grad_outputs`.
+    The result of a `FlowOp` is one object and not an activation, so it has no storage location.
+    """
+    return bool(delegate.targets) and not any(
+        isinstance(ref, LossGradRef | FlowOpRef) for ref, _ in delegate.targets
+    )
+
+
 def _activation_offloading_pass(
     instructions: Instructions, compute: Location, storage: LocationPolicy
 ) -> Instructions:
-    """Configure input and output locations on each `Call`.
+    """Configure input and output locations on each `Call` and each data operation.
 
     Before each invocation, moves input activations to `compute`. After each
     invocation, moves the output activation to the location selected by
     `storage`, one batch at a time.
     Input datasets remain in the register at their existing locations.
+
+    A `RunDelegate` with `targets` is a data operation and gets the same placement as a
+    `Call`, with all results at the location of its first target. Other delegates choose
+    what they load and when, so this pass leaves them alone.
 
     Args:
         instructions: Sequence of instructions to analyze.
@@ -1250,22 +1294,25 @@ def _activation_offloading_pass(
         storage: A callable returning the storage location for each activation name.
 
     Returns:
-        Instructions with per-batch placement configured on calls.
+        Instructions with per-batch placement configured on calls and on data operations.
     """
     new_instructions: list[Instruction] = []
 
     for instruction in instructions:
         if isinstance(instruction, Call):
-            name = _activation_name(instruction.target.unwrap_ref())
-            new_instructions.append(
-                dataclasses.replace(
-                    instruction,
-                    input_location=compute,
-                    output_location=storage(name),
-                )
-            )
+            target = instruction.target
+        elif isinstance(instruction, RunDelegate) and _is_data_operation(instruction):
+            target = instruction.targets[0][0]
         else:
             new_instructions.append(instruction)
+            continue
+        new_instructions.append(
+            dataclasses.replace(
+                instruction,
+                input_location=compute,
+                output_location=storage(_activation_name(target.unwrap_ref())),
+            )
+        )
 
     return tuple(new_instructions)
 
