@@ -10,6 +10,7 @@ import pytest
 import torch
 
 from fastforward._orchestration.location import (
+    BudgetLocation,
     DeviceLocation,
     DiskLocation,
     Location,
@@ -475,3 +476,164 @@ def test_a_stored_quantized_tensor_keeps_its_quantization(tmp_path: Path) -> Non
 
     # AND its raw data is the part that went to the file
     assert stored.raw_data.is_shared()
+
+
+def _budget(budget: int) -> BudgetLocation:
+    """A budget on the CPU whose spill adds one to a tensor, so a test sees what spilled."""
+    return BudgetLocation(torch.device("cpu"), budget, spill=_Tagging())
+
+
+def _spilled(tensor: torch.Tensor) -> bool:
+    """Whether `tensor` is the all-ones result of a tensor of zeros that spilled."""
+    return bool(tensor.eq(1).all())
+
+
+def test_budget_location_holds_data_that_fits() -> None:
+    # GIVEN a budget of 32 bytes
+    location = _budget(32)
+
+    # WHEN it receives a tensor of 16 bytes
+    received = location.receive(torch.zeros(4))
+
+    # THEN the tensor stays, and its bytes count against the budget
+    assert not _spilled(received)
+    assert location.held_bytes == 16
+
+
+def test_budget_location_spills_data_that_does_not_fit() -> None:
+    # GIVEN a budget of 8 bytes
+    location = _budget(8)
+
+    # WHEN it receives a tensor of 16 bytes
+    received = location.receive(torch.zeros(4))
+
+    # THEN the tensor goes to the spill location, and no byte counts against the budget
+    assert _spilled(received)
+    assert location.held_bytes == 0
+
+
+def test_budget_location_spills_everything_when_the_budget_is_zero() -> None:
+    # GIVEN a budget of zero
+    location = _budget(0)
+
+    # WHEN it receives tensors
+    # THEN all of them spill
+    assert _spilled(location.receive(torch.zeros(4)))
+    assert _spilled(location.receive(torch.zeros(1)))
+
+
+def test_budget_location_gives_room_to_the_first_data_that_arrives() -> None:
+    # GIVEN a budget for two tensors
+    location = _budget(32)
+
+    # WHEN it receives three
+    received = [location.receive(torch.zeros(4)) for _ in range(3)]
+
+    # THEN the first two stay and the third spills
+    assert [_spilled(tensor) for tensor in received] == [False, False, True]
+    assert location.held_bytes == 32
+
+
+def test_budget_location_gets_room_back_when_held_data_is_freed() -> None:
+    # GIVEN a budget for one tensor that is spent
+    location = _budget(16)
+    held = location.receive(torch.zeros(4))
+    assert _spilled(location.receive(torch.zeros(4)))
+
+    # WHEN the held data is freed
+    del held
+    gc.collect()
+
+    # THEN the room is back, and the next tensor stays
+    assert location.held_bytes == 0
+    assert not _spilled(location.receive(torch.zeros(4)))
+
+
+def test_budget_location_does_not_count_data_twice() -> None:
+    # GIVEN a budget for one tensor that holds a tensor
+    location = _budget(16)
+    held = location.receive(torch.zeros(4))
+
+    # WHEN it receives a view of that tensor
+    view = held[:2]
+    received = location.receive(view)
+
+    # THEN the view costs nothing more, and is not spilled
+    assert received is view
+    assert location.held_bytes == 16
+
+
+def test_budget_location_counts_the_whole_storage_of_a_view() -> None:
+    # GIVEN a budget for 16 bytes
+    location = _budget(16)
+
+    # WHEN it receives a view of 8 bytes of a storage of 32 bytes
+    received = location.receive(torch.zeros(8)[:2])
+
+    # THEN the view spills, because the storage does not fit
+    assert _spilled(received)
+
+
+def test_budget_location_counts_the_raw_data_of_a_quantized_tensor() -> None:
+    # GIVEN a quantized tensor
+    tensor = random_quantized((4, 8))
+
+    # WHEN a budget location receives it
+    location = _budget(10**6)
+    received = location.receive(tensor)
+
+    # THEN the tensor stays, and the raw data counts
+    assert isinstance(received, QuantizedTensor)
+    assert location.held_bytes == tensor.raw_data.untyped_storage().nbytes()
+
+
+@pytest.mark.parametrize(
+    "lazy_type",
+    [torch.nn.parameter.UninitializedParameter, torch.nn.parameter.UninitializedBuffer],
+)
+def test_budget_location_receives_a_lazy_tensor_that_has_no_data(
+    lazy_type: type[torch.Tensor],
+) -> None:
+    # GIVEN a budget of zero and a lazy tensor, such as the scale of a quantizer that is not
+    # calibrated yet
+    location = _budget(0)
+    lazy = lazy_type()
+
+    # WHEN the budget location receives it
+    received = location.receive(lazy)
+
+    # THEN it stays lazy and does not spill, and no byte counts against the budget
+    assert isinstance(received, lazy_type)
+    assert location.held_bytes == 0
+
+
+def test_budget_location_shares_its_budget_between_the_tensors_of_a_container() -> None:
+    # GIVEN a budget for two tensors
+    location = _budget(32)
+
+    # WHEN it places a structure of three tensors
+    placed = location.place({"a": torch.zeros(4), "b": [torch.zeros(4), torch.zeros(4)]})
+
+    # THEN one of them spills
+    assert sum(_spilled(tensor) for tensor in (placed["a"], *placed["b"])) == 1
+
+
+@requires_cuda
+def test_budget_location_keeps_data_on_the_device_and_spills_the_rest_to_pinned_memory() -> None:
+    # GIVEN a budget on the accelerator for two tensors, and a pinned CPU spill location
+    spill = DeviceLocation(torch.device("cpu"), pinned=True)
+    location = BudgetLocation(torch.device("cuda:0"), 32, spill=spill)
+
+    # WHEN it receives three tensors, of which one comes from the CPU
+    first = location.receive(torch.zeros(4))
+    second = location.receive(torch.zeros(4, device="cuda:0"))
+    third = location.receive(torch.zeros(4, device="cuda:0"))
+
+    # THEN two are on the accelerator, and the last one is in pinned memory
+    assert first.device.type == second.device.type == "cuda"
+    assert third.device == torch.device("cpu")
+    assert third.is_pinned()
+
+    # AND the room returns when the data on the accelerator is freed
+    del first, second
+    assert location.held_bytes == 0

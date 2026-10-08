@@ -57,6 +57,11 @@ class Location(abc.ABC):
         return pytree.tree_map_only(torch.Tensor, self.receive, value)
 
 
+def _data(tensor: torch.Tensor) -> torch.Tensor:
+    """Return the tensor that owns the bytes of `tensor`: its raw data if it is quantized."""
+    return tensor.raw_data if isinstance(tensor, QuantizedTensor) else tensor
+
+
 @dataclasses.dataclass(frozen=True)
 class DeviceLocation(Location):
     """A `torch.device` that holds data directly.
@@ -98,7 +103,7 @@ class DeviceLocation(Location):
             return self._pin(tensor)
         received = tensor.to(device=self.device)
         if received.device.type == "cpu":
-            data = received.raw_data if isinstance(received, QuantizedTensor) else received
+            data = _data(received)
             # File-based tensors also have "cpu" type, but will have a `filename`.
             # Copy these into CPU mem to remove the mmap dependency.
             if data.untyped_storage().filename is not None:
@@ -165,6 +170,61 @@ class DiskLocation(Location):
 
     def __repr__(self) -> str:
         return f"DiskLocation({str(self.directory)!r})"
+
+
+@dataclasses.dataclass(eq=False)
+class BudgetLocation(Location):
+    """Holds tensors on a device while they fit in a byte budget. Other tensors go to `spill`.
+
+    The first tensors to arrive keep the room, even if a later tensor is needed sooner. A freed
+    tensor gives its room back. One instance has one budget, so share it across a run.
+
+    Args:
+        device: The device that holds data.
+        budget: The most bytes to hold. Weights and workspace do not count, so set it below the
+            memory of the device.
+        spill: The location that receives a tensor that does not fit.
+    """
+
+    device: torch.device
+    budget: int
+    spill: Location
+    _resident: DeviceLocation = dataclasses.field(init=False, repr=False)
+    _held: weakref.WeakSet[torch.UntypedStorage] = dataclasses.field(
+        default_factory=weakref.WeakSet, init=False, repr=False
+    )
+    _used: int = dataclasses.field(default=0, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._resident = DeviceLocation(self.device)
+
+    @property
+    def held_bytes(self) -> int:
+        """The number of bytes of data that this location holds on the device."""
+        return self._used
+
+    def receive(self, tensor: torch.Tensor) -> Any:  # noqa: D102
+        if isinstance(tensor, _LAZY):
+            # No data to hold, so nothing counts against the budget.
+            return self._resident.receive(tensor)
+        storage = _data(tensor).untyped_storage()
+        if storage in self._held:
+            return tensor
+        if self._used + storage.nbytes() > self.budget:
+            return self.spill.receive(tensor)
+        received = self._resident.receive(tensor)
+        self._hold(_data(received).untyped_storage())
+        return received
+
+    def _hold(self, storage: torch.UntypedStorage) -> None:
+        """Count `storage` against the budget until the storage is freed."""
+        nbytes = storage.nbytes()
+        self._held.add(storage)
+        self._used += nbytes
+        weakref.finalize(storage, self._release, nbytes)
+
+    def _release(self, nbytes: int) -> None:
+        self._used -= nbytes
 
 
 DeviceLike: TypeAlias = torch.device | str

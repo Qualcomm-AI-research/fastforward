@@ -15,7 +15,7 @@ import torch
 from fastforward._orchestration import registry
 from fastforward._orchestration.graph_module import Region, Span
 from fastforward._orchestration.instruction_engine import ActivationBundle
-from fastforward._orchestration.location import DiskLocation, LocationLike
+from fastforward._orchestration.location import BudgetLocation, DiskLocation, LocationLike
 from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from fastforward.orchestration import Offload
@@ -200,6 +200,42 @@ def test_file_backed_activations_match_memory_backed_results(
 
     # THEN file-based activation storage produces the same updated weights
     assert torch.equal(on_disk_model.fc2.weight.data, in_memory_model.fc2.weight.data)
+
+
+def test_budgeted_activations_match_memory_backed_results(
+    two_linear: TwoLinear, tmp_path: Path
+) -> None:
+    # GIVEN one model that keeps activations in memory and a copy with a budget for two of them
+    in_memory_model = two_linear.eval()
+    budget_model = copy.deepcopy(in_memory_model)
+    calibration_data = [torch.randn(2, 8) for _ in range(3)]
+    cpu = torch.device("cpu")
+    disk_location = _CountingDiskLocation(tmp_path)
+    budget_location = BudgetLocation(cpu, budget=2 * 2 * 8 * 4, spill=disk_location)
+
+    def run(model: TwoLinear, activation_location: LocationLike) -> None:
+        spec = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc2]), flows=make_flows())
+        ff.layerwise_optimize(
+            model,
+            calibration_data,
+            spec,
+            sample_args=(calibration_data[0],),
+            offloading=Offload(compute=cpu, weights=cpu, activations=activation_location),
+        )
+
+    # WHEN we optimize both
+    run(in_memory_model, cpu)
+    run(budget_model, budget_location)
+
+    # THEN some activations spilled, and some stayed in memory
+    assert 0 < len(disk_location.stored_shapes) < 2 * len(calibration_data)
+
+    # THEN all room and all files are given back after execution
+    assert budget_location.held_bytes == 0
+    assert list(tmp_path.iterdir()) == []
+
+    # THEN a budget does not change the updated weights
+    assert torch.equal(budget_model.fc2.weight.data, in_memory_model.fc2.weight.data)
 
 
 def test_offloading_refuses_a_name_that_is_no_device() -> None:
