@@ -61,16 +61,41 @@ class Location(abc.ABC):
 class DeviceLocation(Location):
     """A `torch.device` that holds data directly.
 
+    Note:
+        A copy from an accelerator into a new CPU tensor runs at the speed of page faults, not
+        at the speed of the bus. With `pinned=True`, the copy goes into page-locked memory, and
+        torch reuses the memory of freed tensors, so later copies skip the page faults. The cost
+        is that page-locked memory cannot be swapped out, and torch rounds each buffer up to the
+        next power of two. Tensors that already are on the CPU are received without pinning. For
+        a `QuantizedTensor`, the raw data is pinned, and the quantization parameters are moved to
+        the CPU without pinning.
+
     Args:
         device: The device data is held on.
+        pinned: Whether tensors that come from an accelerator are held in page-locked memory.
+            Only a CPU can hold pinned data.
+
+    Raises:
+        ValueError: If `pinned` is set for a device that is not a CPU.
     """
 
     device: torch.device
+    pinned: bool = False
+
+    def __post_init__(self) -> None:
+        if self.pinned and self.device.type != "cpu":
+            msg = f"Only CPU memory can be pinned, not {self.device}."
+            raise ValueError(msg)
 
     def receive(self, tensor: torch.Tensor) -> torch.Tensor:  # noqa: D102
         if isinstance(tensor, _LAZY):
             # No data to hold. The tensor only learns the device where it is created later.
             return tensor.to(device=self.device)
+        if self.pinned and tensor.device.type != "cpu":
+            if isinstance(tensor, QuantizedTensor):
+                context = tensor.quantization_context.detach_parameters().to(self.device)
+                return context.attach(self._pin(tensor.raw_data))
+            return self._pin(tensor)
         received = tensor.to(device=self.device)
         if received.device.type == "cpu":
             data = received.raw_data if isinstance(received, QuantizedTensor) else received
@@ -80,8 +105,12 @@ class DeviceLocation(Location):
                 received = received.clone()
         return received
 
+    def _pin(self, tensor: torch.Tensor) -> torch.Tensor:
+        return torch.empty_like(tensor, device=self.device, pin_memory=True).copy_(tensor)
+
     def __repr__(self) -> str:
-        return f"DeviceLocation({str(self.device)!r})"
+        pinned = ", pinned=True" if self.pinned else ""
+        return f"DeviceLocation({str(self.device)!r}{pinned})"
 
 
 @dataclasses.dataclass(frozen=True)
