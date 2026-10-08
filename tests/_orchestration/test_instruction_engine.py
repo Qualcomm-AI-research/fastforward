@@ -602,6 +602,24 @@ def test_move_module_to_cpu_releases_parameter_and_buffer_files(
         assert tensor.untyped_storage().filename is None
 
 
+def test_move_module_moves_the_data_and_leaves_lazy_tensors_lazy(tmp_path: Path) -> None:
+    # GIVEN a module with data and with lazy tensors, as a quantizer that is not calibrated yet has
+    module = torch.nn.Linear(4, 2)
+    module.register_parameter("scale", torch.nn.parameter.UninitializedParameter())  # type: ignore[arg-type]
+    module.register_buffer("offset", torch.nn.parameter.UninitializedBuffer())
+    register = ActivationRegister()
+
+    # WHEN it moves to disk and back to the CPU
+    MoveModule(location=DiskLocation(tmp_path), module=module).execute(register)
+    MoveModule(location=DeviceLocation(torch.device("cpu")), module=module).execute(register)
+
+    # THEN the data is in memory again, and the lazy tensors are still lazy
+    assert list(tmp_path.iterdir()) == []
+    assert module.weight.untyped_storage().filename is None
+    assert isinstance(module.scale, torch.nn.parameter.UninitializedParameter)
+    assert isinstance(module.offset, torch.nn.parameter.UninitializedBuffer)
+
+
 def test_move_module_with_dict_reuses_ordinary_device_storage() -> None:
     # GIVEN parameters and a buffer already in ordinary CPU memory
     module = torch.nn.Linear(4, 2)

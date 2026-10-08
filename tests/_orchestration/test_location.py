@@ -79,6 +79,36 @@ def test_device_location_receives_a_tensor_on_its_device() -> None:
     assert received.device == torch.device("cpu")
 
 
+@pytest.mark.parametrize(
+    "lazy_type",
+    [torch.nn.parameter.UninitializedParameter, torch.nn.parameter.UninitializedBuffer],
+)
+def test_device_location_receives_a_lazy_tensor_that_has_no_data(
+    lazy_type: type[torch.Tensor],
+) -> None:
+    # GIVEN a lazy tensor, such as the scale of a quantizer that is not calibrated yet
+    lazy = lazy_type()
+
+    # WHEN a location receives it
+    received = DeviceLocation(torch.device("cpu")).receive(lazy)
+
+    # THEN it stays lazy, because there is no data to read
+    assert isinstance(received, lazy_type)
+    assert received.device == torch.device("cpu")
+
+
+def test_disk_location_receives_a_lazy_tensor_without_writing_a_file(tmp_path: Path) -> None:
+    # GIVEN a lazy tensor
+    lazy = torch.nn.parameter.UninitializedBuffer()
+
+    # WHEN a location that stores tensors in files receives it
+    received = DiskLocation(tmp_path).receive(lazy)
+
+    # THEN it stays lazy and no file is written, because there is no data to write
+    assert isinstance(received, torch.nn.parameter.UninitializedBuffer)
+    assert list(tmp_path.iterdir()) == []
+
+
 @pytest.mark.parametrize("is_quantized", [False, True])
 @pytest.mark.parametrize(
     "target_device",

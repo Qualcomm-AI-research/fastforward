@@ -22,6 +22,10 @@ import torch.utils._pytree as pytree
 
 from fastforward.quantized_tensor import QuantizedTensor
 
+# A lazy parameter or buffer, such as the scale of a quantizer that is not calibrated yet, has no
+# data and no storage. Torch raises on any use of it, except a move to another device.
+_LAZY = (torch.nn.parameter.UninitializedParameter, torch.nn.parameter.UninitializedBuffer)
+
 
 class Location(abc.ABC):
     """A place where data can be held."""
@@ -64,6 +68,9 @@ class DeviceLocation(Location):
     device: torch.device
 
     def receive(self, tensor: torch.Tensor) -> torch.Tensor:  # noqa: D102
+        if isinstance(tensor, _LAZY):
+            # No data to hold. The tensor only learns the device where it is created later.
+            return tensor.to(device=self.device)
         received = tensor.to(device=self.device)
         if received.device.type == "cpu":
             data = received.raw_data if isinstance(received, QuantizedTensor) else received
@@ -96,6 +103,9 @@ class DiskLocation(Location):
     directory: pathlib.Path
 
     def receive(self, tensor: torch.Tensor) -> torch.Tensor:  # noqa: D102
+        if isinstance(tensor, _LAZY):
+            # No data to write. It stays a lazy tensor on the CPU.
+            return tensor.to("cpu")
         if isinstance(tensor, QuantizedTensor):
             context = tensor.quantization_context.detach_parameters().to("cpu")
             return context.attach(self._store(tensor.raw_data))
