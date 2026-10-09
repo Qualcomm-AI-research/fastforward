@@ -26,6 +26,7 @@ from .flags import set_qdq_mode as set_qdq_mode
 from .flags import set_sdpa_torch_fallback_allowed as set_sdpa_torch_fallback_allowed
 from .flags import set_strict_quantization as set_strict_quantization
 from .flags import strict_quantization as strict_quantization
+from .nn.functional.custom import sdpa_mem_efficient as sdpa_mem_efficient
 from .nn.functional.custom import sdpa_upcast as sdpa_upcast
 from .nn.quantized_module import quantize_model as quantize_model
 from .nn.quantized_module import quantized_module_map as quantized_module_map

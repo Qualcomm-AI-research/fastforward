@@ -1,15 +1,11 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-from typing import Any
-
 import fastforward
 import pytest
 import torch
 
 from fastforward import estimate_ranges, range_setting
-from fastforward.nn import LinearQuantizer, QuantizedModule, QuantizerStub
-from fastforward.nn import functional as FF
 from torch.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
@@ -17,6 +13,7 @@ from ._utils import (
     _make_attn_inputs,
     _make_diffusers_cross_attn_inputs,
     _print_abs_max_err,
+    _QuantizedSDPA,
     assert_max_abs_err,
 )
 
@@ -422,59 +419,3 @@ def test_partially_quantized_attn(
     assert len(list(qsdpa.named_quantizers())) == 1
     _print_abs_max_err(out_ff, out_torch, tol)
     assert_max_abs_err(out_torch, out_ff, atol=tol)
-
-
-# ------------------------------------------------------------------------------
-# TEST UTILS
-
-
-class _QuantizedSDPA(QuantizedModule):
-    def __init__(self, bits: int | None, quantizer_key: str | None = None) -> None:
-        super().__init__()
-        self._bits = bits
-        self._quantizer_key = quantizer_key
-
-    def __init_quantization__(self) -> None:
-        super().__init_quantization__()
-        self.q = QuantizerStub()
-        self.k = QuantizerStub()
-        self.v = QuantizerStub()
-        self.attn_scores = QuantizerStub()
-        self.attn_mask = QuantizerStub()
-        self.masked_scores = QuantizerStub()
-        self.attn_weights = QuantizerStub()
-        self.scaled_query = QuantizerStub()
-        self.scaled_key = QuantizerStub()
-        self.dropout = QuantizerStub()
-        self.output = QuantizerStub()
-
-        if self._bits is not None:
-            if self._quantizer_key is None:
-                self._quantizer_key = "*"
-            fastforward.find_quantizers(self, self._quantizer_key).initialize(
-                LinearQuantizer, num_bits=self._bits, symmetric=False
-            )
-
-    def forward(
-        self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-        attn_mask: torch.Tensor | None,
-        **kwargs: Any,
-    ) -> torch.Tensor:
-        return FF.scaled_dot_product_attention(
-            self.q(q),
-            self.k(k),
-            self.v(v),
-            attn_mask=attn_mask,
-            attn_scores_quantizer=self.attn_scores,
-            attn_mask_quantizer=self.attn_mask,
-            masked_scores_quantizer=self.masked_scores,
-            attn_weights_quantizer=self.attn_weights,
-            scaled_query_quantizer=self.scaled_query,
-            scaled_key_quantizer=self.scaled_key,
-            dropout_quantizer=self.dropout,
-            output_quantizer=self.output,
-            **kwargs,
-        )

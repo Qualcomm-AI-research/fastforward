@@ -338,13 +338,17 @@ def test_fallback_output_matches_torch_sdpa_bit_exact(
     # GIVEN torch scaled_dot_product_attention output for a given input
     q, k, v, attn_mask, is_causal = _make_attn_inputs("self-attn", groups, use_attn_mask, "cpu")
 
+    # WHEN torch and fastforward SDPA are called in a MATH backend context and
+    #       fastforward SDPA is called with the fallback enabled and no quantizers
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         out_torch = F.scaled_dot_product_attention(
             q, k, v, attn_mask, is_causal=is_causal, scale=scale, enable_gqa=groups > 1
         )
-
-    # WHEN fastforward SDPA is called with the fallback enabled and no quantizers
-    with sdpa_torch_fallback_allowed(True), torch.no_grad():
+    with (
+        sdpa_kernel(backends=[SDPBackend.MATH]),
+        sdpa_torch_fallback_allowed(True),
+        torch.no_grad(),
+    ):
         out_ff = FF.scaled_dot_product_attention(
             q,
             k,
@@ -370,6 +374,8 @@ def test_fallback_output_matches_torch_sdpa_bit_exact__no_gqa(
     # GIVEN torch scaled_dot_product_attention output for a given input
     q, k, v, attn_mask, is_causal = _make_attn_inputs("self-attn", 1, use_attn_mask, "cpu")
 
+    # WHEN torch and fastforward SDPA are called in a MATH backend context and
+    #      fastforward SDPA is called with the fallback enabled and no quantizers
     with sdpa_kernel(backends=[SDPBackend.MATH]), torch.no_grad():
         out_torch = F.scaled_dot_product_attention(
             q,
@@ -380,8 +386,11 @@ def test_fallback_output_matches_torch_sdpa_bit_exact__no_gqa(
             scale=scale,
         )
 
-    # WHEN fastforward SDPA is called with the fallback enabled and no quantizers
-    with sdpa_torch_fallback_allowed(True), torch.no_grad():
+    with (
+        sdpa_kernel(backends=[SDPBackend.MATH]),
+        sdpa_torch_fallback_allowed(True),
+        torch.no_grad(),
+    ):
         out_ff = FF.scaled_dot_product_attention(
             q,
             k,

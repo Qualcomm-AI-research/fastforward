@@ -1,9 +1,80 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-from typing import Iterable
+from typing import Any, Iterable
 
+import fastforward
 import torch
+
+from fastforward.nn import LinearQuantizer, QuantizedModule, QuantizerStub
+from fastforward.nn import functional as FF
+
+
+class _QuantizedSDPA(QuantizedModule):
+    """Module that wires a quantizer into every quantizable point of SDPA.
+
+    Args:
+        bits: Bit width the quantizers are initialized with. When None, all
+            quantizers are left as stubs and no quantization takes place.
+        quantizer_key: `mpath` selector of the quantizers to initialize. When
+            None, every quantizer is initialized.
+    """
+
+    def __init__(self, bits: int | None, quantizer_key: str | None = None) -> None:
+        super().__init__()
+        self._bits = bits
+        self._quantizer_key = quantizer_key
+
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.q = QuantizerStub()
+        self.k = QuantizerStub()
+        self.v = QuantizerStub()
+        self.attn_scores = QuantizerStub()
+        self.attn_mask = QuantizerStub()
+        self.masked_scores = QuantizerStub()
+        self.attn_weights = QuantizerStub()
+        self.scaled_query = QuantizerStub()
+        self.scaled_key = QuantizerStub()
+        self.dropout = QuantizerStub()
+        self.output = QuantizerStub()
+
+        if self._bits is not None:
+            if self._quantizer_key is None:
+                self._quantizer_key = "*"
+            fastforward.find_quantizers(self, self._quantizer_key).initialize(
+                LinearQuantizer, num_bits=self._bits, symmetric=False
+            )
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        attn_mask: torch.Tensor | None,
+        **kwargs: Any,
+    ) -> torch.Tensor:
+        return FF.scaled_dot_product_attention(
+            self.q(q),
+            self.k(k),
+            self.v(v),
+            attn_mask=attn_mask,
+            attn_scores_quantizer=self.attn_scores,
+            attn_mask_quantizer=self.attn_mask,
+            masked_scores_quantizer=self.masked_scores,
+            attn_weights_quantizer=self.attn_weights,
+            scaled_query_quantizer=self.scaled_query,
+            scaled_key_quantizer=self.scaled_key,
+            dropout_quantizer=self.dropout,
+            output_quantizer=self.output,
+            **kwargs,
+        )
+
+    def output_quantization_step(self) -> float:
+        """Return the largest quantization step size of the output quantizer."""
+        output_quantizer = self.output
+        assert isinstance(output_quantizer, LinearQuantizer)
+        return float(output_quantizer.scale.detach().max())
 
 
 def _make_attn_inputs(
