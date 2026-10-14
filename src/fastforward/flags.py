@@ -105,8 +105,7 @@ get_sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.getter
 sdpa_torch_fallback_allowed = _sdpa_torch_fallback_allowed.context
 del _sdpa_torch_fallback_allowed
 
-# If True, use the fused quantize-dequantize op when available, bypassing
-# `QuantizedTensor` for static affine quantization.
+# If True, use the fused quantize-dequantize op when available, bypassing `QuantizedTensor`.
 _qdq_mode = _context_flag("qdq_mode", False)
 set_qdq_mode = _qdq_mode.setter
 get_qdq_mode = _qdq_mode.getter

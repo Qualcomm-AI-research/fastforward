@@ -22,6 +22,8 @@ import torch
 
 from typing_extensions import override
 
+import fastforward.quantization.affine._ops as ops
+
 from fastforward.common import tensor_or_none
 
 
@@ -98,7 +100,7 @@ class AffineStaticQuantizeFn(torch.autograd.Function):
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
 
-        return torch.ops.fastforward.affine_static_quantize(  # type: ignore[no-any-return]
+        return ops.affine_static_quantize_op(  # type: ignore[no-any-return]
             data, scale, tile_size, num_bits, quant_dtype, offset
         )
 
@@ -111,7 +113,7 @@ class AffineStaticQuantizeFn(torch.autograd.Function):
         data, scale, offset = ctx.saved_tensors
         tile_size = ctx.tile_size
         num_bits = ctx.num_bits
-        grads = torch.ops.fastforward.affine_quantize_backward(
+        grads = ops.affine_quantize_backward_op(
             data, output_grad, scale, tile_size, num_bits, offset
         )
         data_grad, scale_grad, offset_grad_ = grads
@@ -133,7 +135,7 @@ class AffineDynamicQuantizeFn(torch.autograd.Function):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         quant_dtype = quantized_dtype or data.dtype
         tile_size = data.shape if tile_size == "data_shape" else tile_size
-        return torch.ops.fastforward.affine_dynamic_quantize(  # type: ignore[no-any-return]
+        return ops.affine_dynamic_quantize_op(  # type: ignore[no-any-return]
             data, tile_size, num_bits, symmetric, allow_one_sided, quant_dtype
         )
 
@@ -160,7 +162,7 @@ class AffineDequantizeFn(torch.autograd.Function):
         dtype: torch.dtype | None,
     ) -> torch.Tensor:
         tile_size = data.shape if tile_size == "data_shape" else tile_size
-        return torch.ops.fastforward.affine_dequantize(  # type: ignore[no-any-return]
+        return ops.affine_dequantize_op(  # type: ignore[no-any-return]
             data, scale, tile_size, offset, dtype
         )
 
@@ -190,9 +192,7 @@ class AffineStaticQdqFn(torch.autograd.Function):
         tile_size = data.shape if tile_size == "data_shape" else tile_size
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
-        return torch.ops.fastforward.affine_static_qdq(  # type: ignore[no-any-return]
-            data, scale, tile_size, num_bits, quant_dtype, offset
-        )
+        return ops.affine_static_qdq_op(data, scale, tile_size, num_bits, quant_dtype, offset)  # type: ignore[no-any-return]
 
     @staticmethod
     @override
@@ -203,7 +203,7 @@ class AffineStaticQdqFn(torch.autograd.Function):
         data, scale, offset = ctx.saved_tensors
         tile_size = ctx.tile_size
         num_bits = ctx.num_bits
-        grads = torch.ops.fastforward.affine_quantize_backward(
+        grads = ops.affine_quantize_backward_op(
             data, output_grad, scale, tile_size, num_bits, offset
         )
         data_grad, scale_grad, offset_grad_ = grads

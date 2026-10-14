@@ -3,7 +3,7 @@
 
 """Tests for the quant-dequant kernel."""
 
-from typing import Any, TypeAlias
+from typing import Any, Callable, Sequence, TypeAlias
 
 import fastforward as ff
 import pytest
@@ -16,6 +16,7 @@ from fastforward.quantization.affine._autograd import (
     affine_static_qdq_fn,
     affine_static_quantize_fn,
 )
+from torch._functorch.aot_autograd import aot_module_simplified
 
 DEVICES = ["cpu"] + (["cuda"] if torch.cuda.is_available() else [])
 
@@ -97,6 +98,69 @@ def test_qdq_op_respects_bitwidth(device: str, num_bits: int) -> None:
     assert torch.equal(actual, expected)
 
 
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize(("data_shape", "tile_size"), SHAPES_AND_TILES)
+@pytest.mark.parametrize("with_offset", [False, True], ids=["symmetric", "asymmetric"])
+def test_export_op_matches_plain_python_op(
+    device: str, data_shape: IntTuple, tile_size: IntTuple, with_offset: bool
+) -> None:
+    # GIVEN data, quantization parameters and an output gradient for a tile configuration
+    data, scale, offset = _quant_params(data_shape, tile_size, device, with_offset)
+    output_grad = torch.cos(data)
+
+    # WHEN the qdq op and its backward are run through the default (plain) implementation,
+    # and through the registered torch op selected by `export_mode`
+    plain_qdq = _ops.affine_static_qdq_op(data, scale, tile_size, 8, None, offset)
+    plain_grads = _ops.affine_quantize_backward_op(data, output_grad, scale, tile_size, 8, offset)
+    with ff.export_mode(True):
+        export_qdq = _ops.affine_static_qdq_op(data, scale, tile_size, 8, None, offset)
+        export_grads = _ops.affine_quantize_backward_op(
+            data, output_grad, scale, tile_size, 8, offset
+        )
+
+    # THEN the outputs and all gradients are bit-identical
+    assert torch.equal(plain_qdq, export_qdq)
+    assert len(plain_grads) == len(export_grads) == 3
+    for plain_grad, custom_grad in zip(plain_grads, export_grads, strict=True):
+        assert torch.equal(plain_grad, custom_grad)
+
+
+@pytest.mark.slow
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+def test_qdq_export_keeps_registered_op() -> None:
+    # GIVEN a module applying the fused qdq function
+    class QdqModule(torch.nn.Module):
+        def forward(self, data: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
+            return affine_static_qdq_fn(data, scale, None, torch.Size((4, 6)), 8, None)
+
+    # WHEN it is exported
+    with ff.export_mode(True), torch.no_grad():
+        exported = torch.export.export(QdqModule(), (torch.randn(4, 6), torch.ones(1)))
+
+    # THEN the registered qdq op is kept as an opaque node
+    targets = [n.target for n in exported.graph_module.graph.nodes if n.op == "call_function"]
+    assert torch.ops.fastforward.affine_static_qdq.default in targets
+
+
+@pytest.mark.slow
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+def test_quantize_dequantize_export_keep_registered_ops() -> None:
+    # GIVEN a module applying the (non-fused) quantize and dequantize functions
+    class QuantDequantModule(torch.nn.Module):
+        def forward(self, data: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
+            quantized = affine_static_quantize_fn(data, scale, None, torch.Size((4, 6)), 8, None)
+            return affine_dequantize_fn(quantized, scale, None, torch.Size((4, 6)), None)
+
+    # WHEN it is exported with export mode enabled
+    with ff.export_mode(True), torch.no_grad():
+        exported = torch.export.export(QuantDequantModule(), (torch.randn(4, 6), torch.ones(1)))
+
+    # THEN the registered quantize and dequantize ops are kept as opaque nodes
+    targets = [n.target for n in exported.graph_module.graph.nodes if n.op == "call_function"]
+    assert torch.ops.fastforward.affine_static_quantize.default in targets
+    assert torch.ops.fastforward.affine_dequantize.default in targets
+
+
 # --------------------------------------------------------------------------------------
 # Autograd wrapper level: the full quantize-dequantize matrix, forward and backward
 # --------------------------------------------------------------------------------------
@@ -139,6 +203,8 @@ def _run_quant_dequant(
     tile_size: IntTuple,
     num_bits: int,
     use_qdq_fn: bool = False,
+    qdq_fn: Callable[..., torch.Tensor] = affine_static_qdq_fn,
+    quantized_dtype: torch.dtype | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
     """Run a full quantize-then-dequantize computation.
 
@@ -153,9 +219,11 @@ def _run_quant_dequant(
 
     with ff.qdq_mode(use_qdq_fn):
         if use_qdq_fn:
-            dequantized = affine_static_qdq_fn(data, scale, offset, size, num_bits, None)
+            dequantized = qdq_fn(data, scale, offset, size, num_bits, quantized_dtype)
         else:
-            quantized = affine_static_quantize_fn(data, scale, offset, size, num_bits, None)
+            quantized = affine_static_quantize_fn(
+                data, scale, offset, size, num_bits, quantized_dtype
+            )
             dequantized = affine_dequantize_fn(quantized, scale, offset, size, None)
 
     # A non-uniform objective makes the scale/offset gradients non-trivial.
@@ -215,3 +283,115 @@ def _run_fwd_bck(
     assert data.grad is not None
     assert quantizer.scale.grad is not None
     return output, data.grad, quantizer.scale.grad
+
+
+# --------------------------------------------------------------------------------------
+# Compiled path: under torch.compile the qdq autograd function traces the plain torch
+# implementation instead of the custom op. The results must not change.
+# --------------------------------------------------------------------------------------
+
+
+def _capturing_backend(graphs: list[str]) -> Callable[..., Any]:
+    """Return a torch.compile backend that records the code of every graph it compiles."""
+
+    def capture(gm: torch.fx.GraphModule, example_inputs: Sequence[Any]) -> Any:
+        del example_inputs
+        graphs.append(gm.code)
+
+        def boxed_forward(args: list[torch.Tensor]) -> Any:
+            return gm.forward(*args)
+
+        # AOTAutograd expects a compiled callable that takes its inputs as one list.
+        boxed_forward._boxed_call = True  # type: ignore[attr-defined]
+        return boxed_forward
+
+    def backend(gm: torch.fx.GraphModule, example_inputs: list[torch.Tensor]) -> Any:
+        return aot_module_simplified(gm, example_inputs, fw_compiler=capture, bw_compiler=capture)
+
+    return backend
+
+
+@pytest.mark.slow
+# Torch 2.8 - 2.13 instantiate autograd.Function classes while dynamo traces them,
+# emitting a DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+# Importing torch._inductor on torch 2.11+ emits the torch.jit.script_method DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning")
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize(("data_shape", "tile_size"), SHAPES_AND_TILES)
+@pytest.mark.parametrize("num_bits", [4, 8])
+@pytest.mark.parametrize("with_offset", [False, True], ids=["symmetric", "asymmetric"])
+def test_qdq_compiled_matches_eager_custom_op(
+    device: str, data_shape: IntTuple, tile_size: IntTuple, num_bits: int, with_offset: bool
+) -> None:
+    # GIVEN the eager output and gradients, computed through the custom op
+    torch._dynamo.reset()
+    data, scale, offset = _quant_params(data_shape, tile_size, device, with_offset)
+    ref_dequant, ref_data_grad, ref_scale_grad, ref_offset_grad = _run_quant_dequant(
+        data, scale, offset, tile_size, num_bits, use_qdq_fn=True
+    )
+
+    # WHEN the same computation is compiled, forward and backward
+    graphs: list[str] = []
+    compiled_qdq = torch.compile(affine_static_qdq_fn, backend=_capturing_backend(graphs))
+    actual_dequant, actual_data_grad, actual_scale_grad, actual_offset_grad = _run_quant_dequant(
+        data, scale, offset, tile_size, num_bits, use_qdq_fn=True, qdq_fn=compiled_qdq
+    )
+
+    # THEN the compiled graphs use plain torch ops instead of the custom op
+    assert graphs
+    assert all("torch.ops.fastforward" not in code for code in graphs)
+
+    # AND the compiled results match the eager custom op
+    assert torch.equal(actual_dequant, ref_dequant)
+    assert torch.equal(actual_data_grad, ref_data_grad)
+    torch.testing.assert_close(actual_scale_grad, ref_scale_grad, rtol=1e-4, atol=1e-4)
+    if with_offset:
+        assert ref_offset_grad is not None
+        assert actual_offset_grad is not None
+        torch.testing.assert_close(actual_offset_grad, ref_offset_grad, rtol=1e-4, atol=1e-4)
+
+
+@pytest.mark.slow
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+@pytest.mark.filterwarnings("ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning")
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize(
+    "quantized_dtype",
+    [torch.float16, torch.bfloat16, torch.float32, torch.float64],
+    ids=["float16", "bfloat16", "float32", "float64"],
+)
+def test_qdq_compiled_matches_eager_with_output_dtype(
+    device: str, quantized_dtype: torch.dtype
+) -> None:
+    # GIVEN data and quantization parameters, and an output dtype that differs from the input
+    torch._dynamo.reset()
+    data, scale, offset = _quant_params((4, 6), (4, 6), device, with_offset=True)
+    ref_dequant, ref_data_grad, ref_scale_grad, ref_offset_grad = _run_quant_dequant(
+        data, scale, offset, (4, 6), 8, use_qdq_fn=True, quantized_dtype=quantized_dtype
+    )
+
+    # WHEN the same computation is compiled, forward and backward
+    graphs: list[str] = []
+    compiled_qdq = torch.compile(affine_static_qdq_fn, backend=_capturing_backend(graphs))
+    actual_dequant, actual_data_grad, actual_scale_grad, actual_offset_grad = _run_quant_dequant(
+        data,
+        scale,
+        offset,
+        (4, 6),
+        8,
+        use_qdq_fn=True,
+        qdq_fn=compiled_qdq,
+        quantized_dtype=quantized_dtype,
+    )
+
+    # THEN the output has the requested dtype, and the compiled results match the eager ones
+    assert graphs
+    assert ref_dequant.dtype == quantized_dtype
+    assert actual_dequant.dtype == quantized_dtype
+    torch.testing.assert_close(actual_dequant, ref_dequant)
+    torch.testing.assert_close(actual_data_grad, ref_data_grad)
+    torch.testing.assert_close(actual_scale_grad, ref_scale_grad, rtol=1e-4, atol=1e-4)
+    if ref_offset_grad is not None:
+        assert actual_offset_grad is not None
+        torch.testing.assert_close(actual_offset_grad, ref_offset_grad, rtol=1e-4, atol=1e-4)

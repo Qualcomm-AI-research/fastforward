@@ -7,6 +7,7 @@ from . import exceptions as exceptions
 from . import logging_utils as logging_utils
 from . import mpath as mpath
 from . import nn as nn
+from . import ops as ops
 from . import quantization as quantization
 from . import range_setting as range_setting
 from . import testing as testing
@@ -35,7 +36,6 @@ from .overrides import enable_quantization as enable_quantization
 from .quantization import affine as affine
 from .quantization import granularity as granularity
 from .quantization import random as random
-from .quantization.affine import _ops as _ops
 from .quantization.quant_init import QuantizationConfig as QuantizationConfig
 from .quantization.quant_init import find_quantizers as find_quantizers
 from .quantization.quantizer_annotations import (

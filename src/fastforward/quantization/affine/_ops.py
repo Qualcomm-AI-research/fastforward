@@ -7,7 +7,7 @@ import torch
 
 import fastforward as ff
 
-from fastforward.library import conditional_compile, custom_quant_op, register_quant_fake
+from fastforward.library import custom_quant_op, register_quant_fake
 from fastforward.quantization import tiled_tensor
 from fastforward.quantization.ste import round_ste
 
@@ -16,8 +16,20 @@ from . import dtypes, range
 SizeT = Sequence[int]
 
 
+def maybe_cast(data: torch.Tensor, dtype: torch.dtype | None) -> torch.Tensor:
+    """Cast to `dtype` only if it differs from `data.dtype`.
+
+    Works around PyTorch #181146, where aliased inputs to a compiled
+    autograd.Function can cause gradient contributions to be dropped.
+
+    NB: PyTorch 2.11.0 seems to be affected by this issue.
+    """
+    if dtype is not None and data.dtype != dtype:
+        return data.to(dtype)
+    return data
+
+
 @custom_quant_op("affine_static_quantize")
-@conditional_compile
 def affine_static_quantize_op(
     data: torch.Tensor,
     scale: torch.Tensor,
@@ -40,12 +52,10 @@ def affine_static_quantize_op(
     if not dtypes.can_support_bitwidth(output_dtype, num_bits):
         msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
         raise RuntimeError(msg)
-    result = result.to(output_dtype)
-    return result
+    return maybe_cast(result, output_dtype)
 
 
 @custom_quant_op("affine_dequantize")
-@conditional_compile
 def affine_dequantize_op(
     data: torch.Tensor,
     scale: torch.Tensor,
@@ -60,13 +70,10 @@ def affine_dequantize_op(
     row_representation = tiled_tensor.tiles_to_rows(data, tile_size)
     dequantized = (row_representation + offset[:, None]) * scale[:, None]
     dequantized = tiled_tensor.rows_to_tiles(dequantized, data.shape, tile_size)
-    if output_dtype:
-        dequantized = dequantized.to(output_dtype)
-    return dequantized
+    return maybe_cast(dequantized, output_dtype)
 
 
 @custom_quant_op("affine_static_qdq")
-@conditional_compile
 def affine_static_qdq_op(
     data: torch.Tensor,
     scale: torch.Tensor,
@@ -86,13 +93,10 @@ def affine_static_qdq_op(
     quantized = torch.clamp(quantized, min_threshold, max_threshold)
     dequantized = (quantized + offset[:, None]) * scale[:, None]
     dequantized = tiled_tensor.rows_to_tiles(dequantized, data.shape, tile_size)
-    if output_dtype:
-        dequantized = dequantized.to(output_dtype)
-    return dequantized
+    return maybe_cast(dequantized, output_dtype)
 
 
 @custom_quant_op("affine_quantize_backward")
-@conditional_compile
 def affine_quantize_backward_op(
     data: torch.Tensor,
     output_grad: torch.Tensor,
@@ -125,21 +129,18 @@ def affine_quantize_backward_op(
         doffset = torch.where(clip_mask, scale[:, None] * grad_as_rows, 0)
         doffset = doffset.sum(1).reshape(param_shape)
 
-    dscale = torch.empty(quantized.shape, dtype=scale.dtype, device=scale.device)
     min_thresh = scale.new_tensor([min_threshold])
     max_thresh = scale.new_tensor([max_threshold])
-    torch.where(quantized < min_threshold, min_thresh, max_thresh, out=dscale)
-    dscale.add_(offset[:, None].to(dscale.dtype))
-    torch.where(clip_mask, dscale, (quantized - pre_round).to(dscale.dtype), out=dscale)
-    dscale.mul_(grad_as_rows)
+    dscale = torch.where(quantized < min_threshold, min_thresh, max_thresh)
+    dscale = dscale + offset[:, None].to(dscale.dtype)
+    dscale = torch.where(clip_mask, dscale, (quantized - pre_round).to(dscale.dtype))
+    dscale = (dscale * grad_as_rows).sum(1).reshape(param_shape)
 
     dinput = tiled_tensor.rows_to_tiles(dinput, data.shape, tile_size)
-    dscale = dscale.sum(1).reshape(param_shape)
     return [dinput, dscale, doffset]
 
 
 @custom_quant_op("affine_dynamic_quantize")
-@conditional_compile
 def affine_dynamic_quantize_op(
     data: torch.Tensor,
     tile_size: SizeT,
@@ -179,7 +180,7 @@ def affine_dynamic_quantize_op(
     if not dtypes.can_support_bitwidth(output_dtype, num_bits):
         msg = f"Provided dtype ({output_dtype}) is not enough to store {num_bits} bits quantized values."
         raise RuntimeError(msg)
-    result = result.to(output_dtype)
+    result = maybe_cast(result, output_dtype)
     return result, scale, offset
 
 
