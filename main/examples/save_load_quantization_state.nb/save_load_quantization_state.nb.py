@@ -110,14 +110,15 @@ for p in tmpdir.glob("**/*"):
 # - `config.yaml`: a text file where other quantizer attributes are stored.
 # - `model.safetensors`: a binary file where state_dict (parameters and buffers) of all quantizers is saved.
 # +
-import pygments
-
 from IPython.display import HTML, display
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import DiffLexer, YamlLexer
 
-config = pygments.highlight(
+config = highlight(
     next(tmpdir.glob("**/config.yaml")).read_text(encoding="utf8"),
-    pygments.lexers.YamlLexer(),
-    pygments.formatters.HtmlFormatter(),
+    YamlLexer(),
+    HtmlFormatter(),
 )
 display(HTML(f"<details><summary>config.yaml</summary>{config}</details>"))
 
@@ -154,10 +155,10 @@ new_model.load_quantization_state(cache_dir=tmpdir, name_or_path=model_name)
 # +
 import difflib
 
-diff = pygments.highlight(
+diff = highlight(
     "\n".join(difflib.unified_diff(new_model_str.splitlines(), str(new_model).splitlines())),
-    pygments.lexers.DiffLexer(),
-    pygments.formatters.HtmlFormatter(),
+    DiffLexer(),
+    HtmlFormatter(),
 )
 display(HTML(diff))
 
