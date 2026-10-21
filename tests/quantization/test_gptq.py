@@ -7,12 +7,8 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.algorithms.gptq import (
-    calculate_hessian,
-    column_quantizer,
-    gptq,
-    update_partial_range,
-)
+from fastforward.algorithms.gptq import column_quantizer, gptq, update_partial_range
+from fastforward.algorithms.hessian_calculation import calculate_hessian
 
 
 def _calibrated_quantizer(
@@ -165,7 +161,7 @@ def test_gptq_recomputes_grouped_scales_from_error_corrected_weights() -> None:
 
     # WHEN we run GPTQ (grouped, no actorder → recompute path fires)
     with torch.inference_mode(), ff.strict_quantization(False):
-        gptq(module, dataset, block_size=8, perc_damp=0.01, actorder=False)
+        gptq(module, calculate_hessian(dataset), block_size=8, perc_damp=0.01, actorder=False)
 
     # THEN group 1's scale reflects error-corrected weights, not the original slice.
     # Compare against what parameters_for_range would give for the *original* weight slice
@@ -182,35 +178,24 @@ def test_gptq_recomputes_grouped_scales_from_error_corrected_weights() -> None:
     assert not torch.allclose(actual_group1_scale, static_scale.to(actual_group1_scale.dtype))
 
 
-def test_calculate_hessian_does_not_modify_input_activations() -> None:
-    # GIVEN float32 activations already on the module's device, so the `.to()` inside
-    # `calculate_hessian` is a no-op and the reshape/transpose yield views
+def test_gptq_reads_the_hessian_without_changing_it() -> None:
+    # GIVEN a stored Hessian that q_proj, k_proj and v_proj all read, and an actorder
+    # that reorders the columns of the Hessian
     module = ff.nn.QuantizedLinear(32, 16, bias=False)
+    module.weight_quantizer = ff.nn.LinearQuantizer(
+        num_bits=4, granularity=ff.PerChannel(channel_dim=0), symmetric=True
+    )
+
     activations = [torch.randn(2, 8, 32) for _ in range(3)]
-    expected = [activation.clone() for activation in activations]
     dataset: list[tuple[tuple[Any, ...], dict[str, Any]]] = [
         ((activation,), {}) for activation in activations
     ]
+    hessian = calculate_hessian(dataset)
+    expected = hessian.clone()
 
-    # WHEN we build the Hessian
-    calculate_hessian(module, dataset)
+    # WHEN GPTQ reads it
+    with torch.inference_mode(), ff.strict_quantization(False):
+        gptq(module, hessian, block_size=8, perc_damp=0.01, actorder=True)
 
-    # THEN the caller's activations are unchanged
-    for activation, original in zip(activations, expected):
-        torch.testing.assert_close(activation, original, rtol=0, atol=0)
-
-
-def test_calculate_hessian_is_repeatable_for_a_shared_dataset() -> None:
-    # GIVEN one dataset read twice, as the orchestrator hands the same tensor objects
-    # to every module that reads an activation (q_proj/k_proj/v_proj share their input)
-    module = ff.nn.QuantizedLinear(32, 16, bias=False)
-    dataset: list[tuple[tuple[Any, ...], dict[str, Any]]] = [
-        ((torch.randn(2, 8, 32),), {}) for _ in range(4)
-    ]
-
-    # WHEN two modules build a Hessian from it in turn
-    first = calculate_hessian(module, dataset)
-    second = calculate_hessian(module, dataset)
-
-    # THEN the second reader sees the same Hessian as the first
-    torch.testing.assert_close(first, second)
+    # THEN the stored Hessian is as it was, so the next reader gets the same data
+    torch.testing.assert_close(hessian, expected, rtol=0, atol=0)

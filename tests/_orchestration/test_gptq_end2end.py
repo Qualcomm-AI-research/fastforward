@@ -18,9 +18,10 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward._orchestration.data_flow import InputActivations
+from fastforward._orchestration.data_flow import FlowOp, InputActivations
 from fastforward._orchestration.instruction_engine import Offload
 from fastforward._orchestration.registry import AlgorithmSpec, MPathSelector
+from fastforward.algorithms.hessian_calculation import calculate_hessian
 
 logging.basicConfig(
     level=logging.INFO,
@@ -230,7 +231,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
         spec = AlgorithmSpec(
             fn=gptq_fn,
             selector=MPathSelector(query=gptq_q_targets),
-            flows=[InputActivations("quantized")],
+            flows=[FlowOp(calculate_hessian, activations=InputActivations("quantized"))],
         )
         offloading = Offload(compute=device)
         ff.layerwise_optimize(
@@ -369,7 +370,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
         spec = AlgorithmSpec(
             fn=gptq_fn,
             selector=MPathSelector(query=gptq_q_targets),
-            flows=[InputActivations("quantized")],
+            flows=[FlowOp(calculate_hessian, activations=InputActivations("quantized"))],
         )
         offloading = Offload(compute=device)
         ff.layerwise_optimize(

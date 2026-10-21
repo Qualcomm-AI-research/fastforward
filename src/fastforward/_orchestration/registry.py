@@ -20,10 +20,11 @@ import torch
 import fastforward as ff
 
 from fastforward import mpath
-from fastforward._orchestration.data_flow import FlowInput, InputActivations
+from fastforward._orchestration.data_flow import FlowInput, FlowOp, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
 from fastforward.algorithms.gptq import gptq
+from fastforward.algorithms.hessian_calculation import calculate_hessian, hessian_settings
 
 Algorithm: TypeAlias = Callable[..., Any]
 
@@ -335,10 +336,13 @@ def override(
 
 
 # We pre-register baseline methods with expected Algorithm-Target-Flow triples.
+hessian_original = FlowOp(
+    calculate_hessian, from_module=hessian_settings, activations=InputActivations("original")
+)
 register(
     gptq,
     (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
-    flows=[InputActivations("original")],
+    flows=[hessian_original],
 )
 register(
     adaround,

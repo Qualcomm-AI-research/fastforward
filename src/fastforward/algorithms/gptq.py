@@ -7,15 +7,15 @@
 from __future__ import annotations
 
 import logging
-import math
 
-from typing import Any, Callable, Iterable, cast
+from typing import Any, Callable
 
 import torch
 
 import fastforward as ff
 import fastforward.quantization.affine as affine_quant
 
+from fastforward.algorithms.hessian_calculation import invert_hessian
 from fastforward.quantization import granularity as granularities
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def gptq(
     module: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
-    dataset: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
+    hessian: torch.Tensor,
     block_size: int = 128,
     perc_damp: float = 0.01,
     actorder: bool = False,
@@ -36,8 +36,8 @@ def gptq(
 
     Args:
         module: A QuantizedLinear or QuantizedConv2d layer whose weight_quantizer is a LinearQuantizer.
-        dataset: Input activations flowing from the previous layer, an iterable.
-            Each entry is a tuple of args (tuple of obj) and kwargs (dict).
+        hessian: The Hessian of the layer, a tensor of shape [in_features, in_features], with
+            in_channels/groups * kH * kW for Conv2d.
         block_size: Number of columns to process per block.
         perc_damp: Dampening factor as percentage of mean diagonal value.
         actorder: Whether to reorder columns by activation magnitude.
@@ -76,7 +76,7 @@ def gptq(
     with ff.estimate_ranges(weight_quantizer, ff.range_setting.smoothed_minmax):
         weight_quantizer(weights)
 
-    hessian = calculate_hessian(module, dataset)
+    hessian = hessian.to(weights.device)
 
     column_order = (
         torch.argsort(torch.diag(hessian), descending=True) if actorder else torch.arange(columns)
@@ -275,108 +275,3 @@ def update_partial_range(
             offset_view[param_view_index] = offset.to(offset_view.dtype)
         else:
             offset_view[param_view_index] = 0.0
-
-
-def calculate_hessian(
-    layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
-    activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
-) -> torch.Tensor:
-    """Calculate approximate Hessian matrix from layer activations.
-
-    Args:
-        layer: QuantizedLinear or QuantizedConv2d layer to quantize.
-        activations: Input activations flowing from the previous layer, an iterable.
-            Each entry is a tuple of args (tuple of obj) and kwargs (dict).
-
-    Returns:
-        Hessian matrix of shape [in_features, in_features] in float32, where
-        in_features = weight.shape[1] for Linear and in_channels/groups * kH * kW for Conv2d.
-    """
-    device = layer.weight.device
-    in_features = _hessian_in_features(layer)
-    flatten_input = _input_flattener(layer)
-
-    hessian = torch.zeros((in_features, in_features), device=device, dtype=torch.float64)
-    n_samples = 0
-
-    for (activation,), _ in activations:
-        activation = cast(torch.Tensor, activation)
-        x = flatten_input(activation.to(device=device, dtype=torch.float32))
-
-        hessian.mul_(n_samples / (n_samples + x.shape[1]))
-        n_samples += x.shape[1]
-
-        # Not in-place: `x` can be a view of an activation that other layers also read.
-        x = x * math.sqrt(2.0 / n_samples)
-        hessian.add_(x @ x.transpose(0, 1))
-
-    # Handle dead neurons (zero diagonal in Hessian).
-    dead = torch.diag(hessian) == 0
-    hessian[dead, dead] = 1
-    return hessian.float()
-
-
-def _hessian_in_features(layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d) -> int:
-    """Number of input features the Hessian is built over.
-
-    Matches the column count of the flattened weight used inside `gptq`:
-    `in_features` for Linear, `in_channels/groups * kH * kW` for Conv2d.
-    """
-    if isinstance(layer, ff.nn.QuantizedConv2d):
-        _, in_per_group, kh, kw = layer.weight.shape
-        return in_per_group * kh * kw
-    return layer.weight.shape[1]
-
-
-def _input_flattener(
-    layer: ff.nn.QuantizedLinear | ff.nn.QuantizedConv2d,
-) -> Callable[[torch.Tensor], torch.Tensor]:
-    """Build the per-batch reshape that produces `(in_features, samples)` activations.
-
-    For Linear: `(B, S, H) -> (H, B*S)`.
-    For Conv2d: `(N, C, H, W) -> (C/groups * kH * kW, N*L)` via `nn.Unfold`,
-    matching the flattened weight layout used inside `gptq`.
-    """
-    if isinstance(layer, ff.nn.QuantizedConv2d):
-        assert not isinstance(layer.padding, str), "string padding not supported"
-        unfold = torch.nn.Unfold(
-            kernel_size=layer.kernel_size,
-            dilation=layer.dilation,
-            padding=layer.padding,
-            stride=layer.stride,
-        )
-
-        def _conv2d(activation: torch.Tensor) -> torch.Tensor:
-            # (N, C, H, W) -> (N, C*kH*kW, L) -> (C*kH*kW, N*L)
-            unfolded = cast(torch.Tensor, unfold(activation))
-            return unfolded.permute(1, 0, 2).flatten(1)
-
-        return _conv2d
-
-    def _linear(activation: torch.Tensor) -> torch.Tensor:
-        # (B, S, H) -> (B*S, H) -> (H, B*S)
-        bsz, seq_len, hidden = activation.shape
-        return activation.reshape(bsz * seq_len, hidden).transpose(0, 1)
-
-    return _linear
-
-
-def invert_hessian(hessian: torch.Tensor, perc_damp: float) -> torch.Tensor:
-    """Invert Hessian matrix using Cholesky decomposition with dampening.
-
-    Args:
-        hessian: Square Hessian matrix of shape [n, n]
-        perc_damp: Dampening factor as percentage of mean diagonal value
-
-    Returns:
-        Inverted Hessian matrix of shape [n, n]
-    """
-    dampening = perc_damp * torch.mean(torch.diag(hessian))
-    diag = torch.arange(hessian.shape[0], device=hessian.device)
-    hessian[diag, diag] += dampening
-
-    # invert via Cholesky
-    hessian = torch.linalg.cholesky(hessian)
-    hessian = torch.cholesky_inverse(hessian)
-    hessian = torch.linalg.cholesky(hessian, upper=True)
-    return hessian
