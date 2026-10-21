@@ -12,6 +12,7 @@ from fastforward._orchestration.data_flow import (
     ORIGINAL,
     QUANTIZED,
     FlowGenerator,
+    FlowOp,
     Gradient,
     InputActivations,
     ModelOutputs,
@@ -169,3 +170,72 @@ def test_unsupported_gradients_are_rejected(
     # THEN the declaration itself is rejected
     with pytest.raises(error, match=match):
         Gradient(f, **sources)
+
+
+def _total(activations: Any) -> Any:
+    return sum(args[0].sum() for args, _ in activations)
+
+
+# A pinned generator that comes after a live one, to show that `pinned` decides first.
+LATE_PINNED = register_generator(
+    FlowGenerator("test_flow_op_late_pinned", lambda _: nullcontext(), order=20, pinned=True)
+)
+
+
+@pytest.mark.parametrize(
+    ("inputs", "expected"),
+    [
+        ([InputActivations("original")], ORIGINAL),
+        ([InputActivations("quantized")], QUANTIZED),
+        ([InputActivations("original"), InputActivations(LATE_PINNED)], LATE_PINNED),
+        ([InputActivations("original"), InputActivations("quantized")], QUANTIZED),
+        ([InputActivations(LATE_PINNED), InputActivations("quantized")], QUANTIZED),
+    ],
+    ids=["pinned", "live", "all-pinned-highest-order", "mixed", "live-before-later-pinned"],
+)
+def test_flow_op_runs_under_the_live_input_with_the_highest_order(
+    inputs: list[InputActivations], expected: FlowGenerator
+) -> None:
+    # GIVEN an op over pinned inputs, live inputs, or both
+    named: dict[str, Any] = {f"x{i}": flow for i, flow in enumerate(inputs)}
+    op = FlowOp(_total, **named)
+
+    # THEN it runs under the live input with the highest order, or under the pinned
+    # input with the highest order if no input is live, so it is pinned only if all
+    # its inputs are pinned
+    assert op.generator is expected
+    assert op.generator.pinned == all(flow.generator.pinned for flow in inputs)
+
+
+def test_flow_ops_are_equal_only_if_they_read_the_same_settings() -> None:
+    # GIVEN two functions that read settings from a module
+    def one(_module: torch.nn.Module) -> dict[str, int]:
+        return {"setting": 1}
+
+    def other(_module: torch.nn.Module) -> dict[str, int]:
+        return {"setting": 2}
+
+    flow = InputActivations("original")
+
+    # THEN ops are equal if `fn`, the reader and the inputs are equal
+    # (in which case we only need to run one, and not all)
+    assert FlowOp(_total, from_module=one, x=flow) == FlowOp(_total, from_module=one, x=flow)
+    assert FlowOp(_total, from_module=one, x=flow) != FlowOp(_total, from_module=other, x=flow)
+    assert FlowOp(_total, from_module=one, x=flow) != FlowOp(_total, x=flow)
+
+
+@pytest.mark.parametrize(
+    ("fn", "inputs", "error", "match"),
+    [
+        (_total, {}, ValueError, "at least one input"),
+        (object(), {"activations": InputActivations("original")}, TypeError, "callable"),
+    ],
+    ids=["no-input", "not-callable"],
+)
+def test_unsupported_flow_ops_are_rejected(
+    fn: Any, inputs: dict[str, Any], error: type[Exception], match: str
+) -> None:
+    # WHEN declaring an op that cannot run
+    # THEN the declaration itself is rejected
+    with pytest.raises(error, match=match):
+        FlowOp(fn, **inputs)

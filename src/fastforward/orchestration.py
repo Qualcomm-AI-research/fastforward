@@ -10,6 +10,7 @@ from typing import Any
 import torch
 
 from fastforward._orchestration import registry
+from fastforward._orchestration.data_flow import FlowOp as FlowOp
 from fastforward._orchestration.data_flow import Gradient as Gradient
 from fastforward._orchestration.data_flow import InputActivations as InputActivations
 from fastforward._orchestration.data_flow import ModelOutputs as ModelOutputs

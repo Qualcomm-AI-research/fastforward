@@ -19,6 +19,7 @@ from fastforward._orchestration.data_flow import (
     QUANTIZED,
     DataFlow,
     FlowGenerator,
+    FlowOp,
     Gradient,
     InputActivations,
     ModelOutputs,
@@ -26,6 +27,7 @@ from fastforward._orchestration.data_flow import (
     register_generator,
 )
 from fastforward._orchestration.graph_module import (
+    FlowOpRef,
     GraphModule,
     InputRef,
     NodeRef,
@@ -36,6 +38,7 @@ from fastforward._orchestration.graph_module import (
 from fastforward._orchestration.instruction_engine import (
     ActivationBundle,
     CallModule,
+    CallVJP,
     DeleteRegisterEntries,
     InstructionEngine,
     InstructionProgram,
@@ -63,6 +66,7 @@ from ._models import (
     TiedBranches,
     TiedHead,
     TiedMatmul,
+    ToyAttention,
     TwoLayerModel,
     TwoLinear,
 )
@@ -1160,3 +1164,199 @@ def test_snapshot_input_activations_quantized_on_reduced_folds(
     # THEN each fold runs after its own intervention, exactly as a Linear leaf would.
     # The resolution of the graph decides what a call covers, not where it goes.
     assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
+
+
+def _delegate_kinds_of(instruction: RunDelegate) -> str:
+    """Tell the call of a `FlowOp` from an intervention or an objective."""
+    if any(isinstance(ref, FlowOpRef) for ref, _ in instruction.targets):
+        return "op"
+    return "objective" if instruction.targets else "consumer"
+
+
+def _delegate_kinds(program: InstructionProgram) -> list[str]:
+    """Tell the calls of `FlowOp`s from the interventions, in the order they run."""
+    return [
+        _delegate_kinds_of(instruction)
+        for instruction in program.instructions
+        if isinstance(instruction, RunDelegate)
+    ]
+
+
+def _mean_square(x: ActivationBundle) -> torch.Tensor:
+    """The mean over the batches of the mean square of the first arg."""
+    return torch.stack([args[0].square().mean() for args, _ in x]).mean()
+
+
+def _expected_mean_square(inputs: list[torch.Tensor]) -> torch.Tensor:
+    return torch.stack([x.square().mean() for x in inputs]).mean()
+
+
+def _record_and_mutate(
+    reads: dict[torch.nn.Module, list[Any]],
+) -> Callable[..., None]:
+    """An intervention that records what it reads, then changes weights.
+
+    It records the first arg of every batch of a flow, and the value of an op.
+    """
+
+    def record(module: torch.nn.Module, *inputs: Any) -> None:
+        reads[module] = [
+            [args[0] for args, _ in data] if isinstance(data, ActivationBundle) else data
+            for data in inputs
+        ]
+        with torch.no_grad():
+            for parameter in module.parameters():
+                parameter.add_(1.0)
+
+    return record
+
+
+@pytest.mark.parametrize("generator", [ORIGINAL, QUANTIZED], ids=["pinned", "live"])
+def test_flow_op_schedules_just_before_its_first_consumer(
+    two_linear: TwoLinear, generator: FlowGenerator
+) -> None:
+    # GIVEN an op over the inputs of two regions in a chain
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(3)]
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(_mean_square, x=InputActivations(generator))
+    consumer = _record_and_mutate(reads)
+    specs = [SubgraphSpec(region=r, fn=consumer, flows=[op]) for r in (model.fc1, model.fc2)]
+
+    # WHEN scheduling
+    program = schedule(trace(model, batches[0]), specs)
+
+    # THEN each op runs right before its own consumer
+    assert _delegate_kinds(program) == ["op", "consumer", "op", "consumer"]
+
+
+def test_regions_that_read_equal_data_share_one_flow_op_call() -> None:
+    # GIVEN an attention block
+    model = ToyAttention(8).eval()
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+    projections = [model.q_proj, model.k_proj, model.v_proj]
+    calls: list[int] = []
+
+    def counted_mean_square(x: ActivationBundle) -> torch.Tensor:
+        calls.append(1)
+        return _mean_square(x)
+
+    # GIVEN a FlowOp on all projections QKV and O
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(counted_mean_square, x=InputActivations(ORIGINAL))
+    regions = [*projections, model.o_proj]
+    specs = [SubgraphSpec(region=r, fn=_record_and_mutate(reads), flows=[op]) for r in regions]
+
+    # WHEN scheduling
+    program = schedule(trace(model, batches[0]), specs)
+
+    # THEN the QKV inputs share the same FlowOp
+    assert _delegate_kinds(program) == ["op", "consumer", "consumer", "consumer", "op", "consumer"]
+
+    # WHEN running
+    _run(program, batches)
+
+    # THEN the FlowOp function runs only twice, QKV all share the same input
+    assert len(calls) == 2
+    for region in projections:
+        torch.testing.assert_close(reads[region][0], _expected_mean_square(batches))
+
+
+def test_regions_share_a_flow_op_call_only_if_their_settings_are_equal() -> None:
+    # GIVEN an attention block
+    model = ToyAttention(8).eval()
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+
+    # GIVEN the user makes a distinction between QK and V projections
+    tags: dict[torch.nn.Module, str] = {model.q_proj: "a", model.k_proj: "a", model.v_proj: "b"}
+    calls: list[str] = []
+
+    def tag_of_call(_x: ActivationBundle, tag: str) -> str:
+        calls.append(tag)
+        return tag
+
+    # GIVEN The user provides these distinctions to `from_module`
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(
+        tag_of_call,
+        from_module=lambda module: {"tag": tags[module]},
+        _x=InputActivations(ORIGINAL),
+    )
+    specs = [SubgraphSpec(region=r, fn=_record_and_mutate(reads), flows=[op]) for r in tags]
+
+    # WHEN scheduling
+    program = schedule(trace(model, batches[0]), specs)
+
+    # THEN QK shares a call and V has a call of its own
+    assert _delegate_kinds(program) == ["op", "consumer", "consumer", "op", "consumer"]
+
+    # WHEN running
+    _run(program, batches)
+
+    # THEN the FlowOp runs twice, once for QK and once for V
+    assert calls == ["a", "b"]
+    assert [reads[region][0] for region in tags] == ["a", "a", "b"]
+
+
+def _sum_of_gradients(g: ActivationBundle) -> torch.Tensor:
+    """The sum over the batches of the first arg."""
+    return torch.stack([args[0].sum() for args, _ in g]).sum()
+
+
+def test_flow_op_on_a_gradient_runs_once_its_gradient_is_made(two_linear: TwoLinear) -> None:
+    # GIVEN an op over the gradient at the output of each region in a chain
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(3)]
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(_sum_of_gradients, g=Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL)))
+    regions: list[torch.nn.Module] = [model.fc1, model.fc2]
+    specs = [SubgraphSpec(region=r, fn=_record_and_mutate(reads), flows=[op]) for r in regions]
+    expected = _autograd(model, regions, batches)
+
+    # WHEN scheduling
+    program = schedule(trace(model, batches[0]), specs)
+
+    # THEN the op of fc2 runs before the backward pass goes on through fc2, and the op of
+    # fc1 runs after it
+    steps = [
+        f"vjp {instruction.caller is model.fc2}"
+        if isinstance(instruction, CallVJP)
+        else _delegate_kinds_of(instruction)
+        for instruction in program.instructions
+        if isinstance(instruction, CallVJP | RunDelegate)
+    ]
+    first_op = steps.index("op")
+    assert first_op < steps.index("vjp True") < steps.index("op", first_op + 1)
+    assert steps[-2:] == ["consumer", "consumer"]
+
+    # WHEN running
+    _run(program, batches)
+
+    # THEN each region reads the sum of the gradients of the original model
+    for region in regions:
+        torch.testing.assert_close(reads[region][0], torch.stack(expected[region]).sum())
+
+
+def test_nested_flow_ops(two_linear: TwoLinear) -> None:
+    # GIVEN a two linear layer model
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(3)]
+    seen: list[Any] = []
+
+    def doubled(mean_square: torch.Tensor) -> torch.Tensor:
+        seen.append(mean_square)
+        return 2 * mean_square
+
+    # GIVEN a nested flow op, the first calculating the mean square, the second doubling it
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(doubled, mean_square=FlowOp(_mean_square, x=InputActivations(ORIGINAL)))
+    specs = [SubgraphSpec(region=model.fc1, fn=_record_and_mutate(reads), flows=[op])]
+
+    # WHEN scheduling and running
+    _run(schedule(trace(model, batches[0]), specs), batches)
+
+    expected = _expected_mean_square(batches)
+    # THEN the inner function gets the mean square
+    torch.testing.assert_close(seen[0], expected)
+    # THEN the outer function gets the doubled mean square
+    torch.testing.assert_close(reads[model.fc1][0], 2 * expected)

@@ -497,11 +497,25 @@ class BundleSpec:
         context: The context to resolve the refs under.
         args: Positional refs to gather.
         kwargs: Keyword refs to gather.
+        unwrap: If `args` holds a single value, return that value instead of a bundle.
     """
 
     context: StreamKey
     args: Sequence[_BaseRef]
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
+    unwrap: bool = False
+
+
+def _gather(spec: BundleSpec, register: ActivationRegister) -> Any:
+    """Return what a delegate receives for `spec`: a bundle, or the value of an unwrapped spec."""
+    if not spec.unwrap:
+        return ActivationBundle.gather(register, spec.context, spec.args, spec.kwargs)
+
+    (ref,) = spec.args
+
+    # The result of an op is always a single batch (even if that batch is an iterable).
+    (result,) = register.load(ref, spec.context).batches
+    return result
 
 
 @dataclasses.dataclass(frozen=True)
@@ -542,10 +556,7 @@ class RunDelegate(Instruction):
         )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        fn_inputs: list[torch.nn.Module | ActivationBundle] = [
-            ActivationBundle.gather(register, spec.context, spec.args, spec.kwargs)
-            for spec in self.bundles
-        ]
+        fn_inputs: list[Any] = [_gather(spec, register) for spec in self.bundles]
         if self.module is not None:
             fn_inputs = [self.module, *fn_inputs]
 
@@ -569,6 +580,20 @@ class RunDelegate(Instruction):
     def produces(self) -> Iterator[_BaseRef]:  # noqa: D102
         for ref, _ in self.targets:
             yield ref
+
+
+def call_flow_op(
+    fn: Callable[..., Any], names: Sequence[str], *inputs: Any
+) -> list[ActivationDataset]:
+    """Call `fn(**inputs)` with each input under its name, and store the result as one batch.
+
+    Args:
+        fn: The function of the op. It can return any object.
+        names: The name that `fn` receives each item of `inputs` under.
+        inputs: The data that `fn` reads, one item per name: a bundle for a flow, and the
+            result of the op for an op.
+    """
+    return [ActivationDataset([fn(**dict(zip(names, inputs, strict=True)))])]
 
 
 def loss_grad_outputs(

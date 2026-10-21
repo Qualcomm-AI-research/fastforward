@@ -33,7 +33,7 @@ import collections
 import dataclasses
 import functools
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from functools import cached_property
 
 import attrs
@@ -43,8 +43,9 @@ from typing_extensions import override
 
 from fastforward._orchestration.data_flow import (
     ANY,
-    DataFlow,
     FlowGenerator,
+    FlowInput,
+    FlowOp,
     Gradient,
     InputActivations,
     OutputActivations,
@@ -53,6 +54,7 @@ from fastforward._orchestration.graph_module import (
     AttributePath,
     AttributeRef,
     Const,
+    FlowOpRef,
     GradientRef,
     GraphModule,
     InputRef,
@@ -81,6 +83,7 @@ from fastforward._orchestration.instruction_engine import (
     StoreValue,
     StreamKey,
     assemble_grad_output,
+    call_flow_op,
     loss_grad_outputs,
     sum_grad_outputs,
 )
@@ -93,7 +96,8 @@ class FlowPlan:
     Wraps the original `flow` alongside the refs the algorithm reads. A flow can
     have various outputs - InputActivations specify the total args/kwargs it should
     produce, OutputActivations specify only a single output value. These values are
-    captured in `reads` and `read_kwargs`.
+    captured in `reads` and `read_kwargs`. A `FlowOp` reads one ref, a `FlowOpRef`,
+    which holds the plans of the inputs of the op.
 
     Which calls have to run for those refs to hold a value is not part of the plan.
     The scheduler walks the graph from the refs, and it works out the calls together
@@ -105,9 +109,12 @@ class FlowPlan:
         read_kwargs: Keyword refs the algorithm receives.
     """
 
-    flow: DataFlow
+    flow: FlowInput
     reads: tuple[_BaseRef, ...] = ()
     read_kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
+
+    def __hash__(self) -> int:
+        return hash((self.flow, self.reads, frozenset(self.read_kwargs.items())))
 
     @property
     def generator(self) -> FlowGenerator:
@@ -129,13 +136,30 @@ class FlowPlan:
         """Whether the work done to produce this data may be reused."""
         return self.flow.cache
 
+    @property
+    def op_ref(self) -> FlowOpRef | None:
+        """The ref to the result of the op this plan resolves, or `None` for a plain flow."""
+        if not isinstance(self.flow, FlowOp):
+            return None
+        (ref,) = self.reads
+        assert isinstance(ref, FlowOpRef)
+        return ref
+
     def refs(self) -> Iterator[_BaseRef]:
         """Every ref this plan reads, positional first."""
         yield from self.reads
         yield from self.read_kwargs.values()
 
+    def leaves(self) -> Iterator[FlowPlan]:
+        """The plans that read the graph: this plan, or the leaves of the inputs of an op."""
+        if (ref := self.op_ref) is None:
+            yield self
+        else:
+            for plan in ref.inputs:
+                yield from plan.leaves()
 
-def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[DataFlow]) -> list[FlowPlan]:
+
+def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[FlowInput]) -> list[FlowPlan]:
     """Bind each declared flow to the refs it reads on `graph`.
 
     Args:
@@ -162,6 +186,15 @@ def bind_flows(graph: GraphModule, region: NodeRef, flows: Sequence[DataFlow]) -
             case Gradient():
                 # The total gradient of the region's own output.
                 reads = (GradientRef(region, flow),)
+            case FlowOp():
+                # The result of the op, on what its inputs read at this region, and the
+                # settings of the module of this region.
+                op_inputs = bind_flows(graph, region, [value for _, value in flow.inputs])
+                settings: dict[str, Hashable] = {}
+                if flow.from_module is not None:
+                    assert isinstance(node.target, torch.nn.Module)
+                    settings = dict(flow.from_module(node.target))
+                reads = (FlowOpRef(flow, tuple(op_inputs), tuple(sorted(settings.items()))),)
             case _:
                 msg = f"unsupported DataFlow type: {type(flow).__name__}"
                 raise TypeError(msg)
@@ -184,7 +217,7 @@ def ref_load_instructions(ref: _BaseRef, context: StreamKey) -> list[StoreValue 
         TypeError: If the reference is not a supported `_BaseRef` type.
     """
     match ref:
-        case NodeRef() | InputRef() | GradientRef() | LossGradRef() | VJPRef():
+        case NodeRef() | InputRef() | GradientRef() | LossGradRef() | VJPRef() | FlowOpRef():
             return []
         case Const():
             return [StoreValue(target=ref, value=ref, context=context)]
@@ -214,6 +247,11 @@ class _Intervention(abc.ABC):
     @abc.abstractmethod
     def schedule(self, scheduler: Scheduler) -> None: ...
 
+    def leaf_plans(self) -> Iterator[FlowPlan]:
+        """The plans that read the graph: the flows, and the inputs of the ops among them."""
+        for plan in self.flows:
+            yield from plan.leaves()
+
 
 @dataclasses.dataclass(frozen=True)
 class OptimizeIntervention(_Intervention):
@@ -228,19 +266,9 @@ class OptimizeIntervention(_Intervention):
         scheduler.schedule_expiring_values(self.region)
         scheduler.schedule_flows(self.flows, f"on {self.region!r}")
 
-        bundles: list[BundleSpec] = []
-        for plan in self.flows:
-            scheduler.schedule_loads(list(plan.refs()), plan.generator)
-            bundles.append(
-                BundleSpec(
-                    context=plan.generator.context,
-                    args=list(plan.reads),
-                    kwargs=dict(plan.read_kwargs),
-                )
-            )
-
+        inputs = scheduler.delegate_inputs(self.flows)
         scheduler.instructions.append(
-            RunDelegate(fn=self.spec.fn, bundles=tuple(bundles), module=self.module)
+            RunDelegate(fn=self.spec.fn, bundles=tuple(inputs), module=self.module)
         )
 
         # The weights of this region are now different from the ones every value
@@ -250,14 +278,47 @@ class OptimizeIntervention(_Intervention):
 
 @dataclasses.dataclass(frozen=True)
 class GradientIntervention(_Intervention):
-    """An intervention that runs the backward pass, and changes no weight."""
+    """An intervention that runs the backward pass, and changes no weight.
+
+    The gradients are made from the last region back to the first. Each op in `ops` runs as
+    soon as the gradients it reads are made, so the data it reads can be freed before the
+    backward pass is done.
+
+    Args:
+        ops: The plans of the pinned `FlowOp`s that read a gradient.
+    """
+
+    ops: list[FlowPlan] = dataclasses.field(default_factory=list)
 
     @override
     def schedule(self, scheduler: Scheduler) -> None:
-        for plan in self.flows:
-            for ref in plan.refs():
-                if isinstance(base := ref.unwrap_ref(), GradientRef):
-                    scheduler.schedule_gradient(base, plan.generator)
+        topo_index: dict[NodeRef | InputRef, int] = {
+            ref: i for i, ref in enumerate(scheduler.graph.topo_order)
+        }
+        gradients = [
+            (base, plan.generator)
+            for plan in self.flows
+            for ref in plan.refs()
+            if isinstance(base := ref.unwrap_ref(), GradientRef)
+        ]
+        gradients.sort(key=lambda item: topo_index.get(item[0].reference, -1), reverse=True)
+
+        waiting = list(self.ops)
+        for gradient, generator in gradients:
+            scheduler.schedule_gradient(gradient, generator)
+            ready = [op for op in waiting if _gradients_made(op, scheduler)]
+            scheduler.schedule_flows(ready, "in the backward pass")
+            waiting = [op for op in waiting if op not in ready]
+
+
+def _gradients_made(plan: FlowPlan, scheduler: Scheduler) -> bool:
+    """Return whether the register holds every gradient that `plan` reads."""
+    return all(
+        scheduler.timeline.value(base, leaf.generator) in scheduler.register
+        for leaf in plan.leaves()
+        for ref in leaf.refs()
+        if isinstance(base := ref.unwrap_ref(), GradientRef)
+    )
 
 
 @attrs.define(frozen=True, cache_hash=True, repr=False)
@@ -453,6 +514,51 @@ class Scheduler:
             self.instructions.append(instruction)
             self.register.add(item)
 
+    def delegate_inputs(self, plans: Sequence[FlowPlan]) -> list[BundleSpec]:
+        """Schedule the loads that `plans` read, and return the data each one hands over.
+
+        Args:
+            plans: The plans a delegate reads, in the order it receives them.
+        """
+        inputs: list[BundleSpec] = []
+        for plan in plans:
+            self.schedule_loads(list(plan.refs()), plan.generator)
+            inputs.append(
+                BundleSpec(
+                    context=plan.generator.context,
+                    args=list(plan.reads),
+                    kwargs=dict(plan.read_kwargs),
+                    unwrap=plan.op_ref is not None,
+                )
+            )
+        return inputs
+
+    def schedule_flow_op(self, ref: FlowOpRef, generator: FlowGenerator, owner: str) -> None:
+        """Schedule the call of a `FlowOp` that puts its result in the register.
+
+        The call runs once, and changes no weight, so the timeline does not advance.
+
+        Args:
+            ref: The ref to the result of the op.
+            generator: The flow generator that the result is stored under.
+            owner: Names the intervention in an error, for example `"on fc1"`.
+        """
+        value = self.timeline.value(ref, generator)
+        if value in self.register:
+            return
+
+        self.schedule_flows(ref.inputs, owner)
+        names = [name for name, _ in ref.op.inputs]
+        fn = functools.partial(ref.op.fn, **dict(ref.settings))
+        self.instructions.append(
+            RunDelegate(
+                fn=functools.partial(call_flow_op, fn, names),
+                bundles=self.delegate_inputs(ref.inputs),
+                targets=[(ref, generator.context)],
+            )
+        )
+        self.register.add(value)
+
     def schedule_gradient(self, ref: GradientRef, generator: FlowGenerator) -> None:
         """Schedule the backward steps that put the gradient `ref` in the register.
 
@@ -638,6 +744,8 @@ class Scheduler:
             RuntimeError: If a flow asks for data the program can no longer produce.
         """
         for plan in sorted(flows, key=lambda plan: plan.order):
+            if (op_ref := plan.op_ref) is not None:
+                self.schedule_flow_op(op_ref, plan.generator, owner)
             for demand in self.demands_of(plan):
                 if not self.can_produce(demand):
                     msg = (
@@ -694,7 +802,7 @@ class Scheduler:
         self._pending = [
             (plan, demand)
             for intervention in interventions
-            for plan in intervention.flows
+            for plan in intervention.leaf_plans()
             if plan.pinned
             for demand in self.demands_of(plan)
         ]
@@ -715,7 +823,7 @@ def _check_order_unambiguous(interventions: Sequence[_Intervention]) -> None:
     """
     keys_by_order: dict[int, set[str]] = collections.defaultdict(set)
     for intervention in interventions:
-        for plan in intervention.flows:
+        for plan in intervention.leaf_plans():
             keys_by_order[plan.order].add(plan.generator.key)
 
     for order, keys in sorted(keys_by_order.items()):
@@ -809,17 +917,13 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
         module = spec.resolve(graph).target
         region = graph.node_ref(module)
 
-        if any(flow.generator is ANY for flow in spec.flows):
+        flows = bind_flows(graph, region, spec.flows)
+        if any(leaf.generator is ANY for plan in flows for leaf in plan.leaves()):
             msg = f"Spec on {region!r} declares an ANY flow. ANY is reserved for plain forward passes."
             raise ValueError(msg)
 
         optimizations.append(
-            OptimizeIntervention(
-                region=region,
-                module=module,
-                spec=spec,
-                flows=bind_flows(graph, region, spec.flows),
-            )
+            OptimizeIntervention(region=region, module=module, spec=spec, flows=flows)
         )
 
     # Optimizations run in graph order, a region's inputs must already be generated.
@@ -832,11 +936,19 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     if gradients := [
         plan
         for optimization in optimizations
-        for plan in optimization.flows
+        for plan in optimization.leaf_plans()
         if isinstance(plan.flow, Gradient)
     ]:
         _check_eval_mode(graph)
-        interventions.insert(0, GradientIntervention(flows=gradients))
+        ops = [
+            plan
+            for optimization in optimizations
+            for plan in optimization.flows
+            if plan.op_ref is not None
+            and plan.pinned
+            and any(isinstance(leaf.flow, Gradient) for leaf in plan.leaves())
+        ]
+        interventions.insert(0, GradientIntervention(flows=gradients, ops=ops))
     _check_order_unambiguous(interventions)
     _check_no_shared_weights(graph, [optimization.region for optimization in optimizations])
 

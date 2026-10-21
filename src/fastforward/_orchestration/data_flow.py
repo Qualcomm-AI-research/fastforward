@@ -54,13 +54,36 @@ mutation, so only a pinned generator is supported, and the model must be in eval
 mode.
 
 Kinds of flow today: `InputActivations`, `OutputActivations`, `Gradient`.
+
+## Functions over flows
+
+A `FlowOp` runs a function over flows. What declares the op, an algorithm or another
+`FlowOp`, receives the result instead of the flows. GPTQ, for example, needs the Hessian of
+the activations and not necessarily the activations:
+
+```python
+flows = [FlowOp(hessian, activations=InputActivations("original"))]
+# The algorithm is called as fn(module, hessian).
+```
+
+If the operation is dependent on the layer (reshapes and such for convolutions),
+we can use the `from_module` argument which expects a function that works on that layer
+and returns a dictionary of keyword arguments:
+
+```python
+flows = [FlowOp(hessian, from_module=conv_settings, activations=InputActivations("original"))]
+# The function is called as hessian(activations=data, **conv_settings(module)).
+```
+
+If the settings are equal for layers that also share the same input (e.g. QKV), we only
+perform a single call.
 """
 
 import abc
 
 from contextlib import nullcontext
 from types import MappingProxyType
-from typing import Any, Callable, ContextManager, Iterable, Mapping
+from typing import Any, Callable, ContextManager, Hashable, Iterable, Mapping, TypeAlias
 
 import attrs
 import torch
@@ -305,3 +328,69 @@ class Gradient(DataFlow):
             for name, value in self.sources.items()
             if not isinstance(value, ModelOutputs)
         }
+
+
+@attrs.define(frozen=True, init=False)
+class FlowOp:
+    """A function over a data flow.
+
+    This does not change the data flow itself, but can be used directly before
+    running an algorithm by, for example, pre-calculating the Hessian of the data flow
+    at a specific layer.
+
+    If the operation needs layer specific parameters, use the `from_module` and provide
+    a callable that, given the layer, returns a dictionary with values. In this case,
+    it is expected that `fn` has at least these arguments.
+
+    Layers that share the same input, same `fn` and same `from_module` are considered
+    equal, and a single FlowOp will be used. This means you can think of a Flow Op also
+    as a performance gain.
+
+    Args:
+        fn: A function that works on a data flow.
+        from_module: A callable that, given a layer, returns a dict of arguments required for `fn`.
+        **inputs: The inputs required for `fn` that are separate from that of `from_module`.
+            These should be either `DataFlow` types or other `FlowOp`s.
+    """
+
+    fn: Callable[..., Any] = attrs.field(validator=attrs.validators.is_callable())
+    inputs: "tuple[tuple[str, DataFlow | FlowOp], ...]"
+    from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None
+
+    def __init__(
+        self,
+        fn: Callable[..., Any],
+        /,
+        *,
+        from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None,
+        **inputs: "DataFlow | FlowOp",
+    ) -> None:
+        self.__attrs_init__(fn=fn, inputs=tuple(inputs.items()), from_module=from_module)
+
+    def __attrs_post_init__(self) -> None:
+        """Reject an op that has no input.
+
+        Raises:
+            ValueError: If the op has no input.
+        """
+        if not self.inputs:
+            msg = "A FlowOp needs at least one input."
+            raise ValueError(msg)
+
+    @property
+    def generator(self) -> FlowGenerator:
+        """The flow generator that the op runs under."""
+        generators = [value.generator for _, value in self.inputs]
+        # The op runs when its last input is made, which is under the last `live` generator.
+        # Pinned inputs are saved up front, so they only count if no input is live.
+        live = [generator for generator in generators if not generator.pinned]
+        return max(live or generators, key=lambda generator: generator.order)
+
+    @property
+    def cache(self) -> bool:
+        """Whether the work done to produce the inputs may be reused."""
+        return all(value.cache for _, value in self.inputs)
+
+
+# What can be declared as an input: a flow, or a function over flows.
+FlowInput: TypeAlias = DataFlow | FlowOp

@@ -13,6 +13,7 @@ import pytest
 import torch
 
 from fastforward._orchestration import registry
+from fastforward._orchestration.data_flow import FlowOp, InputActivations
 from fastforward._orchestration.graph_module import Region, Span
 from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.location import BudgetLocation, DiskLocation, LocationLike
@@ -452,3 +453,42 @@ def test_layerwise_optimize_fn_receives_correct_params_and_batches(two_linear: T
     assert id(model.fc1.bias) in received["param_ids"]  # type: ignore[operator]
     assert id(model.fc2.weight) not in received["param_ids"]  # type: ignore[operator]
     assert len(received["batches"]) == len(calibration)  # type: ignore[arg-type]
+
+
+def _total(activations: ActivationBundle) -> torch.Tensor:
+    """The sum of all values: one tensor for the whole calibration set."""
+    return torch.stack([args[0].sum() for args, _ in activations]).sum()
+
+
+@pytest.mark.parametrize("offload", [False, True], ids=["in-place", "offloaded"])
+def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
+    two_linear: TwoLinear, offload: bool
+) -> None:
+    # GIVEN an algorithm that records what it receives
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 5, 8) for _ in range(3)]
+    received: dict[nn.Module, torch.Tensor] = {}
+
+    def record(module: nn.Module, total: torch.Tensor) -> None:
+        received[module] = total
+
+    # GIVEN a spec with a FlowOp that sums the entire calibration set
+    spec = AlgorithmSpec(
+        fn=record,
+        selector=normalize([model.fc1, model.fc2]),
+        flows=[FlowOp(_total, activations=InputActivations("original"))],
+    )
+    cpu = torch.device("cpu")
+    offloading = Offload(compute=cpu, weights=cpu, activations=cpu) if offload else None
+
+    # WHEN the model is optimized
+    with torch.no_grad():
+        ff.layerwise_optimize(
+            model, calibration, spec, sample_args=(calibration[0],), offloading=offloading
+        )
+
+    # THEN each layer received the result of the op over all calibration batches, as a tensor
+    hidden = [model.act(model.fc1(batch)) for batch in calibration]
+    assert received.keys() == {model.fc1, model.fc2}
+    for module, batches in ((model.fc1, calibration), (model.fc2, hidden)):
+        torch.testing.assert_close(received[module], sum(batch.sum() for batch in batches))

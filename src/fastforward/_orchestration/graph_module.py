@@ -15,6 +15,7 @@ from typing import (
     Any,
     Callable,
     ContextManager,
+    Hashable,
     Iterator,
     Sequence,
     TypeAlias,
@@ -23,8 +24,9 @@ from typing import (
 import torch
 
 if TYPE_CHECKING:
-    from fastforward._orchestration.data_flow import DataFlow, Gradient
+    from fastforward._orchestration.data_flow import FlowInput, FlowOp, Gradient
     from fastforward._orchestration.instruction_engine import InstructionEngine
+    from fastforward._orchestration.scheduler import FlowPlan
 
 
 # Attribute names and item keys that lead from a value to a part of it.
@@ -173,6 +175,28 @@ class VJPRef(_BaseRef):
 
     def __repr__(self) -> str:
         return f"VJPRef({self.reference!r})"
+
+
+@dataclasses.dataclass(frozen=True)
+class FlowOpRef(_BaseRef):
+    """Reference to the result of a `FlowOp`. Regions that read equal data share it.
+
+    Args:
+        op: The op that produces the result.
+        inputs: The plan of each input of `op`, in the order of `op.inputs`.
+        settings: The settings that `op.from_module` read from the module of the region, as
+            `(name, value)` pairs sorted by name.
+    """
+
+    op: FlowOp
+    inputs: tuple[FlowPlan, ...]
+    settings: tuple[tuple[str, Hashable], ...] = ()
+
+    def __repr__(self) -> str:
+        name = getattr(self.op.fn, "__name__", type(self.op.fn).__name__)
+        reads = [ref for plan in self.inputs for ref in plan.refs()]
+        settings = f", {dict(self.settings)!r}" if self.settings else ""
+        return f"FlowOpRef({name}, {reads!r}{settings})"
 
 
 def remap_subgraph_reference(
@@ -1154,7 +1178,7 @@ class SubgraphSpec:
     region: Region
 
     fn: Callable[..., None]
-    flows: Sequence[DataFlow]
+    flows: Sequence[FlowInput]
 
     def resolve(self, graph: GraphModule) -> ResolvedRegion:
         """Resolve this spec's region into concrete graph nodes and an optional wrapper subgraph."""

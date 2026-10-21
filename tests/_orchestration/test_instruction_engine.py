@@ -44,6 +44,7 @@ from fastforward._orchestration.instruction_engine import (
     _cancel_module_round_trips,
     _weight_offloading_pass,
     assemble_grad_output,
+    call_flow_op,
     lifetime_management_pass,
     loss_grad_outputs,
     sum_grad_outputs,
@@ -1031,6 +1032,50 @@ def test_call_delegate_receives_one_bundle_per_context() -> None:
     assert len(received) == 2
     assert list(received[0]) == [((1,), {}), ((2,), {})]
     assert list(received[1]) == [((10,), {}), ((20,), {})]
+
+
+def test_call_delegate_receives_the_value_of_an_unwrapped_spec() -> None:
+    # GIVEN a register holding one value, and a register entry with two batches
+    ref_value = NodeRef(id=uuid.uuid4(), name="value")
+    ref_batches = NodeRef(id=uuid.uuid4(), name="batches")
+    register = ActivationRegister()
+    value = torch.tensor([1.0, 2.0])
+    register.store(ref_value, _noop_context, ActivationDataset([value]))
+    register.store(ref_batches, _noop_context, ActivationDataset([1, 2]))
+
+    received: list[Any] = []
+
+    def delegate(unwrapped: torch.Tensor, bundle: ActivationBundle) -> None:
+        received.extend([unwrapped, bundle])
+
+    # WHEN we schedule the first to be unwrapped and the second one as-is
+    instr = RunDelegate(
+        fn=delegate,
+        bundles=(
+            BundleSpec(context=_noop_context, args=[ref_value], unwrap=True),
+            BundleSpec(context=_noop_context, args=[ref_batches]),
+        ),
+    )
+
+    # WHEN the instruction executes
+    instr.execute(register)
+
+    # THEN the unwrapped spec gives the stored object itself, and the other gives a bundle
+    assert received[0] is value
+    assert isinstance(received[1], ActivationBundle)
+    assert list(received[1]) == [((1,), {}), ((2,), {})]
+
+
+def test_call_flow_op_stores_the_result_as_one_batch() -> None:
+    # GIVEN a function and two inputs, given by position in the order of the names
+    def total(*, a: int, b: int) -> int:
+        return a - b
+
+    # WHEN the op is called
+    (dataset,) = call_flow_op(total, ("a", "b"), 5, 2)
+
+    # THEN each input reaches the function under its name, and the result is one batch
+    assert dataset.batches == [3]
 
 
 def test_merge_empty_sequence_raises() -> None:

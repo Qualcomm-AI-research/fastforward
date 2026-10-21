@@ -20,7 +20,7 @@ import torch
 import fastforward as ff
 
 from fastforward import mpath
-from fastforward._orchestration.data_flow import DataFlow, InputActivations
+from fastforward._orchestration.data_flow import FlowInput, InputActivations
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
 from fastforward.algorithms.gptq import gptq
@@ -170,7 +170,7 @@ class AlgorithmSpec:
 
     fn: Algorithm
     selector: Selector
-    flows: Sequence[DataFlow]
+    flows: Sequence[FlowInput]
 
 
 class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
@@ -194,7 +194,7 @@ class _AlgorithmRegistry(Mapping[Algorithm, AlgorithmSpec]):
         return len(self._specs)
 
     def register(
-        self, algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[DataFlow]
+        self, algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[FlowInput]
     ) -> None:
         """Register an algorithm with its target and data-flow requirements.
 
@@ -272,7 +272,7 @@ _registry = _AlgorithmRegistry()
 
 
 def register(
-    algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[DataFlow]
+    algorithm: Algorithm, target: TargetType | Selector, flows: Sequence[FlowInput]
 ) -> None:
     """Declare which modules an algorithm should target and what data it needs.
 
