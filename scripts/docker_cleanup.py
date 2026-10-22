@@ -25,7 +25,7 @@ Usage:
 
 Environment Variables:
     DOCKER_IMAGE: Docker image base name
-    DOCKER_REGISTRY: Docker registry hostname
+    DOCKER_API_URL: Base URL of the Docker Registry HTTP API V2 (ending in /v2)
     DOCKER_LOGIN: Docker registry username
     DOCKER_CREDENTIALS: Docker registry password or access token
 
@@ -41,10 +41,12 @@ import os
 import re
 import sys
 import typing
+import urllib.error
 import urllib.request
 
 _OUTDATED_AFTER = datetime.timedelta(days=6)
 _MAX_AFFECTED_IMAGES = 50
+_MAX_ERROR_BODY_CHARS = 500
 
 
 def main() -> None:
@@ -87,13 +89,25 @@ def _get_docker_auth() -> tuple[str, str]:
 class Response:
     """Encapsulates an HTTP response allowing multiple reads of the content."""
 
-    def __init__(self, content: bytes, headers: dict[str, str]) -> None:
+    def __init__(self, content: bytes, headers: dict[str, str], url: str = "") -> None:
         self.content = content
         self._headers = headers
+        self._url = url
 
     def content_as_json(self) -> typing.Any:
         """Parse the response content as JSON."""
-        return json.loads(self.content.decode(encoding="utf-8"))
+        text = self.content.decode(encoding="utf-8", errors="replace")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            content_type = self._headers.get("Content-Type", "<unknown>")
+            body = text[:_MAX_ERROR_BODY_CHARS] if text else "<empty>"
+            msg = (
+                f"Expected a JSON response from {self._url}, got Content-Type "
+                f"{content_type!r} and body: {body}\n"
+                "Check that DOCKER_API_URL points at a Docker V2 API."
+            )
+            raise RuntimeError(msg) from e
 
     @property
     def headers(self) -> dict[str, str]:
@@ -107,8 +121,7 @@ class DockerImageQuery:
     def __init__(self) -> None:
         self.outdated_after = _OUTDATED_AFTER
 
-        self.docker_registry = os.environ["DOCKER_REGISTRY"]
-        self.docker_hub_api = f"https://{self.docker_registry}/v2"
+        self.docker_hub_api = os.environ["DOCKER_API_URL"].rstrip("/")
         self.user, self.pw = _get_docker_auth()
         self.image_name_prefix = os.environ["DOCKER_IMAGE"]
 
@@ -130,7 +143,7 @@ class DockerImageQuery:
         return ff_images
 
     def _get_image_api(self, image_name: str) -> str:
-        return f"https://{self.docker_registry}/v2/{image_name}"
+        return f"{self.docker_hub_api}/{image_name}"
 
     def _make_request(
         self,
@@ -162,8 +175,16 @@ class DockerImageQuery:
             return Response(content=b"", headers={})
         else:
             req = urllib.request.Request(full_url, headers=req_headers, method=method)
-            with urllib.request.urlopen(req) as res:
-                return Response(res.read(), dict(res.headers))
+            try:
+                with urllib.request.urlopen(req) as res:
+                    return Response(res.read(), dict(res.headers), url=full_url)
+            except urllib.error.HTTPError as e:
+                body = e.read().decode(encoding="utf-8", errors="replace")
+                msg = (
+                    f"{method} {full_url} failed with HTTP {e.code} {e.reason}: "
+                    f"{body[:_MAX_ERROR_BODY_CHARS]}"
+                )
+                raise RuntimeError(msg) from e
 
     def delete_outdated_tags(self, dry_run: bool, only_one: bool) -> None:
         """Deletes tags corresponding to outdated Docker images.

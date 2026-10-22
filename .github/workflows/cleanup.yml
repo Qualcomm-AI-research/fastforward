@@ -20,7 +20,7 @@ jobs:
           DOCKER_LOGIN: "${{ secrets.DOCKER_LOGIN }}" 
           DOCKER_CREDENTIALS: "${{ secrets.DOCKER_CREDENTIALS }}"
           DOCKER_IMAGE: "${{ vars.DOCKER_IMAGE }}"
-          DOCKER_REGISTRY: "${{ vars.DOCKER_REGISTRY }}"
+          DOCKER_API_URL: "${{ vars.DOCKER_API_URL }}"
           SSL_CERT_FILE: "/etc/ssl/certs/ca-certificates.crt"
         run: |
            python3 scripts/docker_cleanup.py
