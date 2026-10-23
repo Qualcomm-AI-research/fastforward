@@ -397,6 +397,9 @@ def _get_mypy_tree_and_checker(
     opts = mypy.options.Options()
     opts.show_traceback = True
     opts.preserve_asts = True
+    # The native parser reads `module_path` from disk and ignores `text`, but `code`
+    # can differ from the file on disk.
+    opts.native_parser = False
 
     src = mypy.build.BuildSource(
         path=module_path,
