@@ -218,7 +218,7 @@ def test_context_manager_behavior() -> None:
         assert collection._quantization_context == context
 
     # THEN context is properly restored
-    assert collection._quantization_context is None  # type: ignore[unreachable]
+    assert collection._quantization_context is None
 
 
 def test_custom_prefix() -> None:

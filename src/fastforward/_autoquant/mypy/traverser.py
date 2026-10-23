@@ -383,7 +383,8 @@ class TraverserVisitor:
             _visit(index, self)
             for cond in conditions:
                 _visit(cond, self)
-        _visit(o.key, self)
+        if o.key is not None:
+            _visit(o.key, self)
         _visit(o.value, self)
 
     def visit_list_comprehension(self, o: ListComprehension, /) -> None:
