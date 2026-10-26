@@ -325,6 +325,9 @@ def save_quantization_state(
     except (FileExistsError, NotADirectoryError) as e:
         msg = f"Cannot create directory {assets_path} because of an existing file."
         raise ValueError(msg) from e
+    if next(iter(ff.nn.quantized_module.named_quantizers(model)), None) is None:
+        msg = "The model has no quantizers, so the saved quantization state is empty. "
+        logger.warning(msg)
     return _write_quantizer_state(
         model,
         assets_path,
@@ -387,7 +390,7 @@ def load_quantization_state(
         msg = f"Quantization state model not found at {model_path}"
         raise FileNotFoundError(msg)
 
-    _load_quantizer_state_from_files(
+    quantizers = _load_quantizer_state_from_files(
         model,
         config_path,
         model_path,
@@ -395,6 +398,12 @@ def load_quantization_state(
         overwrite_policy=overwrite_policy,
         allow_lazy_params=allow_lazy_params,
     )
+    if not quantizers:
+        msg = (
+            f"The quantization state at {config_path} contains no quantizers, so "
+            "nothing was loaded."
+        )
+        logger.warning(msg)
 
 
 def _load_quantizer_state_from_files(
@@ -405,7 +414,7 @@ def _load_quantizer_state_from_files(
     expected_name: str | None = None,
     overwrite_policy: _OverwriteOptions = "error",
     allow_lazy_params: bool = False,
-) -> None:
+) -> dict[str, Quantizer]:
     """Reconstruct and reattach quantizers from a config/safetensors pair.
 
     Shared by `load_quantization_state` and `load_quantized_model`. Loads the
@@ -423,6 +432,9 @@ def _load_quantizer_state_from_files(
             initialized: 'error', 'skip', or 'overwrite'.
         allow_lazy_params: If False, lazy parameters recorded in the state
             raise a ValueError; if True, they emit a warning instead.
+
+    Returns:
+        The quantizers recorded in the saved state, keyed by name.
 
     Raises:
         ValueError: If the config version is unsupported or lazy params are
@@ -536,6 +548,8 @@ def _load_quantizer_state_from_files(
             raise ValueError(msg)
 
         setattr(parent, parent_attribute, quantizer)
+
+    return quantizers
 
 
 def save_quantized_model(

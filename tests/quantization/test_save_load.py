@@ -544,6 +544,28 @@ def test_save_quantized_model_with_no_initialized_quantizers(tmp_path: Path) -> 
         torch.testing.assert_close(layer.weight, expected_weight)
 
 
+def test_empty_quantization_state_warns_on_save_and_load(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    # GIVEN A model without any quantizers
+    model = torch.nn.Linear(2, 2)
+
+    # WHEN Saving its quantization state
+    with caplog.at_level("WARNING", logger=save_load.logger.name):
+        save_load.save_quantization_state(model, name_or_path="empty", cache_dir=tmp_path)
+
+    # THEN A warning flags the likely quantization setup error
+    assert "has no quantizers" in caplog.text
+    caplog.clear()
+
+    # WHEN Loading the empty state
+    with caplog.at_level("WARNING", logger=save_load.logger.name):
+        save_load.load_quantization_state(model, name_or_path="empty", cache_dir=tmp_path)
+
+    # THEN Loading does not error and warns instead
+    assert "contains no quantizers" in caplog.text
+
+
 def test_save_quantized_model_records_weight_encodings_when_active(tmp_path: Path) -> None:
     """Fusing without stubbing keeps weight scale/offset in the artifact."""
     # GIVEN An initialized quantized model with a known weight scale
