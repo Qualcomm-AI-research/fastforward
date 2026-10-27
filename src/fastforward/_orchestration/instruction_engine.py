@@ -553,6 +553,10 @@ class RunDelegate(Instruction):
         targets: The ref and context that each returned dataset is stored under.
         module: The module whose weights must be on the compute location during the
             call, if any.
+        accumulate: Whether `fn` gets the batch that it stored under its first target in
+            an earlier run, or `None` if there is none, as its first argument. A chunked run
+            uses it to carry a result from one chunk to the next. The batch is placed at
+            `input_location`, like the batches of the bundles.
         input_location: Where `fn` finds each batch of the bundles.
         output_location: Where each returned batch is placed before it is stored.
     """
@@ -561,6 +565,7 @@ class RunDelegate(Instruction):
     bundles: Sequence[BundleSpec]
     targets: Sequence[tuple[_BaseRef, StreamKey]] = ()
     module: torch.nn.Module | None = None
+    accumulate: bool = dataclasses.field(default=False, kw_only=True)
     input_location: Location | None = dataclasses.field(default=None, kw_only=True)
     output_location: Location | None = dataclasses.field(default=None, kw_only=True)
 
@@ -582,6 +587,8 @@ class RunDelegate(Instruction):
         ]
         if self.module is not None:
             fn_inputs = [self.module, *fn_inputs]
+        if self.accumulate:
+            fn_inputs = [self._accumulated(register), *fn_inputs]
 
         results = self.fn(*fn_inputs)
         datasets = () if results is None else results
@@ -596,6 +603,14 @@ class RunDelegate(Instruction):
             if self.output_location is not None:
                 dataset = ActivationDataset([self.output_location.place(b) for b in dataset])
             register.store(ref, context, dataset)
+
+    def _accumulated(self, register: ActivationRegister) -> Any:
+        """Return the batch stored under the first target, or `None` if there is none."""
+        ref, context = self.targets[0]
+        if ref not in register:
+            return None
+        (batch,) = register.load(ref, context)
+        return batch if self.input_location is None else self.input_location.place(batch)
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         for spec in self.bundles:
@@ -619,6 +634,29 @@ def call_flow_op(
             finalized result of the op for an op.
     """
     return [ActivationDataset([fn(**dict(zip(names, inputs, strict=True)))])]
+
+
+def call_combining_flow_op(
+    fn: Callable[..., Any],
+    combine: Callable[[Any, Any], Any],
+    names: Sequence[str],
+    previous: Any,
+    *inputs: Any,
+) -> list[ActivationDataset]:
+    """Call `fn(**inputs)`, join the result to `previous`, and store it as one batch.
+
+    A chunked run calls the op once for each chunk through a `RunDelegate` with
+    `accumulate`, which gives the result of the previous chunks as `previous`.
+
+    Args:
+        fn: The function of the op. It can return any object.
+        combine: Joins `previous` and the result of `fn`, as `combine(previous, result)`.
+        names: The name that `fn` receives each item of `inputs` under.
+        previous: The result of the previous calls, or `None` for the first call.
+        inputs: The data that `fn` reads, as for `call_flow_op`.
+    """
+    result = fn(**dict(zip(names, inputs, strict=True)))
+    return [ActivationDataset([result if previous is None else combine(previous, result)])]
 
 
 def loss_grad_outputs(
@@ -794,6 +832,18 @@ class DeleteRegisterEntries(Instruction):
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
         for target_id in self.targets:
             register.delete(target_id)
+
+
+@dataclasses.dataclass(frozen=True)
+class EndOfChunk(Instruction):
+    """Mark where `InstructionEngine.run_incrementally` splits a program.
+
+    The instructions before the marker run once for each chunk. The instructions after it
+    run once. The marker does nothing when it is executed.
+    """
+
+    def execute(self, register: ActivationRegister) -> None:  # noqa: D102, ARG002
+        return None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1021,6 +1071,14 @@ class InstructionProgram:
 
 
 @dataclasses.dataclass(frozen=True)
+class ProgramInputs:
+    """Arguments for one invocation of an instruction program."""
+
+    args: tuple[Any, ...] = ()
+    kwargs: Mapping[str, Any] = dataclasses.field(default_factory=dict)
+
+
+@dataclasses.dataclass(frozen=True)
 class InstructionEngine:
     """Executes pre-scheduled instruction sequences.
 
@@ -1033,8 +1091,10 @@ class InstructionEngine:
     def prepare_input_register(
         input_refs: dict[str, InputRef],
         args: tuple[Any, ...],
-        kwargs: dict[str, Any],
+        kwargs: Mapping[str, Any],
         contexts: Contexts,
+        *,
+        register: ActivationRegister | None = None,
     ) -> ActivationRegister:
         """Prepare execution register from user inputs.
 
@@ -1043,6 +1103,7 @@ class InstructionEngine:
             args: Positional arguments from user.
             kwargs: Keyword arguments from user.
             contexts: Each input will be replicated across all provided contexts.
+            register: The register to store the inputs in. A new register if `None`.
 
         Returns:
             register mapping InputRefs to ActivationDataset values.
@@ -1071,7 +1132,7 @@ class InstructionEngine:
             msg = f"Missing required inputs: {sorted(missing)}"
             raise TypeError(msg)
 
-        register = ActivationRegister()
+        register = ActivationRegister() if register is None else register
         for input_name, value in inputs.items():
             ref = input_refs[input_name]
             dataset = ActivationDataset.from_value(value)
@@ -1107,6 +1168,44 @@ class InstructionEngine:
         """
         register = self.prepare_input_register(program.input_refs, args, kwargs, program.contexts)
         return self.run_instructions(program.instructions, register)
+
+    def run_incrementally(
+        self, program: InstructionProgram, inputs: Iterable[ProgramInputs]
+    ) -> None:
+        """Run part of a program once for each set of inputs.
+
+        The incremental part runs once for each invocation without requiring all
+        inputs to be materialized at once. Its end is marked by `EndOfChunk`.
+        After all invocations have completed, the remaining instructions run once.
+
+        The same register is used throughout, allowing values to accumulate across
+        invocations.
+        """
+        instructions = program.instructions
+
+        try:
+            end = next(
+                idx
+                for idx, instruction in enumerate(instructions)
+                if isinstance(instruction, EndOfChunk)
+            )
+        except StopIteration:
+            msg = "Incremental execution requires an EndOfChunk instruction."
+            raise ValueError(msg) from None
+
+        register = ActivationRegister()
+
+        for invocation in inputs:
+            self.prepare_input_register(
+                program.input_refs,
+                invocation.args,
+                invocation.kwargs,
+                program.contexts,
+                register=register,
+            )
+            self.run_instructions(instructions[:end], register)
+
+        self.run_instructions(instructions[end + 1 :], register)
 
 
 class InstructionPasses:

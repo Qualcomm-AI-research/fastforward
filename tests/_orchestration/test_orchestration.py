@@ -5,6 +5,7 @@
 import copy
 import dataclasses
 import functools
+import operator
 
 from pathlib import Path
 
@@ -464,11 +465,12 @@ def _total(activations: ActivationBundle) -> torch.Tensor:
     return torch.stack([args[0].sum() for args, _ in activations]).sum()
 
 
+@pytest.mark.parametrize("chunk_size", [None, 2], ids=["whole", "chunked"])
 @pytest.mark.parametrize("offload", [False, True], ids=["in-place", "offloaded"])
 def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
-    two_linear: TwoLinear, offload: bool
+    two_linear: TwoLinear, offload: bool, chunk_size: int | None
 ) -> None:
-    # GIVEN an algorithm that records what it receives
+    # GIVEN an algorithm that records what it receives, and a FlowOp over the original inputs
     model = two_linear.eval()
     calibration = [torch.randn(2, 5, 8) for _ in range(3)]
     received: dict[nn.Module, torch.Tensor] = {}
@@ -476,11 +478,10 @@ def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
     def record(module: nn.Module, total: torch.Tensor) -> None:
         received[module] = total
 
-    # GIVEN a spec with a FlowOp that sums the entire calibration set
     spec = AlgorithmSpec(
         fn=record,
         selector=normalize([model.fc1, model.fc2]),
-        flows=[FlowOp(_total, activations=InputActivations("original"))],
+        flows=[FlowOp(_total, combine=operator.add, activations=InputActivations("original"))],
     )
     cpu = torch.device("cpu")
     offloading = Offload(compute=cpu, weights=cpu, activations=cpu) if offload else None
@@ -492,7 +493,7 @@ def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
             calibration,
             spec,
             sample_args=(calibration[0],),
-            config=ff.OrchestrationConfig(offloading=offloading),
+            config=ff.OrchestrationConfig(offloading=offloading, chunk_size=chunk_size),
         )
 
     # THEN each layer received the result of the op over all calibration batches, as a tensor
@@ -500,3 +501,64 @@ def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
     assert received.keys() == {model.fc1, model.fc2}
     for module, batches in ((model.fc1, calibration), (model.fc2, hidden)):
         torch.testing.assert_close(received[module], sum(batch.sum() for batch in batches))
+
+
+@pytest.mark.parametrize("chunk_size", [None, 2], ids=["whole", "chunked"])
+def test_layerwise_optimize_binds_dict_items_to_the_inputs(chunk_size: int | None) -> None:
+    # GIVEN a model with two inputs, and calibration items that are dicts of those inputs
+    model = KwargForward().eval()
+    calibration = [{"x": torch.randn(2, 4), "scale": torch.randn(2, 4)} for _ in range(3)]
+    received: dict[nn.Module, torch.Tensor] = {}
+
+    def record(module: nn.Module, total: torch.Tensor) -> None:
+        received[module] = total
+
+    spec = AlgorithmSpec(
+        fn=record,
+        selector=normalize([model.fc]),
+        flows=[FlowOp(_total, combine=operator.add, activations=InputActivations("original"))],
+    )
+
+    # WHEN the model is optimized
+    with torch.no_grad():
+        ff.layerwise_optimize(
+            model,
+            calibration,
+            spec,
+            sample_args=(calibration[0]["x"],),
+            sample_kwargs={"scale": calibration[0]["scale"]},
+            config=ff.OrchestrationConfig(chunk_size=chunk_size),
+        )
+
+    # THEN the layer read the `x` of every item
+    torch.testing.assert_close(received[model.fc], sum(item["x"].sum() for item in calibration))
+
+
+@pytest.mark.parametrize("chunk_size", [0, -1])
+def test_orchestration_config_rejects_a_chunk_size_below_one(chunk_size: int) -> None:
+    # WHEN a config is made with a chunk size below one
+    # THEN it raises a ValueError
+    with pytest.raises(ValueError, match="chunk_size must be at least one"):
+        ff.OrchestrationConfig(chunk_size=chunk_size)
+
+
+def test_layerwise_optimize_rejects_chunking_one_tensor(two_linear: TwoLinear) -> None:
+    # GIVEN one tensor as calibration data
+    model = two_linear.eval()
+    data = torch.randn(4, 8)
+    spec = AlgorithmSpec(
+        fn=lambda module, total: None,
+        selector=normalize([model.fc1]),
+        flows=[FlowOp(_total, combine=operator.add, activations=InputActivations("original"))],
+    )
+
+    # WHEN it is optimized in chunks
+    # THEN it raises a TypeError
+    with pytest.raises(TypeError, match="Cannot chunk one tensor"):
+        ff.layerwise_optimize(
+            model,
+            data,
+            spec,
+            sample_args=(data,),
+            config=ff.OrchestrationConfig(chunk_size=2),
+        )

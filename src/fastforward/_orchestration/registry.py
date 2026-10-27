@@ -25,6 +25,7 @@ from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
 from fastforward.algorithms.gptq import gptq
 from fastforward.algorithms.hessian_calculation import (
+    combine_hessians,
     finalize_hessian,
     hessian_settings,
     hessian_sum_and_count,
@@ -343,6 +344,7 @@ def override(
 hessian_original = FlowOp(
     hessian_sum_and_count,
     from_module=hessian_settings,
+    combine=combine_hessians,
     finalize=finalize_hessian,
     activations=InputActivations("original"),
 )

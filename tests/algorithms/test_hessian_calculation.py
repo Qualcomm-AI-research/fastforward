@@ -9,6 +9,7 @@ import torch
 
 from fastforward.algorithms.hessian_calculation import (
     calculate_hessian,
+    combine_hessians,
     finalize_hessian,
     hessian_settings,
     hessian_sum_and_count,
@@ -67,6 +68,21 @@ def test_finalized_hessian_is_twice_the_mean_outer_product() -> None:
     torch.testing.assert_close(state[0], samples.T @ samples, rtol=1e-5, atol=1e-4)
     expected = (2 / samples.shape[0] * samples.T @ samples).float()
     torch.testing.assert_close(hessian, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_combine_hessians_gives_the_result_on_all_samples() -> None:
+    # GIVEN activations in two chunks, with different numbers of samples
+    chunks = [[torch.randn(2, 8, 16), torch.randn(3, 16)], [torch.randn(1, 5, 16)]]
+
+    # WHEN we combine the results on each chunk, and build the result in one call
+    chunked, chunked_samples = combine_hessians(
+        hessian_sum_and_count(_batches(chunks[0])), hessian_sum_and_count(_batches(chunks[1]))
+    )
+    whole, whole_samples = hessian_sum_and_count(_batches(chunks[0] + chunks[1]))
+
+    # THEN both ways give the same result
+    assert chunked_samples == whole_samples
+    torch.testing.assert_close(chunked, whole)
 
 
 @pytest.mark.parametrize(

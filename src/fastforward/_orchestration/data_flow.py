@@ -96,6 +96,19 @@ wants. Every reader calls `finalize` on the same state, so it must not change th
 flows = [FlowOp(hessian, finalize=normalize, activations=InputActivations("original"))]
 # The algorithm is called as fn(module, normalize(state)).
 ```
+
+An op can also give `combine`, which joins the states of two parts of the data into the
+state of all of it. With `combine`, the orchestrator can call the function on parts of the
+data and join the results, and the function itself does not know about the parts.
+`combine` must be associative: the state must not depend on how the data is split:
+
+```python
+flows = [FlowOp(hessian, combine=add, finalize=normalize, activations=InputActivations("original"))]
+```
+
+A chunked run (see the `chunk_size` of `OrchestrationConfig`) splits the data in this way.
+It needs an op with a `combine` for every input of an algorithm, ops that read pinned
+flows, and ops that do not read another op.
 """
 
 import abc
@@ -398,9 +411,54 @@ class FlowOp:
         FlowOp(mean, activations=InputActivations("original"))
         ```
 
+        The same calculation, but in a way that can be split up into chunks.
+        Individual chunks will be combined with `add`, and finally `divide` will be
+        called to do the division and get the mean out:
+
+        ```python
+        def sum_and_count(activations):
+            values = torch.cat([x.flatten() for (x,), _ in activations])
+            return values.sum(), values.numel()
+
+        def add(previous, new):
+            return previous[0] + new[0], previous[1] + new[1]
+
+        def divide(state):
+            return state[0] / state[1]
+
+        FlowOp(
+            sum_and_count,
+            combine=add,
+            finalize=divide,
+            activations=InputActivations("original"),
+        )
+        ```
+
+        A multiplication of output gradient with input activation. Here we also
+        want to multiply it by the `in_features` of the layer that produces
+        the activations, done with `from_module`:
+
+                ```python
+        def gradient_times_input(gradient, activations, *, scale):
+            return scale * sum(
+                g.flatten(0, -2).T @ x.flatten(0, -2)
+                for ((g,), _), ((x,), _) in zip(gradient, activations)
+            )
+
+        FlowOp(
+            gradient_times_input,
+            from_module=lambda module: {"scale": 1 / module.in_features},
+            combine=operator.add,
+            gradient=Gradient(loss, outputs=ModelOutputs("original")),
+            activations=InputActivations("original"),
+        )
+        ```
+
     Args:
         fn: A function that works on a data flow. Its result is the state of the op.
         from_module: A callable that, given a layer, returns a dict of arguments required for `fn`.
+        combine: An associative `combine(previous, new)` that joins the states of two parts
+            of the data. `None` if `fn` sees the full dataset in one go.
         finalize: A final transformation of the state before the algorithm gets it. Make sure
             it does not mutate in-place because other layers might use the data.
         **inputs: The inputs required for `fn` that are separate from that of `from_module`.
@@ -410,6 +468,9 @@ class FlowOp:
     fn: Callable[..., Any] = attrs.field(validator=attrs.validators.is_callable())
     inputs: "tuple[tuple[str, DataFlow | FlowOp], ...]"
     from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None
+    combine: Callable[[Any, Any], Any] | None = attrs.field(
+        default=None, validator=attrs.validators.optional(attrs.validators.is_callable())
+    )
     finalize: Callable[[Any], Any] = attrs.field(
         default=_identity, validator=attrs.validators.is_callable()
     )
@@ -420,6 +481,7 @@ class FlowOp:
         /,
         *,
         from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None,
+        combine: Callable[[Any, Any], Any] | None = None,
         finalize: Callable[[Any], Any] = _identity,
         **inputs: "DataFlow | FlowOp",
     ) -> None:
@@ -427,6 +489,7 @@ class FlowOp:
             fn=fn,
             inputs=tuple(inputs.items()),
             from_module=from_module,
+            combine=combine,
             finalize=finalize,
         )
 

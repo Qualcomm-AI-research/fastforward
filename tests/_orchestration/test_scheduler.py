@@ -1,7 +1,9 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import copy
 import dataclasses
+import operator
 import pathlib
 
 from collections.abc import Callable, Iterator
@@ -19,6 +21,7 @@ from fastforward._orchestration.data_flow import (
     QUANTIZED,
     DataFlow,
     FlowGenerator,
+    FlowInput,
     FlowOp,
     Gradient,
     InputActivations,
@@ -40,9 +43,11 @@ from fastforward._orchestration.instruction_engine import (
     CallModule,
     CallVJP,
     DeleteRegisterEntries,
+    EndOfChunk,
     InstructionEngine,
     InstructionProgram,
     LoadAttribute,
+    ProgramInputs,
     ReturnOutputs,
     RunDelegate,
     StoreValue,
@@ -70,6 +75,7 @@ from ._models import (
     TwoLayerModel,
     TwoLinear,
 )
+from .conftest import noop
 
 pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
@@ -94,7 +100,7 @@ class _UnhashableSelect:
         return output
 
 
-def _spec(region: torch.nn.Module, *flows: DataFlow) -> SubgraphSpec:
+def _spec(region: torch.nn.Module, *flows: FlowInput) -> SubgraphSpec:
     """A spec that runs `_noop` on `region` and declares `flows`."""
     return SubgraphSpec(region=region, fn=_noop, flows=list(flows))
 
@@ -1416,3 +1422,122 @@ def test_nested_flow_ops(two_linear: TwoLinear) -> None:
     torch.testing.assert_close(seen[0], expected)
     # THEN the outer function gets the doubled mean square
     torch.testing.assert_close(reads[model.fc1][0], 2 * expected)
+
+
+def _plain_loss(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
+    """Yield the same loss of the model outputs for every batch, wherever it sits in a chunk."""
+    for (output,), _ in outputs:
+        yield (output.square() + output).sum()
+
+
+def _gradient_times_input(gradient: ActivationBundle, x: ActivationBundle) -> torch.Tensor:
+    """The sum over the batches of the product of a gradient and its input."""
+    total = torch.zeros(())
+    for (g_args, _), (a_args, _) in zip(gradient, x):
+        total = total + g_args[0].flatten(0, -2).T @ a_args[0].flatten(0, -2)
+    return total
+
+
+def _run_chunked(program: InstructionProgram, chunks: list[list[torch.Tensor]]) -> None:
+    instructions = lifetime_management_pass(program.instructions)
+    InstructionEngine().run_incrementally(
+        dataclasses.replace(program, instructions=instructions),
+        [ProgramInputs(args=(chunk,)) for chunk in chunks],
+    )
+
+
+def test_chunked_program_calls_the_ops_before_the_marker_and_the_algorithms_after(
+    two_linear: TwoLinear,
+) -> None:
+    # GIVEN an op over the original inputs of two regions in a chain
+    graph = _traced_two_linear(two_linear)
+    op = FlowOp(noop, combine=operator.add, x=InputActivations(ORIGINAL))
+    specs = [_spec(region, op) for region in (two_linear.fc1, two_linear.fc2)]
+
+    # WHEN scheduling for chunks
+    chunked = schedule(graph, specs, chunked=True)
+
+    # THEN the chunked program has one marker, the ops and the calls they need before it,
+    # and only the algorithms after it
+    (marker,) = [i for i, item in enumerate(chunked.instructions) if isinstance(item, EndOfChunk)]
+    before, after = chunked.instructions[:marker], chunked.instructions[marker + 1 :]
+    ops = [
+        item
+        for item in before
+        if isinstance(item, RunDelegate) and _delegate_kinds_of(item) == "op"
+    ]
+    assert len(ops) == 2
+    assert all(isinstance(item, RunDelegate) and not item.targets for item in after)
+    assert len(after) == 2
+
+
+@pytest.mark.parametrize(
+    ("flow", "message"),
+    [
+        (InputActivations(ORIGINAL), "needs a FlowOp"),
+        (FlowOp(noop, x=InputActivations(QUANTIZED)), "weights as they are"),
+        (FlowOp(noop, inner=FlowOp(noop, x=InputActivations(ORIGINAL))), "from a FlowOp"),
+        (FlowOp(_mean_square, x=InputActivations(ORIGINAL)), "has no `combine`"),
+    ],
+    ids=["plain-flow", "live-op", "nested-op", "no-combine"],
+)
+def test_chunked_schedule_rejects_what_a_chunk_cannot_give(
+    two_linear: TwoLinear, flow: FlowInput, message: str
+) -> None:
+    # GIVEN a region that reads something a chunked run cannot give it
+    graph = _traced_two_linear(two_linear)
+
+    # WHEN scheduling for chunks
+    # THEN it is refused with the reason
+    with pytest.raises(ValueError, match=message):
+        schedule(graph, [_spec(two_linear.fc1, flow)], chunked=True)
+
+
+def test_chunked_schedule_rejects_regions_that_read_no_data(two_linear: TwoLinear) -> None:
+    # GIVEN regions that read no data
+    graph = _traced_two_linear(two_linear)
+    specs = [_spec(region) for region in (two_linear.fc1, two_linear.fc2)]
+
+    # WHEN scheduling for chunks
+    # THEN it is refused, because nothing runs for each chunk
+    with pytest.raises(ValueError, match="nothing runs for each chunk"):
+        schedule(graph, specs, chunked=True)
+
+
+def test_chunked_run_gives_the_ops_the_result_of_one_run_over_all_the_data() -> None:
+    # GIVEN an op over a gradient and the original inputs, that adds to its total, and a
+    # chain with an algorithm on each layer that changes its weights after it reads
+    model = TwoLinear().eval()
+    batches = [torch.randn(2, 8) for _ in range(5)]
+    gradient = Gradient(_plain_loss, outputs=ModelOutputs(ORIGINAL))
+    op = FlowOp(
+        _gradient_times_input,
+        combine=operator.add,
+        gradient=gradient,
+        x=InputActivations(ORIGINAL),
+    )
+    graph = trace(model, batches[0])
+
+    def read(chunk_size: int | None) -> dict[torch.nn.Module, list[Any]]:
+        reads: dict[torch.nn.Module, list[Any]] = {}
+        fn = _record_and_mutate(reads)
+        regions = (model.fc1, model.fc2)
+        specs = [SubgraphSpec(region=r, fn=fn, flows=[op]) for r in regions]
+        program = schedule(graph, specs, chunked=chunk_size is not None)
+        initial = copy.deepcopy(model.state_dict())
+        if chunk_size is None:
+            _run(program, batches)
+        else:
+            _run_chunked(program, [batches[i : i + chunk_size] for i in range(0, 5, chunk_size)])
+        model.load_state_dict(initial)
+        return reads
+
+    # WHEN it runs in one go, and in chunks of two, which leave a chunk of one
+    whole = read(None)
+    chunked = read(2)
+
+    # THEN both give each algorithm the same result
+    for region in (model.fc1, model.fc2):
+        [expected] = whole[region]
+        [result] = chunked[region]
+        torch.testing.assert_close(result, expected)

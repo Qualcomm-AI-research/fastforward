@@ -34,11 +34,15 @@ from fastforward._orchestration.instruction_engine import (
     CallMethod,
     CallModule,
     CallVJP,
+    DeleteRegisterEntries,
+    EndOfChunk,
     InstructionEngine,
     InstructionPasses,
+    InstructionProgram,
     LoadAttribute,
     MoveModule,
     Offload,
+    ProgramInputs,
     ReturnOutputs,
     RunDelegate,
     StoreValue,
@@ -46,6 +50,7 @@ from fastforward._orchestration.instruction_engine import (
     _cancel_module_round_trips,
     _weight_offloading_pass,
     assemble_grad_output,
+    call_combining_flow_op,
     call_flow_op,
     lifetime_management_pass,
     loss_grad_outputs,
@@ -1140,6 +1145,27 @@ def test_call_flow_op_stores_the_result_as_one_batch() -> None:
     assert dataset.batches == [3]
 
 
+def test_call_combining_flow_op_combines_the_result_with_the_previous_result() -> None:
+    # GIVEN a function of two inputs, and a combine that records what it joins
+    joined: list[tuple[int, int]] = []
+
+    def difference(*, a: int, b: int) -> int:
+        return a - b
+
+    def add(previous: int, new: int) -> int:
+        joined.append((previous, new))
+        return previous + new
+
+    # WHEN the op is called for a first and a next time
+    (first,) = call_combining_flow_op(difference, add, ("a", "b"), None, 5, 2)
+    (second,) = call_combining_flow_op(difference, add, ("a", "b"), first.batches[0], 5, 2)
+
+    # THEN the first call stores its result, and the second joins its result to the first
+    assert first.batches == [3]
+    assert second.batches == [6]
+    assert joined == [(3, 3)]
+
+
 def test_merge_empty_sequence_raises() -> None:
     # GIVEN no datasets to merge
     # WHEN merge is called with an empty sequence
@@ -1657,3 +1683,50 @@ def test_call_delegate_places_each_returned_batch_at_the_output_location() -> No
     result = register.load(ref_y, _noop_context)
     torch.testing.assert_close(result.batches, stored.batches)
     assert all(a is not b for a, b in zip(result.batches, stored.batches))
+
+
+def _accumulating_sum(ref_x: InputRef, ref_total: NodeRef) -> RunDelegate:
+    """A delegate that adds the batches of `ref_x` to the total of the earlier runs."""
+
+    def add(accumulated: Any, x: ActivationBundle) -> list[ActivationDataset]:
+        total = sum(args[0] for args, _ in x)
+        return [ActivationDataset([total if accumulated is None else accumulated + total])]
+
+    return RunDelegate(
+        fn=add,
+        bundles=(BundleSpec(context=_noop_context, args=[ref_x]),),
+        targets=((ref_total, _noop_context),),
+        accumulate=True,
+    )
+
+
+def test_run_incrementally_repeats_what_precedes_the_marker_and_runs_the_rest_once() -> None:
+    # GIVEN a program that adds each chunk to a total, marks the end of the chunk, and then
+    # hands the total to an algorithm
+    ref_x = InputRef(uuid.uuid4(), "x")
+    ref_total = NodeRef(uuid.uuid4(), "total")
+    algorithm_reads: list[list[int]] = []
+
+    def algorithm(bundle: ActivationBundle) -> None:
+        algorithm_reads.append([args[0] for args, _ in bundle])
+
+    program = InstructionProgram(
+        instructions=(
+            _accumulating_sum(ref_x, ref_total),
+            DeleteRegisterEntries(targets=[ref_x]),
+            EndOfChunk(),
+            RunDelegate(
+                fn=algorithm, bundles=(BundleSpec(context=_noop_context, args=[ref_total]),)
+            ),
+        ),
+        input_refs={"x": ref_x},
+    )
+
+    # WHEN it runs on three chunks
+    chunks = [[1, 2], [3], [4, 5, 6]]
+    InstructionEngine().run_incrementally(
+        program, [ProgramInputs(args=(chunk,)) for chunk in chunks]
+    )
+
+    # THEN the algorithm ran once, on the total of all the chunks
+    assert algorithm_reads == [[21]]

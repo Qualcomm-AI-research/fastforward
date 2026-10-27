@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import logging
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from typing import Any
 
 import torch
@@ -18,6 +19,7 @@ from fastforward._orchestration.data_flow import ModelOutputs as ModelOutputs
 from fastforward._orchestration.data_flow import OutputActivations as OutputActivations
 from fastforward._orchestration.graph_module import (
     GraphModule,
+    _sanitize_inputs,
     reduce_resolution,
 )
 from fastforward._orchestration.instruction_engine import ActivationBundle as ActivationBundle
@@ -27,6 +29,7 @@ from fastforward._orchestration.instruction_engine import (
     InstructionPasses,
     InstructionProgram,
     OffloadingStrategy,
+    ProgramInputs,
     lifetime_management_pass,
 )
 from fastforward._orchestration.instruction_engine import Offload as Offload
@@ -41,6 +44,21 @@ from fastforward._orchestration.trace import trace
 __all__ = ["layerwise_optimize"]
 
 logger = logging.getLogger(__name__)
+
+
+def _chunked_inputs(
+    data: Iterable[Any],
+    chunk_size: int,
+    input_names: Sequence[str],
+) -> Iterator[ProgramInputs]:
+    """Yield each group of calibration items as one program input.
+
+    Each group goes through `_sanitize_inputs`, so items such as dicts bind to the inputs
+    of the graph the same way as in a run without chunks.
+    """
+    for chunk in itertools.batched(data, chunk_size):
+        args, kwargs = _sanitize_inputs(input_names, (list(chunk),), {})
+        yield ProgramInputs(args=args, kwargs=kwargs)
 
 
 class _GraphExecutionContext:
@@ -101,9 +119,25 @@ class OrchestrationConfig:
     Args:
         offloading: Where weights and activations rest between uses. `None` keeps them
             where they are at runtime. See also `Offload`.
+
+        chunk_size: The number of calibration items grouped into each model input.
+            When set, `data` is consumed lazily and the chunk-wise part of the
+            instruction program runs once for each group. The same register is retained
+            between groups, allowing operations to accumulate results across the full
+            dataset. The remaining instructions, including the final optimization, run
+            once after all groups have been processed.
+
+    Raises:
+        ValueError: If `chunk_size` is less than one.
     """
 
     offloading: OffloadingStrategy | None = None
+    chunk_size: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.chunk_size is not None and self.chunk_size < 1:
+            msg = f"chunk_size must be at least one, got {self.chunk_size}."
+            raise ValueError(msg)
 
 
 def layerwise_optimize(
@@ -132,14 +166,17 @@ def layerwise_optimize(
             registry), a single `AlgorithmSpec`, or a list of specs.
         targets: Override which modules to target (uses registry default if None).
             Cannot be combined with explicit AlgorithmSpec(s).
-        config: Orchestration settings (offloading strategy).
+        config: Orchestration settings (offloading strategy, chunk size).
         graph: Pre-built GraphModule (traces model if None).
         sample_args: Positional example inputs for tracing.
         sample_kwargs: Keyword example inputs for tracing.
 
     Raises:
-        TypeError: If `graph` is None and no example input is given, or if `graph` and an
-            example input are both given.
+        TypeError: If `graph` is None and no example input is given, if `graph` and an
+            example input are both given, or if `config.chunk_size` is set and `data` is
+            one tensor.
+        ValueError: If `config.chunk_size` is set and an algorithm cannot run on chunks of
+            the data, or no algorithm reads any data.
     """
     # (1) Trace if no static graph provided
     has_sample = bool(sample_args) or bool(sample_kwargs)
@@ -151,6 +188,11 @@ def layerwise_optimize(
         raise TypeError(msg)
     if graph is not None and has_sample:
         msg = "Cannot combine graph= with sample_args/sample_kwargs."
+        raise TypeError(msg)
+
+    if config.chunk_size is not None and isinstance(data, torch.Tensor):
+        # Without chunks a tensor is one batch, so chunking it along its rows would differ.
+        msg = "Cannot chunk one tensor. Pass an iterable of batches, or do not set chunk_size."
         raise TypeError(msg)
 
     sample_kwargs = sample_kwargs or {}
@@ -177,10 +219,14 @@ def layerwise_optimize(
     graph, optimization_specs = reduce_resolution(graph, optimization_specs)
 
     # (3) Schedule instruction program
-    program = schedule(graph, optimization_specs)
+    program = schedule(graph, optimization_specs, chunked=config.chunk_size is not None)
 
     # (4) Execute
     passes: list[InstructionPass] = [lifetime_management_pass]
 
     with _ExecutionContext(graph, program, passes=passes, offloading=config.offloading):
-        graph(data)
+        if config.chunk_size is None:
+            graph(data)
+        else:
+            inputs = _chunked_inputs(data, config.chunk_size, graph.input_names)
+            InstructionEngine().run_incrementally(graph._program, inputs)

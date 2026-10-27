@@ -74,6 +74,7 @@ from fastforward._orchestration.instruction_engine import (
     CallMethod,
     CallModule,
     CallVJP,
+    EndOfChunk,
     Instruction,
     InstructionProgram,
     Instructions,
@@ -83,6 +84,7 @@ from fastforward._orchestration.instruction_engine import (
     StoreValue,
     StreamKey,
     assemble_grad_output,
+    call_combining_flow_op,
     call_flow_op,
     loss_grad_outputs,
     sum_grad_outputs,
@@ -277,6 +279,20 @@ class OptimizeIntervention(_Intervention):
 
 
 @dataclasses.dataclass(frozen=True)
+class FlowOpIntervention(_Intervention):
+    """An intervention that calls every `FlowOp` of a chunked run, and changes no weight.
+
+    The calls run before the first optimization. The `EndOfChunk` after them splits the
+    program: the chunks run everything before it, and everything after it runs once.
+    """
+
+    @override
+    def schedule(self, scheduler: Scheduler) -> None:
+        scheduler.schedule_flows(self.flows, "in a chunked run")
+        scheduler.instructions.append(EndOfChunk())
+
+
+@dataclasses.dataclass(frozen=True)
 class GradientIntervention(_Intervention):
     """An intervention that runs the backward pass, and changes no weight.
 
@@ -403,8 +419,9 @@ class Timeline:
 class Scheduler:
     """Compiles a graph and its interventions into instructions."""
 
-    def __init__(self, graph: GraphModule) -> None:
+    def __init__(self, graph: GraphModule, *, chunked: bool = False) -> None:
         self.graph = graph
+        self.chunked = chunked
         self.instructions: list[Instruction] = []
         self.register: set[Value] = set()
         self.timeline = Timeline(graph)
@@ -536,7 +553,9 @@ class Scheduler:
     def schedule_flow_op(self, ref: FlowOpRef, generator: FlowGenerator, owner: str) -> None:
         """Schedule the call of a `FlowOp` that puts its result in the register.
 
-        The call runs once, and changes no weight, so the timeline does not advance.
+        The call runs once, and changes no weight, so the timeline does not advance. In a
+        chunked run, it runs once for each chunk, and `combine` joins the result of each
+        chunk to the result of the chunks before it.
 
         Args:
             ref: The ref to the result of the op.
@@ -550,11 +569,18 @@ class Scheduler:
         self.schedule_flows(ref.inputs, owner)
         names = [name for name, _ in ref.op.inputs]
         fn = functools.partial(ref.op.fn, **dict(ref.settings))
+        if self.chunked:
+            # `_check_chunkable` ensures that a chunked op has a `combine`.
+            assert ref.op.combine is not None
+            call = functools.partial(call_combining_flow_op, fn, ref.op.combine, names)
+        else:
+            call = functools.partial(call_flow_op, fn, names)
         self.instructions.append(
             RunDelegate(
-                fn=functools.partial(call_flow_op, fn, names),
+                fn=call,
                 bundles=self.delegate_inputs(ref.inputs),
                 targets=[(ref, generator.context)],
+                accumulate=self.chunked,
             )
         )
         self.register.add(value)
@@ -892,7 +918,47 @@ def _check_eval_mode(graph: GraphModule) -> None:
                 raise ValueError(msg)
 
 
-def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> InstructionProgram:
+def _check_chunkable(optimizations: Sequence[OptimizeIntervention]) -> None:
+    """Ensure that a chunked run can give every optimization what it reads.
+
+    A chunked run keeps only the results of the ops from one chunk to the next. So:
+
+    - At least one optimization must have an input, or nothing runs for each chunk.
+    - Every input of an optimization must be a `FlowOp`.
+    - An op must take its data from pinned flows, because it runs before any weight
+      changes.
+    - An op must not take its data from another op, because the result of that op is
+      incomplete until the last chunk.
+    - An op must have a `combine`, which joins the results of the chunks.
+
+    Raises:
+        ValueError: If one of these rules is broken.
+    """
+    if not any(optimization.flows for optimization in optimizations):
+        msg = "A chunked run needs an algorithm that reads data, but no algorithm reads any, so nothing runs for each chunk. Do not set chunk_size."
+        raise ValueError(msg)
+    for optimization in optimizations:
+        for plan in optimization.flows:
+            if (op_ref := plan.op_ref) is None:
+                msg = f"A chunked run needs a FlowOp for every input of an algorithm, but {optimization.region!r} reads {plan.flow!r}. Wrap it in a FlowOp, or do not set chunk_size."
+                raise ValueError(msg)
+            if not plan.pinned:
+                msg = f"A chunked run calls its FlowOps before any weight changes, but the op on {optimization.region!r} reads data that shows the weights as they are. Read a pinned flow, or do not set chunk_size."
+                raise ValueError(msg)
+            if any(isinstance(item.flow, FlowOp) for item in op_ref.inputs):
+                msg = f"A chunked run cannot read a FlowOp from a FlowOp, because the inner op is only partly done until the last chunk. The op on {optimization.region!r} reads one."
+                raise ValueError(msg)
+            if op_ref.op.combine is None:
+                msg = f"A chunked run joins the results of a FlowOp on each chunk with its `combine`, but the op on {optimization.region!r} has no `combine`. Give it one, or do not set chunk_size."
+                raise ValueError(msg)
+
+
+def schedule(
+    graph: GraphModule,
+    specs: Sequence[SubgraphSpec] = (),
+    *,
+    chunked: bool = False,
+) -> InstructionProgram:
     """Compile `graph` and its `specs` into an `InstructionProgram`.
 
     With no `specs`, the program is a plain forward pass. With `specs`, it holds the
@@ -900,10 +966,15 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     consume them, in an order that honours `order` and the mutations the
     interventions perform.
 
+    With `chunked`, the program is made to run on one chunk of the data at a time. Every
+    `FlowOp` runs first, and an `EndOfChunk` follows them. See `InstructionEngine.run_incrementally`.
+
     Args:
         graph: The graph to schedule.
         specs: The specs to schedule, each declaring a region, a function, and the
             data flows it requires. Empty means a plain forward pass.
+        chunked: Whether the program runs on chunks of the data. Each spec must then read
+            only `FlowOp`s, and they must read pinned flows.
 
     Returns:
         The instruction program to run.
@@ -911,6 +982,8 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     Raises:
         ValueError: If two generators in use share an `order`, if a spec declares
             an `ANY` flow, or if a node outside a region reads a weight of that region.
+            If `chunked`, also if no spec reads data, or if a spec reads anything but pinned
+            `FlowOp`s that read flows.
     """
     optimizations: list[OptimizeIntervention] = []
     # Collect the requirements of every spec into interventions.
@@ -934,6 +1007,10 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     # Gradients are only implemented on the weights from before every mutation, so
     # the backward pass runs before the first optimization.
     interventions: list[_Intervention] = list(optimizations)
+    if chunked:
+        _check_chunkable(optimizations)
+        ops = [plan for optimization in optimizations for plan in optimization.flows]
+        interventions.insert(0, FlowOpIntervention(flows=ops))
     if gradients := [
         plan
         for optimization in optimizations
@@ -953,6 +1030,6 @@ def schedule(graph: GraphModule, specs: Sequence[SubgraphSpec] = ()) -> Instruct
     _check_order_unambiguous(interventions)
     _check_no_shared_weights(graph, [optimization.region for optimization in optimizations])
 
-    instructions = Scheduler(graph).run(interventions)
+    instructions = Scheduler(graph, chunked=chunked).run(interventions)
 
     return InstructionProgram(instructions=instructions, input_refs=graph._inputs)

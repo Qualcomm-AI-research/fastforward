@@ -67,7 +67,8 @@ def hessian_sum_and_count(
     """Calculate the sum of x x^T over the samples of the activations, and their number.
 
     This is the function of the `FlowOp` that GPTQ registers. The settings of the layer
-    come from `hessian_settings`. `finalize_hessian` turns the result into the Hessian.
+    come from `hessian_settings`. `combine_hessians` joins the results on two parts of the
+    data, and `finalize_hessian` turns the result into the Hessian.
 
     Args:
         activations: Input activations flowing into the layer, an iterable. Each entry
@@ -159,6 +160,24 @@ def hessian_settings(module: torch.nn.Module) -> dict[str, Any]:
         "padding": module.padding,
         "stride": module.stride,
     }
+
+
+def combine_hessians(
+    previous: tuple[torch.Tensor, int], new: tuple[torch.Tensor, int]
+) -> tuple[torch.Tensor, int]:
+    """Join two results of `hessian_sum_and_count` into the result on all of their samples.
+
+    This is the `combine` of the `FlowOp` that GPTQ registers.
+
+    Args:
+        previous: A sum of x x^T and its number of samples. It is changed in place.
+        new: A sum of x x^T and its number of samples.
+
+    Returns:
+        `previous`, which now holds the sum and the number of samples of both.
+    """
+    previous[0].add_(new[0].to(previous[0].device))
+    return previous[0], previous[1] + new[1]
 
 
 def finalize_hessian(
