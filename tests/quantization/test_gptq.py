@@ -199,3 +199,24 @@ def test_gptq_reads_the_hessian_without_changing_it() -> None:
 
     # THEN the stored Hessian is as it was, so the next reader gets the same data
     torch.testing.assert_close(hessian, expected, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_gptq_accepts_a_hessian_in_any_float_dtype(dtype: torch.dtype) -> None:
+    # GIVEN a Hessian in `dtype`
+    module = ff.nn.QuantizedLinear(32, 16, bias=False)
+    module.weight_quantizer = ff.nn.LinearQuantizer(
+        num_bits=4, granularity=ff.PerChannel(channel_dim=0), symmetric=True
+    )
+    dataset: list[tuple[tuple[Any, ...], dict[str, Any]]] = [
+        ((torch.randn(2, 8, 32),), {}) for _ in range(3)
+    ]
+    hessian = calculate_hessian(dataset, dtype=dtype)
+    weight_dtype = module.weight.dtype
+
+    # WHEN GPTQ reads it
+    with torch.inference_mode(), ff.strict_quantization(False):
+        gptq(module, hessian, block_size=8, perc_damp=0.01, actorder=True)
+
+    # THEN the weights keep their dtype
+    assert module.weight.dtype == weight_dtype

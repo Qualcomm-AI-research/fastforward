@@ -528,7 +528,7 @@ class Scheduler:
                     context=plan.generator.context,
                     args=list(plan.reads),
                     kwargs=dict(plan.read_kwargs),
-                    unwrap=plan.op_ref is not None,
+                    finalize=None if (ref := plan.op_ref) is None else ref.op.finalize,
                 )
             )
         return inputs

@@ -9,7 +9,9 @@ import torch
 
 from fastforward.algorithms.hessian_calculation import (
     calculate_hessian,
+    finalize_hessian,
     hessian_settings,
+    hessian_sum_and_count,
     invert_hessian,
 )
 
@@ -46,6 +48,55 @@ def test_calculate_hessian_is_repeatable_for_a_shared_dataset() -> None:
 
     # THEN the second reader sees the same Hessian as the first
     torch.testing.assert_close(first, second)
+
+
+def test_finalized_hessian_is_twice_the_mean_outer_product() -> None:
+    # GIVEN batches with different numbers of samples, and a different rank
+    batches = [torch.randn(2, 8, 16), torch.randn(3, 16), torch.randn(1, 5, 16)]
+
+    # WHEN we build the Hessian
+    state = hessian_sum_and_count(_batches(batches))
+    hessian = finalize_hessian(state)
+
+    # THEN the state is the float64 sum of x x^T and the number of samples, and the
+    # Hessian is twice their mean
+    samples = torch.cat([batch.reshape(-1, 16) for batch in batches]).double()
+    assert state[1] == samples.shape[0]
+    assert state[0].dtype == torch.float64
+    # The products x x^T are made in float32 and added in float64
+    torch.testing.assert_close(state[0], samples.T @ samples, rtol=1e-5, atol=1e-4)
+    expected = (2 / samples.shape[0] * samples.T @ samples).float()
+    torch.testing.assert_close(hessian, expected, rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.parametrize(
+    ("accumulation_dtype", "dtype"),
+    [
+        (torch.float64, torch.float32),
+        (torch.float32, torch.float32),
+        (torch.float64, torch.float64),
+        (torch.float32, torch.float64),
+    ],
+)
+def test_finalize_hessian_is_a_copy_of_the_state_in_the_given_dtype(
+    accumulation_dtype: torch.dtype, dtype: torch.dtype
+) -> None:
+    # GIVEN the state of a Hessian, summed in `accumulation_dtype`
+    state = hessian_sum_and_count(
+        _batches([torch.randn(4, 8, 16)]), accumulation_dtype=accumulation_dtype
+    )
+    expected = state[0].clone()
+
+    # WHEN we finalize it in `dtype`, and change the result, as a layer that reads the
+    # state can
+    hessian = finalize_hessian(state, dtype=dtype)
+    hessian.zero_()
+
+    # THEN the state and the Hessian have their dtypes, and the state is as it was for the
+    # other layers that read it, also when both dtypes are the same
+    assert state[0].dtype == accumulation_dtype
+    assert hessian.dtype == dtype
+    torch.testing.assert_close(state[0], expected, rtol=0, atol=0)
 
 
 def test_calculate_hessian_without_activations_is_refused() -> None:

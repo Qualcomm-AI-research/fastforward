@@ -508,32 +508,28 @@ class BundleSpec:
         context: The context to resolve the refs under.
         args: Positional refs to gather.
         kwargs: Keyword refs to gather.
-        unwrap: If `args` holds a single value, return that value instead of a bundle.
+        finalize: If set, `args` holds a single `FlowOpRef`, and the delegate receives
+            `finalize(state)` of its stored state instead of a bundle.
     """
 
     context: StreamKey
     args: Sequence[_BaseRef]
     kwargs: Mapping[str, _BaseRef] = dataclasses.field(default_factory=dict)
-    unwrap: bool = False
+    finalize: Callable[[Any], Any] | None = None
 
 
 def _gather(
     spec: BundleSpec, register: ActivationRegister, location: Location | None = None
 ) -> Any:
-    """Return what a delegate receives for `spec`, placed at `location` if it is set.
-
-    That is a bundle, or the value of an unwrapped spec.
-    """
-    if not spec.unwrap:
+    """Return what a delegate receives for `spec`, placed at `location`: a bundle, or the finalized value."""
+    if spec.finalize is None:
         return ActivationBundle.gather(
             register, spec.context, spec.args, spec.kwargs, location=location
         )
 
     (ref,) = spec.args
-
-    # The result of an op is always a single batch (even if that batch is an iterable).
-    (result,) = register.load(ref, spec.context).batches
-    return result if location is None else location.place(result)
+    (state,) = register.load(ref, spec.context)
+    return spec.finalize(state if location is None else location.place(state))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -620,7 +616,7 @@ def call_flow_op(
         fn: The function of the op. It can return any object.
         names: The name that `fn` receives each item of `inputs` under.
         inputs: The data that `fn` reads, one item per name: a bundle for a flow, and the
-            result of the op for an op.
+            finalized result of the op for an op.
     """
     return [ActivationDataset([fn(**dict(zip(names, inputs, strict=True)))])]
 

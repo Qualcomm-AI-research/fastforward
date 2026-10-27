@@ -1092,7 +1092,7 @@ def test_call_delegate_receives_one_bundle_per_context() -> None:
     assert list(received[1]) == [((10,), {}), ((20,), {})]
 
 
-def test_call_delegate_receives_the_value_of_an_unwrapped_spec() -> None:
+def test_call_delegate_receives_the_finalized_value_of_a_spec() -> None:
     # GIVEN a register holding one value, and a register entry with two batches
     ref_value = NodeRef(id=uuid.uuid4(), name="value")
     ref_batches = NodeRef(id=uuid.uuid4(), name="batches")
@@ -1103,14 +1103,14 @@ def test_call_delegate_receives_the_value_of_an_unwrapped_spec() -> None:
 
     received: list[Any] = []
 
-    def delegate(unwrapped: torch.Tensor, bundle: ActivationBundle) -> None:
-        received.extend([unwrapped, bundle])
+    def delegate(finalized: torch.Tensor, bundle: ActivationBundle) -> None:
+        received.extend([finalized, bundle])
 
     # WHEN we schedule the first to be unwrapped and the second one as-is
     instr = RunDelegate(
         fn=delegate,
         bundles=(
-            BundleSpec(context=_noop_context, args=[ref_value], unwrap=True),
+            BundleSpec(context=_noop_context, args=[ref_value], finalize=torch.neg),
             BundleSpec(context=_noop_context, args=[ref_batches]),
         ),
     )
@@ -1118,10 +1118,14 @@ def test_call_delegate_receives_the_value_of_an_unwrapped_spec() -> None:
     # WHEN the instruction executes
     instr.execute(register)
 
-    # THEN the unwrapped spec gives the stored object itself, and the other gives a bundle
-    assert received[0] is value
+    # THEN the first spec gives the finalized value, and the other gives a bundle
+    torch.testing.assert_close(received[0], torch.tensor([-1.0, -2.0]))
     assert isinstance(received[1], ActivationBundle)
     assert list(received[1]) == [((1,), {}), ((2,), {})]
+
+    # AND the stored value is as it was, so the next reader finalizes the same state
+    assert register.load(ref_value, _noop_context).batches[0] is value
+    torch.testing.assert_close(value, torch.tensor([1.0, 2.0]))
 
 
 def test_call_flow_op_stores_the_result_as_one_batch() -> None:

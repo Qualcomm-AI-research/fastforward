@@ -37,7 +37,8 @@ def gptq(
     Args:
         module: A QuantizedLinear or QuantizedConv2d layer whose weight_quantizer is a LinearQuantizer.
         hessian: The Hessian of the layer, a tensor of shape [in_features, in_features], with
-            in_channels/groups * kH * kW for Conv2d.
+            in_channels/groups * kH * kW for Conv2d. It is inverted in its own dtype, and the
+            inverse is cast to float32 for the weight updates.
         block_size: Number of columns to process per block.
         perc_damp: Dampening factor as percentage of mean diagonal value.
         actorder: Whether to reorder columns by activation magnitude.
@@ -86,7 +87,7 @@ def gptq(
 
     quantized_weights = torch.zeros_like(weights)
     errors = torch.zeros_like(weights)
-    hessian_inverse = invert_hessian(hessian, perc_damp)
+    hessian_inverse = invert_hessian(hessian, perc_damp).to(weights.dtype)
 
     # For grouped quantization only: recompute each group's scale on its error-corrected weights.
     recompute_scales = False

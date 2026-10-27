@@ -254,8 +254,14 @@ def test_flow_ops_are_equal_only_if_they_read_the_same_settings() -> None:
     [
         (_total, {}, ValueError, "at least one input"),
         (object(), {"activations": InputActivations("original")}, TypeError, "callable"),
+        (
+            _total,
+            {"activations": InputActivations("original"), "finalize": object()},
+            TypeError,
+            "callable",
+        ),
     ],
-    ids=["no-input", "not-callable"],
+    ids=["no-input", "not-callable", "finalize-not-callable"],
 )
 def test_unsupported_flow_ops_are_rejected(
     fn: Any, inputs: dict[str, Any], error: type[Exception], match: str

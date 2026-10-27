@@ -86,6 +86,16 @@ flows = [FlowOp(hessian, from_module=conv_settings, activations=InputActivations
 
 If the settings are equal for layers that also share the same input (e.g. QKV), we only
 perform a single call.
+
+The result of the function is the state of the op. What declares the op receives
+`finalize(state)`. The default `finalize` returns the state. An op whose state is, for
+example, a sum and a count uses `finalize` to turn the state into the value that the reader
+wants. Every reader calls `finalize` on the same state, so it must not change the state:
+
+```python
+flows = [FlowOp(hessian, finalize=normalize, activations=InputActivations("original"))]
+# The algorithm is called as fn(module, normalize(state)).
+```
 """
 
 import abc
@@ -357,6 +367,11 @@ class Gradient(DataFlow):
         }
 
 
+def _identity(state: Any) -> Any:
+    """Return `state`: the default `finalize` of a `FlowOp`."""
+    return state
+
+
 @attrs.define(frozen=True, init=False)
 class FlowOp:
     """A function over a data flow.
@@ -373,9 +388,21 @@ class FlowOp:
     equal, and a single FlowOp will be used. This means you can think of a Flow Op also
     as a performance gain.
 
+    Example:
+        Calculate the mean activations flowing into a layer:
+
+        ```python
+        def mean(activations):
+            return torch.cat([x.flatten() for (x,), _ in activations]).mean()
+
+        FlowOp(mean, activations=InputActivations("original"))
+        ```
+
     Args:
-        fn: A function that works on a data flow.
+        fn: A function that works on a data flow. Its result is the state of the op.
         from_module: A callable that, given a layer, returns a dict of arguments required for `fn`.
+        finalize: A final transformation of the state before the algorithm gets it. Make sure
+            it does not mutate in-place because other layers might use the data.
         **inputs: The inputs required for `fn` that are separate from that of `from_module`.
             These should be either `DataFlow` types or other `FlowOp`s.
     """
@@ -383,6 +410,9 @@ class FlowOp:
     fn: Callable[..., Any] = attrs.field(validator=attrs.validators.is_callable())
     inputs: "tuple[tuple[str, DataFlow | FlowOp], ...]"
     from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None
+    finalize: Callable[[Any], Any] = attrs.field(
+        default=_identity, validator=attrs.validators.is_callable()
+    )
 
     def __init__(
         self,
@@ -390,9 +420,15 @@ class FlowOp:
         /,
         *,
         from_module: Callable[[torch.nn.Module], Mapping[str, Hashable]] | None = None,
+        finalize: Callable[[Any], Any] = _identity,
         **inputs: "DataFlow | FlowOp",
     ) -> None:
-        self.__attrs_init__(fn=fn, inputs=tuple(inputs.items()), from_module=from_module)
+        self.__attrs_init__(
+            fn=fn,
+            inputs=tuple(inputs.items()),
+            from_module=from_module,
+            finalize=finalize,
+        )
 
     def __attrs_post_init__(self) -> None:
         """Reject an op that has no input.
