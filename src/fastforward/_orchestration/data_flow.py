@@ -48,6 +48,15 @@ def empirical_nll(logits, labels):
         yield torch.nn.functional.cross_entropy(out, target)
 ```
 
+A model that returns an object, like a Hugging Face model, gives `ModelOutputs` a `select`
+function. The function gets the outputs of a batch and returns what the objective reads:
+
+```python
+logits = ModelOutputs("original", select=operator.attrgetter("logits"))
+fisher = Gradient(sampled_nll, logits=logits)
+# sampled_nll gets the logits tensor of each batch, and not the output object.
+```
+
 All regions that read equal `Gradient` flows share one call of the function and
 one backward step per node. The gradients show the weights from before every
 mutation, so only a pinned generator is supported, and the model must be in eval
@@ -249,11 +258,28 @@ def _sources_key(sources: Mapping[str, Any]) -> frozenset[tuple[str, Any]]:
 class ModelOutputs:
     """The graph outputs of the model, under one flow generator.
 
+    Two `ModelOutputs` are equal when they have the same generator and the same `select`
+    object, so declare a `select` once and not for each region.
+
     Args:
         generator: The flow generator the outputs are produced under.
+        select: Reads what the objective needs from the outputs of one batch. It is called
+            as `select(*outputs)`. A traced model has one output, the value that its forward
+            returns. It returns a value computed from the outputs, such as
+            `operator.attrgetter("logits")` for a model that returns an object with logits,
+            or `lambda output: output.logits.to(device)` to move them to another device.
+            The objective gets that value for each batch, and the gradient goes back to
+            the outputs through it. The default gives the outputs unchanged. Copies are
+            held for all batches, so prefer a view.
     """
 
     generator: FlowGenerator = attrs.field(converter=_to_generator)
+    select: Callable[..., Any] | None = attrs.field(
+        default=None,
+        hash=False,
+        kw_only=True,
+        validator=attrs.validators.optional(attrs.validators.is_callable()),
+    )
 
 
 @attrs.define(frozen=True, repr=False, init=False)
@@ -280,8 +306,9 @@ class Gradient(DataFlow):
     Args:
         f: The loss function. It yields one real scalar loss per batch.
         **sources: The keyword arguments of `f`. A `ModelOutputs` source becomes
-            a series of model outputs, one item per batch. Other values (e.g. a
-            label data loader) go to `f` without change.
+            a series of model outputs, or of what its `select` returns for them, one
+            item per batch. Other values (e.g. a label data loader) go to `f` without
+            change.
     """
 
     f: Callable[..., Iterable[torch.Tensor]] = attrs.field(

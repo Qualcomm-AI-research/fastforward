@@ -86,6 +86,14 @@ def _noop(module: torch.nn.Module, *bundles: object) -> None:
     """An intervention that changes nothing; these tests read the schedule, not weights."""
 
 
+@dataclasses.dataclass
+class _UnhashableSelect:
+    """A callable object with the default unhashable dataclass behavior."""
+
+    def __call__(self, output: torch.Tensor) -> torch.Tensor:
+        return output
+
+
 def _spec(region: torch.nn.Module, *flows: DataFlow) -> SubgraphSpec:
     """A spec that runs `_noop` on `region` and declares `flows`."""
     return SubgraphSpec(region=region, fn=_noop, flows=list(flows))
@@ -670,6 +678,23 @@ def test_gradient_flow_on_a_region_without_shared_weights_is_scheduled() -> None
     InstructionEngine().run(program, sample)
 
 
+def test_gradient_flow_with_unhashable_select_is_scheduled() -> None:
+    # GIVEN a gradient whose model output selector is an unhashable callable object
+    model = TiedHead().eval()
+    sample = torch.tensor([[1, 2]])
+    graph = trace(model, sample)
+    gradient = Gradient(
+        _square_loss,
+        outputs=ModelOutputs(ORIGINAL, select=_UnhashableSelect()),
+    )
+
+    # WHEN scheduling
+    program = schedule(graph, specs=[_spec(model.fc, gradient)])
+
+    # THEN the gradient reference can be used as a scheduler register key
+    InstructionEngine().run(program, sample)
+
+
 def test_output_activations_delivers_region_output(two_linear: TwoLinear) -> None:
     # GIVEN a region optimized against its own inputs (x) and its own output (Wx),
     # both from before any weight changed
@@ -917,6 +942,37 @@ def test_gradients_with_offloading(storage: str, tmp_path: pathlib.Path) -> None
 
     # THEN the region reads the gradients of the original model
     _assert_close(recorder.reads[region], expected[region])
+
+
+class _WithAuxiliaryOutput(torch.nn.Module):
+    """Returns the output of `model` next to a second tensor that the loss does not read."""
+
+    def __init__(self, model: torch.nn.Module) -> None:
+        super().__init__()
+        self.model = model
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass: (model(x), sum of model(x))."""
+        out = self.model(x)
+        return out, out.sum()
+
+
+def test_gradients_with_a_select_agree_with_autograd_of_the_selected_output() -> None:
+    # GIVEN a model with two outputs, and a gradient that reads only the first
+    inner = TwoLinear().eval()
+    modules: list[torch.nn.Module] = [inner.fc1, inner.fc2]
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+    expected = _autograd(inner, modules, batches)
+    recorder = _Recorder()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL, select=lambda output: output[0]))
+    specs = [SubgraphSpec(region=module, fn=recorder, flows=[flow]) for module in modules]
+
+    # WHEN scheduling and running
+    _run(schedule(trace(_WithAuxiliaryOutput(inner).eval(), batches[0]), specs), batches)
+
+    # THEN every region reads the gradients of the loss of the selected output
+    for module in modules:
+        _assert_close(recorder.reads[module], expected[module])
 
 
 class _LastOfTuple(torch.nn.Module):

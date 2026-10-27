@@ -651,6 +651,7 @@ class Scheduler:
         The objective is called once for all graph outputs.
         """
         names = list(gradient.outputs)
+        selects = {name: source.select for name, source in gradient.outputs.items()}
         loss_grads = [LossGradRef(gradient, name, position) for name in names]
         # The objective already ran for another graph output, so do not call it again.
         if self.timeline.value(loss_grads[0], generator) in self.register:
@@ -667,7 +668,7 @@ class Scheduler:
         ]
         self.instructions.append(
             RunDelegate(
-                fn=functools.partial(loss_grad_outputs, gradient.f, names, gradient.values),
+                fn=functools.partial(loss_grad_outputs, gradient.f, selects, gradient.values),
                 bundles=[BundleSpec(generator.context, outputs) for _ in names],
                 targets=[(target, generator.context) for target in targets],
             )

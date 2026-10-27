@@ -598,14 +598,14 @@ def call_flow_op(
 
 def loss_grad_outputs(
     objective: Callable[..., Iterable[torch.Tensor]],
-    names: Sequence[str],
+    selects: Mapping[str, Callable[..., Any] | None],
     values: Mapping[str, Any],
     *outputs: ActivationBundle,
 ) -> list[ActivationDataset]:
     """Call an objective once and return the gradient of each output stream it reads.
 
     Invokes `objective(**outputs, **values)` under `torch.enable_grad()`. Each item of
-    `outputs` goes to `objective` under the name at the same position in `names`, and
+    `outputs` goes to `objective` under the name at the same position in `selects`, and
     its floating-point leaves are made differentiable once per call. `values` go to
     `objective` unchanged. `objective` iterates the model outputs itself and yields one
     real scalar loss per batch. The gradient of an output batch is the gradient of the
@@ -613,11 +613,15 @@ def loss_grad_outputs(
     that have no path to the loss. `objective` places its data itself, so each
     gradient is where its output leaf is.
 
-    Each item of `outputs` holds the graph outputs as positional streams.
+    Each item of `outputs` holds the graph outputs as positional streams. If the select
+    function of an item is not `None`, `objective` gets one stream instead, with
+    `select(*outputs)` for each batch.
 
     Args:
         objective: The objective.
-        names: The name that `objective` receives each item of `outputs` under.
+        selects: For each name that `objective` receives an item of `outputs` under, the
+            function that picks what it reads from the outputs of a batch, or `None` to
+            give the outputs unchanged.
         values: Other values that `objective` receives unchanged, keyed by name.
         outputs: The model outputs that `objective` reads, one item per name.
 
@@ -634,13 +638,20 @@ def loss_grad_outputs(
     # The flattened batches of each output stream, with differentiable leaves.
     streams: list[list[tuple[list[Any], pytree.TreeSpec]]] = []
     differentiable: dict[str, ActivationBundle] = {}
-    for key, output in zip(names, outputs, strict=True):
+    for (key, select), output in zip(selects.items(), outputs, strict=True):
         datasets = []
         for dataset in output.args:
             stream = [_differentiable_leaves(batch) for batch in dataset]
             streams.append(stream)
             datasets.append(ActivationDataset([pytree.tree_unflatten(*batch) for batch in stream]))
-        differentiable[key] = ActivationBundle(args=tuple(datasets), kwargs={})
+        read = ActivationBundle(args=tuple(datasets), kwargs={})
+        if select is not None:
+            # Under the ambient `no_grad` of an algorithm, a select that makes a new tensor,
+            # like a move to another device, would cut the loss off from the output.
+            with torch.enable_grad():
+                selected = ActivationDataset([select(*args) for args, _ in read])
+            read = ActivationBundle(args=(selected,), kwargs={})
+        differentiable[key] = read
 
     n_batches = len(streams[0]) if streams else 0
     if any(len(stream) != n_batches for stream in streams):

@@ -1433,16 +1433,49 @@ def test_assemble_grad_output_counts_a_negative_index_from_the_end() -> None:
     torch.testing.assert_close(tail, 2 * last)
 
 
-def _loss_grads(objective: Callable[..., Any], outputs: list[Any], **values: Any) -> list[Any]:
+def _loss_grads(
+    objective: Callable[..., Any],
+    outputs: list[Any],
+    *,
+    select: Callable[..., Any] | None = None,
+    **values: Any,
+) -> list[Any]:
     """Run `loss_grad_outputs` on one output stream and return its gradients."""
     register = ActivationRegister()
     target = NodeRef(id=uuid.uuid4(), name="grad_output")
     RunDelegate(
-        fn=functools.partial(loss_grad_outputs, objective, ["logits"], values),
+        fn=functools.partial(loss_grad_outputs, objective, {"logits": select}, values),
         bundles=[BundleSpec(_noop_context, [_stored(register, outputs)])],
         targets=[(target, _noop_context)],
     ).execute(register)
     return register.load(target, _noop_context).batches
+
+
+@pytest.mark.parametrize("grad_mode", [torch.enable_grad, torch.no_grad], ids=["grad", "no_grad"])
+def test_select_gives_the_objective_a_value_computed_from_the_outputs(
+    grad_mode: Callable[[], Any],
+) -> None:
+    # GIVEN outputs with two float tensors, and a select that reads one of them in float64
+    outputs = [{"logits": torch.randn(3), "aux": torch.randn(3)} for _ in range(2)]
+
+    def objective(logits: ActivationBundle) -> Iterator[torch.Tensor]:
+        for (batch,), _ in logits:
+            assert batch.dtype == torch.float64
+            yield batch.square().sum()
+
+    # WHEN we compute the gradients, in the grad mode of the caller: an algorithm runs
+    # under `no_grad`
+    with grad_mode():
+        grad_outputs = _loss_grads(
+            objective, outputs, select=lambda output: output["logits"].double()
+        )
+
+    # THEN the objective read the selected value, and its gradient reaches the output
+    for output, grad_output in zip(outputs, grad_outputs):
+        torch.testing.assert_close(grad_output["logits"], 2 * output["logits"])
+
+    # THEN the tensor that was not selected gets None
+    assert all(grad_output["aux"] is None for grad_output in grad_outputs)
 
 
 def test_loss_is_called_once_and_int_outputs_get_no_gradient() -> None:

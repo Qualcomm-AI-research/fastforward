@@ -148,6 +148,31 @@ def test_gradients_with_the_same_loss_and_sources_are_equal() -> None:
     assert gradient != Gradient(_loss, outputs=ModelOutputs("original"), labels=list(labels))
 
 
+def _first(output: Any) -> Any:
+    return output[0]
+
+
+def test_gradients_are_equal_only_if_their_outputs_use_the_same_select() -> None:
+    # GIVEN a gradient whose outputs have a select function
+    gradient = Gradient(_loss, outputs=ModelOutputs("original", select=_first))
+
+    # THEN a gradient with the same select function is equal, and has the same hash
+    same = Gradient(_loss, outputs=ModelOutputs(ORIGINAL, select=_first))
+    assert gradient == same
+    assert hash(gradient) == hash(same)
+
+    # THEN no select, or another select function, gives another gradient
+    assert gradient != Gradient(_loss, outputs=ModelOutputs("original"))
+    assert gradient != Gradient(_loss, outputs=ModelOutputs("original", select=lambda x: x))
+
+
+def test_select_must_be_callable() -> None:
+    # WHEN declaring model outputs with a select that is not callable
+    # THEN it is refused
+    with pytest.raises(TypeError, match="callable"):
+        ModelOutputs("original", select=object())  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("f", "sources", "error", "match"),
     [
