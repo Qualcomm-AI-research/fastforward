@@ -7,6 +7,7 @@ import dataclasses
 import functools
 import operator
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import fastforward as ff
@@ -20,7 +21,7 @@ from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.location import BudgetLocation, DiskLocation, LocationLike
 from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
-from fastforward.orchestration import Offload
+from fastforward.orchestration import Offload, _batched
 from packaging.version import Version
 from torch import nn
 from typing_extensions import override
@@ -32,6 +33,31 @@ pytestmark = pytest.mark.skipif(
     Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION,
     reason=f"requires PyTorch >= {_MIN_TORCH_VERSION}",
 )
+
+
+def test_batched_returns_complete_and_partial_chunks() -> None:
+    # WHEN data is split into chunks
+    batches = _batched(range(5), 2)
+
+    # THEN the final partial chunk is retained
+    assert list(batches) == [(0, 1), (2, 3), (4,)]
+
+
+def test_batched_consumes_data_lazily() -> None:
+    # GIVEN an iterator that records consumption
+    consumed: list[int] = []
+
+    def data() -> Iterator[int]:
+        for item in range(3):
+            consumed.append(item)
+            yield item
+
+    # WHEN only the first chunk is requested
+    batches = _batched(data(), 2)
+    assert next(batches) == (0, 1)
+
+    # THEN the remaining data has not been consumed
+    assert consumed == [0, 1]
 
 
 @pytest.mark.slow

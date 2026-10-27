@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
-import itertools
 import logging
 
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from itertools import islice
 from typing import Any
 
 import torch
@@ -46,6 +46,13 @@ __all__ = ["layerwise_optimize"]
 logger = logging.getLogger(__name__)
 
 
+def _batched(data: Iterable[Any], chunk_size: int) -> Iterator[tuple[Any, ...]]:
+    """Lazily batch data, based on itertools.batched (Python 3.12+ only)."""
+    chunk = iter(data)
+    while batch := tuple(islice(chunk, chunk_size)):
+        yield batch
+
+
 def _chunked_inputs(
     data: Iterable[Any],
     chunk_size: int,
@@ -56,7 +63,7 @@ def _chunked_inputs(
     Each group goes through `_sanitize_inputs`, so items such as dicts bind to the inputs
     of the graph the same way as in a run without chunks.
     """
-    for chunk in itertools.batched(data, chunk_size):
+    for chunk in _batched(data, chunk_size):
         args, kwargs = _sanitize_inputs(input_names, (list(chunk),), {})
         yield ProgramInputs(args=args, kwargs=kwargs)
 
