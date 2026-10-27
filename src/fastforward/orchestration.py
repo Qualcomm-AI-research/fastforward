@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 from __future__ import annotations
 
+import dataclasses
 import logging
 
 from collections.abc import Mapping
@@ -93,16 +94,28 @@ class _ExecutionContext(_GraphExecutionContext):
         super().__init__(graph, program, InstructionEngine())
 
 
+@dataclasses.dataclass(frozen=True)
+class OrchestrationConfig:
+    """How `layerwise_optimize` configures any orchestration optimization.
+
+    Args:
+        offloading: Where weights and activations rest between uses. `None` keeps them
+            where they are at runtime. See also `Offload`.
+    """
+
+    offloading: OffloadingStrategy | None = None
+
+
 def layerwise_optimize(
     model: torch.nn.Module,
     data: Any,
     algorithm: registry.Algorithm | registry.AlgorithmSpec | list[registry.AlgorithmSpec],
     *,
     targets: registry.TargetType | None = None,
+    config: OrchestrationConfig = OrchestrationConfig(),
     graph: GraphModule | None = None,
     sample_args: tuple[Any, ...] = (),
     sample_kwargs: Mapping[str, Any] | None = None,
-    offloading: OffloadingStrategy | None = None,
 ) -> None:
     """Run layer-wise optimization on a model.
 
@@ -119,10 +132,10 @@ def layerwise_optimize(
             registry), a single `AlgorithmSpec`, or a list of specs.
         targets: Override which modules to target (uses registry default if None).
             Cannot be combined with explicit AlgorithmSpec(s).
+        config: Orchestration settings (offloading strategy).
         graph: Pre-built GraphModule (traces model if None).
         sample_args: Positional example inputs for tracing.
         sample_kwargs: Keyword example inputs for tracing.
-        offloading: Optional strategy for device offloading during execution.
 
     Raises:
         TypeError: If `graph` is None and no example input is given, or if `graph` and an
@@ -169,5 +182,5 @@ def layerwise_optimize(
     # (4) Execute
     passes: list[InstructionPass] = [lifetime_management_pass]
 
-    with _ExecutionContext(graph, program, passes=passes, offloading=offloading):
+    with _ExecutionContext(graph, program, passes=passes, offloading=config.offloading):
         graph(data)

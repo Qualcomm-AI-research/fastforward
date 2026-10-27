@@ -235,7 +235,7 @@ def test_layerwise_optimize_with_adaround_runs_under_offloading() -> None:
             functools.partial(ff.algorithms.adaround, num_iterations=10),
             targets=ff.mpath.query(_TARGETS),
             sample_args=(calibration[0],),
-            offloading=Offload(compute=cpu),
+            config=ff.OrchestrationConfig(offloading=Offload(compute=cpu)),
         )
 
     # THEN the targeted weights were replaced by their AdaRound result
@@ -319,6 +319,7 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
     symmetric = False
     granularity: ff.granularity.Granularity = ff.PerChannel(channel_dim=0)
     num_iterations = 10_000
+    orchestration_config = ff.OrchestrationConfig(offloading=Offload(compute=device))
 
     validation_set = _get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
     calibration_set = _get_c4(model_name, sequence_length=2048, seed=0)
@@ -330,14 +331,13 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
     adaround_targets = ff.mpath.query(_TARGETS)
     adaround_model = _quantized_llama(model_name, num_bits, granularity, symmetric)
     with torch.no_grad(), ff.strict_quantization(False):
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_model,
             calibration_set,
             adaround_fn,
             targets=adaround_targets,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         adaround_perplexity = _evaluate(adaround_model, validation_set, device)
@@ -351,13 +351,12 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=ff.mpath.query(_TARGETS)),
             flows=[InputActivations("original"), InputActivations("original")],
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_sym_model,
             calibration_set,
             spec,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         adaround_sym_perplexity = _evaluate(adaround_sym_model, validation_set, device)
@@ -371,13 +370,12 @@ def test_adaround_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=ff.mpath.query(_TARGETS)),
             flows=[InputActivations("quantized"), InputActivations("quantized")],
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             adaround_gptq_model,
             calibration_set,
             spec,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         adaround_gptq_perplexity = _evaluate(adaround_gptq_model, validation_set, device)

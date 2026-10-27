@@ -149,7 +149,7 @@ def test_layerwise_optimize_with_offloading_runs_execution_context(two_linear: T
         calibration,
         spec,
         sample_args=(calibration[0],),
-        offloading=Offload(compute=cpu, weights=cpu),
+        config=ff.OrchestrationConfig(offloading=Offload(compute=cpu, weights=cpu)),
     )
 
     # THEN only the targeted layer changed
@@ -186,7 +186,9 @@ def test_file_backed_activations_match_memory_backed_results(
             calibration_data,
             spec,
             sample_args=(calibration_data[0],),
-            offloading=Offload(compute=cpu, weights=cpu, activations=activation_location),
+            config=ff.OrchestrationConfig(
+                offloading=Offload(compute=cpu, weights=cpu, activations=activation_location)
+            ),
         )
 
     # WHEN we optimize both
@@ -221,7 +223,9 @@ def test_budgeted_activations_match_memory_backed_results(
             calibration_data,
             spec,
             sample_args=(calibration_data[0],),
-            offloading=Offload(compute=cpu, weights=cpu, activations=activation_location),
+            config=ff.OrchestrationConfig(
+                offloading=Offload(compute=cpu, weights=cpu, activations=activation_location)
+            ),
         )
 
     # WHEN we optimize both
@@ -269,7 +273,7 @@ def test_offloading_can_rest_weights_in_files(two_linear: TwoLinear, tmp_path: P
             calibration_data,
             spec,
             sample_args=(calibration_data[0],),
-            offloading=Offload(compute=cpu, weights=weight_location),
+            config=ff.OrchestrationConfig(offloading=Offload(compute=cpu, weights=weight_location)),
         )
 
     # WHEN we optimize both
@@ -484,7 +488,11 @@ def test_layerwise_optimize_gives_the_algorithm_the_result_of_a_flowop(
     # WHEN the model is optimized
     with torch.no_grad():
         ff.layerwise_optimize(
-            model, calibration, spec, sample_args=(calibration[0],), offloading=offloading
+            model,
+            calibration,
+            spec,
+            sample_args=(calibration[0],),
+            config=ff.OrchestrationConfig(offloading=offloading),
         )
 
     # THEN each layer received the result of the op over all calibration batches, as a tensor

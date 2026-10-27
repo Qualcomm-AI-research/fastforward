@@ -142,6 +142,7 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
     block_size = 128
     perc_damp = 0.01
     act_order = True
+    orchestration_config = ff.OrchestrationConfig(offloading=Offload(compute=device))
 
     validation_set = _get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
     calibration_set = _get_c4(model_name, sequence_length=2048, seed=0)
@@ -198,14 +199,13 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
         gptq_fn = functools.partial(
             ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_model,
             calibration_set,
             gptq_fn,
             targets=gptq_targets,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         gptq_perplexity = _evaluate(gptq_model, validation_set, device)
@@ -233,13 +233,12 @@ def test_gptq_layerwise_optimize_perplexity() -> None:
             selector=MPathSelector(query=gptq_q_targets),
             flows=[FlowOp(calculate_hessian, activations=InputActivations("quantized"))],
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_q_model,
             calibration_set,
             spec,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         gptq_q_perplexity = _evaluate(gptq_q_model, validation_set, device)
@@ -280,6 +279,7 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
     block_size = 128
     perc_damp = 0.05
     act_order = False
+    orchestration_config = ff.OrchestrationConfig(offloading=Offload(compute=device))
 
     validation_set = _get_wikitext2(model_name, nsamples=128, sequence_length=2048, seed=0)
     calibration_set = _get_c4(model_name, sequence_length=2048, seed=0)
@@ -337,14 +337,13 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
         gptq_fn = functools.partial(
             ff.algorithms.gptq, block_size=block_size, perc_damp=perc_damp, actorder=act_order
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_model,
             calibration_set,
             gptq_fn,
             targets=gptq_targets,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         gptq_perplexity = _evaluate(gptq_model, validation_set, device)
@@ -372,13 +371,12 @@ def test_qwen3_w4_gptq_autoquant_gs32_perplexity() -> None:
             selector=MPathSelector(query=gptq_q_targets),
             flows=[FlowOp(calculate_hessian, activations=InputActivations("quantized"))],
         )
-        offloading = Offload(compute=device)
         ff.layerwise_optimize(
             gptq_q_model,
             calibration_set,
             spec,
             sample_args=(calibration_set[0],),
-            offloading=offloading,
+            config=orchestration_config,
         )
     with ff.strict_quantization(False):
         gptq_q_perplexity = _evaluate(gptq_q_model, validation_set, device)
