@@ -5,7 +5,6 @@
 import abc
 import dataclasses
 import functools
-import itertools
 
 from collections import defaultdict
 from typing import (
@@ -832,13 +831,17 @@ class ReturnOutputs(Instruction):
 
 @dataclasses.dataclass(frozen=True)
 class DeleteRegisterEntries(Instruction):
-    """Delete specified register entries to free memory."""
+    """Delete specified register entries, each a ref under one context, to free memory."""
 
-    targets: Sequence[_BaseRef]
+    targets: Sequence[tuple[_BaseRef, StreamKey]]
+
+    def __repr__(self) -> str:
+        targets = [f"{ref!r}@{_fmt_callable(context)}" for ref, context in self.targets]
+        return f"DeleteRegisterEntries(targets=[{', '.join(targets)}])"
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        for target_id in self.targets:
-            register.delete(target_id)
+        for ref, context in self.targets:
+            register.delete(ref, context)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1241,6 +1244,32 @@ class InstructionPasses:
         return dataclasses.replace(program, instructions=instructions)
 
 
+_RegisterKey: TypeAlias = tuple[_BaseRef, StreamKey]
+
+
+def _register_accesses(instruction: Instruction) -> tuple[list[_RegisterKey], list[_RegisterKey]]:
+    """Return the register entries that `instruction` reads and the ones it writes."""
+    match instruction:
+        case Call(context=context):
+            uses = [(ref, context) for ref in instruction.uses()]
+            return uses, [(ref, context) for ref in instruction.produces()]
+        case StoreValue(target=target, context=context):
+            return [], [(target, context)]
+        case LoadAttribute(source=source, target=target, context=context):
+            return [(source, context)], [(target, context)]
+        case RunDelegate(bundles=bundles, targets=targets, accumulate=accumulate):
+            reads = [
+                (ref, bundle.context)
+                for bundle in bundles
+                for ref in (*bundle.args, *bundle.kwargs.values())
+            ]
+            if accumulate:
+                reads.append(targets[0])
+            return reads, list(targets)
+        case _:
+            return [], []
+
+
 def lifetime_management_pass(instructions: Instructions) -> Instructions:
     """Insert DeleteRegisterEntries instructions to free memory when values are no longer needed.
 
@@ -1255,28 +1284,27 @@ def lifetime_management_pass(instructions: Instructions) -> Instructions:
         if isinstance(instruction, ReturnOutputs):
             keep_alive.update(instruction.uses())
 
-    last_use = {}
+    needed: set[_RegisterKey] = set()
+    to_delete: list[list[_RegisterKey]] = [[] for _ in instructions]
 
-    # Iterate in reverse to find the last instruction that depends on each register slot
     for idx in range(len(instructions) - 1, -1, -1):
-        instruction = instructions[idx]
-        for uuid_id in itertools.chain(instruction.uses(), instruction.produces()):
-            if uuid_id not in last_use:
-                last_use[uuid_id] = idx
+        uses, produces = _register_accesses(instructions[idx])
+
+        for key in dict.fromkeys([*uses, *produces]):
+            if key[0] not in keep_alive and key not in needed:
+                to_delete[idx].append(key)
+
+        # Producing a value replaces whatever was previously stored in that entry.
+        needed.difference_update(produces)
+
+        # Values used here must remain available from earlier instructions.
+        needed.update(uses)
 
     new_instructions: list[Instruction] = []
-    for idx, instruction in enumerate(instructions):
+    for instruction, targets in zip(instructions, to_delete):
         new_instructions.append(instruction)
-
-        # Delete any register entry that has no dependent instructions after this point
-        to_delete = [
-            uuid_id
-            for uuid_id, last_idx in last_use.items()
-            if last_idx == idx and uuid_id not in keep_alive
-        ]
-
-        if to_delete:
-            new_instructions.append(DeleteRegisterEntries(targets=to_delete))
+        if targets:
+            new_instructions.append(DeleteRegisterEntries(targets=targets))
 
     return tuple(new_instructions)
 

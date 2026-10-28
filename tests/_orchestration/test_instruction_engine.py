@@ -1717,7 +1717,7 @@ def test_run_incrementally_repeats_what_precedes_the_marker_and_runs_the_rest_on
     program = InstructionProgram(
         instructions=(
             _accumulating_sum(ref_x, ref_total),
-            DeleteRegisterEntries(targets=[ref_x]),
+            DeleteRegisterEntries(targets=[(ref_x, _noop_context)]),
             EndOfChunk(),
             RunDelegate(
                 fn=algorithm, bundles=(BundleSpec(context=_noop_context, args=[ref_total]),)

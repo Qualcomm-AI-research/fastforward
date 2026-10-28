@@ -53,6 +53,7 @@ from fastforward._orchestration.instruction_engine import (
     StoreValue,
     _fmt_callable,
     _offloading_pass,
+    _RegisterKey,
     lifetime_management_pass,
 )
 from fastforward._orchestration.location import DeviceLocation, DiskLocation
@@ -1077,18 +1078,20 @@ def test_only_gradient_flows_require_eval_mode(two_linear: TwoLinear) -> None:
 
 
 def _register_size(program: InstructionProgram) -> int:
-    """The largest number of refs the register holds at one time.
+    """The largest number of register entries held at one time.
 
-    Runs the lifetime pass, then counts stores against frees. `DeleteRegisterEntries`
-    frees a ref under every context, so a ref is the unit here.
+    Runs the lifetime pass, then counts produced entries against frees. A register
+    entry is identified by its reference and context.
     """
     instructions = lifetime_management_pass(program.instructions)
-    live: set[_BaseRef] = set()
+    live: set[_RegisterKey] = set()
     peak = 0
     for instruction in instructions:
         match instruction:
-            case CallModule(target=target) | StoreValue(target=target):
-                live.add(target)
+            case CallModule(target=target, context=context):
+                live.add((target, context))
+            case StoreValue(target=target, context=context):
+                live.add((target, context))
             case DeleteRegisterEntries(targets=targets):
                 live.difference_update(targets)
         peak = max(peak, len(live))

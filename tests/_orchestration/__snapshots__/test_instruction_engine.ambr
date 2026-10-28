@@ -17,9 +17,9 @@
 # name: test_lifetime_management_pass
   '''
   CallModule(caller=Identity, args=[InputRef(x)], kwargs={}, target=NodeRef(node_1), context=_any_context, cache=False, input_location=None, output_location=None)
-  DeleteRegisterEntries(targets=[InputRef(x)])
+  DeleteRegisterEntries(targets=[InputRef(x)@_any_context])
   CallModule(caller=Identity, args=[NodeRef(node_1)], kwargs={}, target=NodeRef(node_2), context=_any_context, cache=False, input_location=None, output_location=None)
-  DeleteRegisterEntries(targets=[NodeRef(node_1)])
+  DeleteRegisterEntries(targets=[NodeRef(node_1)@_any_context])
   ReturnOutputs(outputs=[NodeRef(node_2)])
   '''
 # ---
