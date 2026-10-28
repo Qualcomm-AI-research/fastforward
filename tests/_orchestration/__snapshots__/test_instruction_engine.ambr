@@ -9,7 +9,7 @@
 # name: test_instruction_generator_with_attribute_ref
   '''
   CallModule(caller=ReturnTuple, args=[InputRef(x)], kwargs={}, target=NodeRef(tuple_node), context=_any_context, cache=False, input_location=None, output_location=None)
-  LoadAttribute(source=NodeRef(tuple_node), target=AttributeRef(reference=NodeRef(tuple_node), attribute=0), attribute=0)
+  LoadAttribute(source=NodeRef(tuple_node), target=AttributeRef(reference=NodeRef(tuple_node), attribute=0), attribute=0, context=_any_context)
   CallModule(caller=Identity, args=[AttributeRef(reference=NodeRef(tuple_node), attribute=0)], kwargs={}, target=NodeRef(identity), context=_any_context, cache=False, input_location=None, output_location=None)
   ReturnOutputs(outputs=[NodeRef(identity)])
   '''

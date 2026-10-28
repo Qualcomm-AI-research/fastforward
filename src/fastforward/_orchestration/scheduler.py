@@ -225,7 +225,8 @@ def ref_load_instructions(ref: _BaseRef, context: StreamKey) -> list[StoreValue 
             return [StoreValue(target=ref, value=ref, context=context)]
         case AttributeRef(reference=attr_ref, attribute=attr):
             base_instructions = ref_load_instructions(attr_ref, context)
-            return [*base_instructions, LoadAttribute(source=attr_ref, target=ref, attribute=attr)]
+            load = LoadAttribute(source=attr_ref, target=ref, attribute=attr, context=context)
+            return [*base_instructions, load]
         case _BaseRef():
             msg = f"Unsupported reference type: {type(ref).__name__}"
             raise TypeError(msg)

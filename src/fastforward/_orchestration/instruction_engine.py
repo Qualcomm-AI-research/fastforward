@@ -386,15 +386,22 @@ def get_attribute(value: Any, attribute: str | int) -> Any:
 
 @dataclasses.dataclass(frozen=True)
 class LoadAttribute(Instruction):
-    """Load an attribute/index from a register value and store result."""
+    """Load an attribute/index from a register value and store result under one context."""
 
     source: _BaseRef
     target: _BaseRef
     attribute: str | int
+    context: StreamKey
+
+    def __repr__(self) -> str:
+        return (
+            f"LoadAttribute(source={self.source!r}, target={self.target!r}, "
+            f"attribute={self.attribute!r}, context={_fmt_callable(self.context)})"
+        )
 
     def execute(self, register: ActivationRegister) -> None:  # noqa: D102
-        for context, dataset in register.items_for(self.source):
-            register.store(self.target, context, self._extract_attribute(dataset))
+        dataset = register.load(self.source, self.context)
+        register.store(self.target, self.context, self._extract_attribute(dataset))
 
     def _extract_attribute(self, dataset: ActivationDataset) -> ActivationDataset:
         """Extract attribute/item from each batch in the dataset."""

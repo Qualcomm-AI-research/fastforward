@@ -1207,7 +1207,9 @@ def test_load_attribute_extracts_dict_key_item() -> None:
     register.store(source, context, ActivationDataset([{"logits": 1}, {"logits": 2}]))
 
     # WHEN we LoadAttribute a string key
-    LoadAttribute(source=source, target=target, attribute="logits").execute(register)
+    LoadAttribute(source=source, target=target, attribute="logits", context=context).execute(
+        register
+    )
 
     # THEN each batch is reduced to that key's value via item access
     assert register.load(target, context).batches == [1, 2]
@@ -1227,7 +1229,9 @@ def test_load_attribute_falls_back_to_getattr_for_objects() -> None:
     register.store(source, context, ActivationDataset([Out(1), Out(2)]))
 
     # WHEN we LoadAttribute a string key (item access fails, getattr fallback succeeds)
-    LoadAttribute(source=source, target=target, attribute="logits").execute(register)
+    LoadAttribute(source=source, target=target, attribute="logits", context=context).execute(
+        register
+    )
 
     # THEN the attribute is read via getattr on each batch
     assert register.load(target, context).batches == [1, 2]
@@ -1267,7 +1271,7 @@ def test_load_attribute_uses_and_produces_report_source_and_target() -> None:
     # GIVEN a LoadAttribute extracting from a source into a target
     source = NodeRef(id=uuid.uuid4(), name="src")
     target = NodeRef(id=uuid.uuid4(), name="dst")
-    instr = LoadAttribute(source=source, target=target, attribute=0)
+    instr = LoadAttribute(source=source, target=target, attribute=0, context=_noop_context)
 
     # WHEN we enumerate its register interactions
     # THEN uses() reports the source and produces() reports the target
