@@ -30,6 +30,7 @@ from ._models import (
     Add,
     ConstReturn,
     ConstReturnKwargs,
+    DecoderLayer,
     DualOutModel,
     Model,
     MultiOutputModel,
@@ -397,8 +398,8 @@ def test_reduce_resolution_forward_pass_correctness(two_layer_model: TwoLayerMod
         torch.testing.assert_close(reduced(x), expected, msg=f"forward mismatch for case: {desc}")
 
         # THEN the reduced graph has the expected number of nodes
-        assert len(reduced._nodes) == expected_node_count, (
-            f"[{desc}] expected {expected_node_count} nodes, got {len(reduced._nodes)}"
+        assert len(reduced.topo_order) == expected_node_count, (
+            f"[{desc}] expected {expected_node_count} nodes, got {len(reduced.topo_order)}"
         )
 
 
@@ -419,37 +420,6 @@ def test_reduce_resolution_no_specs_keeps_top_level_folds_coarse(
     assert model.layer_1 in modules
     assert model.layer_0.attn not in modules
     assert model.layer_0.mlp not in modules
-
-
-def test_reduce_resolution_leaf_target_exposes_siblings_keeps_unrelated_coarse(
-    two_layer_model: TwoLayerModel,
-) -> None:
-    # GIVEN a 2-layer model with a leaf target inside layer_0.attn
-    model = two_layer_model
-    graph = model.to_graph_module()
-    specs = [make_spec(region=model.layer_0.attn.q_proj, fn=noop)]
-
-    # WHEN we reduce with that spec
-    reduced, _ = reduce_resolution(graph, specs)
-    modules = [n.target for n in reduced._nodes.values()]
-
-    # THEN the target's siblings inside layer_0.attn are exposed as leaves
-    assert model.layer_0.attn.q_proj in modules
-    assert model.layer_0.attn.k_proj in modules
-    assert model.layer_0.attn.v_proj in modules
-    assert model.layer_0.attn.out_proj in modules
-
-    # THEN layer_0.mlp and layer_1 stay coarse (no exposed descendants)
-    assert model.layer_0.mlp in modules
-    assert model.layer_0.mlp.up not in modules
-    assert model.layer_0.mlp.down not in modules
-    assert model.layer_1 in modules
-    assert model.layer_1.attn not in modules
-    assert model.layer_1.mlp not in modules
-
-    # THEN opened folds (layer_0 and layer_0.attn) do NOT appear themselves
-    assert model.layer_0 not in modules
-    assert model.layer_0.attn not in modules
 
 
 def test_reduce_resolution_path_spec_inserts_subgraph_node(two_layer_model: TwoLayerModel) -> None:
@@ -947,3 +917,123 @@ def test_input_ref_and_const_repr() -> None:
     # THEN the representations surface the name / value
     assert repr(input_ref) == "InputRef(x)"
     assert repr(const) == "Const(42)"
+
+
+def test_reduce_resolution_keeps_the_folds_that_enclose_a_target(
+    two_layer_model: TwoLayerModel,
+) -> None:
+    # GIVEN a 2-layer model with a leaf target inside layer_0.attn
+    model = two_layer_model
+    graph = model.to_graph_module()
+    specs = [make_spec(region=model.layer_0.attn.q_proj, fn=noop)]
+
+    # WHEN we reduce with that spec
+    reduced, _ = reduce_resolution(graph, specs)
+
+    # THEN the opened folds stay in the hierarchy, and only they
+    folds = {reduced._nodes[fold_id].target for fold_id in reduced._fold_ids}
+    assert folds == {model.layer_0, model.layer_0.attn}
+
+    # THEN every node keeps its enclosing fold, so a leaf names layer_0 through layer_0.attn
+    def parent_of(module: torch.nn.Module) -> object:
+        parent = reduced.node(reduced.node_ref(module)).parent
+        return None if parent is None else reduced.node(parent).target
+
+    assert parent_of(model.layer_0.attn.q_proj) is model.layer_0.attn
+    assert parent_of(model.layer_0.attn) is model.layer_0
+    assert parent_of(model.layer_0.mlp) is model.layer_0
+    assert parent_of(model.layer_0) is None
+    assert parent_of(model.layer_1) is None
+
+
+def test_reduce_resolution_keeps_the_call_of_each_retained_fold(
+    two_layer_model: TwoLayerModel,
+) -> None:
+    # GIVEN a 2-layer model with a leaf target inside layer_1.attn
+    model = two_layer_model
+    graph = model.to_graph_module()
+    specs = [make_spec(region=model.layer_1.attn.q_proj, fn=noop)]
+
+    # WHEN we reduce with that spec
+    reduced, _ = reduce_resolution(graph, specs)
+
+    # THEN the retained folds read the output of the coarse layer_0 call
+    layer_0 = reduced.node_ref(model.layer_0)
+    for fold in (model.layer_1, model.layer_1.attn):
+        assert tuple(reduced.node(reduced.node_ref(fold)).args) == (layer_0,)
+
+    # AND only the leaves read it, not the folds
+    readers = {reduced.node(reader).target for reader, _, _ in reduced.readers(layer_0)}
+    attn = model.layer_1.attn
+    assert readers == {attn.q_proj, attn.k_proj, attn.v_proj}
+
+
+def test_reduce_resolution_exports_retained_fold_inputs_inside_a_span(
+    two_layer_model: TwoLayerModel,
+) -> None:
+    # GIVEN a span that consumes the input of the retained MLP fold
+    model = two_layer_model
+    graph = model.to_graph_module()
+    specs = [
+        make_spec(region=Span(start=model.layer_0.attn.out_proj, end=model.layer_0.mlp.up), fn=noop)
+    ]
+    x = torch.randn(1, 8)
+
+    # WHEN reducing the graph without checkpointing
+    reduced, remapped = reduce_resolution(graph, specs)
+
+    # THEN the original forward result is preserved
+    torch.testing.assert_close(reduced(x), model(x))
+
+    # AND the retained fold reads its original input from an extra subgraph output
+    subgraph = remapped[0].region
+    assert isinstance(subgraph, GraphModule)
+    original_input = graph.node_ref(model.layer_0.attn.out_proj)
+    output_index = subgraph._outputs.index(original_input)
+    subgraph_ref = reduced.node_ref(subgraph)
+    fold = reduced.node(reduced.node_ref(model.layer_0.mlp))
+    assert fold.args == (subgraph_ref[output_index],)
+
+
+def test_readers_at_fold_resolution_give_the_fold_arguments() -> None:
+    # GIVEN a decoder layer whose attention fold reads the graph input
+    model = DecoderLayer()
+    graph = model.to_graph_module()
+    x = graph._inputs["x"]
+    attn = graph.node_ref(model.attn)
+
+    # WHEN we ask for the readers of the input, with and without the fold
+    leaf_readers = {graph.node(reader).target for reader, _, _ in graph.readers(x)}
+    fold_readers = graph.readers(x, folds=[attn])
+
+    # THEN the leaves inside the fold read it by default
+    assert leaf_readers == {model.attn.q_proj, model.attn.k_proj, model.attn.v_proj}
+
+    # AND at fold resolution, the fold reads it once, as its argument
+    assert fold_readers == [(attn, 0, x)]
+
+
+def test_readers_at_fold_resolution_keep_the_leaves_of_a_fold_that_encloses_the_value() -> None:
+    # GIVEN a value inside the attention fold
+    model = DecoderLayer()
+    graph = model.to_graph_module()
+    attn = graph.node_ref(model.attn)
+    q_proj = graph.node_ref(model.attn.q_proj)
+
+    # WHEN we ask for its readers at the resolution of that fold
+    # THEN they are the leaves inside the fold
+    assert graph.readers(q_proj, folds=[attn]) == graph.readers(q_proj)
+
+
+def test_readers_at_fold_resolution_reject_a_read_that_is_not_a_fold_argument() -> None:
+    # GIVEN a node inside the MLP fold that reads a value inside the attention fold
+    model = DecoderLayer()
+    graph = model.to_graph_module()
+    mlp = graph.node_ref(model.mlp)
+    q_proj = graph.node_ref(model.attn.q_proj)
+    graph.add_node("extra", torch.nn.Identity(), [q_proj], parent=mlp)
+
+    # WHEN we ask for the readers of that value at the resolution of the MLP fold
+    # THEN the fold cannot read it, because no argument of the fold is that value
+    with pytest.raises(ValueError, match="not an argument of the fold"):
+        graph.readers(q_proj, folds=[mlp])

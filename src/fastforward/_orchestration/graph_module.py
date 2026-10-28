@@ -462,7 +462,9 @@ class GraphModule(torch.nn.Module):
                     seen.add(arg_base.id)
                     yield arg_base
 
-    def readers(self, ref: NodeRef | InputRef) -> list[tuple[NodeRef, int | str, _BaseRef]]:
+    def readers(
+        self, ref: NodeRef | InputRef, folds: Collection[NodeRef] = ()
+    ) -> list[tuple[NodeRef, int | str, _BaseRef]]:
         """Return each argument of a node that reads `ref`, cached until the graph is mutated.
 
         An entry `(node, argument, read)` means that `node` receives `read` as its
@@ -470,12 +472,26 @@ class GraphModule(torch.nn.Module):
         `read` is `ref` itself or a part of it: for `y = layer(h[0], mask=m)`, `h` gets
         `(layer, 0, h[0])` and `m` gets `(layer, "mask", m)`.
 
+        By default a fold is not a reader: the leaves inside it read the same values. Each
+        fold in `folds` that does not enclose `ref` is a reader in place of its leaves,
+        through the arguments of the call of its original module.
+
         Without the index, every `node_outputs` call scans the whole graph, so a
         forward closure over `n` nodes costs O(n^2). Building it once costs one scan.
+
+        Args:
+            ref: The value to return the readers of.
+            folds: The folds to read at fold resolution. No two of them nest.
+
+        Raises:
+            ValueError: If a leaf inside one of `folds` reads `ref`, but no argument of the
+                fold does.
         """
         if self._readers is None:
             readers: dict[uuid.UUID, list[tuple[NodeRef, int | str, _BaseRef]]] = {}
             for node_id, node in self._nodes.items():
+                if node_id in self._fold_ids:
+                    continue
                 arguments: dict[int | str, _BaseRef] = dict(enumerate(node.args))
                 arguments.update(node.kwargs)
                 for argument, read in arguments.items():
@@ -483,7 +499,36 @@ class GraphModule(torch.nn.Module):
                         entry = (self._node_refs[node_id], argument, read)
                         readers.setdefault(base.id, []).append(entry)
             self._readers = readers
-        return self._readers.get(ref.id, [])
+        leaf_readers = self._readers.get(ref.id, [])
+        if not folds:
+            return leaf_readers
+
+        enclosing = set(self.node_parents(ref)) if isinstance(ref, NodeRef) else set()
+        result: list[tuple[NodeRef, int | str, _BaseRef]] = []
+        seen: set[NodeRef] = set()
+        for reader, argument, read in leaf_readers:
+            fold = next(
+                (p for p in self.node_parents(reader) if p in folds and p not in enclosing), None
+            )
+            if fold is None:
+                result.append((reader, argument, read))
+                continue
+            if fold in seen:
+                continue
+            seen.add(fold)
+            node = self.node(fold)
+            fold_arguments: dict[int | str, _BaseRef] = dict(enumerate(node.args))
+            fold_arguments.update(node.kwargs)
+            fold_reads = [
+                (fold, fold_argument, fold_read)
+                for fold_argument, fold_read in fold_arguments.items()
+                if fold_read.unwrap_ref() == ref
+            ]
+            if not fold_reads:
+                msg = f"{reader!r} inside fold {fold!r} reads {ref!r}, which is not an argument of the fold."
+                raise ValueError(msg)
+            result.extend(fold_reads)
+        return result
 
     def node_outputs(self, node_ref: NodeRef) -> Iterator[NodeRef]:
         """Return nodes that use `node_ref` as input.
@@ -495,6 +540,15 @@ class GraphModule(torch.nn.Module):
             Iterator yielding NodeRef objects for each output node.
         """
         yield from dict.fromkeys(node for node, _, _ in self.readers(node_ref))
+
+    def node_parents(self, node: NodeRef) -> list[NodeRef]:
+        """Return all enclosing folds, immediate parent first."""
+        parents: list[NodeRef] = []
+        parent = self.node(node).parent
+        while parent is not None:
+            parents.append(parent)
+            parent = self.node(parent).parent
+        return parents
 
     def node_ref(self, module: torch.nn.Module) -> NodeRef:
         """Return the NodeRef for the given module instance.
@@ -521,20 +575,11 @@ class GraphModule(torch.nn.Module):
 
     def leaf_nodes(self, fold_ref: NodeRef) -> set[NodeRef]:
         """Return leaf (non-fold) nodes under a fold."""
-        result: set[NodeRef] = set()
-        stack = [
-            self._node_refs[nid] for nid, node in self._nodes.items() if node.parent == fold_ref
-        ]
-
-        while stack:
-            if (child := stack.pop()) in result:
-                continue
-
-            result.add(child)
-            stack.extend(
-                self._node_refs[nid] for nid, node in self._nodes.items() if node.parent == child
-            )
-        return {r for r in result if r.id not in self._fold_ids}
+        return {
+            ref
+            for nid, ref in self._node_refs.items()
+            if nid not in self._fold_ids and fold_ref in self.node_parents(ref)
+        }
 
     def fold_outputs(self, fold_ref: NodeRef) -> list[NodeRef]:
         """Return leaf nodes inside the fold whose output is used externally or as graph output."""
@@ -1225,17 +1270,8 @@ def _coarse_complement(graph: GraphModule, targets: set[NodeRef]) -> list[NodeRe
     """Return the maximally-coarse set of nodes that fills in everything not in `targets`."""
     target_ids = {ref.id for ref in targets}
 
-    def has_target_descendant(fold_id: uuid.UUID) -> bool:
-        for nid, node in graph._nodes.items():
-            if nid in target_ids:
-                ancestor = node.parent
-                while ancestor is not None:
-                    if ancestor.id == fold_id:
-                        return True
-                    ancestor = graph._nodes[ancestor.id].parent
-        return False
-
     complement: list[NodeRef] = []
+    opened = {parent.id for target in targets for parent in graph.node_parents(target)}
 
     def collect(fold_id: uuid.UUID | None = None) -> None:
         children = [
@@ -1246,13 +1282,50 @@ def _coarse_complement(graph: GraphModule, targets: set[NodeRef]) -> list[NodeRe
         for child_id in children:
             if child_id in target_ids:
                 continue
-            if child_id in graph._fold_ids and has_target_descendant(child_id):
+            if child_id in opened:
                 collect(child_id)
             else:
                 complement.append(graph._node_refs[child_id])
 
     collect()
     return complement
+
+
+def _common_parent(graph: GraphModule, refs: set[NodeRef]) -> NodeRef | None:
+    """Return the innermost fold that encloses every node of `refs`, if any."""
+    if not refs:
+        return None
+
+    chains = [graph.node_parents(ref) for ref in refs]
+    shared = set.intersection(*(set(chain) for chain in chains))
+    return next((fold for fold in chains[0] if fold in shared), None)
+
+
+def _retain_parent(
+    source: GraphModule,
+    destination: GraphModule,
+    parent: NodeRef | None,
+) -> NodeRef | None:
+    """Retain a parent chain as folds.
+
+    The arguments of a retained fold are empty until `reduce_resolution` remaps them onto
+    the reduced graph, when every value they read is in it.
+    """
+    if parent is None or parent.id in destination._nodes:
+        return parent
+
+    original = source.node(parent)
+    retained_parent = _retain_parent(source, destination, original.parent)
+
+    destination._nodes[parent.id] = dataclasses.replace(
+        original,
+        args=(),
+        kwargs={},
+        parent=retained_parent,
+    )
+    destination._node_refs[parent.id] = parent
+    destination._fold_ids.add(parent.id)
+    return parent
 
 
 def _resolve_subgraph_input(name: str, context: dict[str, _BaseRef]) -> _BaseRef:
@@ -1278,6 +1351,9 @@ def reduce_resolution(
     granular resolution we need to traverse through the multi-resolution graph. Here we
     extract this resolution, and return a new GraphModule specifically created to run the most
     efficient path through the graph given the subgraph specs.
+
+    Hierarchy is preserved through parent-child relationships, while data-flow
+    edges are retained only along the minimal-resolution execution path.
 
     Returns the reduced graph and remapped specs with regions anchored on concrete
     modules in the reduced graph (original modules for leaves, wrapping subgraphs
@@ -1312,13 +1388,37 @@ def reduce_resolution(
     context: dict[str, _BaseRef] = {name: new_graph.add_input(name) for name in graph.input_names}
     subgraph_idx = 0
 
+    # Retained folds still call their original modules. Their inputs may be inside a
+    # spanning subgraph even when no execution leaf outside that subgraph reads them.
+    for retained_node in [*targets, *complement]:
+        _retain_parent(graph, new_graph, graph.node(retained_node).parent)
+    for path_nodes, _ in subgraphs:
+        _retain_parent(graph, new_graph, _common_parent(graph, path_nodes))
+    fold_inputs = {
+        arg.unwrap_ref()
+        for fold_id in new_graph._fold_ids
+        for arg in (*graph._nodes[fold_id].args, *graph._nodes[fold_id].kwargs.values())
+    }
+    for path_nodes, subgraph in subgraphs:
+        exported = {output.unwrap_ref() for output in subgraph._outputs}
+        for fold_input in sorted(path_nodes & fold_inputs, key=lambda node: node.name):
+            if fold_input not in exported:
+                subgraph.add_output(subgraph._node_refs[fold_input.id])
+
     # Rewire the new graph's path in a dependency-based (topo) order.
     for node in node_order(graph, [*targets, *complement, *[gm for _, gm in subgraphs]]):
         match node:
             case GraphModule() as subgraph:
                 args = [_resolve_subgraph_input(name, context) for name in subgraph.input_names]
                 # Path-specific subgraphs have _no_ kwargs, that wiring is done by input name only.
-                ref = new_graph.add_node(f"subgraph_{subgraph_idx}", subgraph, args, kwargs={})
+                path_nodes = next(nodes for nodes, gm in subgraphs if gm is subgraph)
+                ref = new_graph.add_node(
+                    f"subgraph_{subgraph_idx}",
+                    subgraph,
+                    args,
+                    kwargs={},
+                    parent=_retain_parent(graph, new_graph, _common_parent(graph, path_nodes)),
+                )
                 subgraph_idx += 1
 
                 for i, out in enumerate(subgraph._outputs):
@@ -1333,7 +1433,12 @@ def reduce_resolution(
                     for key, value in original_node.kwargs.items()
                 }
                 ref = new_graph.add_node(
-                    node_name, original_node.target, args, kwargs=kwargs, op=original_node.op
+                    node_name,
+                    original_node.target,
+                    args,
+                    kwargs=kwargs,
+                    op=original_node.op,
+                    parent=_retain_parent(graph, new_graph, original_node.parent),
                 )
                 context[node_name] = ref
 
@@ -1349,9 +1454,26 @@ def reduce_resolution(
                     for key, value in original_node.kwargs.items()
                 }
                 node_ref = new_graph.add_node(
-                    node_name, original_node.target, args, kwargs, op=original_node.op
+                    node_name,
+                    original_node.target,
+                    args,
+                    kwargs,
+                    op=original_node.op,
+                    parent=_retain_parent(graph, new_graph, original_node.parent),
                 )
                 context[node_name] = node_ref
+
+    # A retained fold keeps the call of its original module, on the values of the new graph.
+    for fold_id in new_graph._fold_ids:
+        original_node = graph._nodes[fold_id]
+        new_graph._nodes[fold_id] = dataclasses.replace(
+            new_graph._nodes[fold_id],
+            args=tuple(remap_subgraph_reference(arg, context, {}) for arg in original_node.args),
+            kwargs={
+                key: remap_subgraph_reference(value, context, {})
+                for key, value in original_node.kwargs.items()
+            },
+        )
 
     for graph_output in graph._outputs:
         rewritten = remap_subgraph_reference(graph_output, context, {})
