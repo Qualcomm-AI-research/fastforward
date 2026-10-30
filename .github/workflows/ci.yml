@@ -17,6 +17,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: Define what docker images should be built
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.final.outputs.matrix }}
     steps:
@@ -37,6 +38,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: Build Docker images for pytest and verify jobs
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs:
       - prepare
     strategy:
@@ -70,6 +72,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: Check if Docker dev env can be built
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs:
       - prepare
     strategy:
@@ -105,6 +108,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: Build wheels
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     container:
       image: python:3.12
     steps:
@@ -153,11 +157,13 @@ jobs:
       - if: env.RUN_TESTS == 'true'
         run: uv pip install --system --no-cache --no-deps "$(find wheelhouse -name '*.whl')"
       - if: env.RUN_TESTS == 'true'
+        timeout-minutes: 40
         run: python3 -m pytest --include-slow ./tests
 
   conventional-commits:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       # On a push to the default branch, check only the pushed commits (github.event.before..HEAD).
       # On any other branch, check all commits that are not on the default branch.
@@ -173,6 +179,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: "${{ matrix.JOB.NAME }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs:
       - prepare
       - docker

@@ -29,6 +29,7 @@ jobs:
   docs:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed'
     runs-on: k8s-gpu
+    timeout-minutes: 40
     container:
       image: python:3.12  # should match VER_PYTHON from `scripts/versions.py default --field python`
     steps:
@@ -96,6 +97,7 @@ jobs:
   deploy:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state != 'closed' && (github.ref_name == 'main' || startsWith(github.head_ref, 'docs/'))
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: docs
     environment:
       name: github-pages
@@ -142,6 +144,7 @@ jobs:
   cleanup:
     if: github.server_url != 'https://github.com' && github.event.pull_request.state == 'closed' && startsWith(github.head_ref, 'docs/')
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     container:
       image: python:3.12
     environment:

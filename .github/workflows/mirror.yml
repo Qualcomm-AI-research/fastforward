@@ -12,6 +12,7 @@ jobs:
   deploy:
     if: ${{ github.server_url != 'https://github.com' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     env:
       CHECKOUT_DIR: "_mirror"
       MIRROR_REFS: "refs/heads/main refs/heads/gh-pages" # to extend, add further refs separated by blanks

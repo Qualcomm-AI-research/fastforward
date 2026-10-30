@@ -12,6 +12,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     name: Verify PR description tasks
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Check the contents of the PR description

@@ -9,6 +9,7 @@ jobs:
   cleanup:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - run: sudo cp /tmp/certs/* /usr/local/share/ca-certificates/ && sudo update-ca-certificates
       - uses: actions/checkout@v4
