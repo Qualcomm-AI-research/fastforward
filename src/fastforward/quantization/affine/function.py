@@ -132,13 +132,15 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
         tile_size = params.granularity.tile_size(data.shape)
         if ff.get_qdq_mode():
             # In qdq case we return a standard torch.Tensor and ignore the type error.
+            # The output is already dequantized, so it has the dtype that
+            # `quantize(...).dequantize()` would give, not `quantized_dtype`.
             return affine_static_qdq_fn(  # type: ignore[return-value]
                 data,
                 params.scale,
                 params.offset,
                 tile_size,
                 params.num_bits,
-                params.quantized_dtype or data.dtype,
+                params.dequantize_dtype or data.dtype,
             )
 
         quantized_data = affine_static_quantize_fn(

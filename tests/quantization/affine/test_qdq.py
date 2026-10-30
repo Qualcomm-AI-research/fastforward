@@ -285,6 +285,47 @@ def _run_fwd_bck(
     return output, data.grad, quantizer.scale.grad
 
 
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize(
+    "quantized_dtype",
+    [None, torch.float32, torch.float16, torch.int8],
+    ids=["none", "float32", "float16", "int8"],
+)
+@pytest.mark.parametrize("activation_dtype", [torch.bfloat16, torch.float32])
+def test_qdq_mode_output_dtype_matches_dequantized_output(
+    device: str, quantized_dtype: torch.dtype | None, activation_dtype: torch.dtype
+) -> None:
+    """`qdq_mode` must give the same output as `quantize(...).dequantize()`.
+
+    `qdq_mode` is the fused equivalent of `quantize(...).dequantize()`, so the
+    output must have the activation dtype and values regardless of `quantized_dtype`.
+    """
+    # GIVEN a quantizer with a (possibly different) `quantized_dtype` and activations
+    data = torch.randn(4, 16, device=device, dtype=activation_dtype)
+    quantizer = LinearQuantizer(
+        num_bits=8,
+        granularity=ff.PerTensor(),
+        quantized_dtype=quantized_dtype,
+        device=torch.device(device),
+    )
+    quantizer.quantization_range = (torch.tensor(-3.0), torch.tensor(3.0))
+
+    # WHEN the data is quantized with `qdq_mode` off (then dequantized) and on
+    with ff.qdq_mode(False):
+        quantized = quantizer(data)
+    assert isinstance(quantized, ff.QuantizedTensor)
+    ref_out = quantized.dequantize()
+    with ff.qdq_mode(True):
+        qdq_out = quantizer(data)
+
+    # THEN the dtype is the activation dtype in both modes
+    assert ref_out.dtype == activation_dtype
+    assert qdq_out.dtype == activation_dtype
+
+    # AND the values agree, i.e. they are not truncated to the integer grid
+    torch.testing.assert_close(qdq_out, ref_out)
+
+
 # --------------------------------------------------------------------------------------
 # Compiled path: under torch.compile the qdq autograd function traces the plain torch
 # implementation instead of the custom op. The results must not change.
