@@ -14,6 +14,8 @@
 
 # %% [markdown]
 # ---
+# title: "AutoQuant: Quantizing Qwen-3 0.6B"
+# ---
 # # AutoQuant: Quantizing Qwen-3 0.6B
 #
 # This tutorial walks through `ff.autoquantize`, FastForward's automated quantization workflow,

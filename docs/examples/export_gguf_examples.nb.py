@@ -14,6 +14,8 @@
 
 # %% [markdown]
 # ---
+# title: "Exporting Quantized Models to GGUF"
+# ---
 # # Exporting Quantized Models to GGUF
 #
 # > ⚠️ **WARNING**: GGUF export is experimental and its API may change.
