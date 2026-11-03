@@ -3,8 +3,10 @@
 
 
 import abc
+import contextlib
 import dataclasses
 import functools
+import inspect
 
 from collections import defaultdict
 from typing import (
@@ -24,6 +26,7 @@ import torch
 import torch.utils._pytree as pytree
 
 from torch.utils.data import DataLoader
+from typing_extensions import override
 
 from fastforward._orchestration.graph_module import (
     AttributePath,
@@ -470,11 +473,15 @@ class Call(Instruction):
                     output = self.output_location.place(output)
                 outputs.append(output)
                 del args, kwargs, output
-        register.store(self.target, self.context, ActivationDataset(outputs))
+        self._store(register, outputs)
 
     def _single_batch(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
         """Return the output of one batch."""
         return self.caller(*args, **kwargs)
+
+    def _store(self, register: ActivationRegister, outputs: list[Any]) -> None:
+        """Store the output of each batch in the register."""
+        register.store(self.target, self.context, ActivationDataset(outputs))
 
     def uses(self) -> Iterator[_BaseRef]:  # noqa: D102
         yield from self.args
@@ -893,6 +900,11 @@ def _is_differentiable(leaf: Any) -> bool:
     return isinstance(leaf, torch.Tensor) and leaf.is_floating_point()
 
 
+def _needs_grad(leaf: Any) -> bool:
+    """Return whether `leaf` is a tensor in the autograd graph of a call."""
+    return isinstance(leaf, torch.Tensor) and leaf.requires_grad
+
+
 def _differentiable_leaves(value: Any) -> tuple[list[Any], pytree.TreeSpec]:
     """Flatten `value`, with its floating-point leaves as fresh autograd leaves."""
     leaves, spec = pytree.tree_flatten(value)
@@ -983,6 +995,23 @@ def assemble_grad_output(paths: Sequence[AttributePath], output: Any, *grad_outp
     )
 
 
+@dataclasses.dataclass(frozen=True)
+class Capture:
+    """A value inside the call of a `CallVJP` that the VJP also stores.
+
+    Args:
+        module: A module that the caller calls once for each batch.
+        argument: The position or keyword of the argument of `module` to store, or `None` for
+            the output of `module`.
+        gradient: Whether to store the gradient of the output of `module` instead of a value.
+            The gradient has the structure of the output.
+    """
+
+    module: torch.nn.Module
+    argument: int | str | None = None
+    gradient: bool = False
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class CallVJP(Call):
     """Run one node backward: store the gradients of its inputs for the gradient of its output.
@@ -997,23 +1026,35 @@ class CallVJP(Call):
     The last ref in `args` is the gradient of the output, not an input of the node. It has
     the structure of the output, and a `None` leaf, or `None` as a whole, gives no
     contribution.
+
+    The node can be a module that calls other modules, such as a decoder layer. Then
+    `captures` stores values of the modules it calls under their own refs, so one call
+    gives the gradients and the values inside the node.
+
+    Args:
+        captures: The ref to store each captured value under.
     """
 
+    captures: Mapping[_BaseRef, Capture] = dataclasses.field(default_factory=dict, kw_only=True)
+
+    @override
     def _single_batch(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-        """Return the gradient of each argument of one batch, keyed by position or keyword."""
+        """Return the gradients of the arguments of one batch, and the captured values."""
         args, grad_output = args[:-1], args[-1]
         arguments: dict[int | str, Any] = dict(enumerate(args))
         arguments.update(kwargs)
         leaves, spec = pytree.tree_flatten(arguments)
         grads: list[torch.Tensor | None] = [None] * len(leaves)
         differentiable = [idx for idx, leaf in enumerate(leaves) if _is_differentiable(leaf)]
-        if not differentiable or all(leaf is None for leaf in pytree.tree_leaves(grad_output)):
-            return pytree.tree_unflatten(grads, spec)
+        no_gradient = all(leaf is None for leaf in pytree.tree_leaves(grad_output))
+        if not self.captures and (not differentiable or no_gradient):
+            return pytree.tree_unflatten(grads, spec), []
 
         inputs = list(leaves)
         for idx in differentiable:
             inputs[idx] = leaves[idx].detach().requires_grad_()
-        with torch.enable_grad():
+        calls: dict[_BaseRef, Any] = {}
+        with self._record_calls(calls), torch.enable_grad():
             # The node gets copies, so an in-place operation changes neither a leaf that
             # requires grad nor the stored activation. The copies are made with grad
             # enabled, so that they stay connected to the leaves under an ambient `no_grad`.
@@ -1037,13 +1078,116 @@ class CallVJP(Call):
         pytree.tree_map(pair, grad_output, output, is_leaf=lambda leaf: leaf is None)
         del output
 
-        if outputs:
-            results = torch.autograd.grad(
-                outputs, [inputs[idx] for idx in differentiable], grad_outputs, allow_unused=True
-            )
-            for idx, grad in zip(differentiable, results):
-                grads[idx] = grad
-        return pytree.tree_unflatten(grads, spec)
+        if missing := [capture for ref, capture in self.captures.items() if ref not in calls]:
+            names = ", ".join(dict.fromkeys(_fmt_module(capture.module) for capture in missing))
+            caller = _fmt_module(self.caller)
+            msg = f"{names} did not run in {caller}, so there is no value to capture."
+            raise RuntimeError(msg)
+
+        # A gradient capture differentiates the output leaves of its module that need a
+        # gradient, together with the inputs. A value capture stores a detached value.
+        captured = [calls[ref] for ref in self.captures]
+        wrt = [torch.autograd.graph.get_gradient_edge(inputs[idx]) for idx in differentiable]
+        for capture, value in zip(self.captures.values(), captured, strict=True):
+            if capture.gradient:
+                edges, _ = value
+                wrt.extend(edge for edge in edges if edge is not None)
+        del calls
+
+        results = iter(
+            torch.autograd.grad(outputs, wrt, grad_outputs, allow_unused=True)
+            if outputs and wrt
+            else [None] * len(wrt)
+        )
+        for idx in differentiable:
+            grads[idx] = next(results)
+        for position, capture in enumerate(self.captures.values()):
+            if capture.gradient:
+                edges, output_spec = captured[position]
+                output_grads = [next(results) if edge is not None else None for edge in edges]
+                captured[position] = pytree.tree_unflatten(output_grads, output_spec)
+        return pytree.tree_unflatten(grads, spec), captured
+
+    @contextlib.contextmanager
+    def _record_calls(self, calls: dict[_BaseRef, Any]) -> Iterator[None]:
+        """Snapshot values and autograd edges at the point each capture reads them."""
+        modules: dict[torch.nn.Module, dict[_BaseRef, Capture]] = defaultdict(dict)
+        for ref, capture in self.captures.items():
+            modules[capture.module][ref] = capture
+        seen: set[torch.nn.Module] = set()
+
+        def snapshot(value: Any) -> Any:
+            return pytree.tree_map_only(torch.Tensor, lambda leaf: leaf.detach().clone(), value)
+
+        def record_inputs(
+            module: torch.nn.Module, args: tuple[Any, ...], kwargs: dict[str, Any]
+        ) -> None:
+            if module in seen:
+                msg = (
+                    f"{_fmt_module(module)} runs more than once in {_fmt_module(self.caller)}, "
+                    "so the value to capture is ambiguous."
+                )
+                raise RuntimeError(msg)
+            seen.add(module)
+            input_captures = {
+                ref: capture.argument
+                for ref, capture in modules[module].items()
+                if capture.argument is not None and not capture.gradient
+            }
+            if not input_captures:
+                return
+            bound = inspect.signature(module.forward).bind(*args, **kwargs)
+            bound.apply_defaults()
+            for ref, argument in input_captures.items():
+                if isinstance(argument, int):
+                    value = bound.args[argument]
+                elif argument in bound.arguments:
+                    value = bound.arguments[argument]
+                else:
+                    value = bound.kwargs[argument]
+                calls[ref] = snapshot(value)
+
+        def record_output(module: torch.nn.Module, args: tuple[Any, ...], output: Any) -> None:
+            del args
+            for ref, capture in modules[module].items():
+                if capture.gradient:
+                    leaves, spec = pytree.tree_flatten(output)
+                    # Tensor.grad_fn can change after an in-place operation. Keep the
+                    # original edge so the VJP includes that operation's derivative.
+                    calls[ref] = (
+                        [
+                            torch.autograd.graph.get_gradient_edge(leaf)
+                            if _needs_grad(leaf)
+                            else None
+                            for leaf in leaves
+                        ],
+                        spec,
+                    )
+                elif capture.argument is None:
+                    calls[ref] = snapshot(output)
+
+        with contextlib.ExitStack() as stack:
+            for module in modules:
+                stack.enter_context(
+                    module.register_forward_pre_hook(record_inputs, with_kwargs=True)
+                )
+                stack.enter_context(module.register_forward_hook(record_output))
+            yield
+
+    @override
+    def _store(self, register: ActivationRegister, outputs: list[Any]) -> None:
+        """Store the gradients of the arguments under `target`, and each captured value."""
+        register.store(
+            self.target, self.context, ActivationDataset([grads for grads, _ in outputs])
+        )
+        for position, ref in enumerate(self.captures):
+            values = ActivationDataset([captured[position] for _, captured in outputs])
+            register.store(ref, self.context, values)
+
+    @override
+    def produces(self) -> Iterator[_BaseRef]:
+        yield self.target
+        yield from self.captures
 
 
 Instructions: TypeAlias = Sequence[Instruction]

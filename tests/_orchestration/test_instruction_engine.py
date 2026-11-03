@@ -34,6 +34,7 @@ from fastforward._orchestration.instruction_engine import (
     CallMethod,
     CallModule,
     CallVJP,
+    Capture,
     DeleteRegisterEntries,
     EndOfChunk,
     InstructionEngine,
@@ -58,6 +59,7 @@ from fastforward._orchestration.instruction_engine import (
 )
 from fastforward._orchestration.location import DeviceLocation, DiskLocation, Location
 from fastforward._orchestration.scheduler import ref_load_instructions, schedule
+from typing_extensions import override
 
 from ._models import Add, AddConstant, ReturnTuple
 
@@ -1466,6 +1468,179 @@ def test_call_vjp_supports_in_place_nodes() -> None:
 
     # THEN the stored input does not change
     torch.testing.assert_close(x, stored)
+
+
+class _Block(torch.nn.Module):
+    """A module that calls two linears, the second with a keyword argument."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.first = torch.nn.Linear(4, 4)
+        self.second = _Scaled()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.first(x)
+        output: torch.Tensor = self.second(h.tanh(), scale=2.0 * x)
+        return output
+
+
+class _Scaled(torch.nn.Linear):
+    def __init__(self) -> None:
+        super().__init__(4, 4)
+
+    def forward(self, x: torch.Tensor, *, scale: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+        return super().forward(x) * scale
+
+
+def _vjp_with_captures(
+    caller: torch.nn.Module,
+    x: torch.Tensor,
+    grad_output: torch.Tensor,
+    captures: dict[_BaseRef, Capture],
+) -> tuple[Any, list[Any]]:
+    """Run one `CallVJP` with captures on one batch, and return the gradients and the captures."""
+    register = ActivationRegister()
+    instr = CallVJP(
+        caller=caller,
+        args=[_stored(register, [x]), _stored(register, [grad_output])],
+        kwargs={},
+        target=NodeRef(id=uuid.uuid4(), name="grads"),
+        context=_noop_context,
+        captures=captures,
+    )
+    assert list(instr.produces()) == [instr.target, *captures]
+    instr.execute(register)
+    captured = [register.load(ref, _noop_context).batches[0] for ref in captures]
+    return register.load(instr.target, _noop_context).batches[0], captured
+
+
+def _ref(name: str) -> NodeRef:
+    return NodeRef(id=uuid.uuid4(), name=name)
+
+
+def test_call_vjp_captures_values_and_gradients_inside_its_call() -> None:
+    # GIVEN a module that calls two linears, and captures of the values and gradients inside
+    torch.manual_seed(0)
+    block = _Block()
+    x, grad_output = torch.randn(3, 4), torch.randn(3, 4)
+    captures: dict[_BaseRef, Capture] = {
+        _ref("first output"): Capture(block.first),
+        _ref("first gradient"): Capture(block.first, gradient=True),
+        _ref("second input"): Capture(block.second, argument=0),
+        _ref("second scale"): Capture(block.second, argument="scale"),
+        _ref("second gradient"): Capture(block.second, gradient=True),
+    }
+
+    # WHEN we run its VJP
+    grads, captured = _vjp_with_captures(block, x, grad_output, captures)
+
+    # THEN the gradient of the input and the captured values match autograd
+    x_ref = x.clone().requires_grad_()
+    h = block.first(x_ref)
+    h.retain_grad()
+    y = block.second(h.tanh(), scale=2.0 * x_ref)
+    y.retain_grad()
+    y.backward(grad_output)
+    torch.testing.assert_close(grads[0], x_ref.grad)
+    first, first_grad, second_input, second_scale, second_grad = captured
+    torch.testing.assert_close(first, h.detach())
+    torch.testing.assert_close(first_grad, h.grad)
+    torch.testing.assert_close(second_input, h.tanh().detach())
+    torch.testing.assert_close(second_scale, 2.0 * x)
+    torch.testing.assert_close(second_grad, grad_output)
+
+    # AND the captured values are not in an autograd graph
+    assert all(not value.requires_grad for value in captured)
+
+
+def test_call_vjp_rejects_a_capture_of_a_module_that_runs_twice() -> None:
+    # GIVEN a caller that calls the captured module two times
+    linear = torch.nn.Linear(4, 4)
+    caller = torch.nn.Sequential(linear, linear)
+
+    # WHEN we run its VJP with a capture of that module
+    # THEN the value to capture is ambiguous
+    with pytest.raises(RuntimeError, match="runs more than once"):
+        _vjp_with_captures(caller, torch.randn(4), torch.randn(4), {_ref("out"): Capture(linear)})
+
+    # AND both capture hooks are removed after the failure
+    assert not linear._forward_pre_hooks
+    assert not linear._forward_hooks
+
+
+def test_call_vjp_rejects_a_capture_of_a_module_that_does_not_run() -> None:
+    # GIVEN a caller that does not call the captured module
+    skipped = torch.nn.Linear(4, 4)
+    caller = torch.nn.Linear(4, 4)
+
+    # WHEN we run its VJP with a capture of that module
+    # THEN there is no value to capture
+    with pytest.raises(RuntimeError, match="did not run in Linear"):
+        _vjp_with_captures(caller, torch.randn(4), torch.randn(4), {_ref("out"): Capture(skipped)})
+
+
+def test_call_vjp_captures_before_inplace_mutation() -> None:
+    # GIVEN a linear output mutated by ReLU, and captures on both sides of the call
+    linear = torch.nn.Linear(2, 2, bias=False)
+    with torch.no_grad():
+        linear.weight.copy_(torch.eye(2))
+    relu = torch.nn.ReLU(inplace=True)
+    block = torch.nn.Sequential(linear, relu)
+    x = torch.tensor([-2.0, 3.0])
+    captures: dict[_BaseRef, Capture] = {
+        _ref("linear output"): Capture(linear),
+        _ref("linear gradient"): Capture(linear, gradient=True),
+        _ref("relu input"): Capture(relu, argument=0),
+        _ref("relu output"): Capture(relu),
+        _ref("relu gradient"): Capture(relu, gradient=True),
+    }
+
+    # WHEN the fold is recomputed with captures under ambient no_grad
+    with torch.no_grad():
+        grads, captured = _vjp_with_captures(block, x, torch.tensor([5.0, 7.0]), captures)
+
+    # THEN values precede mutation and gradients include the ReLU mask
+    before, before_grad, relu_input, after, after_grad = captured
+    torch.testing.assert_close(before, x)
+    torch.testing.assert_close(relu_input, x)
+    torch.testing.assert_close(after, torch.tensor([0.0, 3.0]))
+    torch.testing.assert_close(before_grad, torch.tensor([0.0, 7.0]))
+    torch.testing.assert_close(after_grad, torch.tensor([5.0, 7.0]))
+    torch.testing.assert_close(grads[0], before_grad)
+    assert all(not value.requires_grad for value in captured)
+
+
+@pytest.mark.parametrize("keyword_call", [False, True])
+def test_call_vjp_normalizes_captured_arguments(keyword_call: bool) -> None:
+    # GIVEN a functional intermediate passed to a linear by position or keyword
+    class Block(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.linear = torch.nn.Linear(2, 2)
+
+        @override
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            h = x.sin()
+            output: torch.Tensor = self.linear(input=h) if keyword_call else self.linear(h)
+            return output
+
+    block = Block()
+    x = torch.tensor([-0.5, 1.0])
+
+    # WHEN captures address the same input by its normalized position and name
+    _, captured = _vjp_with_captures(
+        block,
+        x,
+        torch.ones_like(x),
+        {
+            _ref("positional"): Capture(block.linear, argument=0),
+            _ref("keyword"): Capture(block.linear, argument="input"),
+        },
+    )
+
+    # THEN both recover the functional intermediate regardless of invocation syntax
+    for value in captured:
+        torch.testing.assert_close(value, x.sin())
 
 
 def test_sum_grad_outputs_adds_present_leaves() -> None:
