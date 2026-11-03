@@ -680,6 +680,38 @@ class DeviceCastModel(torch.nn.Module):
         return x * self.inv_freq.float().to(x.device)
 
 
+class MetadataArgRotary(torch.nn.Module):
+    """Rotary embedding that reads its first input for the dtype only.
+
+    `torch.export` drops the input from the call, so `trace` cannot call this module
+    and runs the module of `unflatten` instead. Used to verify that the fallback takes
+    the training mode of the original, also for an uncalled module inside it with another mode.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.register_buffer("inv_freq", torch.ones(4))
+        self.frozen = torch.nn.Dropout(0.1)
+
+    def forward(self, x: torch.Tensor, position_ids: torch.Tensor) -> torch.Tensor:
+        """Return the cosine of the positions times the frequencies, in the dtype of `x`."""
+        assert isinstance(self.inv_freq, torch.Tensor)
+        return (position_ids.float()[..., None] * self.inv_freq).cos().to(x.dtype)
+
+
+class RotaryScaled(torch.nn.Module):
+    """Linear layer on the input scaled by a `MetadataArgRotary`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rotary = MetadataArgRotary()
+        self.fc = torch.nn.Linear(4, 4)
+
+    def forward(self, x: torch.Tensor, position_ids: torch.Tensor) -> torch.Tensor:
+        """Scale `x` by the rotary embedding and apply the linear layer."""
+        return self.fc(x * self.rotary(x, position_ids))  # type: ignore[no-any-return]
+
+
 class ToyAttention(torch.nn.Module):
     """Llama-named attention block (q/k/v/o_proj) with a stand-in forward."""
 

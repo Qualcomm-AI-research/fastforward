@@ -736,6 +736,11 @@ class _GraphBuilder:
         else:
             original = self._original_root.get_submodule(absolute_path)
             if not _can_call_original(original, submod, fx_node):
+                # `unflatten` makes its modules in training mode. The fallback runs in place
+                # of the original, so each of its modules takes the mode of the original.
+                original_modes = {name: m.training for name, m in original.named_modules()}
+                for name, module in submod.named_modules():
+                    module.training = original_modes.get(name, original.training)
                 original = submod
             self._fx_to_ff[fx_node] = self._add_op_node(fx_node, target, original, Op.torch_module)
 

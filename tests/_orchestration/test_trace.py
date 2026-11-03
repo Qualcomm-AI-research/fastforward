@@ -42,6 +42,7 @@ from ._models import (
     NestedMLP,
     NestedWithTensorOps,
     PairLayerModel,
+    RotaryScaled,
     TinyMLP,
     ToyDecoderLayer,
     ToyLlama,
@@ -557,6 +558,25 @@ def test_trace_keeps_dtype_layout_cast_device_agnostic(device_cast_model: Device
         got = graph(example)
 
     torch.testing.assert_close(got, expected)
+
+
+@pytest.mark.parametrize("training", [False, True], ids=["eval", "train"])
+def test_trace_fallback_module_takes_the_training_mode_of_each_original_module(
+    training: bool,
+) -> None:
+    # GIVEN a model with a module that `trace` cannot call, in eval or training mode
+    model = RotaryScaled().train(training)
+    model.rotary.frozen.eval()
+
+    # WHEN we trace it
+    graph = trace(model, torch.randn(1, 3, 4), torch.arange(3)[None])
+
+    # THEN the module that runs in place of the original is in the same mode
+    target = graph.node(next(ref for ref in graph.topo_order if ref.name == "rotary")).target
+    assert isinstance(target, nn.Module)
+    assert target is not model.rotary
+    assert target.training is training
+    assert target.get_submodule("frozen").training is False
 
 
 def test_trace_removes_export_guards_so_blocks_stay_non_leaf() -> None:
