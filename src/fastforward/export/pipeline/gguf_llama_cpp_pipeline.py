@@ -34,7 +34,7 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
         | +--> extract_quantized_weights   (root; int codes + scales + float passthroughs)
                     |
                     v
-                apply_tensor_rules          (adapter rules: rename/transform/fuse/drop)
+                apply_tensor_rules          (adapter rules: rename/transform/fuse/drop/synthesize)
                     |
                     v
                 pack_gguf_blocks            (Q4_0/Q8_0 convention convert + nibble pack)

@@ -24,7 +24,7 @@ import pytest
 import torch
 
 from fastforward.export.pipeline import ExportRequest, GgufLlamaCppOptions, export_with_pipeline
-from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter, Rename
+from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter, Rename, Synthesize
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -203,3 +203,70 @@ def test_user_defined_arch_adapter_round_trips_custom_naming(
     # THEN: the toy adapter's Q4_0 tensors were packed as Q4_0 blocks.
     q_tensor = next(t for t in reader.tensors if t.name == "blk.0.attn_q.weight")
     assert q_tensor.tensor_type == gguf.GGMLQuantizationType.Q4_0
+
+
+def _toy_extra_tensors(config: Any) -> dict[str, torch.Tensor]:
+    """Synthesize a config-derived tensor the toy model does not carry."""
+    return {"rope_freqs.weight": torch.arange(config.hidden_size // 2, dtype=torch.float32)}
+
+
+@pytest.mark.slow
+def test_user_defined_arch_adapter_writes_extra_tensors(
+    tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
+    # GIVEN: the quantized toy model and a config.
+    vocab, hidden, n_blocks = 32, 32, 1
+    model = _ToyModel(vocab, hidden, n_blocks)
+    _quantize_linears(model)
+    model.eval()
+    config = SimpleNamespace(
+        max_position_embeddings=128,
+        hidden_size=hidden,
+        num_hidden_layers=n_blocks,
+        intermediate_size=hidden,
+        num_attention_heads=4,
+        num_key_value_heads=4,
+        rms_norm_eps=1e-5,
+        vocab_size=vocab,
+        tie_word_embeddings=False,
+    )
+
+    # GIVEN: a toy adapter that synthesizes a tensor absent from the model.
+    adapter = ArchAdapter(
+        gguf_arch="toy",
+        tensor_rules=(Rename(_toy_name_map), Synthesize(_toy_extra_tensors)),
+        write_metadata=_toy_write_metadata,
+        tokenizer_model="gpt2",
+        tokenizer_pre="default",
+    )
+    options = GgufLlamaCppOptions(
+        arch_adapter=adapter,
+        quant_format=GGUF_Q4_0,
+        model_config=config,
+        float_type="F16",
+        float_type_overrides={r"rope_freqs\.weight": "F32"},
+    )
+
+    # WHEN: exporting through the registered gguf/llama_cpp pipeline.
+    artifacts = export_with_pipeline(
+        ExportRequest(
+            model=model,
+            sample_inputs=[((torch.randint(0, vocab, (1, 8)),), {})],
+            output_dir=tmp_path,
+            model_name="toy-extra",
+            target="gguf",
+            format="llama_cpp",
+            options=options.to_context(),
+        )
+    )
+
+    # THEN: the synthesized tensor is in the file alongside the model's tensors,
+    # with its float_type override applied and its values preserved.
+    reader = gguf.GGUFReader(str(artifacts.stage_outputs["write_gguf"]))
+    tensors = {tensor.name: tensor for tensor in reader.tensors}
+    assert "blk.0.attn_q.weight" in tensors
+    rope_freqs = tensors["rope_freqs.weight"]
+    assert rope_freqs.tensor_type == gguf.GGMLQuantizationType.F32
+    torch.testing.assert_close(
+        torch.from_numpy(rope_freqs.data.copy()), torch.arange(hidden // 2, dtype=torch.float32)
+    )

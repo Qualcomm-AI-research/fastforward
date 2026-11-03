@@ -19,6 +19,7 @@ from fastforward.export.stages.gguf import (
     ExtractedTensor,
     Fuse,
     Rename,
+    Synthesize,
     Transform,
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
@@ -112,6 +113,40 @@ def test_drop_tied_lm_head_without_tie_attribute_keeps_head() -> None:
     assert len(result) == 1
 
 
+def test_synthesize_appends_named_float32_tensors() -> None:
+    # GIVEN: a synthesize rule deriving a bf16 tensor from the config.
+    rule = Synthesize(
+        lambda config: {"rope_freqs.weight": torch.ones(config.hidden_size, dtype=torch.bfloat16)}
+    )
+    existing = _float_tensor("a.weight", gguf_name="a.weight")
+
+    # WHEN: applying it.
+    result = rule.apply([existing], _CONFIG)
+
+    # THEN: the synthesized tensor follows the existing ones as a named float32 tensor.
+    assert [t.gguf_name for t in result] == ["a.weight", "rope_freqs.weight"]
+    synthesized = result[1]
+    assert synthesized.kind == "float"
+    assert synthesized.rows == 4
+    assert synthesized.float_data is not None
+    assert synthesized.float_data.dtype == torch.float32
+    torch.testing.assert_close(synthesized.float_data, torch.ones(4))
+
+
+@pytest.mark.parametrize(
+    "data",
+    [torch.ones(4, dtype=torch.int32), torch.tensor(1.0)],
+    ids=["integer", "zero-dim"],
+)
+def test_synthesize_rejects_invalid_tensor(data: torch.Tensor) -> None:
+    # GIVEN: a synthesize rule returning a tensor that is not a >=1-D float tensor.
+    rule = Synthesize(lambda config: {"bad.weight": data})
+
+    # WHEN/THEN: applying it raises.
+    with pytest.raises(ExportError, match="float tensor"):
+        rule.apply([], _CONFIG)
+
+
 def test_apply_tensor_rules_runs_rules_in_order() -> None:
     # GIVEN: a fusion of q/k followed by a rename of the fused tensor only.
     tensors = [
@@ -151,8 +186,11 @@ def test_apply_tensor_rules_drops_unnamed_tensors_with_warning(
 
 def test_apply_tensor_rules_rejects_duplicate_gguf_names() -> None:
     # GIVEN: rules that give two tensors the same GGUF name.
-    tensors = [_float_tensor("keep.a"), _float_tensor("keep.b")]
-    rules = (Rename(lambda hf_name: "blk.0.attn_q.weight"),)
+    tensors = [_float_tensor("keep.a")]
+    rules = (
+        Rename(lambda hf_name: "blk.0.attn_q.weight"),
+        Synthesize(lambda config: {"blk.0.attn_q.weight": torch.ones(4)}),
+    )
 
     # WHEN/THEN: applying them raises.
     with pytest.raises(ExportError, match="duplicate GGUF tensor names: blk.0.attn_q.weight"):

@@ -155,7 +155,7 @@ class ArchAdapter:
             into the GGUF header and used by llama.cpp to pick its loader.
         tensor_rules: Ordered :class:`~fastforward.export.stages.gguf.rules.TensorRule`
             sequence rewriting the extracted model tensors into GGUF tensors
-            (renaming, per-tensor transforms, fusion, dropping).
+            (renaming, per-tensor transforms, fusion, dropping, synthesizing).
             Only model parameters claimed by a rule are extracted, and only
             tensors that end up with a GGUF name are written. See
             :mod:`fastforward.export.stages.gguf.rules`.

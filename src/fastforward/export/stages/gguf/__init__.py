@@ -6,8 +6,8 @@
 Users pick a shipped :data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, or
 :data:`QWEN3_ADAPTER`, or construct their own :class:`ArchAdapter` when
 targeting a model with a non-standard module tree; its ``tensor_rules`` are
-built from :class:`Rename`, :class:`Transform`, :class:`Fuse`, :class:`Drop`, or a
-custom :class:`TensorRule`. The quantization format
+built from :class:`Rename`, :class:`Transform`, :class:`Fuse`, :class:`Drop`,
+:class:`Synthesize`, or a custom :class:`TensorRule`. The quantization format
 is selected via :data:`GGUF_Q4_0` / :data:`GGUF_Q4_1` / :data:`GGUF_Q8_0`
 or a custom :class:`GgufQuantFormat`.
 
@@ -46,6 +46,7 @@ from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD as DROP_TIED_
 from fastforward.export.stages.gguf.rules import Drop as Drop
 from fastforward.export.stages.gguf.rules import Fuse as Fuse
 from fastforward.export.stages.gguf.rules import Rename as Rename
+from fastforward.export.stages.gguf.rules import Synthesize as Synthesize
 from fastforward.export.stages.gguf.rules import TensorRule as TensorRule
 from fastforward.export.stages.gguf.rules import TensorTransformT as TensorTransformT
 from fastforward.export.stages.gguf.rules import Transform as Transform

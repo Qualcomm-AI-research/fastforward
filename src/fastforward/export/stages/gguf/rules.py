@@ -6,12 +6,14 @@ r"""Tensor rules: the ordered rewrite from extracted model tensors to GGUF tenso
 An :class:`~fastforward.export.stages.gguf.adapter.ArchAdapter` describes every
 model-specific tensor rewrite as an ordered sequence of :class:`TensorRule`
 objects. The pipeline applies them one after another to the full list of
-extracted tensors, so a rule can act on one tensor or several at once:
+extracted tensors, so a rule can act on one tensor, several at once, or add
+tensors the model does not carry:
 
 - :class:`Rename` assigns GGUF names (1 -> 1).
 - :class:`Transform` rewrites tensors matching a pattern (1 -> 1).
 - :class:`Fuse` concatenates groups of tensors (N -> 1).
 - :class:`Drop` removes tensors matching a pattern (1 -> 0).
+- :class:`Synthesize` adds config-derived tensors (0 -> N).
 
 Every pattern is matched against :attr:`ExtractedTensor.hf_name`; :class:`Rename`
 only sets ``gguf_name``, so rules placed after it still see HuggingFace names.
@@ -34,6 +36,7 @@ rule consumes model parameters no other rule claims)::
             target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
         ),
         Rename(my_name_map),
+        Synthesize(my_extra_tensors),
     )
 """
 
@@ -47,6 +50,8 @@ from collections import Counter
 from dataclasses import dataclass, replace
 from typing import Callable, Sequence, TypeAlias
 
+import torch
+
 from typing_extensions import override
 
 from fastforward.exceptions import ExportError
@@ -58,6 +63,7 @@ logger = logging.getLogger(__name__)
 
 _NameMapT: TypeAlias = Callable[[str], str | None]
 _ConditionT: TypeAlias = Callable[[GgufSourceConfig], bool]
+_SynthesizeT: TypeAlias = Callable[[GgufSourceConfig], dict[str, torch.Tensor]]
 
 TensorTransformT: TypeAlias = Callable[[ExtractedTensor, GgufSourceConfig], ExtractedTensor]
 """A 1 -> 1 tensor rewrite used by :class:`Transform`.
@@ -240,6 +246,46 @@ DROP_TIED_LM_HEAD = Drop(r"lm_head\.weight", when=_ties_word_embeddings)
 llama.cpp reuses ``token_embd.weight`` as the output projection when no
 ``output.weight`` tensor is present.
 """
+
+
+@dataclass(frozen=True, slots=True)
+class Synthesize(TensorRule):
+    """Add tensors the target runtime needs but the model does not carry.
+
+    Example: llama.cpp's ``rope_freqs.weight``, the per-frequency RoPE divisors
+    some architectures (e.g. Gemma4's partial RoPE) are loaded with.
+
+    Attributes:
+        fn: Receives the source config and returns a mapping of GGUF tensor
+            name to floating-point tensor (at least 1-D). The tensors are
+            appended as named float tensors, cast to float32, and written like
+            any other float tensor.
+    """
+
+    fn: _SynthesizeT
+
+    @override
+    def apply(
+        self, tensors: list[ExtractedTensor], config: GgufSourceConfig
+    ) -> list[ExtractedTensor]:
+        synthesized: list[ExtractedTensor] = []
+        for gguf_name, data in self.fn(config).items():
+            if not data.is_floating_point() or data.ndim == 0:
+                found = f"dtype={data.dtype}, ndim={data.ndim}"
+                msg = f"Synthesized tensor '{gguf_name}' must be a >=1-D float tensor, got {found}"
+                raise ExportError(msg)
+            float_data = data.detach().cpu().float()
+            synthesized.append(
+                ExtractedTensor(
+                    # Synthesized tensors have no HF source; reuse the GGUF name.
+                    hf_name=gguf_name,
+                    kind="float",
+                    rows=float_data.shape[0],
+                    float_data=float_data,
+                    gguf_name=gguf_name,
+                )
+            )
+        return [*tensors, *synthesized]
 
 
 def apply_tensor_rules(

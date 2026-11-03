@@ -8,6 +8,7 @@ without requiring the optional ``gguf`` package. The write stage's dependency
 handling is tested via its error paths.
 """
 
+from dataclasses import replace
 from typing import Any
 from unittest import mock
 
@@ -22,6 +23,7 @@ from fastforward.export.stages.gguf import (
     GGUF_Q8_0,
     LLAMA_ADAPTER,
     QWEN3_ADAPTER,
+    Synthesize,
 )
 from fastforward.export.stages.gguf._extract import ExtractedTensor
 from fastforward.export.stages.gguf._packing import default_format_registry
@@ -91,6 +93,27 @@ def test_apply_tensor_rules_drops_unnamed_tensors() -> None:
     # THEN: only the mappable tensor survives, tagged with its GGUF name.
     assert len(result) == 1
     assert result[0].gguf_name == "blk.1.attn_v.weight"
+
+
+def test_apply_tensor_rules_appends_synthesized_tensors() -> None:
+    # GIVEN: an adapter with a Synthesize rule deriving a tensor from the config.
+    def extra_tensors(config: Any) -> dict[str, torch.Tensor]:
+        return {"rope_freqs.weight": torch.ones(config.hidden_size)}
+
+    adapter = replace(
+        LLAMA_ADAPTER, tensor_rules=(*LLAMA_ADAPTER.tensor_rules, Synthesize(extra_tensors))
+    )
+    mapped = make_quantized_tensor("model.layers.0.self_attn.q_proj.weight", rows=4, cols=32)
+    context = {"arch_adapter": adapter, "model_config": _make_full_config()}
+
+    # WHEN: applying the adapter's tensor rules.
+    result = stage_apply_tensor_rules(([mapped],), [], context)
+
+    # THEN: the synthesized tensor follows the mapped tensor.
+    assert [tensor.gguf_name for tensor in result] == [
+        "blk.0.attn_q.weight",
+        "rope_freqs.weight",
+    ]
 
 
 def test_apply_tensor_rules_requires_model_config() -> None:
