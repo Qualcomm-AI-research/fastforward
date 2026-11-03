@@ -33,7 +33,7 @@ import collections
 import dataclasses
 import functools
 
-from collections.abc import Hashable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Hashable, Iterable, Iterator, Mapping, Sequence
 from functools import cached_property
 
 import attrs
@@ -74,6 +74,7 @@ from fastforward._orchestration.instruction_engine import (
     CallMethod,
     CallModule,
     CallVJP,
+    Capture,
     EndOfChunk,
     Instruction,
     InstructionProgram,
@@ -320,6 +321,10 @@ class GradientIntervention(_Intervention):
         ]
         gradients.sort(key=lambda item: topo_index.get(item[0].reference, -1), reverse=True)
 
+        # The VJP of a checkpointed fold stores what the backward pass reads inside it.
+        for plan in [*self.flows, *(leaf for op in self.ops for leaf in op.leaves())]:
+            scheduler.capture(plan.refs(), plan.generator)
+
         waiting = list(self.ops)
         for gradient, generator in gradients:
             scheduler.schedule_gradient(gradient, generator)
@@ -420,13 +425,111 @@ class Timeline:
 class Scheduler:
     """Compiles a graph and its interventions into instructions."""
 
-    def __init__(self, graph: GraphModule, *, chunked: bool = False) -> None:
+    def __init__(
+        self, graph: GraphModule, *, chunked: bool = False, checkpoint: Collection[NodeRef] = ()
+    ) -> None:
         self.graph = graph
         self.chunked = chunked
         self.instructions: list[Instruction] = []
         self.register: set[Value] = set()
         self.timeline = Timeline(graph)
         self._pending: list[tuple[FlowPlan, Value]] = []
+        self._checkpoint_folds = frozenset(checkpoint)
+        self._captures: collections.defaultdict[
+            tuple[NodeRef, FlowGenerator], dict[_BaseRef, Capture]
+        ] = collections.defaultdict(dict)
+
+    @cached_property
+    def _fold_of(self) -> dict[NodeRef, NodeRef]:
+        """The checkpointed fold of each leaf inside one, the outermost fold if they nest.
+
+        The backward pass runs each of these folds as one VJP of its original module. So
+        the fold must have one output, which no leaf of the fold reads.
+
+        Raises:
+            ValueError: If a checkpointed fold does not meet these conditions.
+        """
+        fold_of: dict[NodeRef, NodeRef] = {}
+        for fold in self._checkpoint_folds:
+            if not self._checkpoint_folds.isdisjoint(self.graph.node_parents(fold)):
+                continue
+            leaves = self.graph.leaf_nodes(fold)
+            _check_fold_vjp(self.graph, fold, leaves)
+            fold_of.update(dict.fromkeys(leaves, fold))
+        return fold_of
+
+    @cached_property
+    def _folds(self) -> frozenset[NodeRef]:
+        """The checkpointed folds that the backward pass runs as one VJP each."""
+        return frozenset(self._fold_of.values())
+
+    @cached_property
+    def _fold_outputs(self) -> dict[NodeRef, NodeRef]:
+        """The output of each checkpointed fold that the backward pass runs as one VJP."""
+        outputs: dict[NodeRef, NodeRef] = {}
+        for fold in self._folds:
+            (outputs[fold],) = self.graph.fold_outputs(fold)
+        return outputs
+
+    def _output(self, node: NodeRef) -> NodeRef:
+        """Return the node whose output `node` gives: the output of a fold, or `node`."""
+        return self._fold_outputs.get(node, node)
+
+    @cached_property
+    def _checkpointed_nodes(self) -> frozenset[NodeRef]:
+        """Nodes whose forward values may be discarded: the leaves of a checkpointed fold.
+
+        The output of each fold is retained.
+        """
+        outputs = set(self._fold_outputs.values())
+        return frozenset(node for node in self._fold_of if node not in outputs)
+
+    def capture(self, refs: Iterable[_BaseRef], generator: FlowGenerator) -> None:
+        """Have the VJP of each checkpointed fold store the refs in `refs` that are inside it.
+
+        Then the backward pass reads them without computing the fold again. A value that no
+        module of the fold gives is computed again when it is read.
+
+        Args:
+            refs: The refs that the backward pass reads.
+            generator: The flow generator that reads them.
+
+        Raises:
+            ValueError: If no module of its fold gives a gradient inside a checkpointed fold.
+        """
+        for ref in refs:
+            base = ref.unwrap_ref()
+            node = base.reference if isinstance(base, GradientRef) else base
+            if node not in self._checkpointed_nodes:
+                continue
+            assert isinstance(node, NodeRef)
+            fold = self._fold_of[node]
+            if (capture := _capture(self.graph, fold, base)) is not None:
+                self._captures[fold, generator][base] = capture
+            elif isinstance(base, GradientRef):
+                msg = (
+                    f"The VJP of checkpointed fold {fold!r} cannot give the gradient at {node!r}: "
+                    "it gives the gradients at the outputs of the modules that the fold calls."
+                )
+                raise ValueError(msg)
+
+    def release_checkpointed_values(self) -> None:
+        """Forget the inner values of the checkpointed folds.
+
+        A later read gets them from the VJP of the fold, or computes them again from the
+        values that enter the fold. The lifetime pass frees the first copy after its last read.
+        """
+        # The computation again must see the weights of the first one, so no weight may
+        # have changed yet. `schedule` runs the backward pass before every optimization.
+        assert self.timeline.mutations == 0
+        self.register = {
+            value
+            for value in self.register
+            if not (
+                isinstance(base := value.ref.unwrap_ref(), NodeRef)
+                and base in self._checkpointed_nodes
+            )
+        }
 
     @cached_property
     def _output_uses(self) -> dict[NodeRef | InputRef, list[tuple[int, AttributePath]]]:
@@ -605,22 +708,30 @@ class Scheduler:
             if base in needed or self.timeline.value(gradient, generator) in self.register:
                 continue
             needed.add(base)
-            stack.extend(
-                node for node, _, _ in self.graph.readers(base) if node in self._differentiable
-            )
+            if base in self._checkpointed_nodes:
+                # The VJP of the fold gives this gradient, from the gradient of its output.
+                stack.append(self._fold_outputs[self._fold_of[base]])
+                continue
+            for node, _, _ in self.graph.readers(base, self._folds):
+                if self._output(node) in self._differentiable:
+                    stack.append(self._output(node))
 
         # A gradient needs the gradients of the nodes that read it, so they go first.
         topo_index: dict[NodeRef | InputRef, int] = {
             node: idx for idx, node in enumerate(self.graph.topo_order)
         }
         for base in sorted(needed, key=lambda base: topo_index.get(base, -1), reverse=True):
-            self._schedule_total_gradient(GradientRef(base, ref.gradient), generator)
+            if base in self._checkpointed_nodes:
+                self._schedule_vjp(self._fold_of[base], ref.gradient, generator)
+            else:
+                self._schedule_total_gradient(GradientRef(base, ref.gradient), generator)
 
     def _schedule_total_gradient(self, ref: GradientRef, generator: FlowGenerator) -> None:
         """Schedule the step that adds every contribution to the gradient `ref`.
 
         Each graph output and each node that reads the value sends a contribution to
-        one part of it. A value that does not reach the graph outputs gets `None`.
+        one part of it. A checkpointed fold reads the value in place of the nodes inside it.
+        A value that does not reach the graph outputs gets `None`.
         """
         context = generator.context
         base = ref.reference
@@ -629,9 +740,9 @@ class Scheduler:
             for position, path in self._output_uses[base]:
                 loss_grads = self._schedule_loss_grads(ref.gradient, generator, position)
                 parts.extend((path, loss_grad) for loss_grad in loss_grads)
-            for node, argument, read in self.graph.readers(base):
-                if node in self._differentiable:
-                    vjp = self._schedule_vjp(GradientRef(node, ref.gradient), generator)
+            for node, argument, read in self.graph.readers(base, self._folds):
+                if self._output(node) in self._differentiable:
+                    vjp = self._schedule_vjp(node, ref.gradient, generator)
                     _, path = read.unwrap_path()
                     parts.append((path, vjp[argument]))
 
@@ -701,17 +812,29 @@ class Scheduler:
             )
         )
         self.register.update(self.timeline.value(target, generator) for target in targets)
+
+        # Forward and loss-gradient instructions have been scheduled. Forget checkpointed
+        # intermediates so backward scheduling emits recomputation instructions when needed.
+        self.release_checkpointed_values()
         return loss_grads
 
-    def _schedule_vjp(self, grad_output: GradientRef, generator: FlowGenerator) -> VJPRef:
-        """Schedule the VJP that runs `grad_output` back through its node, and return its ref.
+    def _schedule_vjp(
+        self, node_ref: NodeRef, gradient: Gradient, generator: FlowGenerator
+    ) -> VJPRef:
+        """Schedule the VJP that runs the gradient of a node output back, and return its ref.
 
         The VJP gives the gradient of each argument of the node, keyed by position or keyword.
+        For a checkpointed fold, it calls the original module of the fold once, for the
+        gradient of the output of the fold, and stores the captured values inside the fold.
         """
-        node_ref = grad_output.reference
-        assert isinstance(node_ref, NodeRef)
-        target = VJPRef(node_ref, grad_output.gradient)
-        if self.timeline.value(target, generator) in self.register:
+        target = VJPRef(node_ref, gradient)
+        captures = {
+            ref: capture
+            for ref, capture in self._captures.get((node_ref, generator), {}).items()
+            if not isinstance(ref, GradientRef) or ref.gradient == gradient
+        }
+        values = [self.timeline.value(ref, generator) for ref in (target, *captures)]
+        if all(value in self.register for value in values):
             return target
 
         node = self.graph.node(node_ref)
@@ -721,14 +844,15 @@ class Scheduler:
         self.instructions.append(
             CallVJP(
                 caller=node.target,
-                args=[*node.args, grad_output],
+                args=[*node.args, GradientRef(self._output(node_ref), gradient)],
                 kwargs=dict(node.kwargs),
                 target=target,
                 context=generator.context,
                 cache=True,
+                captures=captures,
             )
         )
-        self.register.add(self.timeline.value(target, generator))
+        self.register.update(values)
         return target
 
     def demands_of(self, plan: FlowPlan) -> list[Value]:
@@ -840,6 +964,51 @@ class Scheduler:
             self.schedule_intervention(intervention)
 
         return self.instructions
+
+
+def _check_fold_vjp(graph: GraphModule, fold: NodeRef, leaves: set[NodeRef]) -> None:
+    """Check that one VJP of the original module of `fold` can run the fold backward.
+
+    Raises:
+        ValueError: If the fold does not have one output, or if a leaf of the fold reads it.
+    """
+    outputs = graph.fold_outputs(fold)
+    if len(outputs) != 1:
+        msg = f"Checkpointed fold {fold!r} has {len(outputs)} outputs, but its VJP needs one."
+        raise ValueError(msg)
+    if any(reader in leaves for reader, _, _ in graph.readers(outputs[0])):
+        msg = f"A node inside checkpointed fold {fold!r} reads the output of the fold."
+        raise ValueError(msg)
+
+
+def _capture(graph: GraphModule, fold: NodeRef, ref: _BaseRef) -> Capture | None:
+    """Return how the VJP of `fold` captures `ref`, or `None` if no module of the fold gives it.
+
+    A module node gives its output and the gradient of its output. A value that a module node
+    reads as a whole argument is captured as that argument.
+    """
+    module = graph.node(fold).target
+    assert isinstance(module, torch.nn.Module)
+    submodules = set(module.modules())
+
+    def called_module(node: NodeRef) -> torch.nn.Module | None:
+        target = graph.node(node).target
+        if graph.node(node).op is Op.torch_module and target in submodules:
+            return target
+        return None
+
+    match ref:
+        case GradientRef(reference=NodeRef() as node) if (
+            called := called_module(node)
+        ) is not None:
+            return Capture(called, gradient=True)
+        case NodeRef() if (called := called_module(ref)) is not None:
+            return Capture(called)
+        case NodeRef():
+            for reader, argument, read in graph.readers(ref):
+                if read == ref and (called := called_module(reader)) is not None:
+                    return Capture(called, argument=argument)
+    return None
 
 
 def _check_order_unambiguous(interventions: Sequence[_Intervention]) -> None:
@@ -959,6 +1128,7 @@ def schedule(
     specs: Sequence[SubgraphSpec] = (),
     *,
     chunked: bool = False,
+    checkpoint: Collection[torch.nn.Module] = (),
 ) -> InstructionProgram:
     """Compile `graph` and its `specs` into an `InstructionProgram`.
 
@@ -976,6 +1146,8 @@ def schedule(
             data flows it requires. Empty means a plain forward pass.
         chunked: Whether the program runs on chunks of the data. Each spec must then read
             only `FlowOp`s, and they must read pinned flows.
+        checkpoint: The modules whose inner values the backward pass computes again,
+            instead of keeping them from the forward pass.
 
     Returns:
         The instruction program to run.
@@ -1031,6 +1203,17 @@ def schedule(
     _check_order_unambiguous(interventions)
     _check_no_shared_weights(graph, [optimization.region for optimization in optimizations])
 
-    instructions = Scheduler(graph, chunked=chunked).run(interventions)
+    selected = {id(module) for module in checkpoint}
+    folds = [
+        graph._node_refs[fold]
+        for fold in graph._fold_ids
+        if id(graph._nodes[fold].target) in selected
+    ]
+    fold_modules = {id(graph._nodes[fold].target) for fold in graph._fold_ids}
+    if unmatched := [module for module in checkpoint if id(module) not in fold_modules]:
+        names = ", ".join(type(module).__name__ for module in unmatched)
+        msg = f"Only folds can be checkpointed, and these modules are not folds: {names}."
+        raise ValueError(msg)
+    instructions = Scheduler(graph, chunked=chunked, checkpoint=folds).run(interventions)
 
     return InstructionProgram(instructions=instructions, input_refs=graph._inputs)

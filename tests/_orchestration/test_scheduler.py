@@ -5,10 +5,12 @@ import copy
 import dataclasses
 import operator
 import pathlib
+import uuid
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
 from typing import Any, ContextManager
+from unittest.mock import patch
 
 import attrs
 import pytest
@@ -35,11 +37,13 @@ from fastforward._orchestration.graph_module import (
     InputRef,
     NodeRef,
     SubgraphSpec,
+    VJPRef,
     _BaseRef,
     reduce_resolution,
 )
 from fastforward._orchestration.instruction_engine import (
     ActivationBundle,
+    Call,
     CallModule,
     CallVJP,
     DeleteRegisterEntries,
@@ -65,8 +69,10 @@ from fastforward._orchestration.scheduler import (
 )
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
 from packaging.version import Version
+from typing_extensions import override
 
 from ._models import (
+    DecoderLayer,
     ResidualStack,
     ReturnTuple,
     TiedBranches,
@@ -1544,3 +1550,205 @@ def test_chunked_run_gives_the_ops_the_result_of_one_run_over_all_the_data() -> 
         [expected] = whole[region]
         [result] = chunked[region]
         torch.testing.assert_close(result, expected)
+
+
+def test_checkpointing_selects_only_values_internal_to_fold() -> None:
+    # GIVEN a fold whose internal nodes produce both intermediate and escaping values
+    model = DecoderLayer().eval()
+    graph = model.to_graph_module()
+    fold = graph.node_ref(model.attn)
+
+    scheduler = Scheduler(graph, checkpoint=[fold])
+
+    # WHEN the checkpointed nodes are determined
+    checkpointed = scheduler._checkpointed_nodes
+
+    # THEN values used only inside the fold are checkpointed
+    assert graph.node_ref(model.attn.q_proj) in checkpointed
+
+    # AND values leaving the fold are retained
+    assert graph.node_ref(model.attn.out_proj) not in checkpointed
+
+    # AND values outside the fold are retained
+    assert graph.node_ref(model.mlp.up) not in checkpointed
+
+
+def test_checkpointed_nodes_enumerate_each_fold_once() -> None:
+    # GIVEN nested checkpoint selections with several leaves in each outer fold
+    model = TwoLayerModel().eval()
+    graph = model.to_graph_module()
+    folds = {graph.node_ref(model.layer_0), graph.node_ref(model.layer_1)}
+    scheduler = Scheduler(graph, checkpoint=[*folds, graph.node_ref(model.layer_0.attn)])
+    assert scheduler._folds == folds
+
+    # WHEN determining which values to discard after fold validation
+    with patch.object(graph, "fold_outputs", wraps=graph.fold_outputs) as fold_outputs:
+        checkpointed = scheduler._checkpointed_nodes
+
+    # THEN output discovery runs once per outer fold, irrespective of its leaf count
+    assert fold_outputs.call_count == len(folds)
+    assert {call.args[0] for call in fold_outputs.call_args_list} == folds
+    assert graph.node_ref(model.layer_0.attn.q_proj) in checkpointed
+    assert graph.node_ref(model.layer_1.mlp.down) not in checkpointed
+
+
+def _weight_gradient(x: ActivationBundle, g: ActivationBundle) -> torch.Tensor:
+    """The gradient at the weight of a linear layer without bias, over all batches."""
+    return torch.stack([
+        grads[0].flatten(0, -2).T @ inputs[0].flatten(0, -2)
+        for (inputs, _), (grads, _) in zip(x, g, strict=True)
+    ]).sum(0)
+
+
+def test_gradient_checkpointing_runs_each_fold_backward_in_one_vjp() -> None:
+    # GIVEN ops over the inputs and the output gradients of linears inside residual layers
+    model = ResidualStack(depth=2).eval()
+    batches = [torch.randn(2, 3, 8) for _ in range(2)]
+    names = ["layers.0.attn.q_proj", "layers.0.mlp.down", "layers.1.attn.v_proj", "layers.1.mlp.up"]
+    regions = [model.get_submodule(name) for name in names]
+    weights = [region.get_parameter("weight") for region in regions]
+    with torch.enable_grad():
+        losses = [_square_reference(idx, model(batch)) for idx, batch in enumerate(batches)]
+        expected = torch.autograd.grad(torch.stack(losses).sum(), weights)
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(
+        _weight_gradient,
+        x=InputActivations(ORIGINAL),
+        g=Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL)),
+    )
+    specs = [SubgraphSpec(region=r, fn=_record_and_mutate(reads), flows=[op]) for r in regions]
+
+    # WHEN scheduling with the layers checkpointed
+    program = schedule(trace(model, batches[0]), specs, checkpoint=list(model.layers))
+
+    # THEN the backward pass runs each layer in one VJP
+    vjps = [
+        i.target.reference.name
+        for i in program.instructions
+        if isinstance(i, CallVJP) and isinstance(i.target, VJPRef)
+    ]
+    assert [name for name in vjps if name.startswith("layers.")] == ["layers.1", "layers.0"]
+
+    # AND it computes no value a second time
+    targets = [
+        i.target for i in program.instructions if isinstance(i, Call) and not isinstance(i, CallVJP)
+    ]
+    assert len(targets) == len(set(targets))
+
+    # WHEN running
+    _run(program, batches)
+
+    # THEN every op gets the weight gradient of the original model
+    for region, gradient in zip(regions, expected):
+        torch.testing.assert_close(reads[region], [gradient])
+
+
+@pytest.mark.parametrize("inplace", [False, True])
+@pytest.mark.parametrize("keyword_call", [False, True])
+def test_checkpointed_weight_gradient_with_mutation_and_keyword_arguments(
+    inplace: bool, keyword_call: bool
+) -> None:
+    # GIVEN a checkpointed block with a functional input and a possibly in-place ReLU
+    class Block(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.linear = torch.nn.Linear(4, 4, bias=False)
+            self.relu = torch.nn.ReLU(inplace=inplace)
+
+        @override
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            h = x.sin()
+            h = self.linear(input=h) if keyword_call else self.linear(h)
+            output: torch.Tensor = self.relu(h)
+            return output
+
+    torch.manual_seed(0)
+    block = Block()
+    model = torch.nn.Sequential(block).eval()
+    batches = [torch.randn(2, 3, 4)]
+    with torch.enable_grad():
+        loss = _square_reference(0, model(batches[0]))
+        (expected,) = torch.autograd.grad(loss, block.linear.weight)
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    op = FlowOp(
+        _weight_gradient,
+        x=InputActivations(ORIGINAL),
+        g=Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL)),
+    )
+    spec = SubgraphSpec(region=block.linear, fn=_record_and_mutate(reads), flows=[op])
+
+    # WHEN scheduling and executing the gradient flow through the checkpointed block
+    program = schedule(trace(model, batches[0]), [spec], checkpoint=[block])
+    _run(program, batches)
+
+    # THEN the algorithm gets the same weight gradient as direct autograd
+    torch.testing.assert_close(reads[block.linear], [expected])
+
+
+def test_gradient_checkpointing_rejects_a_fold_that_reads_a_value_it_does_not_receive() -> None:
+    # GIVEN a fold with a node that reads a value inside another fold, which it does not receive
+    model = DecoderLayer().eval()
+    graph = model.to_graph_module()
+    fold = graph.node_ref(model.mlp)
+    graph.add_node(
+        "extra", torch.nn.Identity().eval(), [graph.node_ref(model.attn.q_proj)], parent=fold
+    )
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling with the fold checkpointed
+    # THEN one VJP of the fold cannot give the gradient at that input
+    with pytest.raises(ValueError, match="not an argument of the fold"):
+        schedule(graph, specs=[_spec(model.attn.q_proj, flow)], checkpoint=[model.mlp])
+
+
+def test_gradient_checkpointing_rejects_a_module_that_is_not_a_fold() -> None:
+    # GIVEN a module that is a single node of the graph, not a fold
+    model = DecoderLayer().eval()
+    graph = model.to_graph_module()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+
+    # WHEN scheduling with that module checkpointed
+    # THEN there is no fold to compute again, so the scheduler raises
+    with pytest.raises(ValueError, match="these modules are not folds: Linear"):
+        schedule(graph, specs=[_spec(model.attn.q_proj, flow)], checkpoint=[model.attn.q_proj])
+
+
+def test_lifetime_pass_separates_recomputed_value_lifetimes() -> None:
+    # GIVEN a register entry that is produced, consumed, and later produced again
+    context = ORIGINAL.context
+    x, y, z = (NodeRef(uuid.uuid4(), name) for name in ("x", "y", "z"))
+    identity = torch.nn.Identity()
+    instructions = (
+        StoreValue(target=x, value=1, context=context),
+        CallModule(args=[x], kwargs={}, target=y, context=context, caller=identity),
+        StoreValue(target=x, value=2, context=context),
+        CallModule(args=[x], kwargs={}, target=z, context=context, caller=identity),
+    )
+
+    # WHEN its register lifetimes are determined
+    result = lifetime_management_pass(instructions)
+
+    # THEN the first value is freed before the second value is produced
+    first_reproduction = result.index(instructions[2])
+    deletes_before_reproduction = [
+        instruction
+        for instruction in result[:first_reproduction]
+        if isinstance(instruction, DeleteRegisterEntries)
+    ]
+
+    assert any((x, context) in deletion.targets for deletion in deletes_before_reproduction)
+
+
+def test_gradient_checkpointing_reduces_peak_register_size() -> None:
+    # GIVEN a gradient flow through a model of two folded layers
+    model = TwoLayerModel().eval()
+    graph = model.to_graph_module()
+    flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+    specs = [_spec(model.layer_0.attn.q_proj, flow)]
+
+    # WHEN scheduling with and without checkpointing
+    regular = schedule(graph, specs=specs)
+    checkpointed = schedule(graph, specs=specs, checkpoint=[model.layer_0, model.layer_1])
+
+    # THEN checkpointing requires fewer simultaneously-live register entries
+    assert _register_size(checkpointed) < _register_size(regular)
