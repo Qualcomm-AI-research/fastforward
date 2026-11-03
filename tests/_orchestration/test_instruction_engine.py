@@ -13,9 +13,10 @@ import pytest
 import syrupy
 import torch
 
-from fastforward._orchestration.data_flow import Gradient, ModelOutputs
+from fastforward._orchestration.data_flow import FlowOp, Gradient, InputActivations, ModelOutputs
 from fastforward._orchestration.graph_module import (
     Const,
+    FlowOpRef,
     GraphModule,
     InputRef,
     LossGradRef,
@@ -739,7 +740,10 @@ def test_activation_offloading_pass_leaves_delegate_bundles_alone() -> None:
 
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(
-        base, DeviceLocation(torch.device("cuda:0")), lambda _: DeviceLocation(torch.device("cpu"))
+        base,
+        DeviceLocation(torch.device("cuda:0")),
+        lambda _: DeviceLocation(torch.device("cpu")),
+        DeviceLocation(torch.device("cpu")),
     )
 
     # THEN nothing is moved, because the algorithm chooses what it loads and when
@@ -761,12 +765,39 @@ def test_activation_offloading_pass_places_data_of_delegates_with_targets() -> N
     storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
-    (result,) = _activation_offloading_pass(base, compute, lambda _: storage)
+    (result,) = _activation_offloading_pass(base, compute, lambda _: storage, storage)
 
     # THEN the delegate reads its batches at compute and stores its result at storage
     assert isinstance(result, RunDelegate)
     assert result.input_location == compute
     assert result.output_location == storage
+
+
+def test_activation_offloading_pass_stores_flow_op_results_at_the_derived_location() -> None:
+    # GIVEN the delegate of a FlowOp, which keeps its result from one chunk to the next
+    ref_a = NodeRef(id=uuid.uuid4(), name="a")
+    op = FlowOp(lambda x: x, x=InputActivations("original"))
+    base = (
+        RunDelegate(
+            fn=lambda _bundle: [ActivationDataset([0])],
+            bundles=(BundleSpec(context=_noop_context, args=[ref_a]),),
+            targets=((FlowOpRef(op, ()), _noop_context),),
+            accumulate=True,
+        ),
+    )
+    compute = DeviceLocation(torch.device("cuda:0"))
+    derived = DeviceLocation(torch.device("meta"))
+
+    # WHEN we apply the activation offloading pass
+    (result,) = _activation_offloading_pass(
+        base, compute, lambda _: DeviceLocation(torch.device("cpu")), derived
+    )
+
+    # THEN the op reads its batches and its earlier result at compute, and stores its result
+    # at the derived location
+    assert isinstance(result, RunDelegate)
+    assert result.input_location == compute
+    assert result.output_location == derived
 
 
 def test_activation_offloading_pass_leaves_the_objective_of_a_gradient_flow_alone() -> None:
@@ -783,7 +814,10 @@ def test_activation_offloading_pass_leaves_the_objective_of_a_gradient_flow_alon
 
     # WHEN we apply the activation offloading pass
     result = _activation_offloading_pass(
-        base, DeviceLocation(torch.device("cuda:0")), lambda _: DeviceLocation(torch.device("cpu"))
+        base,
+        DeviceLocation(torch.device("cuda:0")),
+        lambda _: DeviceLocation(torch.device("cpu")),
+        DeviceLocation(torch.device("cpu")),
     )
 
     # THEN nothing is moved, because the objective places its data itself
@@ -798,7 +832,7 @@ def test_activation_offloading_pass_moves_inputs_to_compute_and_output_to_storag
     storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
-    result = _activation_offloading_pass(base, compute, lambda _: storage)
+    result = _activation_offloading_pass(base, compute, lambda _: storage, storage)
 
     # THEN calls place batches themselves
     assert len(result) == len(base)
@@ -823,7 +857,7 @@ def test_activation_offloading_pass_moves_activations_for_free_functions() -> No
     storage = DeviceLocation(torch.device("cpu"))
 
     # WHEN we apply the activation offloading pass
-    result = _activation_offloading_pass(base, compute, lambda _: storage)
+    result = _activation_offloading_pass(base, compute, lambda _: storage, storage)
 
     # THEN every call, not only every module call, has inputs on compute and output on storage
     calls = [i for i in result if isinstance(i, (CallModule, CallFunction))]
@@ -846,7 +880,9 @@ def test_activation_offloading_pass_rests_each_output_where_the_rule_names() -> 
         return second_location if name == "l2" else first_location
 
     # WHEN we apply the activation offloading pass with that rule
-    result = _activation_offloading_pass(instructions, compute_location, activation_location)
+    result = _activation_offloading_pass(
+        instructions, compute_location, activation_location, first_location
+    )
 
     # THEN the output of each call rests where the rule named it, not in one shared place
     for instruction in result:
@@ -1305,6 +1341,7 @@ def test_call_places_each_batch_before_loading_the_next() -> None:
         [call],
         _RecordingLocation("load", events),
         lambda _name: _RecordingLocation("store", events),
+        _RecordingLocation("store", events),
     )
 
     # WHEN executing the call

@@ -949,7 +949,7 @@ def test_gradients_with_offloading(storage: str, tmp_path: pathlib.Path) -> None
     # WHEN running with offloading
     compute = DeviceLocation(torch.device("cpu"))
     instructions = _offloading_pass(
-        program.instructions, compute, location, lambda _: location, graph
+        program.instructions, compute, location, lambda _: location, location, graph
     )
     _run(dataclasses.replace(program, instructions=instructions), batches)
 
@@ -1752,3 +1752,43 @@ def test_gradient_checkpointing_reduces_peak_register_size() -> None:
 
     # THEN checkpointing requires fewer simultaneously-live register entries
     assert _register_size(checkpointed) < _register_size(regular)
+
+
+def test_chunked_run_with_the_op_results_on_disk_gives_the_same_result(
+    tmp_path: pathlib.Path,
+) -> None:
+    # GIVEN an op over a gradient and the original inputs, that adds to its total
+    model = TwoLinear().eval()
+    batches = [torch.randn(2, 8) for _ in range(5)]
+    gradient = Gradient(_plain_loss, outputs=ModelOutputs(ORIGINAL))
+    op = FlowOp(
+        _gradient_times_input,
+        combine=operator.add,
+        gradient=gradient,
+        x=InputActivations(ORIGINAL),
+    )
+    graph = trace(model, batches[0])
+    chunks = [batches[i : i + 2] for i in range(0, 5, 2)]
+
+    def read(derived: DeviceLocation | DiskLocation) -> list[Any]:
+        reads: dict[torch.nn.Module, list[Any]] = {}
+        program = schedule(
+            graph,
+            [SubgraphSpec(region=model.fc1, fn=_record_and_mutate(reads), flows=[op])],
+            chunked=True,
+        )
+        cpu = DeviceLocation(torch.device("cpu"))
+        instructions = _offloading_pass(
+            program.instructions, cpu, cpu, lambda _: cpu, derived, graph
+        )
+        initial = copy.deepcopy(model.state_dict())
+        _run_chunked(dataclasses.replace(program, instructions=instructions), chunks)
+        model.load_state_dict(initial)
+        return reads[model.fc1]
+
+    # WHEN the result of the op rests on the CPU, and on disk, between chunks
+    expected = read(DeviceLocation(torch.device("cpu")))
+    result = read(DiskLocation(tmp_path))
+
+    # THEN both give the algorithm the same result
+    torch.testing.assert_close(result, expected)

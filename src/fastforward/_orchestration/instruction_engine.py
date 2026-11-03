@@ -31,7 +31,6 @@ from typing_extensions import override
 from fastforward._orchestration.graph_module import (
     AttributePath,
     Const,
-    FlowOpRef,
     GradientRef,
     GraphModule,
     InputRef,
@@ -1522,50 +1521,54 @@ def _weight_offloading_pass(
     return tuple(new_instructions)
 
 
-def _activation_name(ref: _BaseRef) -> str:
+def _activation_name(ref: _BaseRef) -> str | None:
     """Return the name of the activation that the value under `ref` belongs to.
 
     A gradient is stored like the activation it is taken at, so the activation policy
-    treats both the same way.
+    treats both the same way. A value that belongs to no activation is a derived value,
+    and has no name.
     """
     match ref:
         case NamedRef(name=name) | LossGradRef(name=name):
             return name
         case GradientRef(reference=reference) | VJPRef(reference=reference):
             return reference.name
-    msg = f"{ref!r} belongs to no activation."
-    raise TypeError(msg)
+    return None
 
 
 def _is_data_operation(delegate: RunDelegate) -> bool:
-    """Return whether `delegate` has `targets`, other than objective gradients or `FlowOp` results.
+    """Return whether `delegate` has `targets`, other than objective gradients.
 
     The objective of a gradient flow places its data itself, see `loss_grad_outputs`.
-    The result of a `FlowOp` is one object and not an activation, so it has no storage location.
     """
     return bool(delegate.targets) and not any(
-        isinstance(ref, LossGradRef | FlowOpRef) for ref, _ in delegate.targets
+        isinstance(ref, LossGradRef) for ref, _ in delegate.targets
     )
 
 
 def _activation_offloading_pass(
-    instructions: Instructions, compute: Location, storage: LocationPolicy
+    instructions: Instructions,
+    compute: Location,
+    activations: LocationPolicy,
+    derived: Location,
 ) -> Instructions:
     """Configure input and output locations on each `Call` and each data operation.
 
-    Before each invocation, moves input activations to `compute`. After each
-    invocation, moves the output activation to the location selected by
-    `storage`, one batch at a time.
+    Before each invocation, moves the inputs to `compute`. After each invocation, moves
+    the output to its storage location, one batch at a time. An output that belongs to
+    an activation goes to the location that `activations` selects for its name. Any
+    other output is a derived value, and goes to `derived`.
     Input datasets remain in the register at their existing locations.
 
     A `RunDelegate` with `targets` is a data operation and gets the same placement as a
-    `Call`, with all results at the location of its first target. Other delegates choose
+    `Call`, with all outputs at the location of its first target. Other delegates choose
     what they load and when, so this pass leaves them alone.
 
     Args:
         instructions: Sequence of instructions to analyze.
-        compute: Where activations are moved to before execution.
-        storage: A callable returning the storage location for each activation name.
+        compute: Where inputs are moved to before execution.
+        activations: A callable returning the storage location for each activation name.
+        derived: Where derived values, such as the outputs of `FlowOp`s, are stored.
 
     Returns:
         Instructions with per-batch placement configured on calls and on data operations.
@@ -1580,12 +1583,10 @@ def _activation_offloading_pass(
         else:
             new_instructions.append(instruction)
             continue
+        name = _activation_name(target.unwrap_ref())
+        location = derived if name is None else activations(name)
         new_instructions.append(
-            dataclasses.replace(
-                instruction,
-                input_location=compute,
-                output_location=storage(_activation_name(target.unwrap_ref())),
-            )
+            dataclasses.replace(instruction, input_location=compute, output_location=location)
         )
 
     return tuple(new_instructions)
@@ -1596,6 +1597,7 @@ def _offloading_pass(
     compute: Location,
     weights: Location,
     activations: LocationPolicy,
+    derived: Location,
     graph: GraphModule,
 ) -> Instructions:
     """Configure module placement and per-batch activation offloading.
@@ -1608,13 +1610,14 @@ def _offloading_pass(
         compute: Where data is moved to before execution.
         weights: Where idle module weights rest.
         activations: A callable returning the storage location for each activation name.
+        derived: Where derived values, such as the outputs of `FlowOp`s, rest.
         graph: Original GraphModule — all node modules are pre- and post-offloaded.
 
     Returns:
         New instruction sequence with module and activation placement configured.
     """
     instructions = _weight_offloading_pass(instructions, compute, weights, graph)
-    instructions = _activation_offloading_pass(instructions, compute, activations)
+    instructions = _activation_offloading_pass(instructions, compute, activations, derived)
 
     # Cancel out compute(M1) -> storage(M1) -> compute(M1) placements for any module M1.
     instructions = _cancel_module_round_trips(instructions, compute, weights)
@@ -1686,12 +1689,19 @@ def _as_location_rule(policy: LocationLike | LocationPolicyLike) -> LocationPoli
 
 @attrs.define(frozen=True)
 class Offload(OffloadingStrategy):
-    """Offload model weights and activations between computation steps.
+    """Offload model weights, activations, and derived values between computation steps.
 
-    `compute` specifies the device used for computation. `weights` and `activations`
-    specify where their respective tensors are stored between uses. Both accept a
+    `compute` specifies the device used for computation. `weights`, `activations`, and
+    `derived` specify where their respective tensors are stored between uses. All accept a
     `Location`, a device name or `torch.device`, or a directory path for disk storage.
     Weights are restored to their original devices when execution finishes.
+
+    An activation is a value of the traced model: the output of a node or an input of the
+    graph, and the gradient at such a value. A derived value is a value that FastForward
+    computes from the data outside the model, such as the output of a `FlowOp`. The two
+    have different lifetimes. In a chunked run, an activation is freed after its chunk,
+    but a derived value accumulates over all chunks. So keep the activations on the fast
+    device, and put large derived values, such as Kronecker factors, in CPU memory.
 
     `activations` also accepts a location policy: a callable that takes an activation
     name and returns its storage location. This allows you to be selective in which
@@ -1720,6 +1730,9 @@ class Offload(OffloadingStrategy):
             such as `pathlib.Path` to specify a directory for disk storage.
         activations: Storage location for activations, using the same forms as `weights`,
             or a callable selecting a storage location by activation name.
+        derived: Storage location for derived values, such as the outputs of `FlowOp`s,
+            using the same forms as `weights`. In a chunked run, a derived value rests here
+            between chunks.
 
     Raises:
         TypeError: If `compute` names something other than a device.
@@ -1736,11 +1749,14 @@ class Offload(OffloadingStrategy):
         default=_as_location_rule(DeviceLocation(torch.device("cpu"))),
         converter=_as_location_rule,
     )
+    derived: Location = attrs.field(
+        default=DeviceLocation(torch.device("cpu")), converter=as_location
+    )
 
     def create_instruction_pass(self, graph: GraphModule) -> InstructionPass:  # noqa: D102
         def _pass(instructions: Instructions) -> Instructions:
             return _offloading_pass(
-                instructions, self.compute, self.weights, self.activations, graph
+                instructions, self.compute, self.weights, self.activations, self.derived, graph
             )
 
         return _pass
