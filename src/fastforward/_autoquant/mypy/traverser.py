@@ -538,7 +538,9 @@ class TraverserVisitor:
 
 
 @functools.singledispatch
-def _visit(node: Node, visitor: TraverserVisitor, /) -> None:
+def _visit(node: Node | None, visitor: TraverserVisitor, /) -> None:
+    if node is None:
+        return
     msg = f"'{type(visitor).__name__}' has no visit method for '{type(node).__name__}'"
     raise NotImplementedError(msg)
 
