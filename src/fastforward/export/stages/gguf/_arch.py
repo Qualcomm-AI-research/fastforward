@@ -120,6 +120,21 @@ def llama_rope_permute(tensor: ExtractedTensor, config: GgufSourceConfig) -> Ext
     return _apply_row_permute(tensor, row_index, tensor.quant_format.block_size)
 
 
+def _rope_theta(config: GgufSourceConfig) -> float:
+    """Return the RoPE base frequency.
+
+    transformers>=5 moves ``rope_theta`` into ``config.rope_parameters``; older
+    configs (and plain namespaces) carry it as an attribute.
+    """
+    rope_theta = getattr(config, "rope_theta", None)
+    if rope_theta is None:
+        rope_theta = (getattr(config, "rope_parameters", None) or {}).get("rope_theta")
+    if rope_theta is None:
+        rope_theta = 1000000.0
+        logger.warning("model_config has no 'rope_theta'; defaulting to %.1f", rope_theta)
+    return float(rope_theta)
+
+
 def _write_common_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
     """Write metadata shared by all supported Llama-family architectures."""
     writer.add_context_length(config.max_position_embeddings)
@@ -128,11 +143,7 @@ def _write_common_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None
     writer.add_feed_forward_length(config.intermediate_size)
     writer.add_head_count(config.num_attention_heads)
     writer.add_head_count_kv(getattr(config, "num_key_value_heads", config.num_attention_heads))
-    rope_theta = getattr(config, "rope_theta", None)
-    if rope_theta is None:
-        rope_theta = 1000000.0
-        logger.warning("model_config has no 'rope_theta'; defaulting to %.1f", rope_theta)
-    writer.add_rope_freq_base(rope_theta)
+    writer.add_rope_freq_base(_rope_theta(config))
     writer.add_layer_norm_rms_eps(config.rms_norm_eps)
     writer.add_vocab_size(config.vocab_size)
 

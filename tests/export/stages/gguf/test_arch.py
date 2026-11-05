@@ -11,6 +11,7 @@ likely to depend on (tensor rules, transforms).
 
 from dataclasses import replace
 
+import gguf
 import pytest
 import torch
 
@@ -28,6 +29,7 @@ from fastforward.export.stages.gguf import (
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 from tests.export.stages.gguf.conftest import make_quantized_tensor
+from transformers import LlamaConfig
 
 
 class _Config:
@@ -240,3 +242,16 @@ def test_adapters_carry_tokenizer_discriminators() -> None:
     assert QWEN3_ADAPTER.tokenizer_pre == "qwen2"
     for adapter in (LLAMA_ADAPTER, QWEN2_ADAPTER, QWEN3_ADAPTER):
         assert adapter.tokenizer_model == "gpt2"
+
+
+def test_llama_metadata_reads_rope_theta_from_transformers_config() -> None:
+    # GIVEN: a transformers config, which keeps rope_theta in rope_parameters.
+    config = LlamaConfig(rope_parameters={"rope_type": "default", "rope_theta": 500000.0})
+    writer = gguf.GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
+
+    # WHEN: writing the llama metadata.
+    LLAMA_ADAPTER.write_metadata(writer, config)
+
+    # THEN: the GGUF RoPE base is the model's, not the fallback default.
+    metadata = {key: value.value for key, value in writer.kv_data[0].items()}
+    assert metadata["llama.rope.freq_base"] == 500000.0
