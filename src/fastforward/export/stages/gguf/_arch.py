@@ -11,7 +11,8 @@ architecture should construct their own :class:`ArchAdapter` from
 
 - **Llama (llama3-family)** stores attention Q/K projections in an interleaved
   RoPE layout that llama.cpp undoes with a row permutation. It has no per-head
-  query/key norm and uses the ``llama-bpe`` pre-tokenizer.
+  query/key norm and uses the ``llama-bpe`` pre-tokenizer. Llama 3.1+ RoPE
+  scaling is exported as per-frequency factors in ``rope_freqs.weight``.
 - **Qwen3** does *not* permute Q/K, carries per-head ``q_norm``/``k_norm``
   RMSNorm tensors, and (typically) tied input/output embeddings.
 - **Qwen2 / Qwen2.5** does not permute Q/K either, but carries additive biases
@@ -20,10 +21,11 @@ architecture should construct their own :class:`ArchAdapter` from
 
 from __future__ import annotations
 
+import math
 import re
 
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import torch
 
@@ -37,7 +39,7 @@ from fastforward.export.stages.gguf._naming import (
     qwen3_name_map,
 )
 from fastforward.export.stages.gguf.adapter import ArchAdapter
-from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename, Transform
+from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename, Synthesize, Transform
 
 if TYPE_CHECKING:
     from fastforward.export.stages.gguf._extract import ExtractedTensor
@@ -134,6 +136,63 @@ def _rope_theta(config: GgufSourceConfig) -> float:
     return float(rope_theta)
 
 
+def _rope_scaling(config: GgufSourceConfig) -> dict[str, Any]:
+    """Return the config's RoPE scaling parameters (empty for unscaled legacy configs).
+
+    transformers 5 aliases ``rope_scaling`` to ``rope_parameters``, which is always
+    set and has ``rope_type="default"`` for unscaled RoPE; older configs set
+    ``rope_scaling`` only when scaled.
+    """
+    rope_parameters = getattr(config, "rope_parameters", None) or {}
+    return rope_parameters or getattr(config, "rope_scaling", None) or {}
+
+
+def _rope_scaling_type(rope_scaling: dict[str, Any]) -> str:
+    return str(rope_scaling.get("type", rope_scaling.get("rope_type", "default")))
+
+
+def llama3_rope_freqs(config: GgufSourceConfig) -> dict[str, torch.Tensor]:
+    """Synthesize llama.cpp's ``rope_freqs.weight`` for Llama 3 RoPE scaling.
+
+    Llama 3.1+ (``rope_type="llama3"``) scales each RoPE frequency by a
+    wavelength-dependent factor: short wavelengths are kept, long ones divided
+    by ``factor``, and the band in between interpolated. llama.cpp has no
+    metadata for this and reads the per-frequency divisors from
+    ``rope_freqs.weight`` instead. Mirrors llama.cpp's
+    ``LlamaModel.generate_extra_tensors``.
+
+    Returns an empty mapping for configs without Llama 3 RoPE scaling, so
+    ``Synthesize(llama3_rope_freqs)`` is safe for every Llama config.
+
+    Note:
+        llama.cpp only loads ``rope_freqs.weight`` as F32. Exports with a lower
+        ``float_type`` should pin it to F32 via a
+        ``float_type_overrides`` entry matching ``rope_freqs.weight``.
+    """
+    rope_scaling = _rope_scaling(config)
+    if _rope_scaling_type(rope_scaling) != "llama3":
+        return {}
+
+    head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+    exponents = torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim
+    inv_freq = 1.0 / _rope_theta(config) ** exponents
+
+    factor = rope_scaling.get("factor", 8.0)
+    low_freq_factor = rope_scaling.get("low_freq_factor", 1.0)
+    high_freq_factor = rope_scaling.get("high_freq_factor", 4.0)
+    old_context_len = rope_scaling.get("original_max_position_embeddings", 8192)
+
+    wavelen = 2 * math.pi / inv_freq
+    smooth = (old_context_len / wavelen - low_freq_factor) / (high_freq_factor - low_freq_factor)
+    interpolated = 1 / ((1 - smooth) / factor + smooth)
+    freq_factors = torch.where(
+        wavelen < old_context_len / high_freq_factor,
+        1.0,
+        torch.where(wavelen > old_context_len / low_freq_factor, factor, interpolated),
+    )
+    return {"rope_freqs.weight": freq_factors.float()}
+
+
 def _write_common_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
     """Write metadata shared by all supported Llama-family architectures."""
     writer.add_context_length(config.max_position_embeddings)
@@ -146,19 +205,20 @@ def _write_common_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None
     writer.add_layer_norm_rms_eps(config.rms_norm_eps)
     writer.add_vocab_size(config.vocab_size)
 
-    # transformers 5 aliases `rope_scaling` to `rope_parameters`, which is always set and has
-    # rope_type "default" for unscaled RoPE; older configs set `rope_scaling` only when scaled.
-    rope_parameters = getattr(config, "rope_parameters", None) or {}
-    rope_scaling = rope_parameters or getattr(config, "rope_scaling", None) or {}
-    scaling_type = rope_scaling.get("type", rope_scaling.get("rope_type", "default"))
-    if scaling_type == "default":
+    rope_scaling = _rope_scaling(config)
+    scaling_type = _rope_scaling_type(rope_scaling)
+    type_map = {member.value: member for member in RopeScalingType}
+    if scaling_type in ("default", "llama3"):
+        # Llama 3 scaling lives in rope_freqs.weight (see `llama3_rope_freqs`);
+        # a bare factor would make llama.cpp apply linear scaling instead.
         writer.add_rope_scaling_type(RopeScalingType.NONE)
-    else:
-        type_map = {member.value: member for member in RopeScalingType}
-        if scaling_type in type_map:
-            writer.add_rope_scaling_type(type_map[scaling_type])
+    elif scaling_type in type_map:
+        writer.add_rope_scaling_type(type_map[scaling_type])
         if "factor" in rope_scaling:
             writer.add_rope_scaling_factor(rope_scaling["factor"])
+    else:
+        msg = f"GGUF export does not support RoPE scaling type '{scaling_type}'"
+        raise ExportError(msg)
 
 
 def _write_qwen3_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
@@ -176,6 +236,7 @@ LLAMA_ADAPTER = ArchAdapter(
         DROP_TIED_LM_HEAD,
         Transform(_QK_PROJ_PATTERN, llama_rope_permute),
         Rename(llama_name_map),
+        Synthesize(llama3_rope_freqs),
     ),
     write_metadata=_write_common_metadata,
     tokenizer_model="gpt2",

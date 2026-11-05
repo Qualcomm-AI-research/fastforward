@@ -29,6 +29,7 @@ Custom packing formats can be defined by implementing a function matching the
 from fastforward.export.stages.gguf._arch import LLAMA_ADAPTER as LLAMA_ADAPTER
 from fastforward.export.stages.gguf._arch import QWEN2_ADAPTER as QWEN2_ADAPTER
 from fastforward.export.stages.gguf._arch import QWEN3_ADAPTER as QWEN3_ADAPTER
+from fastforward.export.stages.gguf._arch import llama3_rope_freqs as llama3_rope_freqs
 from fastforward.export.stages.gguf._arch import llama_rope_permute as llama_rope_permute
 from fastforward.export.stages.gguf._config import GgufSourceConfig as GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor as ExtractedTensor

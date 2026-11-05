@@ -9,6 +9,8 @@ are the pipeline's default reference implementations of the public
 likely to depend on (tensor rules, transforms).
 """
 
+import importlib.util
+
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
@@ -27,11 +29,17 @@ from fastforward.export.stages.gguf import (
     ArchAdapter,
     ExtractedTensor,
     Transform,
+    llama3_rope_freqs,
     llama_rope_permute,
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 from gguf import GGUFWriter, RopeScalingType
 from tests.export.stages.gguf.conftest import make_quantized_tensor
+
+# transformers is not part of the CI `test` dependency group.
+requires_transformers = pytest.mark.skipif(
+    importlib.util.find_spec("transformers") is None, reason="requires `transformers`"
+)
 
 
 class _Config:
@@ -261,13 +269,10 @@ def test_adapters_carry_tokenizer_discriminators() -> None:
         assert adapter.tokenizer_model == "gpt2"
 
 
+@requires_transformers
 def test_llama_metadata_reads_rope_theta_from_transformers_config() -> None:
     # GIVEN: a transformers config, which keeps rope_theta in rope_parameters.
-    # transformers is not part of the CI `test` dependency group.
-    transformers = pytest.importorskip("transformers")
-    config = transformers.LlamaConfig(
-        rope_parameters={"rope_type": "default", "rope_theta": 500000.0}
-    )
+    config = _llama_config(rope_parameters={"rope_type": "default", "rope_theta": 500000.0})
     writer = GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
 
     # WHEN: writing the llama metadata.
@@ -348,4 +353,84 @@ def test_metadata_without_rope_theta_raises() -> None:
 
     # WHEN / THEN: the metadata writer refuses instead of guessing a RoPE base.
     with pytest.raises(ExportError, match="rope_theta"):
+        LLAMA_ADAPTER.write_metadata(writer, config)
+
+
+_LLAMA3_ROPE = {
+    "rope_type": "llama3",
+    "rope_theta": 500000.0,
+    "factor": 8.0,
+    "low_freq_factor": 1.0,
+    "high_freq_factor": 4.0,
+    "original_max_position_embeddings": 8192,
+}
+
+
+def _llama_config(**kwargs: Any) -> Any:
+    from transformers import LlamaConfig
+
+    return LlamaConfig(**kwargs)
+
+
+def _llama3_config() -> Any:
+    return _llama_config(
+        hidden_size=256,
+        num_attention_heads=2,
+        max_position_embeddings=131072,
+        rope_parameters=_LLAMA3_ROPE,
+    )
+
+
+@requires_transformers
+def test_llama3_rope_freqs_matches_transformers_scaling() -> None:
+    # GIVEN: a Llama 3.1-style config (128-dim heads, llama3 RoPE scaling).
+    config = _llama3_config()
+
+    # WHEN: synthesizing the rope_freqs tensor.
+    freqs = llama3_rope_freqs(config)["rope_freqs.weight"]
+
+    # THEN: dividing the unscaled frequencies by it gives transformers' llama3
+    # frequencies, covering the kept, interpolated, and fully scaled bands.
+    from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+
+    head_dim = 128
+    exponents = torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim
+    unscaled = 1.0 / 500000.0**exponents
+    scaled, _ = ROPE_INIT_FUNCTIONS["llama3"](config, "cpu")
+    torch.testing.assert_close(freqs, unscaled / scaled)
+    assert freqs.min() == 1.0 and freqs.max() == 8.0
+
+
+@requires_transformers
+def test_llama3_rope_freqs_is_empty_without_llama3_scaling() -> None:
+    # GIVEN: a Llama config with default RoPE.
+    config = _llama_config()
+
+    # THEN: no rope_freqs tensor is synthesized.
+    assert llama3_rope_freqs(config) == {}
+
+
+@requires_transformers
+def test_llama_metadata_does_not_write_llama3_factor_as_linear_scaling() -> None:
+    # GIVEN: a Llama 3.1-style config.
+    writer = GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
+
+    # WHEN: writing the llama metadata.
+    LLAMA_ADAPTER.write_metadata(writer, _llama3_config())
+
+    # THEN: no scaling type or factor is written (llama.cpp would read a bare
+    # factor as linear scaling); the scaling comes from rope_freqs.weight.
+    metadata = {key: value.value for key, value in writer.kv_data[0].items()}
+    assert metadata["llama.rope.scaling.type"] == "none"
+    assert "llama.rope.scaling.factor" not in metadata
+
+
+@requires_transformers
+def test_llama_metadata_rejects_unsupported_rope_scaling() -> None:
+    # GIVEN: a config with a RoPE scaling type llama.cpp cannot express.
+    config = _llama_config(rope_parameters={"rope_type": "dynamic", "factor": 2.0})
+    writer = GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
+
+    # WHEN/THEN: writing the metadata raises instead of writing a wrong factor.
+    with pytest.raises(ExportError, match="RoPE scaling type 'dynamic'"):
         LLAMA_ADAPTER.write_metadata(writer, config)
