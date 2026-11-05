@@ -16,7 +16,6 @@ quantize a parameter, it arrives as float.
 """
 
 import logging
-import re
 
 from dataclasses import dataclass
 
@@ -39,7 +38,9 @@ class ExtractedTensor:
     """A single exportable tensor extracted from the model.
 
     Quantized tensors carry ``int_codes`` (integer) and ``scales`` (float32).
-    Float tensors carry ``float_data``.
+    Float tensors carry ``float_data``. This is the unit tensor rules operate
+    on: ``hf_name`` identifies the source tensor and ``gguf_name`` is assigned
+    by a ``Rename`` rule (empty until then).
     """
 
     hf_name: str
@@ -164,12 +165,13 @@ def _resolve_quant_format(
     return fmt
 
 
-def _is_fusion_source(hf_name: str, adapter: ArchAdapter) -> bool:
-    """Check if a parameter name matches any fusion source pattern."""
-    for fusion in adapter.fusions:
-        for pattern in fusion.sources:
-            if re.fullmatch(pattern, hf_name):
-                return True
+def _is_claimed(hf_name: str, adapter: ArchAdapter, config: GgufSourceConfig | None = None) -> bool:
+    """Check if a tensor rule needs ``hf_name`` before any rule removes it."""
+    for rule in adapter.tensor_rules:
+        if rule.claims(hf_name):
+            return True
+        if config is not None and rule.removes(hf_name, config):
+            return False
     return False
 
 
@@ -177,13 +179,14 @@ def extract_module_tensors(
     model: torch.nn.Module,
     *,
     adapter: ArchAdapter,
-    config: GgufSourceConfig,
+    config: GgufSourceConfig | None = None,
     format_registry: GgufFormatRegistry | None = None,
     quant_format: GgufQuantFormat | None = None,
 ) -> list[ExtractedTensor]:
     """Extract every GGUF-exportable tensor from ``model``.
 
-    Parameters with an initialized weight quantizer (discovered via
+    Only parameters claimed by one of the adapter's tensor rules are extracted.
+    Those with an initialized weight quantizer (discovered via
     ``ff.find_quantizers``) are extracted as quantized (integer codes + scales).
     Everything else passes through as float. No fallback quantization is applied.
 
@@ -193,12 +196,11 @@ def extract_module_tensors(
 
     Args:
         model: The quantized FastForward module to export.
-        adapter: Architecture adapter. Its ``name_map`` decides which parameters
-            are exportable, and its ``is_tied`` predicate decides which
-            parameters to skip because they share storage with another exported
-            parameter.
-        config: Source model config, passed to the adapter's ``is_tied``
-            predicate for architecture-specific tied-weight logic.
+        adapter: Architecture adapter. Its ``tensor_rules`` decide which
+            parameters are exportable (see ``TensorRule.claims``).
+        config: Source model config. When given, parameters a rule removes
+            before any rule claims them (see ``TensorRule.removes``, e.g.
+            ``DROP_TIED_LM_HEAD``) are skipped without validating their quantizer.
         format_registry: Registry of allowed GGUF quantization formats. Each
             quantizer is matched against the registry by its properties. If no
             format matches, an :class:`ExportError` is raised.
@@ -224,12 +226,10 @@ def extract_module_tensors(
     skipped: list[str] = []
 
     for hf_name, param in model.named_parameters():
-        if adapter.name_map(hf_name) is None and not _is_fusion_source(hf_name, adapter):
+        if not _is_claimed(hf_name, adapter, config):
             skipped.append(hf_name)
             continue
         if isinstance(param, torch.nn.UninitializedParameter):
-            continue
-        if adapter.is_tied(hf_name, config):
             continue
 
         quantizer = quantizer_map.get(hf_name)
@@ -282,7 +282,7 @@ def extract_module_tensors(
             )
         if user_skipped:
             logger.warning(
-                "GGUF export: %d parameter(s) had no name_map entry and were skipped: %s",
+                "GGUF export: %d parameter(s) not claimed by any tensor rule were skipped: %s",
                 len(user_skipped),
                 ", ".join(user_skipped),
             )

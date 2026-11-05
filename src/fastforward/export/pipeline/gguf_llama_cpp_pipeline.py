@@ -5,10 +5,8 @@ from typing import Any
 
 from fastforward.export.pipeline.core import Pipeline
 from fastforward.export.stages.gguf.gguf_export_stages import (
-    stage_apply_target_transforms,
+    stage_apply_tensor_rules,
     stage_extract_quantized_weights,
-    stage_fuse_tensors,
-    stage_map_tensor_names,
     stage_pack_gguf_blocks,
     stage_write_gguf,
 )
@@ -36,13 +34,7 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
         | +--> extract_quantized_weights   (root; int codes + scales + float passthroughs)
                     |
                     v
-                fuse_tensors                (concat N sources -> 1 per TensorFusion spec)
-                    |
-                    v
-                apply_target_transforms     (per-arch RoPE Q/K permute)
-                    |
-                    v
-                map_tensor_names            (HF -> GGUF tensor names)
+                apply_tensor_rules          (adapter rules: rename/transform/fuse/drop)
                     |
                     v
                 pack_gguf_blocks            (Q4_0/Q8_0 convention convert + nibble pack)
@@ -70,17 +62,11 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     extract_stage = pipeline.register_stage(
         stage_extract_quantized_weights, "extract_quantized_weights"
     )
-    fuse_stage = pipeline.register_stage(stage_fuse_tensors, "fuse_tensors").depends_on(
-        extract_stage
-    )
-    apply_transforms_stage = pipeline.register_stage(
-        stage_apply_target_transforms, "apply_target_transforms"
-    ).depends_on(fuse_stage)
-    map_names_stage = pipeline.register_stage(
-        stage_map_tensor_names, "map_tensor_names"
-    ).depends_on(apply_transforms_stage)
+    rules_stage = pipeline.register_stage(
+        stage_apply_tensor_rules, "apply_tensor_rules"
+    ).depends_on(extract_stage)
     pack_stage = pipeline.register_stage(stage_pack_gguf_blocks, "pack_gguf_blocks").depends_on(
-        map_names_stage
+        rules_stage
     )
     pipeline.register_stage(stage_write_gguf, "write_gguf", capture_stage_output=True).depends_on(
         pack_stage

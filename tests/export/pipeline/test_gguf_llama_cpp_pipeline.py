@@ -204,7 +204,7 @@ def test_gguf_pipeline_skips_tied_lm_head(tmp_path: pathlib.Path, _seed_prngs: i
     )
 
     # THEN: the output GGUF does not contain "output.weight" (the lm_head mapping),
-    # because the default is_tied predicate skips it when tie_word_embeddings=True.
+    # because the DROP_TIED_LM_HEAD rule drops it when tie_word_embeddings=True.
     output_path = artifacts.stage_outputs["write_gguf"]
     reader = gguf.GGUFReader(str(output_path))
     tensor_names = {tensor.name for tensor in reader.tensors}

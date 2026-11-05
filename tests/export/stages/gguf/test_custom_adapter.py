@@ -24,7 +24,7 @@ import pytest
 import torch
 
 from fastforward.export.pipeline import ExportRequest, GgufLlamaCppOptions, export_with_pipeline
-from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter
+from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter, Rename
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -153,8 +153,7 @@ def test_user_defined_arch_adapter_round_trips_custom_naming(
     # GIVEN: a user-defined adapter targeting the fictional "toy" architecture.
     adapter = ArchAdapter(
         gguf_arch="toy",
-        name_map=_toy_name_map,
-        transforms=[],
+        tensor_rules=(Rename(_toy_name_map),),
         write_metadata=_toy_write_metadata,
         tokenizer_model="gpt2",
         tokenizer_pre="default",

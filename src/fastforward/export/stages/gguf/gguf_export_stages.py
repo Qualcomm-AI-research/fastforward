@@ -5,7 +5,7 @@
 
 The stages are intentionally thin: each reads its configuration from the
 pipeline ``context`` and delegates the real work to the helper modules in this
-package (extraction, RoPE permute, name mapping, block packing, vocab writing).
+package (extraction, tensor rules, block packing, vocab writing).
 GGUF export is weight-only, so the extraction stage is a pipeline root that
 operates on the live quantized module rather than a captured FX graph.
 """
@@ -14,7 +14,6 @@ import pathlib
 import re
 
 from collections import Counter
-from dataclasses import replace
 from typing import Any, TypeAlias, cast
 
 import torch
@@ -24,10 +23,10 @@ from gguf import GGMLQuantizationType, GGUFWriter
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor, extract_module_tensors
-from fastforward.export.stages.gguf._fusion import apply_fusions
 from fastforward.export.stages.gguf._packing import default_format_registry
 from fastforward.export.stages.gguf._vocab import write_vocab
 from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
+from fastforward.export.stages.gguf.rules import apply_tensor_rules
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 
@@ -85,8 +84,9 @@ def stage_extract_quantized_weights(
 ) -> list[ExtractedTensor]:
     """Extract integer codes + scales (and float passthroughs) from the FF module.
 
-    Root stage: receives the source quantized module and reads every exportable
-    tensor into an architecture-neutral list of :class:`ExtractedTensor`.
+    Root stage: receives the source quantized module and reads every parameter
+    claimed by the adapter's tensor rules into an architecture-neutral list of
+    :class:`ExtractedTensor`.
     """
     del sample_inputs
     (model,) = modules
@@ -95,78 +95,26 @@ def stage_extract_quantized_weights(
     format_registry = _require_format_registry(context)
 
     return extract_module_tensors(
-        model,
-        adapter=adapter,
-        config=config,
-        format_registry=format_registry,
+        model, adapter=adapter, config=config, format_registry=format_registry
     )
 
 
-def stage_fuse_tensors(
+def stage_apply_tensor_rules(
     modules: tuple[list[ExtractedTensor], ...],
     sample_inputs: _SampleInputsT,
     context: dict[str, Any],
 ) -> list[ExtractedTensor]:
-    """Fuse groups of tensors into single outputs per the adapter's fusion specs.
+    """Rewrite the extracted tensors into named GGUF tensors via the adapter's rules.
 
-    No-op when ``adapter.fusions`` is empty. Otherwise, for each
-    :class:`TensorFusion` spec, groups matching tensors by their captured
-    layer/instance indices and concatenates them along the specified axis.
-    """
-    del sample_inputs
-    (tensors,) = modules
-    adapter = _require_adapter(context)
-    return apply_fusions(tensors, adapter.fusions)
-
-
-def stage_apply_target_transforms(
-    modules: tuple[list[ExtractedTensor], ...],
-    sample_inputs: _SampleInputsT,
-    context: dict[str, Any],
-) -> list[ExtractedTensor]:
-    """Apply architecture-specific tensor transforms in adapter-defined order.
-
-    Iterates the adapter's ``transforms`` list, applying each to every tensor.
-    Built-in transforms include :func:`llama_rope_permute`; users can append
-    their own to the list when constructing a custom :class:`ArchAdapter`.
-
-    Each transform receives the tensor's resolved :class:`GgufQuantFormat` (for
-    quantized tensors) or a default format (for float tensors, which built-in
-    transforms skip).
+    Applies ``adapter.tensor_rules`` in order (see
+    :mod:`fastforward.export.stages.gguf.rules`), then keeps only tensors that
+    received a GGUF name.
     """
     del sample_inputs
     (tensors,) = modules
     adapter = _require_adapter(context)
     config = _require_config(context)
-    format_registry = _require_format_registry(context)
-    fallback_format = format_registry.first()
-
-    transformed: list[ExtractedTensor] = []
-    for tensor in tensors:
-        fmt = tensor.quant_format if tensor.quant_format is not None else fallback_format
-        for transform in adapter.transforms:
-            tensor = transform(tensor, config, fmt)
-        transformed.append(tensor)
-    return transformed
-
-
-def stage_map_tensor_names(
-    modules: tuple[list[ExtractedTensor], ...],
-    sample_inputs: _SampleInputsT,
-    context: dict[str, Any],
-) -> list[ExtractedTensor]:
-    """Assign each tensor its GGUF name via the architecture adapter's name map."""
-    del sample_inputs
-    (tensors,) = modules
-    adapter = _require_adapter(context)
-
-    named: list[ExtractedTensor] = []
-    for tensor in tensors:
-        gguf_name = adapter.name_map(tensor.hf_name)
-        if gguf_name is None:
-            continue
-        named.append(replace(tensor, gguf_name=gguf_name))
-    return named
+    return apply_tensor_rules(tensors, adapter.tensor_rules, config)
 
 
 def stage_pack_gguf_blocks(

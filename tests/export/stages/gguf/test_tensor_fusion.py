@@ -1,17 +1,22 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-"""Tests for the tensor fusion stage in the GGUF export pipeline."""
+"""Tests for the :class:`Fuse` tensor rule in the GGUF export pipeline."""
 
 from __future__ import annotations
+
+from types import SimpleNamespace
+from typing import Any
 
 import fastforward as ff
 import pytest
 import torch
 
-from fastforward.export.stages.gguf import GGUF_Q4_0, GGUF_Q8_0, ArchAdapter, TensorFusion
-from fastforward.export.stages.gguf._extract import ExtractedTensor, _is_fusion_source
-from fastforward.export.stages.gguf._fusion import apply_fusions
+from fastforward.export.stages.gguf import GGUF_Q4_0, GGUF_Q8_0, ArchAdapter, Fuse
+from fastforward.export.stages.gguf._extract import ExtractedTensor, _is_claimed
+
+# Fuse ignores the source config.
+_CONFIG: Any = SimpleNamespace()
 
 
 def _make_quantized_tensor(
@@ -42,19 +47,21 @@ def _make_float_tensor(hf_name: str, rows: int, cols: int) -> ExtractedTensor:
     )
 
 
-def test_no_fusions_is_noop() -> None:
-    """An empty fusions list returns tensors unchanged."""
-    # GIVEN: a list of tensors and no fusion specs.
+def test_fusion_without_matches_is_noop() -> None:
+    """A fusion whose sources match nothing returns tensors unchanged."""
+    # GIVEN: a list of tensors none of which match the fusion's sources.
     tensors = [
         _make_quantized_tensor("layer.0.q.weight", 128, 128),
         _make_quantized_tensor("layer.0.k.weight", 64, 128),
     ]
+    fusion = Fuse(sources=(r"block\.(\d+)\.a", r"block\.(\d+)\.b"), target_name=r"block.\1.ab")
 
-    # WHEN: applying an empty fusions list.
-    result = apply_fusions(tensors, [])
+    # WHEN: applying the fusion.
+    result = fusion.apply(tensors, _CONFIG)
 
-    # THEN: the exact same list is returned.
-    assert result is tensors
+    # THEN: the same tensors are returned in the same order.
+    assert len(result) == len(tensors)
+    assert all(out is inp for out, inp in zip(result, tensors))
 
 
 def test_basic_qkv_fusion() -> None:
@@ -65,7 +72,7 @@ def test_basic_qkv_fusion() -> None:
     v = _make_quantized_tensor("model.layers.0.self_attn.v_proj.weight", 64, 128)
     norm = _make_float_tensor("model.layers.0.input_layernorm.weight", 128, 1)
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
             r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
@@ -76,7 +83,7 @@ def test_basic_qkv_fusion() -> None:
     )
 
     # WHEN: applying the QKV fusion.
-    result = apply_fusions([q, k, v, norm], [fusion])
+    result = fusion.apply([q, k, v, norm], _CONFIG)
 
     # THEN: Q, K, V are replaced by a single fused tensor; norm passes through.
     assert len(result) == 2
@@ -103,7 +110,7 @@ def test_multi_layer_regex_fusion() -> None:
             _make_quantized_tensor(f"model.layers.{layer_idx}.self_attn.v_proj.weight", 64, 128)
         )
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
             r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
@@ -114,7 +121,7 @@ def test_multi_layer_regex_fusion() -> None:
     )
 
     # WHEN: applying fusion with regex capture groups.
-    result = apply_fusions(tensors, [fusion])
+    result = fusion.apply(tensors, _CONFIG)
 
     # THEN: each layer produces one fused tensor with combined row count.
     assert len(result) == 3
@@ -132,7 +139,7 @@ def test_float_tensor_fusion() -> None:
     a = _make_float_tensor("block.0.norm_a.weight", 128, 1)
     b = _make_float_tensor("block.0.norm_b.weight", 64, 1)
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"block\.(\d+)\.norm_a\.weight",
             r"block\.(\d+)\.norm_b\.weight",
@@ -142,7 +149,7 @@ def test_float_tensor_fusion() -> None:
     )
 
     # WHEN: applying fusion.
-    result = apply_fusions([a, b], [fusion])
+    result = fusion.apply([a, b], _CONFIG)
 
     # THEN: the fused tensor has combined rows and is still float.
     assert len(result) == 1
@@ -156,7 +163,7 @@ def test_mixed_kind_raises() -> None:
     q = _make_quantized_tensor("layer.0.q.weight", 128, 128)
     f = _make_float_tensor("layer.0.k.weight", 64, 128)
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"layer\.(\d+)\.q\.weight",
             r"layer\.(\d+)\.k\.weight",
@@ -167,7 +174,7 @@ def test_mixed_kind_raises() -> None:
 
     # WHEN/THEN: applying fusion raises due to mixed kinds.
     with pytest.raises(ff.exceptions.ExportError, match="mixed kinds"):
-        apply_fusions([q, f], [fusion])
+        fusion.apply([q, f], _CONFIG)
 
 
 def test_missing_source_raises() -> None:
@@ -175,7 +182,7 @@ def test_missing_source_raises() -> None:
     # GIVEN: only one of the two required sources is present.
     q = _make_quantized_tensor("layer.0.q.weight", 128, 128)
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"layer\.(\d+)\.q\.weight",
             r"layer\.(\d+)\.k\.weight",
@@ -186,7 +193,7 @@ def test_missing_source_raises() -> None:
 
     # WHEN/THEN: applying fusion raises due to incomplete match.
     with pytest.raises(ff.exceptions.ExportError, match="incomplete"):
-        apply_fusions([q], [fusion])
+        fusion.apply([q], _CONFIG)
 
 
 def test_incompatible_cols_raises() -> None:
@@ -195,7 +202,7 @@ def test_incompatible_cols_raises() -> None:
     q = _make_quantized_tensor("layer.0.q.weight", 128, 128)
     k = _make_quantized_tensor("layer.0.k.weight", 64, 64)
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"layer\.(\d+)\.q\.weight",
             r"layer\.(\d+)\.k\.weight",
@@ -206,28 +213,16 @@ def test_incompatible_cols_raises() -> None:
 
     # WHEN/THEN: applying fusion raises due to incompatible shapes.
     with pytest.raises(ff.exceptions.ExportError, match="column counts"):
-        apply_fusions([q, k], [fusion])
+        fusion.apply([q, k], _CONFIG)
 
 
 def test_extraction_includes_fusion_sources() -> None:
-    """Parameters matching fusion source patterns are extracted even without a name_map entry."""
-
-    # GIVEN: a name_map that only knows about o_proj (not q/k/v), but an adapter
-    # whose fusions list declares q/k/v as fusion sources.
-    def name_map(hf_name: str) -> str | None:
-        if "o_proj" in hf_name:
-            return "blk.0.attn_output.weight"
-        return None
-
+    """Parameters matching fusion source patterns are claimed for extraction."""
+    # GIVEN: an adapter whose only rule is a q/k/v fusion.
     adapter = ArchAdapter(
         gguf_arch="test",
-        name_map=name_map,
-        transforms=[],
-        write_metadata=lambda w, c: None,
-        tokenizer_model="gpt2",
-        tokenizer_pre="default",
-        fusions=[
-            TensorFusion(
+        tensor_rules=(
+            Fuse(
                 sources=(
                     r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
                     r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
@@ -236,16 +231,19 @@ def test_extraction_includes_fusion_sources() -> None:
                 target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
                 axis=0,
             ),
-        ],
+        ),
+        write_metadata=lambda w, c: None,
+        tokenizer_model="gpt2",
+        tokenizer_pre="default",
     )
 
-    # WHEN: checking individual parameter names against the adapter's fusions.
-    # THEN: q/k/v are recognized as fusion sources; o_proj is not.
-    assert _is_fusion_source("model.layers.0.self_attn.q_proj.weight", adapter)
-    assert _is_fusion_source("model.layers.0.self_attn.k_proj.weight", adapter)
-    assert _is_fusion_source("model.layers.2.self_attn.v_proj.weight", adapter)
-    assert not _is_fusion_source("model.layers.0.self_attn.o_proj.weight", adapter)
-    assert not _is_fusion_source("model.norm.weight", adapter)
+    # WHEN: checking individual parameter names against the adapter's rules.
+    # THEN: q/k/v are claimed as fusion sources; o_proj and norms are not.
+    assert _is_claimed("model.layers.0.self_attn.q_proj.weight", adapter)
+    assert _is_claimed("model.layers.0.self_attn.k_proj.weight", adapter)
+    assert _is_claimed("model.layers.2.self_attn.v_proj.weight", adapter)
+    assert not _is_claimed("model.layers.0.self_attn.o_proj.weight", adapter)
+    assert not _is_claimed("model.norm.weight", adapter)
 
 
 def test_mixed_quant_format_fusion_raises() -> None:
@@ -256,7 +254,7 @@ def test_mixed_quant_format_fusion_raises() -> None:
     q.quant_format = GGUF_Q4_0
     k.quant_format = GGUF_Q8_0
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"layer\.(\d+)\.q\.weight",
             r"layer\.(\d+)\.k\.weight",
@@ -267,7 +265,7 @@ def test_mixed_quant_format_fusion_raises() -> None:
 
     # WHEN/THEN: applying fusion raises due to conflicting quant formats.
     with pytest.raises(ff.exceptions.ExportError, match="different quant formats"):
-        apply_fusions([q, k], [fusion])
+        fusion.apply([q, k], _CONFIG)
 
 
 def test_fusion_propagates_quant_format() -> None:
@@ -278,7 +276,7 @@ def test_fusion_propagates_quant_format() -> None:
     q.quant_format = GGUF_Q4_0
     k.quant_format = GGUF_Q4_0
 
-    fusion = TensorFusion(
+    fusion = Fuse(
         sources=(
             r"layer\.(\d+)\.q\.weight",
             r"layer\.(\d+)\.k\.weight",
@@ -288,7 +286,7 @@ def test_fusion_propagates_quant_format() -> None:
     )
 
     # WHEN: applying fusion.
-    result = apply_fusions([q, k], [fusion])
+    result = fusion.apply([q, k], _CONFIG)
 
     # THEN: the fused tensor carries the shared format.
     assert len(result) == 1

@@ -1,9 +1,9 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-"""Tests for the GGUF export pipeline stages (transforms, naming, packing).
+"""Tests for the GGUF export pipeline stages (tensor rules, packing, writing).
 
-These cover the stage wiring and the RoPE-permute/name-map/pack composition
+These cover the stage wiring and the tensor-rule/pack composition
 without requiring the optional ``gguf`` package. The write stage's dependency
 handling is tested via its error paths.
 """
@@ -29,9 +29,8 @@ from fastforward.export.stages.gguf.adapter import GgufFormatRegistry
 from fastforward.export.stages.gguf.gguf_export_stages import (
     _cast_float,
     _resolve_float_type,
-    stage_apply_target_transforms,
+    stage_apply_tensor_rules,
     stage_extract_quantized_weights,
-    stage_map_tensor_names,
     stage_pack_gguf_blocks,
     stage_write_gguf,
 )
@@ -47,49 +46,61 @@ class _Config:
         self.tie_word_embeddings = False
 
 
-def test_apply_transforms_permutes_llama_q_proj() -> None:
+def test_apply_tensor_rules_permutes_and_names_llama_q_proj() -> None:
     # GIVEN: a llama q_proj tensor (8 rows, 2 heads => de-interleave order).
     tensor = make_quantized_tensor("model.layers.0.self_attn.q_proj.weight", rows=8, cols=32)
     assert tensor.int_codes is not None
     original_codes = tensor.int_codes.reshape(8, 1, BLOCK_SIZE).clone()
-    context = {"arch_adapter": LLAMA_ADAPTER, "model_config": _Config(), "quant_format": GGUF_Q4_0}
+    context = {"arch_adapter": LLAMA_ADAPTER, "model_config": _Config()}
 
-    # WHEN: applying target transforms.
-    (result,) = stage_apply_target_transforms(([tensor],), [], context)
+    # WHEN: applying the adapter's tensor rules.
+    (result,) = stage_apply_tensor_rules(([tensor],), [], context)
 
-    # THEN: rows are reordered by llama.cpp's RoPE de-interleave permutation.
+    # THEN: the tensor is named and its rows are reordered by llama.cpp's RoPE
+    # de-interleave permutation.
+    assert result.gguf_name == "blk.0.attn_q.weight"
     assert result.int_codes is not None
     permuted = result.int_codes.reshape(8, 1, BLOCK_SIZE)
     expected = original_codes[torch.tensor([0, 2, 1, 3, 4, 6, 5, 7])]
     torch.testing.assert_close(permuted, expected)
 
 
-def test_apply_transforms_noop_for_qwen3() -> None:
+def test_apply_tensor_rules_does_not_permute_for_qwen3() -> None:
     # GIVEN: the same tensor but a qwen3 context (no permute).
     tensor = make_quantized_tensor("model.layers.0.self_attn.q_proj.weight", rows=8, cols=32)
     assert tensor.int_codes is not None
     original = tensor.int_codes.clone()
-    context = {"arch_adapter": QWEN3_ADAPTER, "model_config": _Config(), "quant_format": GGUF_Q4_0}
+    context = {"arch_adapter": QWEN3_ADAPTER, "model_config": _Config()}
 
-    # WHEN: applying transforms.
-    (result,) = stage_apply_target_transforms(([tensor],), [], context)
+    # WHEN: applying the adapter's tensor rules.
+    (result,) = stage_apply_tensor_rules(([tensor],), [], context)
 
-    # THEN: codes are unchanged.
+    # THEN: the tensor is named and its codes are unchanged.
+    assert result.gguf_name == "blk.0.attn_q.weight"
     torch.testing.assert_close(result.int_codes, original)
 
 
-def test_map_tensor_names_assigns_gguf_names_and_drops_unmapped() -> None:
+def test_apply_tensor_rules_drops_unnamed_tensors() -> None:
     # GIVEN: one mappable and one unmappable tensor.
     keep = make_quantized_tensor("model.layers.1.self_attn.v_proj.weight", rows=4, cols=32)
     drop = make_quantized_tensor("model.rotary_emb.inv_freq", rows=1, cols=32)
-    context = {"arch_adapter": LLAMA_ADAPTER}
+    context = {"arch_adapter": LLAMA_ADAPTER, "model_config": _Config()}
 
-    # WHEN: mapping names.
-    result = stage_map_tensor_names(([keep, drop],), [], context)
+    # WHEN: applying the adapter's tensor rules.
+    result = stage_apply_tensor_rules(([keep, drop],), [], context)
 
     # THEN: only the mappable tensor survives, tagged with its GGUF name.
     assert len(result) == 1
     assert result[0].gguf_name == "blk.1.attn_v.weight"
+
+
+def test_apply_tensor_rules_requires_model_config() -> None:
+    # GIVEN: a context without model_config.
+    context = {"arch_adapter": LLAMA_ADAPTER}
+
+    # WHEN/THEN: applying the rules raises because they receive the config.
+    with pytest.raises(ExportError, match="model_config"):
+        stage_apply_tensor_rules(([],), [], context)
 
 
 def test_pack_gguf_blocks_splits_quantized_and_float() -> None:

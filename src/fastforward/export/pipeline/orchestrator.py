@@ -81,8 +81,8 @@ class GgufLlamaCppOptions:
 
     Attributes:
         arch_adapter: :class:`ArchAdapter` carrying all HF-to-GGUF assumptions
-            for the target architecture: parameter-name map, RoPE permute,
-            metadata writer, and tokenizer discriminators. Built-in adapters
+            for the target architecture: tensor rules (names, RoPE permute,
+            fusions, ...), metadata writer, and tokenizer discriminators. Built-in adapters
             ``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, and ``QWEN3_ADAPTER`` are
             importable from :mod:`fastforward.export.stages.gguf`. For a model
             whose module tree differs from the standard HuggingFace layout,

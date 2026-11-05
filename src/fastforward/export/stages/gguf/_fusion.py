@@ -1,10 +1,10 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-"""Tensor fusion logic for the GGUF export pipeline.
+"""Tensor fusion logic backing the :class:`~fastforward.export.stages.gguf.rules.Fuse` rule.
 
-Given a list of :class:`TensorFusion` specs and a list of extracted tensors,
-groups matching tensors and concatenates them along the specified axis.
+Given source patterns and a list of extracted tensors, groups matching tensors
+and concatenates them along the specified axis.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import torch
 
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._extract import ExtractedTensor
-from fastforward.export.stages.gguf.adapter import TensorFusion
 
 
 def _resolve_target_name(target_template: str, groups: tuple[str, ...]) -> str:
@@ -26,8 +25,8 @@ def _resolve_target_name(target_template: str, groups: tuple[str, ...]) -> str:
     return result
 
 
-def _match_fusion(
-    fusion: TensorFusion,
+def _match_sources(
+    sources: tuple[str, ...],
     tensor_names: list[str],
 ) -> dict[tuple[str, ...], list[str | None]]:
     """Match tensor names against a fusion's source patterns.
@@ -40,8 +39,8 @@ def _match_fusion(
         pattern (None for unmatched positions). Only groups with at least one
         match are included.
     """
-    compiled = [re.compile(p) for p in fusion.sources]
-    n_sources = len(fusion.sources)
+    compiled = [re.compile(p) for p in sources]
+    n_sources = len(sources)
     groups_map: dict[tuple[str, ...], list[str | None]] = {}
 
     for name in tensor_names:
@@ -157,67 +156,63 @@ def _fuse_float(tensors: list[ExtractedTensor], target_name: str, axis: int) -> 
     )
 
 
-def apply_fusions(
+def fuse_matching(
     tensors: list[ExtractedTensor],
-    fusions: list[TensorFusion],
+    sources: tuple[str, ...],
+    target_name: str,
+    axis: int,
 ) -> list[ExtractedTensor]:
-    """Apply fusion specifications to a list of extracted tensors.
+    """Fuse every group of tensors matching ``sources`` into one tensor per group.
 
-    For each :class:`TensorFusion`, matches source patterns against tensor
-    ``hf_name`` values, groups by captured layer/instance index, validates
-    compatibility, and concatenates matched tensors. Unmatched tensors pass
-    through unchanged.
+    Matches the source patterns against tensor ``hf_name`` values, groups by
+    the captured layer/instance index, validates compatibility, and
+    concatenates each group along ``axis``. Unmatched tensors pass through
+    unchanged.
 
     Args:
-        tensors: Extracted tensors from the model.
-        fusions: Fusion specifications to apply.
+        tensors: Extracted tensors.
+        sources: Regex patterns for the tensors to fuse, in concat order.
+        target_name: Name template for the fused tensors (may contain
+            back-references to the captured groups).
+        axis: Concatenation axis.
 
     Returns:
-        A new list with fused tensors replacing their sources.
+        A new list: unmatched tensors in their original order, followed by the
+        fused tensors.
 
     Raises:
-        ExportError: If sources within a fusion have mismatched kinds, if
-            shapes are incompatible on the non-concat dimension, or if a
-            fusion spec matches some but not all sources for a given instance.
+        ExportError: If sources within a group have mismatched kinds, if
+            shapes are incompatible on the non-concat dimension, or if some but
+            not all sources match for a given instance.
     """
-    if not fusions:
-        return tensors
-
     tensor_by_name: dict[str, ExtractedTensor] = {t.hf_name: t for t in tensors}
-    tensor_names = list(tensor_by_name)
+    matches = _match_sources(sources, list(tensor_by_name))
     consumed_names: set[str] = set()
     fused_tensors: list[ExtractedTensor] = []
 
-    for fusion in fusions:
-        matches = _match_fusion(fusion, tensor_names)
+    for groups, matched_names in matches.items():
+        missing = [i for i, name in enumerate(matched_names) if name is None]
+        if missing:
+            present = [n for n in matched_names if n is not None]
+            msg = (
+                f"Tensor fusion incomplete for instance {groups}: "
+                + f"source pattern(s) at index {missing} had no match. "
+                + f"Matched sources: {present}"
+            )
+            raise ExportError(msg)
 
-        for groups, matched_names in matches.items():
-            # Check completeness.
-            missing = [i for i, name in enumerate(matched_names) if name is None]
-            if missing:
-                present = [n for n in matched_names if n is not None]
-                msg = (
-                    f"Tensor fusion incomplete for instance {groups}: "
-                    f"source pattern(s) at index {missing} had no match. "
-                    f"Matched sources: {present}"
-                )
-                raise ExportError(msg)
+        source_tensors = [tensor_by_name[name] for name in matched_names]  # type: ignore[index]
+        _validate_fusion_group(source_tensors, axis, groups)
 
-            source_tensors = [tensor_by_name[name] for name in matched_names]  # type: ignore[index]
-            _validate_fusion_group(source_tensors, fusion.axis, groups)
+        resolved_name = _resolve_target_name(target_name, groups)
+        if source_tensors[0].kind == "quantized":
+            fused = _fuse_quantized(source_tensors, resolved_name, axis)
+        else:
+            fused = _fuse_float(source_tensors, resolved_name, axis)
 
-            target_name = _resolve_target_name(fusion.target_name, groups)
-            kind = source_tensors[0].kind
+        fused_tensors.append(fused)
+        consumed_names.update(name for name in matched_names if name is not None)
 
-            if kind == "quantized":
-                fused = _fuse_quantized(source_tensors, target_name, fusion.axis)
-            else:
-                fused = _fuse_float(source_tensors, target_name, fusion.axis)
-
-            fused_tensors.append(fused)
-            consumed_names.update(name for name in matched_names if name is not None)
-
-    # Non-consumed tensors in original order, fused tensors appended.
     result = [t for t in tensors if t.hf_name not in consumed_names]
     result.extend(fused_tensors)
     return result

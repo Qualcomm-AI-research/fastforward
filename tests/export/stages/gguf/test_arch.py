@@ -6,8 +6,10 @@
 The adapters (:data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, :data:`QWEN3_ADAPTER`)
 are the pipeline's default reference implementations of the public
 :class:`ArchAdapter` surface. These tests exercise the fields users are most
-likely to depend on (name map, transforms).
+likely to depend on (tensor rules, transforms).
 """
+
+from dataclasses import replace
 
 import pytest
 import torch
@@ -18,8 +20,12 @@ from fastforward.export.stages.gguf import (
     LLAMA_ADAPTER,
     QWEN2_ADAPTER,
     QWEN3_ADAPTER,
+    ArchAdapter,
+    ExtractedTensor,
+    Transform,
     llama_rope_permute,
 )
+from fastforward.export.stages.gguf.rules import apply_tensor_rules
 from tests.export.stages.gguf.conftest import make_quantized_tensor
 
 
@@ -37,9 +43,17 @@ class _Config:
         self.vocab_size = 0
 
 
+def _gguf_name(adapter: ArchAdapter, hf_name: str) -> str | None:
+    """Run the adapter's tensor rules on one float tensor and return its GGUF name."""
+    tensor = ExtractedTensor(hf_name=hf_name, kind="float", rows=1, float_data=torch.zeros(1))
+    result = apply_tensor_rules([tensor], adapter.tensor_rules, _Config(n_head=1, n_head_kv=1))
+    return result[0].gguf_name if result else None
+
+
 def test_llama_adapter_name_map_covers_attention_and_mlp() -> None:
-    # GIVEN: the llama adapter's name map.
-    name_map = LLAMA_ADAPTER.name_map
+    # GIVEN: the llama adapter's tensor rules.
+    def name_map(hf_name: str) -> str | None:
+        return _gguf_name(LLAMA_ADAPTER, hf_name)
 
     # WHEN: mapping HuggingFace parameter paths.
     # THEN: static and layer-local names map to GGUF names.
@@ -53,8 +67,9 @@ def test_llama_adapter_name_map_covers_attention_and_mlp() -> None:
 
 
 def test_qwen3_adapter_name_map_includes_q_k_norm() -> None:
-    # GIVEN: the qwen3 adapter's name map.
-    name_map = QWEN3_ADAPTER.name_map
+    # GIVEN: the qwen3 adapter's tensor rules.
+    def name_map(hf_name: str) -> str | None:
+        return _gguf_name(QWEN3_ADAPTER, hf_name)
 
     # WHEN: mapping per-head query/key norm paths.
     # THEN: qwen3 additionally maps the per-head query/key norms.
@@ -63,8 +78,9 @@ def test_qwen3_adapter_name_map_includes_q_k_norm() -> None:
 
 
 def test_qwen2_adapter_name_map_includes_qkv_bias_not_q_k_norm() -> None:
-    # GIVEN: the qwen2 adapter's name map.
-    name_map = QWEN2_ADAPTER.name_map
+    # GIVEN: the qwen2 adapter's tensor rules.
+    def name_map(hf_name: str) -> str | None:
+        return _gguf_name(QWEN2_ADAPTER, hf_name)
 
     # WHEN: mapping bias and norm paths.
     # THEN: qwen2 maps the additive Q/K/V projection biases.
@@ -90,9 +106,9 @@ def test_llama_rope_permute_applies_to_q_and_k_only() -> None:
     v_original = v_tensor.int_codes.clone()
 
     # WHEN: applying the llama rope transform to q_proj, k_proj, and v_proj tensors.
-    q_result = llama_rope_permute(q_tensor, config, GGUF_Q4_0)
-    k_result = llama_rope_permute(k_tensor, config, GGUF_Q4_0)
-    v_result = llama_rope_permute(v_tensor, config, GGUF_Q4_0)
+    q_result = llama_rope_permute(q_tensor, config)
+    k_result = llama_rope_permute(k_tensor, config)
+    v_result = llama_rope_permute(v_tensor, config)
 
     # THEN: q/k are modified (rows reordered); v passes through unchanged.
     assert q_result.int_codes is not None
@@ -110,7 +126,7 @@ def test_llama_rope_permute_is_the_interleave_deinterleave() -> None:
     original_codes = tensor.int_codes.reshape(8, 1, block_size).clone()
 
     # WHEN: applying the transform.
-    result = llama_rope_permute(tensor, config, GGUF_Q4_0)
+    result = llama_rope_permute(tensor, config)
 
     # THEN: each head's rows are de-interleaved into (even-half, odd-half) order,
     # matching llama.cpp's converter.
@@ -120,6 +136,26 @@ def test_llama_rope_permute_is_the_interleave_deinterleave() -> None:
     torch.testing.assert_close(permuted, expected)
 
 
+def test_llama_rope_permute_keeps_extracted_shapes() -> None:
+    # GIVEN: a q_proj shaped like extraction output: (rows, cols) codes and
+    # (rows, blocks_per_row) scales.
+    config = _Config(n_head=2, n_head_kv=2)
+    flat = make_quantized_tensor("model.layers.0.self_attn.q_proj.weight", rows=8, cols=64)
+    assert flat.int_codes is not None and flat.scales is not None
+    tensor = replace(
+        flat, int_codes=flat.int_codes.reshape(8, 64), scales=flat.scales.reshape(8, 2)
+    )
+
+    # WHEN: applying the transform.
+    result = llama_rope_permute(tensor, config)
+
+    # THEN: the row-major layout is kept, so later rules (e.g. a column fusion)
+    # see the same shapes as for unpermuted tensors.
+    assert result.int_codes is not None and result.scales is not None
+    assert result.int_codes.shape == (8, 64)
+    assert result.scales.shape == (8, 2)
+
+
 def test_llama_rope_permute_rejects_indivisible_row_count() -> None:
     # GIVEN: a row count not divisible by 2 * n_head.
     config = _Config(n_head=3, n_head_kv=3)
@@ -127,21 +163,37 @@ def test_llama_rope_permute_rejects_indivisible_row_count() -> None:
 
     # WHEN / THEN: the transform refuses rather than silently corrupting rows.
     with pytest.raises(ExportError, match="not divisible"):
-        llama_rope_permute(tensor, config, GGUF_Q4_0)
+        llama_rope_permute(tensor, config)
 
 
 def test_qwen_adapters_have_no_transforms() -> None:
     # GIVEN: the built-in qwen2 and qwen3 adapters.
-    # THEN: neither carries any transforms (no RoPE permute needed).
-    assert QWEN2_ADAPTER.transforms == []
-    assert QWEN3_ADAPTER.transforms == []
+    # THEN: neither carries a Transform rule (no RoPE permute needed).
+    for adapter in (QWEN2_ADAPTER, QWEN3_ADAPTER):
+        assert not any(isinstance(rule, Transform) for rule in adapter.tensor_rules)
 
 
 def test_llama_adapter_has_rope_permute_transform() -> None:
     # GIVEN: the built-in llama adapter.
+    transforms = [rule for rule in LLAMA_ADAPTER.tensor_rules if isinstance(rule, Transform)]
+
     # THEN: it has exactly one transform — the rope permute.
-    assert len(LLAMA_ADAPTER.transforms) == 1
-    assert LLAMA_ADAPTER.transforms[0] is llama_rope_permute
+    assert len(transforms) == 1
+    assert transforms[0].fn is llama_rope_permute
+
+
+def test_llama_adapter_permutes_quantized_q_proj_before_renaming() -> None:
+    # GIVEN: a quantized q_proj tensor and a 2-head config.
+    config = _Config(n_head=2, n_head_kv=2)
+    tensor = make_quantized_tensor("model.layers.0.self_attn.q_proj.weight", rows=8, cols=32)
+
+    # WHEN: running the llama adapter's tensor rules.
+    (result,) = apply_tensor_rules([tensor], LLAMA_ADAPTER.tensor_rules, config)
+
+    # THEN: the tensor is renamed and its rows are permuted like the bare transform.
+    expected = llama_rope_permute(tensor, config)
+    assert result.gguf_name == "blk.0.attn_q.weight"
+    torch.testing.assert_close(result.int_codes, expected.int_codes)
 
 
 def test_adapters_carry_tokenizer_discriminators() -> None:

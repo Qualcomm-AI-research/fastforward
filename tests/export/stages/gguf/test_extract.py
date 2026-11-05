@@ -5,7 +5,9 @@
 
 import logging
 
-from typing import Callable, cast
+from dataclasses import replace
+from types import SimpleNamespace
+from typing import Any, Callable, cast
 
 import fastforward as ff
 import pytest
@@ -14,22 +16,10 @@ import torch
 from fastforward.export.stages.gguf._extract import extract_module_tensors
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter
+from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
-
-
-class _Config:
-    def __init__(self, tie_word_embeddings: bool = False) -> None:
-        self.tie_word_embeddings = tie_word_embeddings
-        self.num_attention_heads = 1
-        self.num_key_value_heads = 1
-        self.hidden_size = 0
-        self.num_hidden_layers = 0
-        self.intermediate_size = 0
-        self.max_position_embeddings = 0
-        self.rms_norm_eps = 1e-5
-        self.vocab_size = 0
 
 
 def _make_quantized_linear(out_features: int, in_features: int) -> QuantizedLinear:
@@ -56,8 +46,7 @@ def _make_adapter(name_map: Callable[[str], str | None] | None = None) -> ArchAd
         name_map = _accept_weights
     return ArchAdapter(
         gguf_arch="test",
-        name_map=name_map,
-        transforms=[],
+        tensor_rules=(Rename(name_map),),
         write_metadata=lambda writer, config: None,
         tokenizer_model="gpt2",
         tokenizer_pre="default",
@@ -74,9 +63,7 @@ def test_extract_quantized_linear_reads_learned_codes(_seed_prngs: int) -> None:
     model = Model()
 
     # WHEN: extracting exportable tensors.
-    extracted = extract_module_tensors(
-        model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-    )
+    extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
     # THEN: the linear weight is extracted as quantized, with block-shaped codes
     # and one scale per block, tagged as quantized.
@@ -97,9 +84,7 @@ def test_extract_passes_through_unquantized_as_float(_seed_prngs: int) -> None:
     model = Model()
 
     # WHEN: extracting.
-    extracted = extract_module_tensors(
-        model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-    )
+    extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
     # THEN: the embedding passes through as float (no fallback quantization).
     (tensor,) = [t for t in extracted if t.hf_name == "embed.weight"]
@@ -118,9 +103,7 @@ def test_extract_passes_through_float_norms(_seed_prngs: int) -> None:
     model = Model()
 
     # WHEN: extracting.
-    extracted = extract_module_tensors(
-        model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-    )
+    extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
     # THEN: the norm weight passes through as float.
     (tensor,) = [t for t in extracted if t.hf_name == "norm.weight"]
@@ -129,78 +112,10 @@ def test_extract_passes_through_float_norms(_seed_prngs: int) -> None:
     torch.testing.assert_close(tensor.float_data, model.norm.weight.detach().float())
 
 
-def test_extract_skips_tied_lm_head(_seed_prngs: int) -> None:
-    # GIVEN: a model whose `lm_head` QuantizedLinear yields the parameter name
-    # `lm_head.weight`, with tied embeddings.
-    class Model(ff.nn.QuantizedModule):
-        def __init__(self) -> None:
-            super().__init__()
-            self.lm_head = _make_quantized_linear(8, 32)
-
-    model = Model()
-    adapter = _make_adapter(lambda hf_name: hf_name if hf_name.endswith(".weight") else None)
-
-    # WHEN: extracting with tied embeddings.
-    extracted = extract_module_tensors(
-        model, adapter=adapter, config=_Config(tie_word_embeddings=True), quant_format=GGUF_Q4_0
-    )
-
-    # THEN: the tied lm_head weight is skipped entirely.
-    assert all(t.hf_name != "lm_head.weight" for t in extracted)
-
-
-def test_extract_keeps_lm_head_when_not_tied(_seed_prngs: int) -> None:
-    # GIVEN: the same model, but embeddings are NOT tied.
-    class Model(ff.nn.QuantizedModule):
-        def __init__(self) -> None:
-            super().__init__()
-            self.lm_head = _make_quantized_linear(8, 32)
-
-    model = Model()
-    adapter = _make_adapter(lambda hf_name: hf_name if hf_name == "lm_head.weight" else None)
-
-    # WHEN: extracting without tied embeddings.
-    extracted = extract_module_tensors(
-        model, adapter=adapter, config=_Config(), quant_format=GGUF_Q4_0
-    )
-
-    # THEN: the lm_head weight is retained and quantized.
-    (tensor,) = [t for t in extracted if t.hf_name == "lm_head.weight"]
-    assert tensor.kind == "quantized"
-
-
-def test_extract_uses_adapter_is_tied(_seed_prngs: int) -> None:
-    # GIVEN: a model whose output projection lives at a non-HF name, and an
-    # adapter that identifies it via a custom is_tied predicate.
-    class Model(ff.nn.QuantizedModule):
-        def __init__(self) -> None:
-            super().__init__()
-            self.output_proj = _make_quantized_linear(8, 32)
-
-    model = Model()
-    adapter = ArchAdapter(
-        gguf_arch="test",
-        name_map=lambda hf_name: hf_name if hf_name.endswith(".weight") else None,
-        transforms=[],
-        write_metadata=lambda writer, config: None,
-        tokenizer_model="gpt2",
-        tokenizer_pre="default",
-        is_tied=lambda hf_name, config: hf_name == "output_proj.weight",
-    )
-
-    # WHEN: extracting with a config (is_tied decides independently).
-    extracted = extract_module_tensors(
-        model, adapter=adapter, config=_Config(), quant_format=GGUF_Q4_0
-    )
-
-    # THEN: the adapter-identified tensor is skipped.
-    assert all(t.hf_name != "output_proj.weight" for t in extracted)
-
-
 def test_extract_logs_warning_for_skipped_params(
     _seed_prngs: int, caplog: pytest.LogCaptureFixture
 ) -> None:
-    # GIVEN: a model with a parameter the adapter's name_map explicitly drops.
+    # GIVEN: a model with a parameter no tensor rule claims.
     class Model(ff.nn.QuantizedModule):
         def __init__(self) -> None:
             super().__init__()
@@ -218,7 +133,7 @@ def test_extract_logs_warning_for_skipped_params(
 
     # WHEN: extracting, with WARNING-level capture enabled.
     with caplog.at_level(logging.WARNING, logger="fastforward.export.stages.gguf._extract"):
-        extract_module_tensors(model, adapter=adapter, config=_Config(), quant_format=GGUF_Q4_0)
+        extract_module_tensors(model, adapter=adapter, quant_format=GGUF_Q4_0)
 
     # THEN: a single WARNING record was emitted naming the dropped parameter.
     warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
@@ -240,9 +155,7 @@ def test_extract_uninitialized_quantizer_passes_as_float(_seed_prngs: int) -> No
     model = Model()
 
     # WHEN: extracting.
-    extracted = extract_module_tensors(
-        model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-    )
+    extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
     # THEN: the weight arrives as float because no initialized quantizer exists.
     (tensor,) = [t for t in extracted if t.hf_name == "proj.weight"]
@@ -283,9 +196,7 @@ def test_extract_rejects_asymmetric_quantizer(_seed_prngs: int) -> None:
 
     # WHEN/THEN: extraction raises ExportError (no format matches the asymmetric quantizer).
     with pytest.raises(ff.exceptions.ExportError, match="no registered GGUF format matches"):
-        extract_module_tensors(
-            model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-        )
+        extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
 
 def test_extract_rejects_mismatched_num_bits(_seed_prngs: int) -> None:
@@ -299,9 +210,7 @@ def test_extract_rejects_mismatched_num_bits(_seed_prngs: int) -> None:
 
     # WHEN/THEN: extraction raises ExportError mentioning num_bits.
     with pytest.raises(ff.exceptions.ExportError, match="num_bits"):
-        extract_module_tensors(
-            model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q8_0
-        )
+        extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q8_0)
 
 
 def test_extract_rejects_mismatched_block_size(_seed_prngs: int) -> None:
@@ -317,9 +226,27 @@ def test_extract_rejects_mismatched_block_size(_seed_prngs: int) -> None:
 
     # WHEN/THEN: extraction raises ExportError mentioning block_size.
     with pytest.raises(ff.exceptions.ExportError, match="block_size"):
-        extract_module_tensors(
-            model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q4_0
-        )
+        extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+
+def test_extract_skips_parameters_dropped_before_any_claim(_seed_prngs: int) -> None:
+    # GIVEN: a tied-embedding config and an lm_head whose 4-bit quantizer does
+    # not match the 8-bit export format.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.lm_head = _make_quantized_linear_custom(4, 32, num_bits=4)
+
+    adapter = replace(_make_adapter(), tensor_rules=(DROP_TIED_LM_HEAD, Rename(_accept_weights)))
+    config: Any = SimpleNamespace(tie_word_embeddings=True)
+
+    # WHEN: extracting with the config.
+    extracted = extract_module_tensors(
+        Model(), adapter=adapter, config=config, quant_format=GGUF_Q8_0
+    )
+
+    # THEN: the leading Drop skips lm_head before its quantizer is validated.
+    assert extracted == []
 
 
 def test_extract_accepts_matching_8bit_format(_seed_prngs: int) -> None:
@@ -332,9 +259,7 @@ def test_extract_accepts_matching_8bit_format(_seed_prngs: int) -> None:
     model = Model()
 
     # WHEN: extracting with matching format.
-    extracted = extract_module_tensors(
-        model, adapter=_make_adapter(), config=_Config(), quant_format=GGUF_Q8_0
-    )
+    extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q8_0)
 
     # THEN: the tensor is extracted successfully.
     (tensor,) = [t for t in extracted if t.hf_name == "weight.weight"]

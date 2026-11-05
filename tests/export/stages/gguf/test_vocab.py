@@ -89,8 +89,7 @@ def _make_adapter(tokenizer_model: str = "gpt2", tokenizer_pre: str = "default")
     """A minimal adapter; ``write_vocab`` only reads the tokenizer discriminators."""
     return ArchAdapter(
         gguf_arch="test",
-        name_map=lambda hf_name: hf_name,
-        transforms=[],
+        tensor_rules=(),
         write_metadata=lambda writer, config: None,
         tokenizer_model=tokenizer_model,
         tokenizer_pre=tokenizer_pre,

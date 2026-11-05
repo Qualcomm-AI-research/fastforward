@@ -4,7 +4,7 @@
 """Public ``ArchAdapter`` and ``GgufQuantFormat`` — the seams by which users configure the GGUF pipeline.
 
 FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
-parameter-name assumption, every architecture-specific tensor transform, and
+parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
 adapters (``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, ``QWEN3_ADAPTER``) are shipped
 alongside as reference implementations; for a model whose module tree differs
@@ -18,7 +18,7 @@ own ``GgufQuantFormat`` with the appropriate pack function.
 
 Example::
 
-    from fastforward.export.stages.gguf import ArchAdapter, GgufQuantFormat
+    from fastforward.export.stages.gguf import DROP_TIED_LM_HEAD, ArchAdapter, Rename
 
     def my_name_map(hf_name: str) -> str | None:
         # Map user's own parameter naming onto GGUF's blk.<i>.<slot>.weight scheme.
@@ -26,18 +26,19 @@ Example::
 
     adapter = ArchAdapter(
         gguf_arch="my-arch",
-        name_map=my_name_map,
-        transforms=[],
+        tensor_rules=(DROP_TIED_LM_HEAD, Rename(my_name_map)),
         write_metadata=my_write_metadata,
         tokenizer_model="gpt2",
         tokenizer_pre="default",
     )
+
+See :mod:`fastforward.export.stages.gguf.rules` for the available tensor rules.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Protocol, TypeAlias, runtime_checkable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable, Protocol, Sequence, TypeAlias, runtime_checkable
 
 import torch
 
@@ -46,11 +47,9 @@ from gguf import GGUFWriter
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 
 if TYPE_CHECKING:
-    from fastforward.export.stages.gguf._extract import ExtractedTensor
+    from fastforward.export.stages.gguf.rules import TensorRule
 
-_NameMapT: TypeAlias = Callable[[str], str | None]
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
-_IsTiedT: TypeAlias = Callable[[str, GgufSourceConfig], bool]
 
 
 @runtime_checkable
@@ -93,59 +92,6 @@ class PackFn(Protocol):
             ``(n_blocks, block_bytes)`` uint8 — the packed byte blocks.
         """
         ...
-
-
-TensorTransformT: TypeAlias = Callable[
-    ["ExtractedTensor", GgufSourceConfig, "GgufQuantFormat"], "ExtractedTensor"
-]
-
-
-@dataclass(frozen=True, slots=True)
-class TensorFusion:
-    r"""Declarative specification of a tensor fusion operation.
-
-    A fusion combines N source tensors into a single output tensor by
-    concatenation along a specified axis. Source names are regex patterns
-    with capture groups; the ``target_name`` may use back-references (``\1``,
-    ``\2``, ...) to substitute matched groups from the sources.
-
-    All sources must match with the same captured groups (i.e. belong to the
-    same layer/instance). For each such match set, the sources are concatenated
-    in the order listed.
-
-    Example — fuse Q/K/V per layer::
-
-        TensorFusion(
-            sources=(
-                r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
-                r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
-                r"model\.layers\.(\d+)\.self_attn\.v_proj\.weight",
-            ),
-            target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
-            axis=0,
-        )
-
-    Attributes:
-        sources: Regex patterns identifying the tensors to fuse, in concat
-            order. Each pattern must have the same capture groups. Non-regex
-            literal names are also valid (no metacharacters = exact match).
-        target_name: Name for the fused output tensor. May contain back-
-            references (``\1``, ``\2``) that are substituted from the matched
-            capture groups.
-        axis: Concatenation axis. 0 = row-concat (the common case for
-            QKV fusion where each tensor contributes its rows).
-    """
-
-    sources: tuple[str, ...]
-    target_name: str
-    axis: int = 0
-
-
-def _default_is_tied(hf_name: str, config: GgufSourceConfig) -> bool:
-    """Default tied-weight predicate: skips ``lm_head.weight`` when config indicates tying."""
-    if not getattr(config, "tie_word_embeddings", False):
-        return False
-    return hf_name == "lm_head.weight"
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,23 +141,22 @@ class GgufQuantFormat:
 class ArchAdapter:
     """Bundle of architecture-specific choices consumed by the GGUF stages.
 
-    Every field is consumed by exactly one stage — this is the whole surface
-    between generic FastForward code and model-specific knowledge. Per-export
-    policy (float output types, allowed quant formats) is not architecture
-    knowledge and lives on ``GgufLlamaCppOptions`` instead.
+    This is the whole surface between generic FastForward code and
+    model-specific knowledge: what the tensors become (``tensor_rules``) and
+    what the header says (``gguf_arch``, ``write_metadata``, tokenizer
+    discriminators). Per-export policy (float output types, allowed quant
+    formats) is not architecture knowledge and lives on
+    ``GgufLlamaCppOptions`` instead.
 
     Attributes:
         gguf_arch: Architecture string passed to ``GGUFWriter(arch=)``. Written
             into the GGUF header and used by llama.cpp to pick its loader.
-        name_map: Maps a HuggingFace parameter name (e.g.
-            ``"model.layers.0.self_attn.q_proj.weight"``) to its GGUF tensor
-            name (``"blk.0.attn_q.weight"``), or ``None`` to skip the parameter.
-        transforms: Ordered list of per-tensor transform functions applied by
-            ``stage_apply_target_transforms``. Each receives an
-            :class:`ExtractedTensor`, the source config, and the quant format,
-            and returns a (possibly modified) ``ExtractedTensor``. Built-in
-            helpers like :func:`llama_rope_permute` slot in here. An empty list
-            means no transforms are applied.
+        tensor_rules: Ordered :class:`~fastforward.export.stages.gguf.rules.TensorRule`
+            sequence rewriting the extracted model tensors into GGUF tensors
+            (renaming, per-tensor transforms, fusion, dropping).
+            Only model parameters claimed by a rule are extracted, and only
+            tensors that end up with a GGUF name are written. See
+            :mod:`fastforward.export.stages.gguf.rules`.
         write_metadata: Writes architecture metadata (dims, RoPE, vocab size,
             head counts) onto an open ``GGUFWriter`` from the source config.
         tokenizer_model: Value passed to ``writer.add_tokenizer_model(...)``
@@ -219,26 +164,13 @@ class ArchAdapter:
         tokenizer_pre: Value passed to ``writer.add_tokenizer_pre(...)``
             (llama.cpp's pre-tokenizer discriminator, e.g. ``"llama-bpe"``,
             ``"qwen2"``, or ``"default"``).
-        is_tied: Predicate that decides whether a parameter should be skipped
-            because it shares storage with another exported parameter. Receives
-            the HF parameter name and the source config. The default
-            implementation skips ``"lm_head.weight"`` when
-            ``config.tie_word_embeddings`` is true. Override for architectures
-            with different or additional tied parameters.
-        fusions: List of :class:`TensorFusion` specifications declaring which
-            source tensors to concatenate into a single output tensor. Applied
-            by ``stage_fuse_tensors`` before per-tensor transforms. An empty
-            list (the default) means no fusion is performed.
     """
 
     gguf_arch: str
-    name_map: _NameMapT
-    transforms: list[TensorTransformT]
+    tensor_rules: Sequence[TensorRule]
     write_metadata: _WriteMetadataT
     tokenizer_model: str
     tokenizer_pre: str
-    is_tied: _IsTiedT = field(default=_default_is_tied)
-    fusions: list[TensorFusion] = field(default_factory=list)
 
 
 class GgufFormatRegistry:
