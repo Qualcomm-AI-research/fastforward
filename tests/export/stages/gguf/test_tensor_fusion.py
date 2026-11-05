@@ -216,6 +216,23 @@ def test_incompatible_cols_raises() -> None:
         fusion.apply([q, k], _CONFIG)
 
 
+def test_incompatible_float_cols_raises() -> None:
+    """Float shapes are validated from their data, even without ``cols``."""
+    # GIVEN: two extracted-style float tensors (no ``cols``) with different widths.
+    a = ExtractedTensor("layer.0.a.weight", kind="float", rows=4, float_data=torch.zeros(4, 8))
+    b = ExtractedTensor("layer.0.b.weight", kind="float", rows=4, float_data=torch.zeros(4, 16))
+
+    fusion = Fuse(
+        sources=(r"layer\.(\d+)\.a\.weight", r"layer\.(\d+)\.b\.weight"),
+        target_name=r"layer.\1.ab.weight",
+        axis=0,
+    )
+
+    # WHEN/THEN: applying fusion raises an ExportError rather than a torch error.
+    with pytest.raises(ff.exceptions.ExportError, match="column counts"):
+        fusion.apply([a, b], _CONFIG)
+
+
 def test_extraction_includes_fusion_sources() -> None:
     """Parameters matching fusion source patterns are claimed for extraction."""
     # GIVEN: an adapter whose only rule is a q/k/v fusion.

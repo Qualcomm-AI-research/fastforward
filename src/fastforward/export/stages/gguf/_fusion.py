@@ -55,6 +55,13 @@ def _match_sources(
     return groups_map
 
 
+def _logical_shape(tensor: ExtractedTensor) -> tuple[int | None, ...]:
+    """Return the tensor's shape; float tensors use their data, as ``cols`` may be unset."""
+    if tensor.float_data is not None:
+        return tuple(tensor.float_data.shape)
+    return (tensor.rows, tensor.cols)
+
+
 def _validate_fusion_group(
     source_tensors: list[ExtractedTensor],
     axis: int,
@@ -74,20 +81,24 @@ def _validate_fusion_group(
         )
         raise ExportError(msg)
 
+    shapes = [_logical_shape(t) for t in source_tensors]
     if axis == 0:
-        cols_set = {t.cols for t in source_tensors}
+        cols_set = {shape[1:] for shape in shapes}
         if len(cols_set) > 1:
             msg = (
                 f"Tensor fusion for instance {groups}: cannot row-concat "
-                f"quantized tensors with different column counts {cols_set}"
+                f"tensors with different column counts {cols_set}"
             )
             raise ExportError(msg)
     elif axis == 1:
-        rows_set = {t.rows for t in source_tensors}
+        if any(len(shape) < 2 for shape in shapes):
+            msg = f"Tensor fusion for instance {groups}: cannot col-concat 1-D tensors"
+            raise ExportError(msg)
+        rows_set = {shape[0] for shape in shapes}
         if len(rows_set) > 1:
             msg = (
                 f"Tensor fusion for instance {groups}: cannot col-concat "
-                f"quantized tensors with different row counts {rows_set}"
+                f"tensors with different row counts {rows_set}"
             )
             raise ExportError(msg)
 
