@@ -85,8 +85,10 @@ def _validate_quantizer(
 ) -> None:
     """Validate that a quantizer's configuration is compatible with the target GGUF format.
 
-    Raises ExportError if the quantizer is asymmetric, has mismatched bit width,
-    or (for PerBlock granularity) has a block size that doesn't match the format.
+    Raises ExportError if the quantizer's symmetry does not match the format, if
+    a symmetric quantizer went one-sided (non-zero offset), if it has mismatched
+    bit width, or (for PerBlock granularity) has a block size that doesn't match
+    the format.
     """
     if quant_format.symmetric and not quantizer.symmetric:
         msg = (
@@ -94,6 +96,17 @@ def _validate_quantizer(
             f"'{quant_format.name}' requires symmetric quantization"
         )
         raise ExportError(msg)
+
+    # A symmetric quantizer with `allow_one_sided=True` stores a non-zero offset
+    # for non-negative ranges, which symmetric formats cannot represent.
+    if quant_format.symmetric and quantizer.offset is not None:
+        if bool(torch.any(torch.round(quantizer.offset) != 0)):
+            msg = (
+                f"Parameter '{hf_name}': quantizer is one-sided (non-zero offset) but "
+                + f"GGUF format '{quant_format.name}' stores no offset; initialize "
+                + "the quantizer with allow_one_sided=False"
+            )
+            raise ExportError(msg)
 
     if not quant_format.symmetric and quantizer.symmetric:
         msg = (
@@ -240,10 +253,11 @@ def extract_module_tensors(
             quantized = quantizer(weight)
             int_codes = quantized.int_repr().detach().cpu()
             scales = quantizer.scale.detach().cpu().float()
+            # Quantization rounds the offset (see `affine._ops._infer_offset`).
             offsets = (
                 None
                 if quantizer.symmetric or quantizer.offset is None
-                else quantizer.offset.detach().cpu().float()
+                else torch.round(quantizer.offset.detach().cpu().float())
             )
             rows, cols = weight.shape
             # `_validate_quantizer` pins granularity so scales form a (rows, blocks) grid.

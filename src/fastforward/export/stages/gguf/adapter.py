@@ -86,7 +86,9 @@ class PackFn(Protocol):
             int_codes: ``(n_blocks, block_size)`` int8 — FastForward signed codes.
             scales: ``(n_blocks,)`` float32 — per-block scale factor.
             offsets: ``(n_blocks,)`` float32 for asymmetric formats, ``None`` for
-                symmetric. The caller always passes all three positional args.
+                symmetric. Integer-valued: FastForward quantizes with the rounded
+                offset, and extraction passes it rounded. The caller always
+                passes all three positional args.
 
         Returns:
             ``(n_blocks, block_bytes)`` uint8 — the packed byte blocks.

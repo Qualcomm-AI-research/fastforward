@@ -98,7 +98,8 @@ def pack_q4_1_blocks(
         int_codes: ``(n_blocks, 32)`` int8, values in ``[-8, +7]`` (FastForward
             signed convention).
         scales: ``(n_blocks,)`` float32, FastForward per-block scale.
-        offsets: ``(n_blocks,)`` float32, FastForward per-block offset.
+        offsets: ``(n_blocks,)`` float32, FastForward per-block offset, already
+            rounded to the integer the quantizer used.
 
     Returns:
         ``(n_blocks, 20)`` uint8 — raw Q4_1 block bytes: ``[fp16 d | fp16 m | 16 nibble bytes]``.

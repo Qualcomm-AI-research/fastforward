@@ -14,7 +14,7 @@ import pytest
 import torch
 
 from fastforward.export.stages.gguf._extract import extract_module_tensors
-from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q8_0
+from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q4_1, GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter
 from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename
 from fastforward.nn.linear import QuantizedLinear
@@ -197,6 +197,51 @@ def test_extract_rejects_asymmetric_quantizer(_seed_prngs: int) -> None:
     # WHEN/THEN: extraction raises ExportError (no format matches the asymmetric quantizer).
     with pytest.raises(ff.exceptions.ExportError, match="no registered GGUF format matches"):
         extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+
+def test_extract_rejects_one_sided_symmetric_quantizer(_seed_prngs: int) -> None:
+    # GIVEN: a symmetric quantizer that went one-sided on a non-negative weight.
+    linear = torch.nn.Linear(32, 4, bias=False)
+    with torch.no_grad():
+        linear.weight.abs_()
+    linear.__class__ = QuantizedLinear
+    quantized = cast(QuantizedLinear, linear)
+    quantized.__init_quantization__()
+    quantizers = ff.find_quantizers(quantized, "[quantizer:parameter/weight]")
+    quantizers.initialize(ff.nn.LinearQuantizer, num_bits=4, granularity=_PER_BLOCK, symmetric=True)
+    with ff.estimate_ranges(quantized.weight_quantizer, ff.range_setting.running_minmax):
+        quantized.weight_quantizer(quantized.weight)
+
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = quantized
+
+    # WHEN/THEN: extraction refuses instead of dropping the offset.
+    with pytest.raises(ff.exceptions.ExportError, match="one-sided"):
+        extract_module_tensors(Model(), adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+
+def test_extract_reads_rounded_asymmetric_offsets(_seed_prngs: int) -> None:
+    # GIVEN: a model with an asymmetric 4-bit quantizer.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = _make_quantized_linear_custom(4, 32, symmetric=False)
+
+    model = Model()
+
+    # WHEN: extracting for Q4_1.
+    (tensor,) = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_1)
+
+    # THEN: codes, scales, and offsets reproduce the quantizer's dequantized weight,
+    # i.e. offsets are rounded like the quantizer rounds them.
+    assert tensor.int_codes is not None and tensor.scales is not None
+    assert tensor.offsets is not None
+    codes = tensor.int_codes.reshape(4, 1, 32).float()
+    dequantized = (codes + tensor.offsets[..., None]) * tensor.scales[..., None]
+    expected = model.weight.weight_quantizer(model.weight.weight).dequantize()
+    torch.testing.assert_close(dequantized.reshape(4, 32), expected)
 
 
 def test_extract_rejects_mismatched_num_bits(_seed_prngs: int) -> None:
