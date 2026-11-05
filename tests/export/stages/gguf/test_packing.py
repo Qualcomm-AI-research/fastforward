@@ -93,10 +93,10 @@ def test_pack_q4_0_round_trip_matches_scale_times_code() -> None:
 
 
 def test_pack_q8_0_round_trip_matches_scale_times_code() -> None:
-    # GIVEN: random signed 8-bit codes in [-127, 127] with positive scales.
+    # GIVEN: random signed 8-bit codes in [-128, 127] with positive scales.
     rng = np.random.default_rng(1)
     n_blocks = 16
-    int_codes_np = rng.integers(-127, 128, size=(n_blocks, BLOCK_SIZE)).astype(np.int8)
+    int_codes_np = rng.integers(-128, 128, size=(n_blocks, BLOCK_SIZE)).astype(np.int8)
     scales_np = rng.uniform(0.001, 0.5, size=n_blocks).astype(np.float32)
 
     int_codes = torch.from_numpy(int_codes_np)
@@ -110,17 +110,17 @@ def test_pack_q8_0_round_trip_matches_scale_times_code() -> None:
     np.testing.assert_allclose(reconstructed, expected, atol=1e-2)
 
 
-def test_pack_q8_0_clips_negative_128() -> None:
-    # GIVEN: a block containing the -128 code (unused by llama.cpp's symmetric Q8_0).
+def test_pack_q8_0_keeps_negative_128() -> None:
+    # GIVEN: a block containing the -128 code, which FastForward's 8-bit grid uses.
     int_codes = torch.full((1, BLOCK_SIZE), -128, dtype=torch.int8)
     scales = torch.tensor([0.1], dtype=torch.float32)
 
     # WHEN: packing to Q8_0.
     packed = pack_q8_0_blocks(int_codes, scales)
 
-    # THEN: the stored codes are clipped to -127 to stay symmetric.
+    # THEN: the code is stored unchanged, matching the simulated model.
     stored = packed[:, 2:].numpy().view(np.int8)
-    assert stored.min() == -127
+    assert stored.min() == -128
 
 
 @pytest.mark.parametrize("pack_fn, block_bytes", [(pack_q4_0_blocks, 18), (pack_q8_0_blocks, 34)])

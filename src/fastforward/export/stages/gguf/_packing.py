@@ -74,17 +74,16 @@ def pack_q8_0_blocks(
         ``(n_blocks, 34)`` uint8 — raw Q8_0 block bytes: ``[fp16 d | 32 int8 qs]``.
 
     GGUF Q8_0 dequant is ``y = qs * d`` with ``d`` positive. FastForward's scale is
-    already positive (symmetric), so no sign flip is applied. Codes are clipped to
-    ``[-127, +127]`` because llama.cpp's reference quantizer uses ``max(|x|) / 127``
-    (leaving ``-128`` unused to stay symmetric); clipping guarantees a valid
-    round-trip.
+    already positive (symmetric), so no sign flip is applied. Codes are stored
+    unchanged: llama.cpp's reference quantizer never emits ``-128``, but its
+    dequantizer handles the full int8 range, and FastForward's 8-bit codes use it.
     """
     del offsets
     n_blocks = int_codes.shape[0]
 
     d_bytes = scales.to(torch.float16).view(torch.uint8).reshape(n_blocks, 2)
 
-    gguf_qs = int_codes.clamp(-127, 127).to(torch.int8).view(torch.uint8)
+    gguf_qs = int_codes.to(torch.int8).view(torch.uint8)
 
     return torch.cat([d_bytes, gguf_qs], dim=-1)
 
