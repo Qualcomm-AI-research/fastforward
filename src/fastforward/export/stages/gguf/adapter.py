@@ -38,18 +38,28 @@ See :mod:`fastforward.export.stages.gguf.rules` for the available tensor rules.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Protocol, Sequence, TypeAlias, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Protocol, Sequence, TypeAlias, runtime_checkable
 
 import torch
 
 from gguf import GGUFWriter
 
 from fastforward.export.stages.gguf._config import GgufSourceConfig
+from fastforward.export.stages.gguf._vocab import write_bpe_vocab
 
 if TYPE_CHECKING:
     from fastforward.export.stages.gguf.rules import TensorRule
 
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
+WriteVocabT: TypeAlias = Callable[[GGUFWriter, Any, GgufSourceConfig, "ArchAdapter"], None]
+"""A vocabulary writer used as ``ArchAdapter.write_vocab``.
+
+Called as ``write_vocab(writer, tokenizer, config, adapter)`` with an open
+``GGUFWriter``, the tokenizer passed to the export (any object the writer
+understands), the source config, and the adapter (for ``tokenizer_model`` and
+``tokenizer_pre``). Writers that read the tokenizer's files from disk can use
+:func:`~fastforward.export.stages.gguf.tokenizer_dir`.
+"""
 
 
 @runtime_checkable
@@ -146,8 +156,8 @@ class ArchAdapter:
     This is the whole surface between generic FastForward code and
     model-specific knowledge: what the tensors become (``tensor_rules``) and
     what the header says (``gguf_arch``, ``write_metadata``, tokenizer
-    discriminators). Per-export policy (float output types, allowed quant
-    formats) is not architecture knowledge and lives on
+    discriminators and vocabulary writer). Per-export policy (float output
+    types, allowed quant formats) is not architecture knowledge and lives on
     ``GgufLlamaCppOptions`` instead.
 
     Attributes:
@@ -165,14 +175,22 @@ class ArchAdapter:
             (llama.cpp's tokenizer-model discriminator, e.g. ``"gpt2"``).
         tokenizer_pre: Value passed to ``writer.add_tokenizer_pre(...)``
             (llama.cpp's pre-tokenizer discriminator, e.g. ``"llama-bpe"``,
-            ``"qwen2"``, or ``"default"``).
+            ``"qwen2"``, or ``"default"``). ``None`` writes no pre-tokenizer,
+            for tokenizer models that don't use one (e.g. ``"gemma4"``).
+        write_vocab: :data:`WriteVocabT` writing the tokenizer's vocabulary,
+            called only when the export is given a tokenizer. Defaults to
+            :func:`~fastforward.export.stages.gguf.write_bpe_vocab`; use
+            :func:`~fastforward.export.stages.gguf.make_llama_hf_vocab_writer`
+            for byte-fallback BPE tokenizers converted from SentencePiece, or
+            supply your own for other tokenizer types.
     """
 
     gguf_arch: str
     tensor_rules: Sequence[TensorRule]
     write_metadata: _WriteMetadataT
     tokenizer_model: str
-    tokenizer_pre: str
+    tokenizer_pre: str | None
+    write_vocab: WriteVocabT = write_bpe_vocab
 
 
 class GgufFormatRegistry:

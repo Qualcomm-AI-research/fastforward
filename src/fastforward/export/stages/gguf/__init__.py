@@ -39,10 +39,16 @@ from fastforward.export.stages.gguf._packing import GGUF_Q8_0 as GGUF_Q8_0
 from fastforward.export.stages.gguf._packing import (
     default_format_registry as default_format_registry,
 )
+from fastforward.export.stages.gguf._vocab import (
+    make_llama_hf_vocab_writer as make_llama_hf_vocab_writer,
+)
+from fastforward.export.stages.gguf._vocab import tokenizer_dir as tokenizer_dir
+from fastforward.export.stages.gguf._vocab import write_bpe_vocab as write_bpe_vocab
 from fastforward.export.stages.gguf.adapter import ArchAdapter as ArchAdapter
 from fastforward.export.stages.gguf.adapter import GgufFormatRegistry as GgufFormatRegistry
 from fastforward.export.stages.gguf.adapter import GgufQuantFormat as GgufQuantFormat
 from fastforward.export.stages.gguf.adapter import PackFn as PackFn
+from fastforward.export.stages.gguf.adapter import WriteVocabT as WriteVocabT
 from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD as DROP_TIED_LM_HEAD
 from fastforward.export.stages.gguf.rules import Drop as Drop
 from fastforward.export.stages.gguf.rules import Fuse as Fuse

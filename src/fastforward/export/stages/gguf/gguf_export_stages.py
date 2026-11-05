@@ -24,7 +24,6 @@ from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor, extract_module_tensors
 from fastforward.export.stages.gguf._packing import default_format_registry
-from fastforward.export.stages.gguf._vocab import write_vocab
 from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 
@@ -207,7 +206,7 @@ def stage_write_gguf(
 
         tokenizer = context.get("tokenizer")
         if tokenizer is not None:
-            write_vocab(writer, tokenizer, config, adapter)
+            adapter.write_vocab(writer, tokenizer, config, adapter)
 
         for gguf_name, (block_bytes, fmt) in quantized_entries.items():
             raw_dtype = GGMLQuantizationType[fmt.name]
