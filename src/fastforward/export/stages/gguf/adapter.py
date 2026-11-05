@@ -196,7 +196,9 @@ class ArchAdapter:
     """Bundle of architecture-specific choices consumed by the GGUF stages.
 
     Every field is consumed by exactly one stage — this is the whole surface
-    between generic FastForward code and model-specific knowledge.
+    between generic FastForward code and model-specific knowledge. Per-export
+    policy (float output types, allowed quant formats) is not architecture
+    knowledge and lives on ``GgufLlamaCppOptions`` instead.
 
     Attributes:
         gguf_arch: Architecture string passed to ``GGUFWriter(arch=)``. Written
@@ -223,14 +225,6 @@ class ArchAdapter:
             implementation skips ``"lm_head.weight"`` when
             ``config.tie_word_embeddings`` is true. Override for architectures
             with different or additional tied parameters.
-        float_type: GGML type name for float tensors (e.g. ``"F32"``,
-            ``"F16"``, ``"BF16"``). All non-quantized tensors are cast to this
-            type at write time. Defaults to ``"F32"``.
-        float_type_overrides: Mapping of regex patterns (matched against the
-            GGUF tensor name) to GGML type names. First matching pattern wins;
-            unmatched tensors fall back to ``float_type``. Use this to keep
-            specific layers at higher precision (e.g. norms at F32 while the
-            rest is F16).
         fusions: List of :class:`TensorFusion` specifications declaring which
             source tensors to concatenate into a single output tensor. Applied
             by ``stage_fuse_tensors`` before per-tensor transforms. An empty
@@ -244,8 +238,6 @@ class ArchAdapter:
     tokenizer_model: str
     tokenizer_pre: str
     is_tied: _IsTiedT = field(default=_default_is_tied)
-    float_type: str = "F32"
-    float_type_overrides: dict[str, str] = field(default_factory=dict)
     fusions: list[TensorFusion] = field(default_factory=list)
 
 

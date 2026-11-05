@@ -11,7 +11,7 @@ import torch
 from fastforward.export._export_schemas import EncodingSchemaHandler, V1SchemaHandler
 from fastforward.export.pipeline.core import Pipeline, StageReference
 from fastforward.export.pipeline.registry import PipelineRegistry, build_default_registry
-from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufQuantFormat
+from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
 _PipelineFactoryT: TypeAlias = Callable[[dict[str, Any]], Pipeline]
@@ -103,12 +103,28 @@ class GgufLlamaCppOptions:
             both work.
         tokenizer: Optional HuggingFace tokenizer; when provided, its vocabulary
             is written into the GGUF.
+        format_registry: Optional :class:`GgufFormatRegistry` of allowed quant
+            formats, for mixed-precision exports or custom formats. Each weight
+            quantizer is matched against it by ``(num_bits, symmetric,
+            block_size)``. Takes precedence over ``quant_format``; when both are
+            ``None``, the default registry of built-in formats is used.
+        float_type: GGML type name for float tensors (e.g. ``"F32"``,
+            ``"F16"``, ``"BF16"``). All non-quantized tensors are cast to this
+            type at write time. Defaults to ``"F32"``.
+        float_type_overrides: Mapping of regex patterns (matched against the
+            GGUF tensor name) to GGML type names. First matching pattern wins;
+            unmatched tensors fall back to ``float_type``. Use this to keep
+            specific tensors at higher precision (e.g. norms at F32 while the
+            rest is F16).
     """
 
     arch_adapter: ArchAdapter
     quant_format: GgufQuantFormat | None = None
     model_config: Any = None
     tokenizer: Any = None
+    format_registry: GgufFormatRegistry | None = None
+    float_type: str = "F32"
+    float_type_overrides: dict[str, str] = field(default_factory=dict)
 
     def to_context(self) -> dict[str, Any]:
         """Convert options to pipeline context values."""
@@ -116,9 +132,13 @@ class GgufLlamaCppOptions:
             "arch_adapter": self.arch_adapter,
             "model_config": self.model_config,
             "tokenizer": self.tokenizer,
+            "float_type": self.float_type,
+            "float_type_overrides": dict(self.float_type_overrides),
         }
         if self.quant_format is not None:
             context["quant_format"] = self.quant_format
+        if self.format_registry is not None:
+            context["format_registry"] = self.format_registry
         return context
 
 

@@ -6,7 +6,12 @@ import pathlib
 import torch
 
 from fastforward.export._export_schemas import V1SchemaHandler
-from fastforward.export.pipeline.orchestrator import ExportRequest, QnnOnnxOptions
+from fastforward.export.pipeline.orchestrator import (
+    ExportRequest,
+    GgufLlamaCppOptions,
+    QnnOnnxOptions,
+)
+from fastforward.export.stages.gguf import GGUF_Q8_0, LLAMA_ADAPTER, GgufFormatRegistry
 
 
 def test_export_request_converts_output_dir_to_path() -> None:
@@ -81,3 +86,39 @@ def test_qnn_onnx_options_to_context_copies_mutable_dictionaries() -> None:
 
     assert options.onnx_export_options["optimize"] is False
     assert options.onnx_save_kwargs["all_tensors_to_one_file"] is True
+
+
+def test_gguf_llama_cpp_options_to_context_carries_export_policy() -> None:
+    # GIVEN: options with a custom registry, F16 default and a norm override.
+    registry = GgufFormatRegistry()
+    registry.register(GGUF_Q8_0)
+    options = GgufLlamaCppOptions(
+        arch_adapter=LLAMA_ADAPTER,
+        format_registry=registry,
+        float_type="F16",
+        float_type_overrides={r".*norm.*": "F32"},
+    )
+
+    # WHEN: converting to a context and mutating the context's overrides.
+    context = options.to_context()
+    context["float_type_overrides"]["extra"] = "BF16"
+
+    # THEN: the policy is carried over and the options' own overrides are untouched.
+    assert context["arch_adapter"] is LLAMA_ADAPTER
+    assert context["format_registry"] is registry
+    assert "quant_format" not in context
+    assert context["float_type"] == "F16"
+    assert options.float_type_overrides == {r".*norm.*": "F32"}
+
+
+def test_gguf_llama_cpp_options_float_type_defaults_to_f32() -> None:
+    # GIVEN: options with only an arch adapter.
+    options = GgufLlamaCppOptions(arch_adapter=LLAMA_ADAPTER)
+
+    # WHEN: converting to a context.
+    context = options.to_context()
+
+    # THEN: float type defaults to F32 with no overrides and no custom registry.
+    assert context["float_type"] == "F32"
+    assert context["float_type_overrides"] == {}
+    assert "format_registry" not in context

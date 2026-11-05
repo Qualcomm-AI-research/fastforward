@@ -224,12 +224,17 @@ def stage_write_gguf(
     The GGUF header ``file_type`` is set to the dominant quantization format
     (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
     convention.
+
+    Float tensors are cast per ``context["float_type"]`` (default ``"F32"``)
+    and ``context["float_type_overrides"]`` (regex on the GGUF name -> type).
     """
     del sample_inputs
     (packed,) = modules
 
     adapter = _require_adapter(context)
     config = _require_config(context)
+    default_float_type: str = context.get("float_type", "F32")
+    float_type_overrides: dict[str, str] = context.get("float_type_overrides") or {}
 
     output_dir = pathlib.Path(context["output_dir"])
     model_name = context["model_name"]
@@ -260,7 +265,7 @@ def stage_write_gguf(
             raw_dtype = GGMLQuantizationType[fmt.name]
             writer.add_tensor(gguf_name, block_bytes.numpy(), raw_dtype=raw_dtype)
         for gguf_name, float_data in packed["float"].items():
-            float_type = _resolve_float_type(gguf_name, adapter)
+            float_type = _resolve_float_type(gguf_name, default_float_type, float_type_overrides)
             data = _cast_float(float_data, float_type)
             writer.add_tensor(gguf_name, data.numpy(), raw_dtype=GGMLQuantizationType[float_type])
 
@@ -273,12 +278,12 @@ def stage_write_gguf(
     return output_path
 
 
-def _resolve_float_type(gguf_name: str, adapter: ArchAdapter) -> str:
+def _resolve_float_type(gguf_name: str, default: str, overrides: dict[str, str]) -> str:
     """Determine the GGML float type for a tensor, checking overrides first."""
-    for pattern, float_type in adapter.float_type_overrides.items():
+    for pattern, float_type in overrides.items():
         if re.fullmatch(pattern, gguf_name):
             return float_type
-    return adapter.float_type
+    return default
 
 
 _FLOAT_DTYPES: dict[str, torch.dtype] = {

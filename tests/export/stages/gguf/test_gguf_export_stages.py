@@ -11,6 +11,7 @@ handling is tested via its error paths.
 from typing import Any
 from unittest import mock
 
+import gguf
 import pytest
 import torch
 
@@ -21,7 +22,6 @@ from fastforward.export.stages.gguf import (
     GGUF_Q8_0,
     LLAMA_ADAPTER,
     QWEN3_ADAPTER,
-    ArchAdapter,
 )
 from fastforward.export.stages.gguf._extract import ExtractedTensor
 from fastforward.export.stages.gguf._packing import default_format_registry
@@ -211,40 +211,21 @@ def _make_full_config() -> Any:
 
 
 def test_resolve_float_type_default() -> None:
-    # GIVEN: an adapter with F16 default and no overrides.
-    adapter = ArchAdapter(
-        gguf_arch="test",
-        name_map=lambda n: n,
-        transforms=[],
-        write_metadata=lambda w, c: None,
-        tokenizer_model="gpt2",
-        tokenizer_pre="default",
-        float_type="F16",
-    )
-
+    # GIVEN: an F16 default and no overrides.
     # WHEN: resolving a tensor with no override match.
-    result = _resolve_float_type("blk.0.ffn_up.weight", adapter)
+    result = _resolve_float_type("blk.0.ffn_up.weight", "F16", {})
 
     # THEN: falls back to the default.
     assert result == "F16"
 
 
 def test_resolve_float_type_override_matches() -> None:
-    # GIVEN: an adapter with F16 default but norms overridden to F32.
-    adapter = ArchAdapter(
-        gguf_arch="test",
-        name_map=lambda n: n,
-        transforms=[],
-        write_metadata=lambda w, c: None,
-        tokenizer_model="gpt2",
-        tokenizer_pre="default",
-        float_type="F16",
-        float_type_overrides={r".*norm.*": "F32"},
-    )
+    # GIVEN: an F16 default but norms overridden to F32.
+    overrides = {r".*norm.*": "F32"}
 
     # WHEN: resolving tensors.
-    norm_result = _resolve_float_type("blk.0.attn_norm.weight", adapter)
-    weight_result = _resolve_float_type("blk.0.ffn_up.weight", adapter)
+    norm_result = _resolve_float_type("blk.0.attn_norm.weight", "F16", overrides)
+    weight_result = _resolve_float_type("blk.0.ffn_up.weight", "F16", overrides)
 
     # THEN: norm matches the override, other falls back to default.
     assert norm_result == "F32"
@@ -252,26 +233,49 @@ def test_resolve_float_type_override_matches() -> None:
 
 
 def test_resolve_float_type_first_override_wins() -> None:
-    # GIVEN: an adapter with multiple overrides that could both match.
-    adapter = ArchAdapter(
-        gguf_arch="test",
-        name_map=lambda n: n,
-        transforms=[],
-        write_metadata=lambda w, c: None,
-        tokenizer_model="gpt2",
-        tokenizer_pre="default",
-        float_type="F32",
-        float_type_overrides={
-            r"blk\.0\..*": "F16",
-            r".*norm.*": "BF16",
-        },
-    )
+    # GIVEN: multiple overrides that could both match.
+    overrides = {
+        r"blk\.0\..*": "F16",
+        r".*norm.*": "BF16",
+    }
 
     # WHEN: resolving a tensor that matches both patterns.
-    result = _resolve_float_type("blk.0.attn_norm.weight", adapter)
+    result = _resolve_float_type("blk.0.attn_norm.weight", "F32", overrides)
 
     # THEN: first matching pattern wins.
     assert result == "F16"
+
+
+def test_write_gguf_applies_float_type_policy_from_context(tmp_path: Any) -> None:
+    # GIVEN: a context carrying an F16 default with norms overridden to F32,
+    # and packed data with one norm and one non-norm float tensor.
+    context = {
+        "arch_adapter": LLAMA_ADAPTER,
+        "model_config": _make_full_config(),
+        "output_dir": tmp_path,
+        "model_name": "policy",
+        "float_type": "F16",
+        "float_type_overrides": {r".*norm.*": "F32"},
+    }
+    packed: dict[str, dict[str, Any]] = {
+        "quantized": {"blk.0.attn_q.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0)},
+        "float": {"output_norm.weight": torch.ones(32), "token_embd.weight": torch.ones(64, 32)},
+    }
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((packed,), [], context)
+
+    # THEN: each float tensor is written with the type the context's policy selects.
+    raw_dtypes = {
+        call.args[0]: call.kwargs["raw_dtype"] for call in mock_writer.add_tensor.call_args_list
+    }
+    assert raw_dtypes["output_norm.weight"] == gguf.GGMLQuantizationType.F32
+    assert raw_dtypes["token_embd.weight"] == gguf.GGMLQuantizationType.F16
 
 
 def test_cast_float_f32_noop() -> None:

@@ -53,8 +53,10 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
 
     Args:
         pipeline_kwargs: Pipeline context/configuration consumed by the stages
-            (``arch_adapter``, ``quant_format``, ``model_config``, ``tokenizer``,
-            plus ``output_dir``/``model_name`` from the orchestrator). Users
+            (``arch_adapter``, ``quant_format``/``format_registry``,
+            ``model_config``, ``tokenizer``, ``float_type``/
+            ``float_type_overrides``, plus ``output_dir``/``model_name`` from
+            the orchestrator; see ``GgufLlamaCppOptions``). Users
             select the target architecture by passing an ``ArchAdapter`` —
             :data:`fastforward.export.stages.gguf.LLAMA_ADAPTER`,
             ``QWEN2_ADAPTER``, or ``QWEN3_ADAPTER`` — or by constructing their
