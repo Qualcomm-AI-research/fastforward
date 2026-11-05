@@ -52,8 +52,8 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
             the orchestrator; see ``GgufLlamaCppOptions``). Users
             select the target architecture by passing an ``ArchAdapter`` —
             :data:`fastforward.export.stages.gguf.LLAMA_ADAPTER`,
-            ``QWEN2_ADAPTER``, or ``QWEN3_ADAPTER`` — or by constructing their
-            own for a non-standard model layout.
+            ``QWEN2_ADAPTER``, ``QWEN3_ADAPTER``, or ``GEMMA4_ADAPTER`` — or by
+            constructing their own for a non-standard model layout.
 
     Returns:
         A configured `Pipeline` that writes a `<model_name>.gguf` artifact.

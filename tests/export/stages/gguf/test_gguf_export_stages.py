@@ -275,6 +275,51 @@ def test_write_gguf_applies_float_type_policy_from_context(tmp_path: Any) -> Non
     assert raw_dtypes["token_embd.weight"] == gguf.GGMLQuantizationType.F16
 
 
+def test_write_gguf_applies_adapter_pin_below_user_overrides(tmp_path: Any) -> None:
+    # GIVEN: an adapter pinning 1-D tensors to F32, a BF16 default, and a user
+    # override forcing one 1-D tensor to F16.
+    def pin_float_type(gguf_name: str, ndim: int, float_type: str) -> str | None:
+        del gguf_name
+        assert float_type == "BF16"
+        return "F32" if ndim == 1 else None
+
+    context = {
+        "arch_adapter": replace(LLAMA_ADAPTER, pin_float_type=pin_float_type),
+        "model_config": _make_full_config(),
+        "output_dir": tmp_path,
+        "model_name": "pin",
+        "float_type": "BF16",
+        "float_type_overrides": {r"blk\.0\.attn_norm\.weight": "F16"},
+    }
+    packed: dict[str, dict[str, Any]] = {
+        "quantized": {"blk.0.attn_q.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0)},
+        "float": {
+            "output_norm.weight": torch.ones(32),
+            "blk.0.attn_norm.weight": torch.ones(32),
+            "token_embd.weight": torch.ones(64, 32),
+        },
+    }
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((packed,), [], context)
+
+    # THEN: the user override wins over the pin, which wins over the default.
+    raw_dtypes = {
+        call.args[0]: call.kwargs["raw_dtype"] for call in mock_writer.add_tensor.call_args_list
+    }
+    del raw_dtypes["blk.0.attn_q.weight"]
+    assert raw_dtypes == {
+        "output_norm.weight": gguf.GGMLQuantizationType.F32,
+        "blk.0.attn_norm.weight": gguf.GGMLQuantizationType.F16,
+        "token_embd.weight": gguf.GGMLQuantizationType.BF16,
+    }
+
+
 def test_cast_float_f32_noop() -> None:
     # GIVEN: float32 data.
     data = torch.randn(4, 8)

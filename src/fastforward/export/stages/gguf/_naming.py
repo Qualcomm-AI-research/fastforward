@@ -50,12 +50,49 @@ _QWEN2_EXTRA_PATTERNS = {
 }
 
 
-def _build_name_map(layer_patterns: dict[str, str]) -> _NameMapT:
+# Gemma4 names its norms differently from Llama (``post_attention_layernorm`` is a
+# post-norm, ``pre_feedforward_layernorm`` the FFN pre-norm), adds the per-layer
+# input embedding path, and stores the per-layer output scale as a buffer.
+_GEMMA4_STATIC_MAP = {
+    **_STATIC_MAP,
+    "model.embed_tokens_per_layer.weight": "per_layer_token_embd.weight",
+    "model.per_layer_model_projection.weight": "per_layer_model_proj.weight",
+    "model.per_layer_projection_norm.weight": "per_layer_proj_norm.weight",
+}
+
+_GEMMA4_LAYER_PATTERNS = {
+    r"model\.layers\.(\d+)\.input_layernorm\.weight$": "blk.{}.attn_norm.weight",
+    r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight$": "blk.{}.attn_q.weight",
+    r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight$": "blk.{}.attn_k.weight",
+    r"model\.layers\.(\d+)\.self_attn\.v_proj\.weight$": "blk.{}.attn_v.weight",
+    r"model\.layers\.(\d+)\.self_attn\.o_proj\.weight$": "blk.{}.attn_output.weight",
+    r"model\.layers\.(\d+)\.self_attn\.q_norm\.weight$": "blk.{}.attn_q_norm.weight",
+    r"model\.layers\.(\d+)\.self_attn\.k_norm\.weight$": "blk.{}.attn_k_norm.weight",
+    r"model\.layers\.(\d+)\.post_attention_layernorm\.weight$": "blk.{}.post_attention_norm.weight",
+    r"model\.layers\.(\d+)\.pre_feedforward_layernorm\.weight$": "blk.{}.ffn_norm.weight",
+    r"model\.layers\.(\d+)\.post_feedforward_layernorm\.weight$": "blk.{}.post_ffw_norm.weight",
+    r"model\.layers\.(\d+)\.mlp\.gate_proj\.weight$": "blk.{}.ffn_gate.weight",
+    r"model\.layers\.(\d+)\.mlp\.up_proj\.weight$": "blk.{}.ffn_up.weight",
+    r"model\.layers\.(\d+)\.mlp\.down_proj\.weight$": "blk.{}.ffn_down.weight",
+    r"model\.layers\.(\d+)\.per_layer_input_gate\.weight$": "blk.{}.inp_gate.weight",
+    r"model\.layers\.(\d+)\.per_layer_projection\.weight$": "blk.{}.proj.weight",
+    r"model\.layers\.(\d+)\.post_per_layer_input_norm\.weight$": "blk.{}.post_norm.weight",
+    r"model\.layers\.(\d+)\.layer_scalar$": "blk.{}.layer_output_scale.weight",
+}
+
+# ``Gemma4ForConditionalGeneration`` nests the text decoder under this prefix,
+# next to the vision and audio towers; ``Gemma4ForCausalLM`` uses plain ``model.``.
+_GEMMA4_MULTIMODAL_TEXT_PREFIX = "model.language_model."
+
+
+def _build_name_map(
+    layer_patterns: dict[str, str], static_map: dict[str, str] = _STATIC_MAP
+) -> _NameMapT:
     compiled = [(re.compile(pattern), template) for pattern, template in layer_patterns.items()]
 
     def name_map(hf_name: str) -> str | None:
-        if hf_name in _STATIC_MAP:
-            return _STATIC_MAP[hf_name]
+        if hf_name in static_map:
+            return static_map[hf_name]
         for pattern, template in compiled:
             match = pattern.match(hf_name)
             if match:
@@ -68,3 +105,17 @@ def _build_name_map(layer_patterns: dict[str, str]) -> _NameMapT:
 llama_name_map: _NameMapT = _build_name_map(_COMMON_LAYER_PATTERNS)
 qwen3_name_map: _NameMapT = _build_name_map({**_COMMON_LAYER_PATTERNS, **_QWEN3_EXTRA_PATTERNS})
 qwen2_name_map: _NameMapT = _build_name_map({**_COMMON_LAYER_PATTERNS, **_QWEN2_EXTRA_PATTERNS})
+
+_gemma4_text_name_map: _NameMapT = _build_name_map(_GEMMA4_LAYER_PATTERNS, _GEMMA4_STATIC_MAP)
+
+
+def gemma4_name_map(hf_name: str) -> str | None:
+    """Map a Gemma4 parameter or buffer name to its GGUF name.
+
+    Accepts both the text-only (``model.layers...``) and the multimodal
+    (``model.language_model.layers...``) layouts. Vision and audio tower
+    tensors map to ``None`` and are not exported.
+    """
+    if hf_name.startswith(_GEMMA4_MULTIMODAL_TEXT_PREFIX):
+        hf_name = "model." + hf_name.removeprefix(_GEMMA4_MULTIMODAL_TEXT_PREFIX)
+    return _gemma4_text_name_map(hf_name)

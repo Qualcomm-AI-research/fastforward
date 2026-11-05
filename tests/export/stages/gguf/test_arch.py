@@ -3,17 +3,17 @@
 
 """Tests for the built-in GGUF architecture adapters.
 
-The adapters (:data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, :data:`QWEN3_ADAPTER`)
-are the pipeline's default reference implementations of the public
-:class:`ArchAdapter` surface. These tests exercise the fields users are most
-likely to depend on (tensor rules, transforms).
+The adapters (:data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, :data:`QWEN3_ADAPTER`,
+:data:`GEMMA4_ADAPTER`) are the pipeline's default reference implementations of
+the public :class:`ArchAdapter` surface. These tests exercise the fields users
+are most likely to depend on (tensor rules, transforms, metadata).
 """
 
 import importlib.util
 
 from dataclasses import replace
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 import pytest
@@ -21,6 +21,7 @@ import torch
 
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf import (
+    GEMMA4_ADAPTER,
     GGUF_Q4_0,
     GGUF_Q4_1,
     LLAMA_ADAPTER,
@@ -28,7 +29,9 @@ from fastforward.export.stages.gguf import (
     QWEN3_ADAPTER,
     ArchAdapter,
     ExtractedTensor,
+    GgufSourceConfig,
     Transform,
+    gemma4_rope_freqs,
     llama3_rope_freqs,
     llama_rope_permute,
 )
@@ -56,11 +59,14 @@ class _Config:
         self.vocab_size = 0
 
 
-def _gguf_name(adapter: ArchAdapter, hf_name: str) -> str | None:
+def _gguf_name(
+    adapter: ArchAdapter, hf_name: str, config: GgufSourceConfig | None = None
+) -> str | None:
     """Run the adapter's tensor rules on one float tensor and return its GGUF name."""
     tensor = ExtractedTensor(hf_name=hf_name, kind="float", rows=2, float_data=torch.zeros(2))
-    result = apply_tensor_rules([tensor], adapter.tensor_rules, _Config(n_head=1, n_head_kv=1))
-    return result[0].gguf_name if result else None
+    config = config or _Config(n_head=1, n_head_kv=1)
+    result = apply_tensor_rules([tensor], adapter.tensor_rules, config)
+    return next((t.gguf_name for t in result if t.hf_name == hf_name), None)
 
 
 def _metadata_config(**rope_fields: Any) -> SimpleNamespace:
@@ -258,15 +264,24 @@ def test_llama_adapter_permutes_quantized_q_proj_before_renaming() -> None:
     torch.testing.assert_close(result.int_codes, expected.int_codes)
 
 
-def test_adapters_carry_tokenizer_discriminators() -> None:
-    # GIVEN: the built-in llama, qwen2, and qwen3 adapters.
-    # THEN: each carries the llama.cpp tokenizer-pre string matching its
-    # architecture's convention (llama-bpe for llama3-family, qwen2 for both qwens).
-    assert LLAMA_ADAPTER.tokenizer_pre == "llama-bpe"
-    assert QWEN2_ADAPTER.tokenizer_pre == "qwen2"
-    assert QWEN3_ADAPTER.tokenizer_pre == "qwen2"
-    for adapter in (LLAMA_ADAPTER, QWEN2_ADAPTER, QWEN3_ADAPTER):
-        assert adapter.tokenizer_model == "gpt2"
+@pytest.mark.parametrize(
+    ("adapter", "tokenizer_model", "tokenizer_pre"),
+    [
+        (LLAMA_ADAPTER, "gpt2", "llama-bpe"),
+        (QWEN2_ADAPTER, "gpt2", "qwen2"),
+        (QWEN3_ADAPTER, "gpt2", "qwen2"),
+        (GEMMA4_ADAPTER, "gemma4", None),
+    ],
+    ids=["llama", "qwen2", "qwen3", "gemma4"],
+)
+def test_adapter_carries_tokenizer_discriminators(
+    adapter: ArchAdapter, tokenizer_model: str, tokenizer_pre: str | None
+) -> None:
+    # GIVEN: a built-in adapter.
+    # THEN: it carries the llama.cpp tokenizer-model and pre-tokenizer strings
+    # matching its architecture's convention (gemma4 has no pre-tokenizer).
+    assert adapter.tokenizer_model == tokenizer_model
+    assert adapter.tokenizer_pre == tokenizer_pre
 
 
 @requires_transformers
@@ -434,3 +449,184 @@ def test_llama_metadata_rejects_unsupported_rope_scaling() -> None:
     # WHEN/THEN: writing the metadata raises instead of writing a wrong factor.
     with pytest.raises(ExportError, match="RoPE scaling type 'dynamic'"):
         LLAMA_ADAPTER.write_metadata(writer, config)
+
+
+def _gemma4_rope_parameters(full_attention: dict[str, Any] | None) -> dict[str, Any]:
+    return {
+        "full_attention": full_attention,
+        "sliding_attention": {"rope_type": "default", "rope_theta": 10000.0},
+    }
+
+
+def _gemma4_config(
+    full_attention: dict[str, Any] | None, global_head_dim: int | None
+) -> GgufSourceConfig:
+    return cast(
+        GgufSourceConfig,
+        SimpleNamespace(
+            global_head_dim=global_head_dim,
+            rope_parameters=_gemma4_rope_parameters(full_attention),
+        ),
+    )
+
+
+def _gemma4_e4b_config(**overrides: Any) -> GgufSourceConfig:
+    """The text config of ``google/gemma-4-E4B-it``, with optional field overrides."""
+    fields: dict[str, Any] = {
+        "num_hidden_layers": 42,
+        "max_position_embeddings": 131072,
+        "hidden_size": 2560,
+        "intermediate_size": 10240,
+        "num_attention_heads": 8,
+        "num_key_value_heads": 2,
+        "head_dim": 256,
+        "global_head_dim": 512,
+        "rms_norm_eps": 1e-6,
+        "vocab_size": 262144,
+        "layer_types": (["sliding_attention"] * 5 + ["full_attention"]) * 7,
+        "rope_parameters": _gemma4_rope_parameters({
+            "rope_type": "proportional",
+            "partial_rotary_factor": 0.25,
+            "rope_theta": 1e6,
+        }),
+        "sliding_window": 512,
+        "num_kv_shared_layers": 18,
+        "hidden_size_per_layer_input": 256,
+        "tie_word_embeddings": True,
+    }
+    return cast(GgufSourceConfig, SimpleNamespace(**{**fields, **overrides}))
+
+
+def test_gemma4_adapter_name_map_covers_gemma4_tensors() -> None:
+    # GIVEN: the gemma4 adapter's tensor rules.
+    def name_map(hf_name: str) -> str | None:
+        return _gguf_name(GEMMA4_ADAPTER, hf_name, _gemma4_e4b_config())
+
+    # WHEN: mapping HuggingFace parameter and buffer paths.
+    # THEN: parameter and buffer paths are correctly mapped to llama.cpp format.
+    assert name_map("model.layers.3.post_attention_layernorm.weight") == (
+        "blk.3.post_attention_norm.weight"
+    )
+    assert name_map("model.layers.3.pre_feedforward_layernorm.weight") == "blk.3.ffn_norm.weight"
+    assert name_map("model.embed_tokens_per_layer.weight") == "per_layer_token_embd.weight"
+    assert name_map("model.layers.3.per_layer_projection.weight") == "blk.3.proj.weight"
+    assert name_map("model.layers.3.layer_scalar") == "blk.3.layer_output_scale.weight"
+
+    # THEN: the multimodal layout maps the same; its towers and the tied head are dropped.
+    assert name_map("model.language_model.layers.0.self_attn.q_proj.weight") == (
+        "blk.0.attn_q.weight"
+    )
+    assert name_map("model.vision_tower.encoder.layers.0.self_attn.q_proj.weight") is None
+    assert name_map("lm_head.weight") is None
+
+
+def test_gemma4_metadata_matches_reference_gguf() -> None:
+    # GIVEN: an in-memory GGUF writer.
+    writer = GGUFWriter(None, arch=GEMMA4_ADAPTER.gguf_arch)
+
+    # WHEN: writing the gemma-4-E4B metadata.
+    GEMMA4_ADAPTER.write_metadata(writer, _gemma4_e4b_config())
+
+    # THEN: the gemma4-specific keys match google/gemma-4-E4B-it-qat-q4_0-gguf.
+    metadata = {key: value.value for key, value in writer.kv_data[0].items()}
+    assert metadata["gemma4.attention.key_length"] == 512
+    assert metadata["gemma4.attention.key_length_swa"] == 256
+    assert metadata["gemma4.attention.sliding_window_pattern"] == ([True] * 5 + [False]) * 7
+    assert metadata["gemma4.attention.shared_kv_layers"] == 18
+    assert metadata["gemma4.embedding_length_per_layer_input"] == 256
+    assert metadata["gemma4.rope.freq_base_swa"] == 10000.0
+    assert metadata["gemma4.rope.dimension_count_swa"] == 256
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        ({"enable_moe_block": True}, "MoE"),
+        ({"global_head_dim": None}, "'global_head_dim'"),
+        (
+            {"rope_parameters": _gemma4_rope_parameters({"rope_type": "proportional"})},
+            "'rope_theta'",
+        ),
+        ({"num_kv_shared_layers": 19}, "sliding-window layer followed by a full-attention"),
+    ],
+    ids=["moe", "missing-field", "missing-rope-theta", "kv-sharing-unsupported-by-llama-cpp"],
+)
+def test_gemma4_metadata_rejects_unsupported_config(overrides: dict[str, Any], match: str) -> None:
+    # GIVEN: an unsupported gemma4 config.
+    writer = GGUFWriter(None, arch=GEMMA4_ADAPTER.gguf_arch)
+
+    # WHEN/THEN: writing its metadata raises.
+    with pytest.raises(ExportError, match=match):
+        GEMMA4_ADAPTER.write_metadata(writer, _gemma4_e4b_config(**overrides))
+
+
+def test_gemma4_adapter_pins_rope_freqs_to_f32() -> None:
+    # GIVEN: the gemma4 adapter's float-type pin.
+    pin = GEMMA4_ADAPTER.pin_float_type
+    assert pin is not None
+
+    # WHEN/THEN: only rope_freqs.weight is pinned, to F32, whatever the default.
+    assert pin("rope_freqs.weight", 1, "F16") == "F32"
+    assert pin("blk.0.attn_norm.weight", 1, "F16") is None
+
+
+def test_gemma4_rope_freqs_matches_llama_cpp_converter() -> None:
+    # GIVEN: the gemma-4-E4B full-attention RoPE config (512-dim heads, 1/4 rotated).
+    config = _gemma4_config(
+        {"rope_type": "proportional", "partial_rotary_factor": 0.25, "rope_theta": 1e6},
+        global_head_dim=512,
+    )
+
+    # WHEN: synthesizing the rope_freqs tensor.
+    tensors = gemma4_rope_freqs(config)
+
+    # THEN: one float32 entry per frequency pair: 64 rotated pairs (factor 1.0)
+    # followed by 192 unrotated ones (factor 1e30), as llama.cpp's converter emits.
+    assert list(tensors) == ["rope_freqs.weight"]
+    freqs = tensors["rope_freqs.weight"]
+    assert freqs.dtype == torch.float32
+    expected = torch.tensor([1.0] * 64 + [1e30] * 192, dtype=torch.float32)
+    torch.testing.assert_close(freqs, expected)
+
+
+def test_gemma4_rope_freqs_applies_rope_scaling_factor() -> None:
+    # GIVEN: a full-attention RoPE config with scaling factor 2.0.
+    config = _gemma4_config(
+        {"rope_type": "proportional", "partial_rotary_factor": 0.25, "factor": 2.0},
+        global_head_dim=512,
+    )
+
+    # WHEN: synthesizing the rope_freqs tensor.
+    freqs = gemma4_rope_freqs(config)["rope_freqs.weight"]
+
+    # THEN: rotated pairs are divided by the factor; unrotated pairs are unchanged.
+    expected = torch.tensor([2.0] * 64 + [1e30] * 192, dtype=torch.float32)
+    torch.testing.assert_close(freqs, expected)
+
+
+@pytest.mark.parametrize(
+    ("full_attention", "global_head_dim", "match"),
+    [
+        ({"rope_type": "proportional", "factor": 0.0}, 512, "positive RoPE scaling 'factor'"),
+        ({"rope_type": "proportional", "factor": "2"}, 512, "positive RoPE scaling 'factor'"),
+        (None, 512, "rope_type='proportional'"),
+        ({"rope_type": "default"}, 512, "rope_type='proportional'"),
+        ({"rope_type": "proportional"}, None, "global_head_dim"),
+    ],
+    ids=[
+        "zero-factor",
+        "non-numeric-factor",
+        "missing-full-attention",
+        "non-proportional",
+        "missing-head-dim",
+    ],
+)
+def test_gemma4_rope_freqs_rejects_unsupported_config(
+    full_attention: dict[str, Any] | None, global_head_dim: int | None, match: str
+) -> None:
+    # GIVEN: a config lacking the proportional full-attention RoPE inputs.
+    config = _gemma4_config(full_attention, global_head_dim)
+
+    # WHEN/THEN: synthesizing raises.
+    with pytest.raises(ExportError, match=match):
+        gemma4_rope_freqs(config)

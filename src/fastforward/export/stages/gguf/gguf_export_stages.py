@@ -24,7 +24,12 @@ from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor, extract_module_tensors
 from fastforward.export.stages.gguf._packing import default_format_registry
-from fastforward.export.stages.gguf.adapter import ArchAdapter, GgufFormatRegistry, GgufQuantFormat
+from fastforward.export.stages.gguf.adapter import (
+    ArchAdapter,
+    GgufFormatRegistry,
+    GgufQuantFormat,
+    PinFloatTypeT,
+)
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 
 _SampleInputsT: TypeAlias = list[tuple[tuple[Any, ...], dict[str, Any]]]
@@ -172,8 +177,9 @@ def stage_write_gguf(
     (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
     convention.
 
-    Float tensors are cast per ``context["float_type"]`` (default ``"F32"``)
-    and ``context["float_type_overrides"]`` (regex on the GGUF name -> type).
+    Float tensors are cast per ``context["float_type"]`` (default ``"F32"``),
+    the adapter's ``pin_float_type``, and ``context["float_type_overrides"]``
+    (regex on the GGUF name -> type), which take precedence over the pins.
     """
     del sample_inputs
     (packed,) = modules
@@ -212,7 +218,13 @@ def stage_write_gguf(
             raw_dtype = GGMLQuantizationType[fmt.name]
             writer.add_tensor(gguf_name, block_bytes.numpy(), raw_dtype=raw_dtype)
         for gguf_name, float_data in packed["float"].items():
-            float_type = _resolve_float_type(gguf_name, default_float_type, float_type_overrides)
+            float_type = _resolve_float_type(
+                gguf_name,
+                float_data.ndim,
+                default_float_type,
+                float_type_overrides,
+                adapter.pin_float_type,
+            )
             data = _cast_float(float_data, float_type)
             writer.add_tensor(gguf_name, data.numpy(), raw_dtype=GGMLQuantizationType[float_type])
 
@@ -225,11 +237,22 @@ def stage_write_gguf(
     return output_path
 
 
-def _resolve_float_type(gguf_name: str, default: str, overrides: dict[str, str]) -> str:
-    """Determine the GGML float type for a tensor, checking overrides first."""
+def _resolve_float_type(
+    gguf_name: str,
+    ndim: int,
+    default: str,
+    overrides: dict[str, str],
+    pin: PinFloatTypeT | None,
+) -> str:
+    """Determine the GGML float type for a tensor.
+
+    The user's overrides win, then the adapter's pin, then the default.
+    """
     for pattern, float_type in overrides.items():
         if re.fullmatch(pattern, gguf_name):
             return float_type
+    if pin is not None and (pinned := pin(gguf_name, ndim, default)) is not None:
+        return pinned
     return default
 
 

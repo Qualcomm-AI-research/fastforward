@@ -6,10 +6,11 @@
 FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
 parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
-adapters (``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, ``QWEN3_ADAPTER``) are shipped
-alongside as reference implementations; for a model whose module tree differs
-(custom wrapper class, LoRA-merged copy, non-HF codebase), construct your own
-``ArchAdapter`` and pass it via ``GgufLlamaCppOptions.arch_adapter``.
+adapters (``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, ``QWEN3_ADAPTER``,
+``GEMMA4_ADAPTER``) are shipped alongside as reference implementations; for a
+model whose module tree differs (custom wrapper class, LoRA-merged copy, non-HF
+codebase), construct your own ``ArchAdapter`` and pass it via
+``GgufLlamaCppOptions.arch_adapter``.
 
 Similarly, the quantization format (block size, byte layout, GGML type) is
 encapsulated in :class:`GgufQuantFormat`. Built-in formats ``GGUF_Q4_0`` and
@@ -51,6 +52,15 @@ if TYPE_CHECKING:
     from fastforward.export.stages.gguf.rules import TensorRule
 
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
+PinFloatTypeT: TypeAlias = Callable[[str, int, str], str | None]
+"""A float-type pin used as ``ArchAdapter.pin_float_type``.
+
+Called as ``pin_float_type(gguf_name, ndim, float_type)`` for every float
+tensor, with its GGUF name, its number of dimensions, and the export's default
+``float_type``. Returns the GGML float type the target runtime requires for
+that tensor (e.g. ``"F32"`` for a tensor llama.cpp only loads as F32), or
+``None`` to write it as ``float_type``.
+"""
 WriteVocabT: TypeAlias = Callable[[GGUFWriter, Any, GgufSourceConfig, "ArchAdapter"], None]
 """A vocabulary writer used as ``ArchAdapter.write_vocab``.
 
@@ -156,7 +166,8 @@ class ArchAdapter:
     This is the whole surface between generic FastForward code and
     model-specific knowledge: what the tensors become (``tensor_rules``) and
     what the header says (``gguf_arch``, ``write_metadata``, tokenizer
-    discriminators and vocabulary writer). Per-export policy (float output
+    discriminators and vocabulary writer), and which float types the runtime
+    requires (``pin_float_type``). Per-export policy (float output
     types, allowed quant formats) is not architecture knowledge and lives on
     ``GgufLlamaCppOptions`` instead.
 
@@ -183,6 +194,10 @@ class ArchAdapter:
             :func:`~fastforward.export.stages.gguf.make_llama_hf_vocab_writer`
             for byte-fallback BPE tokenizers converted from SentencePiece, or
             supply your own for other tokenizer types.
+        pin_float_type: Optional :data:`PinFloatTypeT` pinning the float type
+            of tensors whose type the target runtime constrains, regardless of
+            the export's ``float_type``. ``GgufLlamaCppOptions.float_type_overrides``
+            still take precedence over it.
     """
 
     gguf_arch: str
@@ -191,6 +206,7 @@ class ArchAdapter:
     tokenizer_model: str
     tokenizer_pre: str | None
     write_vocab: WriteVocabT = write_bpe_vocab
+    pin_float_type: PinFloatTypeT | None = None
 
 
 class GgufFormatRegistry:
