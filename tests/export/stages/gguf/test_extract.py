@@ -112,6 +112,146 @@ def test_extract_passes_through_float_norms(_seed_prngs: int) -> None:
     torch.testing.assert_close(tensor.float_data, model.norm.weight.detach().float())
 
 
+def test_extract_keeps_source_float_dtype(_seed_prngs: int) -> None:
+    # GIVEN: a bf16 model with an unquantized embedding.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.embed = torch.nn.Embedding(8, 32)
+
+    model = Model().to(torch.bfloat16)
+
+    # WHEN: extracting.
+    (tensor,) = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+    # THEN: the float tensor keeps its bf16 dtype; the write stage casts it later.
+    assert tensor.float_data is not None
+    assert tensor.float_data.dtype == torch.bfloat16
+    torch.testing.assert_close(tensor.float_data, model.embed.weight.detach())
+
+
+class _BufferModel(ff.nn.QuantizedModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.block = torch.nn.Module()
+        self.block.register_buffer("layer_scalar", torch.full((1,), 0.5))
+        self.block.register_buffer("scalar", torch.tensor(2.0))
+        self.block.register_buffer("inv_freq", torch.ones(4), persistent=False)
+
+
+def _accept_all(hf_name: str) -> str | None:
+    return hf_name
+
+
+def test_extract_includes_claimed_persistent_buffers() -> None:
+    # GIVEN: a model with a 1-element persistent buffer claimed by a rename rule.
+    model = _BufferModel()
+    adapter = _make_adapter(lambda name: name if name == "block.layer_scalar" else None)
+
+    # WHEN: extracting.
+    (tensor,) = extract_module_tensors(model, adapter=adapter, quant_format=GGUF_Q4_0)
+
+    # THEN: the buffer is extracted as a float tensor.
+    assert tensor.hf_name == "block.layer_scalar"
+    assert tensor.kind == "float"
+    assert tensor.rows == 1
+    assert tensor.float_data is not None
+    torch.testing.assert_close(tensor.float_data, torch.full((1,), 0.5))
+
+
+def test_extract_writes_scalar_buffers_as_one_element_vectors() -> None:
+    # GIVEN: a model with a 0-d persistent buffer claimed by a rename rule.
+    model = _BufferModel()
+    adapter = _make_adapter(lambda name: name if name == "block.scalar" else None)
+
+    # WHEN: extracting.
+    (tensor,) = extract_module_tensors(model, adapter=adapter, quant_format=GGUF_Q4_0)
+
+    # THEN: the scalar becomes a 1-element vector.
+    assert tensor.rows == 1
+    assert tensor.float_data is not None
+    torch.testing.assert_close(tensor.float_data, torch.tensor([2.0]))
+
+
+def test_extract_skips_non_persistent_buffers() -> None:
+    # GIVEN: a rule that claims every name, including a non-persistent buffer.
+    model = _BufferModel()
+
+    # WHEN: extracting.
+    extracted = extract_module_tensors(
+        model, adapter=_make_adapter(_accept_all), quant_format=GGUF_Q4_0
+    )
+
+    # THEN: only the persistent buffers are extracted.
+    assert [t.hf_name for t in extracted] == ["block.layer_scalar", "block.scalar"]
+
+
+def _shared_buffer_model() -> ff.nn.QuantizedModule:
+    """Two submodules registering the same tensor as a persistent buffer."""
+    model = ff.nn.QuantizedModule()
+    shared = torch.full((2,), 3.0)
+    model.first = torch.nn.Module()
+    model.first.register_buffer("scalar", shared)
+    model.second = torch.nn.Module()
+    model.second.register_buffer("scalar", shared)
+    return model
+
+
+def _shared_submodule_model() -> ff.nn.QuantizedModule:
+    """One submodule with a persistent buffer, reachable under two names."""
+    model = ff.nn.QuantizedModule()
+    model.first = torch.nn.Module()
+    model.first.register_buffer("scalar", torch.full((2,), 3.0))
+    model.second = model.first
+    return model
+
+
+@pytest.mark.parametrize(
+    "make_model",
+    [_shared_buffer_model, _shared_submodule_model],
+    ids=["shared-buffer", "shared-submodule"],
+)
+def test_extract_includes_buffer_claimed_under_its_second_name(
+    make_model: Callable[[], ff.nn.QuantizedModule],
+) -> None:
+    # GIVEN: a persistent buffer reachable under two names, only the second claimed.
+    model = make_model()
+    adapter = _make_adapter(lambda name: name if name == "second.scalar" else None)
+
+    # WHEN: extracting.
+    extracted = extract_module_tensors(model, adapter=adapter, quant_format=GGUF_Q4_0)
+
+    # THEN: the buffer is extracted under the claimed name, not hidden by its first alias.
+    assert [t.hf_name for t in extracted] == ["second.scalar"]
+    assert extracted[0].float_data is not None
+    torch.testing.assert_close(extracted[0].float_data, torch.full((2,), 3.0))
+
+
+def test_extract_skips_unclaimed_buffers_silently(caplog: pytest.LogCaptureFixture) -> None:
+    # GIVEN: a model whose buffers no tensor rule claims.
+    model = _BufferModel()
+
+    # WHEN: extracting, with WARNING-level capture enabled.
+    with caplog.at_level(logging.WARNING, logger="fastforward.export.stages.gguf._extract"):
+        extracted = extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+    # THEN: nothing is extracted and no warning is emitted.
+    assert extracted == []
+    assert not [r for r in caplog.records if r.levelno == logging.WARNING]
+
+
+def test_extract_rejects_claimed_non_float_buffer() -> None:
+    # GIVEN: a claimed integer buffer.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.register_buffer("counts", torch.arange(4))
+
+    # WHEN/THEN: extraction refuses to pass it through as a float tensor.
+    with pytest.raises(ff.exceptions.ExportError, match="non-float dtype"):
+        extract_module_tensors(Model(), adapter=_make_adapter(_accept_all), quant_format=GGUF_Q4_0)
+
+
 def test_extract_logs_warning_for_skipped_params(
     _seed_prngs: int, caplog: pytest.LogCaptureFixture
 ) -> None:

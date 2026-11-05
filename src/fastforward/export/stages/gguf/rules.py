@@ -258,8 +258,8 @@ class Synthesize(TensorRule):
     Attributes:
         fn: Receives the source config and returns a mapping of GGUF tensor
             name to floating-point tensor (at least 1-D). The tensors are
-            appended as named float tensors, cast to float32, and written like
-            any other float tensor.
+            appended as named float tensors and written like any other float
+            tensor (cast to the export's float type at write time).
     """
 
     fn: _SynthesizeT
@@ -274,7 +274,7 @@ class Synthesize(TensorRule):
                 found = f"dtype={data.dtype}, ndim={data.ndim}"
                 msg = f"Synthesized tensor '{gguf_name}' must be a >=1-D float tensor, got {found}"
                 raise ExportError(msg)
-            float_data = data.detach().cpu().float()
+            float_data = data.detach().cpu()
             synthesized.append(
                 ExtractedTensor(
                     # Synthesized tensors have no HF source; reuse the GGUF name.

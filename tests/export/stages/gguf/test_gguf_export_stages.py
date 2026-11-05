@@ -310,6 +310,43 @@ def test_cast_float_bf16() -> None:
     assert result.shape == (4, 16)
 
 
+def test_cast_float_bf16_source_to_f32() -> None:
+    # GIVEN: bf16 source data, as extraction now keeps it.
+    data = torch.randn(4, 8).to(torch.bfloat16)
+
+    # WHEN: casting to F32.
+    result = _cast_float(data, "F32")
+
+    # THEN: the values are widened exactly.
+    assert result.dtype == torch.float32
+    torch.testing.assert_close(result, data.float())
+
+
+def test_cast_float_bf16_source_to_bf16_reuses_storage() -> None:
+    # GIVEN: bf16 source data.
+    data = torch.randn(4, 8).to(torch.bfloat16)
+
+    # WHEN: casting to BF16.
+    result = _cast_float(data, "BF16")
+
+    # THEN: the raw bytes are a view of the source, not a copy.
+    assert result.dtype == torch.uint8
+    assert result.data_ptr() == data.data_ptr()
+
+
+def test_cast_float_bf16_handles_non_contiguous_source() -> None:
+    # GIVEN: a non-contiguous (transposed) float32 tensor.
+    data = torch.randn(8, 4).t()
+
+    # WHEN: casting to BF16.
+    result = _cast_float(data, "BF16")
+
+    # THEN: the raw bytes decode to the source values in row-major order.
+    assert result.shape == (4, 16)
+    decoded = result.view(torch.bfloat16)
+    torch.testing.assert_close(decoded, data.to(torch.bfloat16))
+
+
 def test_cast_float_unsupported_raises() -> None:
     # GIVEN: float32 data and an invalid target type.
     data = torch.randn(4, 8)

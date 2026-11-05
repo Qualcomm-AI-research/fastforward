@@ -113,7 +113,7 @@ def test_drop_tied_lm_head_without_tie_attribute_keeps_head() -> None:
     assert len(result) == 1
 
 
-def test_synthesize_appends_named_float32_tensors() -> None:
+def test_synthesize_appends_named_float_tensors() -> None:
     # GIVEN: a synthesize rule deriving a bf16 tensor from the config.
     rule = Synthesize(
         lambda config: {"rope_freqs.weight": torch.ones(config.hidden_size, dtype=torch.bfloat16)}
@@ -123,14 +123,15 @@ def test_synthesize_appends_named_float32_tensors() -> None:
     # WHEN: applying it.
     result = rule.apply([existing], _CONFIG)
 
-    # THEN: the synthesized tensor follows the existing ones as a named float32 tensor.
+    # THEN: the synthesized tensor follows the existing ones as a named float
+    # tensor, keeping its dtype until the write stage casts it.
     assert [t.gguf_name for t in result] == ["a.weight", "rope_freqs.weight"]
     synthesized = result[1]
     assert synthesized.kind == "float"
     assert synthesized.rows == 4
     assert synthesized.float_data is not None
-    assert synthesized.float_data.dtype == torch.float32
-    torch.testing.assert_close(synthesized.float_data, torch.ones(4))
+    assert synthesized.float_data.dtype == torch.bfloat16
+    torch.testing.assert_close(synthesized.float_data, torch.ones(4, dtype=torch.bfloat16))
 
 
 @pytest.mark.parametrize(

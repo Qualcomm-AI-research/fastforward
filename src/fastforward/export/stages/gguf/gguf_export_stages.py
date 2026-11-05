@@ -244,11 +244,16 @@ _RAW_BYTE_TYPES = frozenset({"BF16"})
 
 
 def _cast_float(data: torch.Tensor, target_type: str) -> torch.Tensor:
-    """Cast float32 tensor data to the target GGML float type for writing."""
+    """Cast float tensor data (any source dtype) to the target GGML float type for writing.
+
+    This is the only cast float tensors go through: extraction keeps the source
+    dtype, so e.g. a bf16 embedding written as ``"BF16"`` is never copied.
+    """
     if target_type not in _FLOAT_DTYPES:
         msg = f"Unsupported float_type '{target_type}'. Supported: {sorted(_FLOAT_DTYPES)}"
         raise ExportError(msg)
     result = data.to(_FLOAT_DTYPES[target_type])
     if target_type in _RAW_BYTE_TYPES:
-        result = result.view(torch.uint8)
+        # numpy has no bfloat16; hand GGUFWriter the raw bytes instead.
+        result = result.contiguous().view(torch.uint8)
     return result

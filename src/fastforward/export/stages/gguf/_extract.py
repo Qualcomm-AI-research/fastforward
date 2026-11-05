@@ -3,13 +3,14 @@
 
 """Extract tensors from a quantized FastForward model for GGUF export.
 
-Walks the model's parameters and classifies each into:
+Walks the model's parameters and persistent buffers and classifies each into:
 
 - **Quantized** — the parameter has an initialized weight quantizer discovered
   via ``ff.find_quantizers``. Integer codes and per-block scales are read
   directly from the quantizer, preserving the user's learned quantization.
-- **Float** — everything else (norms, biases, unquantized weights). Passed
-  through as-is for downstream F32 writing.
+- **Float** — everything else (norms, biases, unquantized weights, buffers such
+  as per-layer scalars). Passed through in the source dtype; the write stage
+  casts them once to the requested GGML float type.
 
 No calibration or fallback quantization is performed. If the user did not
 quantize a parameter, it arrives as float.
@@ -17,6 +18,7 @@ quantize a parameter, it arrives as float.
 
 import logging
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import torch
@@ -38,9 +40,10 @@ class ExtractedTensor:
     """A single exportable tensor extracted from the model.
 
     Quantized tensors carry ``int_codes`` (integer) and ``scales`` (float32).
-    Float tensors carry ``float_data``. This is the unit tensor rules operate
-    on: ``hf_name`` identifies the source tensor and ``gguf_name`` is assigned
-    by a ``Rename`` rule (empty until then).
+    Float tensors carry ``float_data`` in the source dtype (at least 1-D).
+    This is the unit tensor rules operate on: ``hf_name`` identifies the
+    source tensor and ``gguf_name`` is assigned by a ``Rename`` rule (empty
+    until then).
     """
 
     hf_name: str
@@ -188,6 +191,33 @@ def _is_claimed(hf_name: str, adapter: ArchAdapter, config: GgufSourceConfig | N
     return False
 
 
+def _named_persistent_buffers(model: torch.nn.Module) -> Iterator[tuple[str, torch.Tensor]]:
+    """Yield the buffers that are part of ``model``'s ``state_dict``, under every name.
+
+    Non-persistent buffers (e.g. RoPE ``inv_freq`` caches) are derived at
+    runtime and never exported. Shared buffers and buffers of shared submodules
+    are yielded once per name, as in ``state_dict``, so the tensor rules decide
+    which alias is exported.
+    """
+    for module_name, module in model.named_modules(remove_duplicate=False):
+        for buffer_name, buffer in module.named_buffers(recurse=False):
+            if buffer_name in module._non_persistent_buffers_set:
+                continue
+            yield f"{module_name}.{buffer_name}" if module_name else buffer_name, buffer
+
+
+def _extract_float(hf_name: str, data: torch.Tensor) -> ExtractedTensor:
+    """Wrap a parameter or buffer as a float tensor, keeping its dtype."""
+    if not data.is_floating_point():
+        msg = f"Tensor '{hf_name}' is claimed for GGUF export but has non-float dtype {data.dtype}"
+        raise ExportError(msg)
+    data = data.detach().cpu()
+    if data.ndim == 0:
+        # GGUF tensors have at least one dimension; write scalars as 1-element vectors.
+        data = data.reshape(1)
+    return ExtractedTensor(hf_name=hf_name, kind="float", rows=data.shape[0], float_data=data)
+
+
 def extract_module_tensors(
     model: torch.nn.Module,
     *,
@@ -198,10 +228,11 @@ def extract_module_tensors(
 ) -> list[ExtractedTensor]:
     """Extract every GGUF-exportable tensor from ``model``.
 
-    Only parameters claimed by one of the adapter's tensor rules are extracted.
-    Those with an initialized weight quantizer (discovered via
-    ``ff.find_quantizers``) are extracted as quantized (integer codes + scales).
-    Everything else passes through as float. No fallback quantization is applied.
+    Only parameters and persistent buffers claimed by one of the adapter's
+    tensor rules are extracted. Parameters with an initialized weight quantizer
+    (discovered via ``ff.find_quantizers``) are extracted as quantized (integer
+    codes + scales). Everything else passes through as float, in its source
+    dtype. No fallback quantization is applied.
 
     Each quantizer is resolved against the ``format_registry`` to determine its
     target GGUF format (by matching ``num_bits``, ``symmetric``, and
@@ -210,7 +241,7 @@ def extract_module_tensors(
     Args:
         model: The quantized FastForward module to export.
         adapter: Architecture adapter. Its ``tensor_rules`` decide which
-            parameters are exportable (see ``TensorRule.claims``).
+            parameters and buffers are exportable (see ``TensorRule.claims``).
         config: Source model config. When given, parameters a rule removes
             before any rule claims them (see ``TensorRule.removes``, e.g.
             ``DROP_TIED_LM_HEAD``) are skipped without validating their quantizer.
@@ -222,11 +253,13 @@ def extract_module_tensors(
             registry containing only this format.
 
     Returns:
-        The extracted tensors, in ``named_parameters`` order.
+        The extracted tensors: parameters in ``named_parameters`` order,
+        followed by persistent buffers.
 
     Raises:
         ExportError: If a quantizer does not match any registered format or is
-            otherwise incompatible.
+            otherwise incompatible, or if a claimed float tensor has a
+            non-floating-point dtype.
     """
     if format_registry is None:
         if quant_format is None:
@@ -275,15 +308,14 @@ def extract_module_tensors(
                 )
             )
         else:
-            data = param.data.detach().cpu().float()
-            extracted.append(
-                ExtractedTensor(
-                    hf_name=hf_name,
-                    kind="float",
-                    rows=data.shape[0],
-                    float_data=data,
-                )
-            )
+            extracted.append(_extract_float(hf_name, param.data))
+
+    # Unclaimed buffers are skipped silently: most are quantizer state or caches.
+    extracted.extend(
+        _extract_float(hf_name, buffer)
+        for hf_name, buffer in _named_persistent_buffers(model)
+        if _is_claimed(hf_name, adapter, config)
+    )
 
     if skipped:
         user_skipped = [s for s in skipped if "_quantizer." not in s]

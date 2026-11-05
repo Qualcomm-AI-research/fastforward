@@ -9,7 +9,9 @@ FastForward, runs the pipeline, and reads the produced GGUF back with the
 """
 
 import pathlib
+import re
 
+from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -19,7 +21,7 @@ import pytest
 import torch
 
 from fastforward.export.pipeline import ExportRequest, GgufLlamaCppOptions, export_with_pipeline
-from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER
+from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER, Rename
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -210,3 +212,70 @@ def test_gguf_pipeline_skips_tied_lm_head(tmp_path: pathlib.Path, _seed_prngs: i
     tensor_names = {tensor.name for tensor in reader.tensors}
     assert "output.weight" not in tensor_names
     assert "token_embd.weight" in tensor_names
+
+
+def _layer_scalar_name_map(hf_name: str) -> str | None:
+    match = re.fullmatch(r"model\.layers\.(\d+)\.layer_scalar", hf_name)
+    return f"blk.{match.group(1)}.layer_output_scale.weight" if match else None
+
+
+@pytest.mark.slow
+def test_gguf_pipeline_exports_claimed_buffers_from_bf16_model(
+    tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
+    # GIVEN: a bf16 tiny Llama whose layers carry a persistent per-layer scalar
+    # buffer, and an adapter that extends LLAMA_ADAPTER with a rename for it.
+    vocab, hidden, inter, n_layers = 64, 32, 64, 2
+    model = _TinyLlama(vocab, hidden, inter, n_layers)
+    for layer_idx, layer in enumerate(model.model.layers):
+        layer.register_buffer("layer_scalar", torch.full((1,), 0.5 + layer_idx))
+    model.to(torch.bfloat16)
+    _quantize_linears(model)
+    model.eval()
+
+    config = SimpleNamespace(
+        max_position_embeddings=128,
+        hidden_size=hidden,
+        num_hidden_layers=n_layers,
+        intermediate_size=inter,
+        num_attention_heads=4,
+        num_key_value_heads=4,
+        rope_theta=10000.0,
+        rms_norm_eps=1e-5,
+        vocab_size=vocab,
+        tie_word_embeddings=False,
+        rope_scaling=None,
+    )
+    adapter = replace(
+        LLAMA_ADAPTER,
+        tensor_rules=(*LLAMA_ADAPTER.tensor_rules, Rename(_layer_scalar_name_map)),
+    )
+
+    # WHEN: exporting with the default F32 float type.
+    options = GgufLlamaCppOptions(arch_adapter=adapter, quant_format=GGUF_Q4_0, model_config=config)
+    artifacts = export_with_pipeline(
+        ExportRequest(
+            model=model,
+            sample_inputs=[],
+            output_dir=tmp_path,
+            model_name="tiny-llama-buffers",
+            target="gguf",
+            format="llama_cpp",
+            options=options.to_context(),
+        )
+    )
+
+    # THEN: each layer's buffer is written as an F32 tensor under its GGUF name.
+    reader = gguf.GGUFReader(str(artifacts.stage_outputs["write_gguf"]))
+    tensors = {tensor.name: tensor for tensor in reader.tensors}
+    for layer_idx in range(n_layers):
+        scale = tensors[f"blk.{layer_idx}.layer_output_scale.weight"]
+        assert scale.tensor_type == gguf.GGMLQuantizationType.F32
+        assert scale.data.tolist() == [0.5 + layer_idx]
+
+    # THEN: bf16 pass-through parameters are widened to F32 at write time.
+    embd = tensors["token_embd.weight"]
+    assert embd.tensor_type == gguf.GGMLQuantizationType.F32
+    torch.testing.assert_close(
+        torch.from_numpy(embd.data.copy()), model.model.embed_tokens.weight.float()
+    )

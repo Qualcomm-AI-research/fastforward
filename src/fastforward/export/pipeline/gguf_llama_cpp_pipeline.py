@@ -20,7 +20,8 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     scales (via ``GGUFWriter``'s ``raw_dtype`` path). It does **not** run
     calibration or GPTQ — quantization is the user's separate upstream step.
     Parameters without an initialized FastForward quantizer (embeddings, norms,
-    biases) pass through as F32.
+    biases) and claimed persistent buffers pass through in their source dtype
+    and are cast once at write time (``float_type``, F32 by default).
 
     GGUF export is weight-only, so the extraction stage is a pipeline root that
     reads the live quantized module directly rather than reusing the FX
@@ -31,7 +32,7 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     ```text
     ff_model (pipeline input)
         |
-        | +--> extract_quantized_weights   (root; int codes + scales + float passthroughs)
+        | +--> extract_quantized_weights   (root; int codes + scales + float params/buffers)
                     |
                     v
                 apply_tensor_rules          (adapter rules: rename/transform/fuse/drop/synthesize)
