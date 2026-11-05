@@ -17,6 +17,7 @@ import torch
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf import (
     GGUF_Q4_0,
+    GGUF_Q4_1,
     LLAMA_ADAPTER,
     QWEN2_ADAPTER,
     QWEN3_ADAPTER,
@@ -45,7 +46,7 @@ class _Config:
 
 def _gguf_name(adapter: ArchAdapter, hf_name: str) -> str | None:
     """Run the adapter's tensor rules on one float tensor and return its GGUF name."""
-    tensor = ExtractedTensor(hf_name=hf_name, kind="float", rows=1, float_data=torch.zeros(1))
+    tensor = ExtractedTensor(hf_name=hf_name, kind="float", rows=2, float_data=torch.zeros(2))
     result = apply_tensor_rules([tensor], adapter.tensor_rules, _Config(n_head=1, n_head_kv=1))
     return result[0].gguf_name if result else None
 
@@ -134,6 +135,40 @@ def test_llama_rope_permute_is_the_interleave_deinterleave() -> None:
     permuted = result.int_codes.reshape(8, 1, block_size)
     expected = original_codes[torch.tensor([0, 2, 1, 3, 4, 6, 5, 7])]
     torch.testing.assert_close(permuted, expected)
+
+
+def test_llama_rope_permute_applies_to_float_projections() -> None:
+    # GIVEN: an unquantized q_proj with 2 heads over 8 rows.
+    config = _Config(n_head=2, n_head_kv=2)
+    data = torch.arange(8 * 4, dtype=torch.float32).reshape(8, 4)
+    tensor = ExtractedTensor(
+        hf_name="model.layers.0.self_attn.q_proj.weight",
+        kind="float",
+        rows=8,
+        cols=4,
+        float_data=data,
+    )
+
+    # WHEN: applying the transform.
+    result = llama_rope_permute(tensor, config)
+
+    # THEN: its rows get the same de-interleave as quantized projections.
+    torch.testing.assert_close(result.float_data, data[torch.tensor([0, 2, 1, 3, 4, 6, 5, 7])])
+
+
+def test_llama_rope_permute_moves_offsets_with_scales() -> None:
+    # GIVEN: an asymmetric k_proj whose per-block offsets are tied to its scales.
+    config = _Config(n_head=2, n_head_kv=2)
+    tensor = make_quantized_tensor("model.layers.0.self_attn.k_proj.weight", rows=8, cols=32)
+    assert tensor.scales is not None
+    tensor = replace(tensor, offsets=tensor.scales * 10, quant_format=GGUF_Q4_1)
+
+    # WHEN: applying the transform.
+    result = llama_rope_permute(tensor, config)
+
+    # THEN: every block keeps its (scale, offset) pair.
+    assert result.scales is not None
+    torch.testing.assert_close(result.offsets, result.scales * 10)
 
 
 def test_llama_rope_permute_keeps_extracted_shapes() -> None:

@@ -70,7 +70,7 @@ def _rope_permute_row_index(n_rows: int, n_head: int) -> torch.Tensor:
 def _apply_row_permute(
     tensor: ExtractedTensor, row_index: torch.Tensor, block_size: int
 ) -> ExtractedTensor:
-    """Reorder a quantized tensor's rows, keeping code/scale pairing and shapes intact."""
+    """Reorder a quantized tensor's rows, keeping code/scale/offset pairing and shapes intact."""
     assert tensor.int_codes is not None and tensor.scales is not None
     assert tensor.cols is not None
     if tensor.cols % block_size != 0:
@@ -85,24 +85,26 @@ def _apply_row_permute(
     scales = tensor.scales.reshape(tensor.rows, blocks_per_row)
     permuted_codes = codes[row_index].reshape(tensor.int_codes.shape)
     permuted_scales = scales[row_index].reshape(tensor.scales.shape)
-    return replace(tensor, int_codes=permuted_codes, scales=permuted_scales)
+    permuted_offsets = None
+    if tensor.offsets is not None:
+        offsets = tensor.offsets.reshape(tensor.rows, blocks_per_row)
+        permuted_offsets = offsets[row_index].reshape(tensor.offsets.shape)
+    return replace(
+        tensor, int_codes=permuted_codes, scales=permuted_scales, offsets=permuted_offsets
+    )
 
 
 def llama_rope_permute(tensor: ExtractedTensor, config: GgufSourceConfig) -> ExtractedTensor:
     """RoPE de-interleave transform for llama.cpp's Llama loader.
 
     Permutes rows of Q projections by ``num_attention_heads`` and K projections
-    by ``num_key_value_heads``. Non-matching tensors and float tensors are
-    returned unchanged.
+    by ``num_key_value_heads``, both quantized and float. Non-matching tensors
+    are returned unchanged.
 
     This is a :data:`~fastforward.export.stages.gguf.rules.TensorTransformT`
     for use with a :class:`~fastforward.export.stages.gguf.rules.Transform`
     rule.
     """
-    if tensor.kind != "quantized":
-        return tensor
-    assert tensor.quant_format is not None
-
     if _Q_PROJ_RE.match(tensor.hf_name):
         row_index = _rope_permute_row_index(tensor.rows, config.num_attention_heads)
     elif _K_PROJ_RE.match(tensor.hf_name):
@@ -111,6 +113,10 @@ def llama_rope_permute(tensor: ExtractedTensor, config: GgufSourceConfig) -> Ext
     else:
         return tensor
 
+    if tensor.kind != "quantized":
+        assert tensor.float_data is not None
+        return replace(tensor, float_data=tensor.float_data[row_index])
+    assert tensor.quant_format is not None
     return _apply_row_permute(tensor, row_index, tensor.quant_format.block_size)
 
 
