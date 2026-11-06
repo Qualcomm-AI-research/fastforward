@@ -97,6 +97,7 @@ hooks:
   - docs/hooks/no_sitemap_hook.py
   - docs/hooks/source_link_hook.py
   - docs/hooks/notebook_meta_hook.py
+  - docs/hooks/quiet_datasets_hook.py
 
 markdown_extensions:
   - admonition
