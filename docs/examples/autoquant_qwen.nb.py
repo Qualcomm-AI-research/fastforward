@@ -48,7 +48,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_colla
 # - ...
 model_name_or_path = os.environ.get("FF_AUTOQUANT_QWEN_MODEL", "Qwen/Qwen3-0.6B")
 
-model_dtype = torch.float16
+model_dtype = torch.bfloat16
 device = torch.device("cuda")
 
 model = AutoModelForCausalLM.from_pretrained(
