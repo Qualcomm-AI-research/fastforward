@@ -279,6 +279,9 @@ def optimize_with_gptq(
     calibration_inputs: Sequence[torch.Tensor],
 ) -> None:
     """Apply the tutorial's Q4_0-compatible GPTQ configuration."""
+    # By default GPTQ targets every QuantizedLinear and QuantizedConv2d. Only the decoder
+    # projections were converted to QuantizedLinear (`lm_head` stays a plain Linear), so these
+    # targets select the same modules and only make the intent explicit.
     targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
     gptq_fn = functools.partial(ff.algorithms.gptq, perc_damp=0.05)
     with torch.no_grad(), ff.strict_quantization(False):
@@ -485,6 +488,7 @@ qwen_gptq_model = AutoModelForCausalLM.from_pretrained(
     qwen_model_id,
     dtype=model_dtype,
     attn_implementation="eager",
+    # The tracer used by layerwise_optimize can't handle HF's KV cache output.
     use_cache=False,
 )
 

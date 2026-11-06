@@ -171,8 +171,8 @@ def layerwise_optimize(
         data: Calibration data to run through the model.
         algorithm: The optimization algorithm. Accepts a callable (looked up in the
             registry), a single `AlgorithmSpec`, or a list of specs.
-        targets: Override which modules to target (uses registry default if None).
-            Cannot be combined with explicit AlgorithmSpec(s).
+        targets: Override which modules to target. If None, uses the default targets the
+            algorithm was registered with. Cannot be combined with explicit AlgorithmSpec(s).
         config: Orchestration settings (offloading strategy, chunk size).
         graph: Pre-built GraphModule (traces model if None).
         sample_args: Positional example inputs for tracing.
