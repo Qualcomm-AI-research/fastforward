@@ -17,6 +17,7 @@ RUN apt update && \
         git \
         jq \
         less \
+        libgomp1 \
         nodejs \
         npm \
         openssh-client \
