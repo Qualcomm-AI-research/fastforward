@@ -90,21 +90,32 @@ hide:
 import fastforward as ff
 import torch
 
-# 1. Convert any PyTorch model to a quantization-ready one.
-model = MyModel()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 1. Convert any PyTorch model to a quantization-ready one. Autoquant writes
+#    quantized versions of your own module classes; quantize_model swaps them in.
+model = MyModel().to(device)
+ff.autoquantize(model, output_path="quantized_my_model.py", auto_import=True, force_overwrite=True)
 ff.quantize_model(model)
 
 # 2. Attach 8-bit per-channel weight quantizers to every linear layer.
 weight_quantizers = ff.find_quantizers(model, "**/[quantizer:parameter/weight]")
-weight_quantizers.initialize(ff.nn.LinearQuantizer, num_bits=8, granularity=ff.PerChannel())
+weight_quantizers.initialize(
+    ff.nn.LinearQuantizer, num_bits=8, granularity=ff.PerChannel(), device=device
+)
 
-# 3. Calibrate on real data.
-with ff.estimate_ranges(model, ff.range_setting.RunningMinMaxRangeEstimator):
+# 3. Calibrate on real data. Only the weights are quantized, so strict mode is off.
+with (
+    torch.no_grad(),
+    ff.strict_quantization(False),
+    ff.estimate_ranges(model, ff.range_setting.running_minmax),
+):
     for batch in calibration_loader:
         model(**batch)
 
 # 4. Run the quantized model like any PyTorch model — pdb and print still work.
-output = model(**input_batch)
+with ff.strict_quantization(False):
+    output = model(**input_batch)
 ```
 
 [Full walkthrough on Llama-v3 :material-arrow-right:](examples/quick_start_quantize_llms.nb.py){ .md-button .md-button--primary }
