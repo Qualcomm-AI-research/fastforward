@@ -28,7 +28,6 @@ from fastforward.export.stages.gguf._packing import default_format_registry
 from fastforward.export.stages.gguf.adapter import GgufFormatRegistry
 from fastforward.export.stages.gguf.gguf_export_stages import (
     _cast_float,
-    _resolve_float_type,
     stage_apply_tensor_rules,
     stage_extract_quantized_weights,
     stage_pack_gguf_blocks,
@@ -219,42 +218,6 @@ def _make_full_config() -> Any:
         rope_scaling = None
 
     return C()
-
-
-def test_resolve_float_type_default() -> None:
-    # GIVEN: an F16 default and no overrides.
-    # WHEN: resolving a tensor with no override match.
-    result = _resolve_float_type("blk.0.ffn_up.weight", "F16", {})
-
-    # THEN: falls back to the default.
-    assert result == "F16"
-
-
-def test_resolve_float_type_override_matches() -> None:
-    # GIVEN: an F16 default but norms overridden to F32.
-    overrides = {r".*norm.*": "F32"}
-
-    # WHEN: resolving tensors.
-    norm_result = _resolve_float_type("blk.0.attn_norm.weight", "F16", overrides)
-    weight_result = _resolve_float_type("blk.0.ffn_up.weight", "F16", overrides)
-
-    # THEN: norm matches the override, other falls back to default.
-    assert norm_result == "F32"
-    assert weight_result == "F16"
-
-
-def test_resolve_float_type_first_override_wins() -> None:
-    # GIVEN: multiple overrides that could both match.
-    overrides = {
-        r"blk\.0\..*": "F16",
-        r".*norm.*": "BF16",
-    }
-
-    # WHEN: resolving a tensor that matches both patterns.
-    result = _resolve_float_type("blk.0.attn_norm.weight", "F32", overrides)
-
-    # THEN: first matching pattern wins.
-    assert result == "F16"
 
 
 def test_write_gguf_applies_float_type_policy_from_context(tmp_path: Any) -> None:

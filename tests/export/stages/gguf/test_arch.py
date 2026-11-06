@@ -29,7 +29,6 @@ from fastforward.export.stages.gguf import (
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 from tests.export.stages.gguf.conftest import make_quantized_tensor
-from transformers import LlamaConfig
 
 
 class _Config:
@@ -246,7 +245,11 @@ def test_adapters_carry_tokenizer_discriminators() -> None:
 
 def test_llama_metadata_reads_rope_theta_from_transformers_config() -> None:
     # GIVEN: a transformers config, which keeps rope_theta in rope_parameters.
-    config = LlamaConfig(rope_parameters={"rope_type": "default", "rope_theta": 500000.0})
+    # transformers is not part of the CI `test` dependency group.
+    transformers = pytest.importorskip("transformers")
+    config = transformers.LlamaConfig(
+        rope_parameters={"rope_type": "default", "rope_theta": 500000.0}
+    )
     writer = gguf.GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
 
     # WHEN: writing the llama metadata.
