@@ -19,15 +19,15 @@
 # # AutoQuant: Quantizing Qwen-3 0.6B
 #
 # This tutorial walks through `ff.autoquantize`, FastForward's automated quantization workflow,
-# applied to Qwen-3 0.6B model pulled from HuggingFace.
+# applied to the Qwen-3 0.6B model pulled from HuggingFace.
 #
 # We will:
 #
 # 1. Load the floating-point model together with a calibration / evaluation dataset.
 # 2. Establish a perplexity baseline on the FP model.
 # 3. Run AutoQuant to generate a quantization-ready version of the model source code.
-# 4. Configure quantizers for weights and activations.
-# 5. Calibrate the quantizers and measure the resulting perplexity.
+# 4. Configure the weight quantizers and calibrate them.
+# 5. Add dynamic activation quantizers and measure the resulting perplexity.
 #
 # We start by downloading the model and tokenizer through the HuggingFace API.
 
@@ -49,17 +49,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_colla
 model_name_or_path = os.environ.get("FF_AUTOQUANT_QWEN_MODEL", "Qwen/Qwen3-0.6B")
 
 model_dtype = torch.float16
-device = "cuda"
+device = torch.device("cuda")
 
 model = AutoModelForCausalLM.from_pretrained(
     pretrained_model_name_or_path=model_name_or_path,
     dtype=model_dtype,
     attn_implementation="eager",
-    from_tf=False,
 )
-tokenizer = AutoTokenizer.from_pretrained(
-    pretrained_model_name_or_path=model_name_or_path, attn_implementation="eager"
-)
+tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path)
 
 
 # %% [markdown]
@@ -68,7 +65,7 @@ tokenizer = AutoTokenizer.from_pretrained(
 # - A *calibration-set* for **calibrating** the quantizers, i.e. running enough forward passes to
 #  **estimate the quantizers ranges** and set quantization parameters accordingly.
 #
-# We use WikiText-2, where the training split feeds calibration, the validation split is used for evaluation.
+# We use WikiText-2: the training split feeds calibration and the validation split is used for evaluation.
 
 # %%
 from fastforward.testing.data import tokenize_dataset
@@ -160,8 +157,10 @@ code = ff.autoquantize(
 #
 #
 # Note:
-#  - To use autoquantized model, you must import the quantization-ready modules from the generated file.
-#  - If you just run `ff.autoquantize` with `auto_import=True`, you don't need to explicitly import.
+#  - `ff.quantize_model` only knows imported `QuantizedModule` classes: torch built-ins like `torch.nn.Linear` come with
+#    `import fastforward`, custom modules need the generated file.
+#  - `ff.autoquantize` with `auto_import=True` already imported them, so `ff.quantize_model` doesn't need an explicit import.
+#    We still import `QuantizedQwen3ForCausalLM` below, because the optional type cast refers to it.
 
 # %%
 from _autoquantized_qwen import QuantizedQwen3ForCausalLM
@@ -188,41 +187,44 @@ model: QuantizedQwen3ForCausalLM = cast(QuantizedQwen3ForCausalLM, model)
 #
 # We group quantizers by role so each group can receive its own configuration:
 #
-# - **Linear weight quantizers** in attention and MLP layers, plus `lm_head` and `embed_tokens`: 4-bit, per-channel.
-# - **LayerNorm weight quantizers**: 4-bit per-tensor (per-channel does not apply — the weight is 1D).
-# - **Activation quantizers** across the transformer blocks and residual paths: 16-bit, asymmetric.
+# - **Linear weight quantizers** in attention and MLP layers, plus `lm_head` and `embed_tokens`: 4-bit, per-block
+#   (blocks of 32 consecutive values in each row).
+#
+# The activation quantizers are dynamic, so they don't need calibration. We set them up after calibrating the weights.
 #
 # Tweaking these settings is how the accuracy / efficiency trade-off is dialed in.
 
 # %%
 from fastforward.nn import LinearQuantizer
 
-# Granularities
+# Granularity
 per_block_32 = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
-per_tensor = ff.granularity.PerTensor()
 
 # Model weight quantizers: find and initialize
 w_quants = ff.find_quantizers(model, "**/self_attn/**/[quantizer:parameter/weight]")
 w_quants |= ff.find_quantizers(model, "**/mlp/**/[quantizer:parameter/weight]")
 w_quants.initialize(LinearQuantizer, num_bits=4, granularity=per_block_32)
-print(f"MLP and self-attention wegiht quantizers: {len(w_quants)}")
+print(f"MLP and self-attention weight quantizers: {len(w_quants)}")
 
 lmhead_w_quants = ff.find_quantizers(model, "**/lm_head/[quantizer:parameter/weight]")
 lmhead_w_quants.initialize(LinearQuantizer, num_bits=4, granularity=per_block_32)
-print(f"LM-Head wegiht quantizers: {len(lmhead_w_quants)}")
+print(f"LM-Head weight quantizers: {len(lmhead_w_quants)}")
 
 embed_w_quants = ff.find_quantizers(model, "**/embed_tokens/[quantizer:parameter/weight]")
 embed_w_quants.initialize(LinearQuantizer, num_bits=4, granularity=per_block_32)
-print(f"Embedding wegiht quantizers: {len(embed_w_quants)}")
+print(f"Embedding weight quantizers: {len(embed_w_quants)}")
 
 
 # %% [markdown]
 # ---
 # ## Calibrate the Quantizers
 #
-# Static quantizers like `LinearQuantizer` need to observe real activations to choose appropriate quantization ranges.
+# Static quantizers like `LinearQuantizer` need a calibration pass to choose their quantization ranges.
+# Here only the weight quantizers are static, so this step sets the weight ranges only.
 # We run a few batches from the training split through the model inside the `ff.estimate_ranges` context manager,
-# which collects running min/max statistics and uses them to set each quantizer's range.
+# which collects smoothed min/max statistics and uses them to set each quantizer's range.
+# The weight ranges depend only on the weights, so the choice of calibration data doesn't change them here;
+# it matters once you add static activation quantizers.
 #
 # `strict_quantization(False)` context manager lets the model run even when some operations are not yet fully quantized.
 
@@ -240,12 +242,15 @@ with ff.strict_quantization(False):
 # ## Initialize Dynamic Quantizers
 # Dynamic quantizers do not need calibration, so we initialize them after we already
 # calibrated all the static quantizers.
+#
+# The activations of the attention and MLP blocks, the norms, the residual paths, and `lm_head`
+# get 8-bit, asymmetric, per-token quantizers.
 
 # %%
 
-# Granularity
 from fastforward.nn import DynamicLinearQuantizer
 
+# Granularity
 per_token = ff.granularity.PerChannel(channel_dim=1)
 
 # Model activation quantizers: find and initialize
