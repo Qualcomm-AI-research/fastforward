@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly LLAMA_CPP_TAG="b10951"
-readonly LLAMA_CPP_ARCHIVE_SHA256="cb0e453d8d88b62a8962c5b13e46c117315f7740017f2636bcf0de20c6253f7a"
+readonly LLAMA_CPP_TAG="b12110"
+readonly LLAMA_CPP_ARCHIVE_SHA256="368227edcc229be5f9bed16a2223d79b5e41d0ac2e19bcf5825e82291c060e55"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
 INSTALL_ROOT="${REPO_ROOT}/build/llama.cpp/${LLAMA_CPP_TAG}"

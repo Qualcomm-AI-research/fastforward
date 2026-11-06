@@ -55,6 +55,9 @@ test-regression = [
 ]
 docs = [
   {include-group = "models-deps"},
+  # The GGUF tutorial validates with llama.cpp: keep in step with the gguf-py version of the
+  # llama.cpp tag in scripts/install-llama-cpp.sh.
+  "gguf>=0.19,<0.20",
   "ipywidgets",
   "jupytext",
   "mike",
