@@ -78,8 +78,8 @@ sequence_length = 1024
 batch_size = 1
 
 # Load Dataset
-raw_validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="train")
-raw_trainset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="validation")
+raw_trainset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="train")
+raw_validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="validation")
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(raw_validset, tokenizer, sequence_length)
@@ -232,7 +232,7 @@ model.to(device)
 
 with ff.strict_quantization(False):
     with torch.no_grad(), ff.estimate_ranges(model, ff.range_setting.smoothed_minmax):
-        for batch in sliced_tqdm(valid_loader, limit=4):
+        for batch in sliced_tqdm(train_loader, limit=4):
             model(**prepare_batch(batch, device))
 
 # %% [markdown]
