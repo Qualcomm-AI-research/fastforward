@@ -51,7 +51,7 @@ def tokenizer(model_name: str) -> PreTrainedTokenizerBase:
 
 @pytest.fixture
 def wikitext_valid_loader(tokenizer: PreTrainedTokenizerBase) -> DataLoader[Any]:
-    raw_validset = load_dataset("wikitext", "wikitext-2-v1", split="validation")
+    raw_validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="validation")
     tokenized_validset = tokenize_dataset(raw_validset, tokenizer, _SEQ_LEN)
     return DataLoader(tokenized_validset, batch_size=_BATCH_SIZE, collate_fn=default_data_collator)
 

@@ -63,8 +63,8 @@ tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, legacy=False, use_
 # Load Dataset
 _valid_split = "validation" if valid_percent is None else f"validation[:{valid_percent}%]"
 _train_split = "train" if train_percent is None else f"train[:{train_percent}%]"
-validset = load_dataset("wikitext", "wikitext-2-v1", split=_valid_split)
-trainset = load_dataset("wikitext", "wikitext-2-v1", split=_train_split)
+validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split=_valid_split)
+trainset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split=_train_split)
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(validset, tokenizer, sequence_length)

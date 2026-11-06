@@ -78,8 +78,8 @@ sequence_length = 1024
 batch_size = 1
 
 # Load Dataset
-raw_validset = load_dataset("wikitext", "wikitext-2-v1", split="train")
-raw_trainset = load_dataset("wikitext", "wikitext-2-v1", split="validation")
+raw_validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="train")
+raw_trainset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split="validation")
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(raw_validset, tokenizer, sequence_length)

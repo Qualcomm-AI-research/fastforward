@@ -87,7 +87,7 @@ def _get_wikitext2(
 
     from transformers import AutoTokenizer
 
-    testdata = datasets.load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+    testdata = datasets.load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     testenc: _TokenizedData = tokenizer("\n\n".join(testdata["text"]), return_tensors="pt")
 
