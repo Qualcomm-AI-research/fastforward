@@ -16,7 +16,6 @@ _Size = int | tuple[int, int]
 def calculate_hessian(
     activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
     *,
-    device: torch.device | None = None,
     kernel_size: _Size | None = None,
     dilation: _Size = 1,
     padding: _Size = 0,
@@ -28,7 +27,6 @@ def calculate_hessian(
 
     Args:
         activations: Input activations flowing into the layer, as for `hessian_sum_and_count`.
-        device: The device to accumulate on, as for `hessian_sum_and_count`.
         kernel_size: The kernel size of the convolution, or `None` for a linear layer.
         dilation: The dilation of the convolution.
         padding: The padding of the convolution.
@@ -44,7 +42,6 @@ def calculate_hessian(
     """
     state = hessian_sum_and_count(
         activations,
-        device=device,
         kernel_size=kernel_size,
         dilation=dilation,
         padding=padding,
@@ -57,7 +54,6 @@ def calculate_hessian(
 def hessian_sum_and_count(
     activations: Iterable[tuple[tuple[Any, ...], dict[str, Any]]],
     *,
-    device: torch.device | None = None,
     kernel_size: _Size | None = None,
     dilation: _Size = 1,
     padding: _Size = 0,
@@ -74,16 +70,14 @@ def hessian_sum_and_count(
         activations: Input activations flowing into the layer, an iterable. Each entry
             is a tuple of args (tuple of obj) and kwargs (dict). The first arg is a
             tensor of shape [..., in_features], or of shape [N, C, H, W] for a convolution.
-        device: The device to accumulate on. Each batch is moved there. If `None`, the
-            device of the first batch.
         kernel_size: The kernel size of the convolution, or `None` for a linear layer. The
             patches of a convolution are its samples.
         dilation: The dilation of the convolution.
         padding: The padding of the convolution.
         stride: The stride of the convolution.
         accumulation_dtype: The dtype of the sum. The products x x^T are made in float32
-            and added in this dtype. The sum stays in this dtype between the chunks of a
-            chunked run.
+            on the device of the activations, and added in this dtype. The sum stays in
+            this dtype between the chunks of a chunked run.
 
     Returns:
         sum(x x^T) over the N samples, of shape [in_features, in_features] in
@@ -97,7 +91,7 @@ def hessian_sum_and_count(
     n_samples = 0
 
     for (activation,), _ in activations:
-        x = cast(torch.Tensor, activation).to(device=device, dtype=torch.float32)
+        x = cast(torch.Tensor, activation).to(torch.float32)
         if kernel_size is None:
             # (..., H) -> (H, N)
             x = x.reshape(-1, x.shape[-1]).transpose(0, 1)
@@ -132,17 +126,17 @@ def hessian_settings(module: torch.nn.Module) -> dict[str, Any]:
         module: The layer.
 
     Returns:
-        The device of the weight, and the settings of the convolution for a `Conv2d`. The
-        values are hashable.
+        The settings of the convolution for a `Conv2d`, and no settings for other layers. The
+        values are hashable. The device is not a setting: the sum is made on the device of the
+        activations, which the orchestration moves to its compute device.
 
     Raises:
         ValueError: If the padding of the convolution is a string.
         NotImplementedError: If the convolution has groups, or pads with other values
             than zeros.
     """
-    device = {"device": module.weight.device} if isinstance(module.weight, torch.Tensor) else {}
     if not isinstance(module, torch.nn.Conv2d):
-        return device
+        return {}
     if isinstance(module.padding, str):
         msg = f"A string padding is not supported, got {module.padding!r}."
         raise ValueError(msg)
@@ -154,7 +148,6 @@ def hessian_settings(module: torch.nn.Module) -> dict[str, Any]:
         msg = f"Only zero padding is supported, got padding_mode={module.padding_mode!r}."
         raise NotImplementedError(msg)
     return {
-        **device,
         "kernel_size": module.kernel_size,
         "dilation": module.dilation,
         "padding": module.padding,
