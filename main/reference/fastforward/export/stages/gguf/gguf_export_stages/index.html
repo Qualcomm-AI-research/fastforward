@@ -16,14 +16,14 @@
         <link rel="prev" href="../adapter/">
       
       
-        <link rel="next" href="../../onnx/">
+        <link rel="next" href="../rules/">
       
       
         
       
       
       <link rel="icon" href="../../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -614,6 +614,34 @@
     
   
     gptq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../algorithms/hessian_calculation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    hessian_calculation
   
 
     
@@ -1428,10 +1456,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_tensor_rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        stage_apply_target_transforms
+        stage_apply_tensor_rules
       
     </span>
   </a>
@@ -1443,28 +1471,6 @@
     <span class="md-ellipsis">
       
         stage_extract_quantized_weights
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        stage_fuse_tensors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        stage_map_tensor_names
       
     </span>
   </a>
@@ -1502,6 +1508,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3596,10 +3630,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="md-nav__link">
+  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_tensor_rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        stage_apply_target_transforms
+        stage_apply_tensor_rules
       
     </span>
   </a>
@@ -3611,28 +3645,6 @@
     <span class="md-ellipsis">
       
         stage_extract_quantized_weights
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        stage_fuse_tensors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        stage_map_tensor_names
       
     </span>
   </a>
@@ -3698,7 +3710,7 @@
         <p>Pipeline stages for the FastForward -&gt; GGUF (llama.cpp) export path.</p>
 <p>The stages are intentionally thin: each reads its configuration from the
 pipeline <code>context</code> and delegates the real work to the helper modules in this
-package (extraction, RoPE permute, name mapping, block packing, vocab writing).
+package (extraction, tensor rules, block packing, vocab writing).
 GGUF export is weight-only, so the extraction stage is a pipeline root that
 operates on the live quantized module rather than a captured FX graph.</p>
 
@@ -3725,24 +3737,21 @@ operates on the live quantized module rather than a captured FX graph.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_apply_target_transforms</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
+<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_apply_tensor_rules" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_apply_tensor_rules</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
 
-<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_target_transforms" class="headerlink" title="Permanent link">#</a></h4>
+<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_apply_tensor_rules" class="headerlink" title="Permanent link">#</a></h4>
 
 
     <div class="doc doc-contents ">
 
-        <p>Apply architecture-specific tensor transforms in adapter-defined order.</p>
-<p>Iterates the adapter's <code>transforms</code> list, applying each to every tensor.
-Built-in transforms include :func:<code>llama_rope_permute</code>; users can append
-their own to the list when constructing a custom :class:<code>ArchAdapter</code>.</p>
-<p>Each transform receives the tensor's resolved :class:<code>GgufQuantFormat</code> (for
-quantized tensors) or a default format (for float tensors, which built-in
-transforms skip).</p>
+        <p>Rewrite the extracted tensors into named GGUF tensors via the adapter's rules.</p>
+<p>Applies <code>adapter.tensor_rules</code> in order (see
+:mod:<code>fastforward.export.stages.gguf.rules</code>), then keeps only tensors that
+received a GGUF name.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L122" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L102" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3759,52 +3768,12 @@ transforms skip).</p>
     <div class="doc doc-contents ">
 
         <p>Extract integer codes + scales (and float passthroughs) from the FF module.</p>
-<p>Root stage: receives the source quantized module and reads every exportable
-tensor into an architecture-neutral list of :class:<code>ExtractedTensor</code>.</p>
+<p>Root stage: receives the source quantized module and reads every parameter
+claimed by the adapter's tensor rules into an architecture-neutral list of
+:class:<code>ExtractedTensor</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L81" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_fuse_tensors</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
-
-<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_fuse_tensors" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Fuse groups of tensors into single outputs per the adapter's fusion specs.</p>
-<p>No-op when <code>adapter.fusions</code> is empty. Otherwise, for each
-:class:<code>TensorFusion</code> spec, groups matching tensors by their captured
-layer/instance indices and concatenates them along the specified axis.</p>
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L105" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">gguf_export_stages</span><span class="o">.</span><span class="n">stage_map_tensor_names</span><span class="p">(</span><span class="n">modules</span><span class="p">,</span> <span class="n">sample_inputs</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></code>
-
-<a href="#fastforward.export.stages.gguf.gguf_export_stages.stage_map_tensor_names" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Assign each tensor its GGUF name via the architecture adapter's name map.</p>
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L153" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L80" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3827,7 +3796,7 @@ supporting mixed quantization types in a single file.</p>
 <code>{"quantized": {name: (block_bytes, format)}, "float": {name: tensor}}</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L172" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L120" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3850,9 +3819,11 @@ tensor is written with its own GGML type, supporting mixed quantization.</p>
 <p>The GGUF header <code>file_type</code> is set to the dominant quantization format
 (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
 convention.</p>
+<p>Float tensors are cast per <code>context["float_type"]</code> (default <code>"F32"</code>)
+and <code>context["float_type_overrides"]</code> (regex on the GGUF name -&gt; type).</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L213" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L161" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3913,15 +3884,122 @@ convention.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
         <script src="../../../../../../javascripts/clickable-cards.js"></script>
       
         <script src="../../../../../../javascripts/api-heading-styling.js"></script>
       
     
-  </body>
+  <script data-mkdocs-jupyter-mathjax="{&quot;url&quot;: &quot;https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js&quot;, &quot;version&quot;: 4}">
+/* Shared by full pages and Material's instant navigation. */
+(() => {
+  const config = JSON.parse(document.currentScript.dataset.mkdocsJupyterMathjax);
+  if (window.mkdocsJupyterMathJax) return;
+
+  let loading;
+  let queue = Promise.resolve();
+  let previous = [];
+
+  const ready = async () => {
+    if (!loading) {
+      loading = (async () => {
+        let math = window.MathJax;
+        if (!math?.typesetPromise) {
+          const url = new URL(config.url, document.baseURI).href;
+          const existing = Array.from(document.scripts).find(script =>
+            script.src && (script.src === url || script.id === 'MathJax-script' ||
+              (/mathjax/i.test(script.src) &&
+               /\/(?:MathJax|latest|(?:tex|mml)(?:-mml)?-(?:chtml|svg))\.js(?:[?#]|$)/i.test(script.src))));
+          if (existing) {
+            if (!math?.startup?.promise) {
+              await new Promise((resolve, reject) => {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+              });
+            }
+          } else {
+            // Keep site macros, delimiters and startup hooks when supplied.
+            const options = math || {};
+            window.MathJax = {
+              ...options,
+              loader: {
+                ...options.loader,
+                load: Array.from(new Set(['ui/safe', ...(options.loader?.load || [])]))
+              },
+              startup: { typeset: false, ...options.startup },
+              tex: {
+                tags: 'ams',
+                useLabelIds: true,
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                ...options.tex
+              }
+            };
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = config.url;
+              script.id = 'MathJax-script';
+              script.async = true;
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          }
+        }
+        math = window.MathJax;
+        await math.startup.promise;
+        return math;
+      })();
+    }
+    const math = await loading;
+    // A site owner can extend the v3 queue again on each navigation.
+    await math.startup.promise;
+    return math;
+  };
+
+  const unrendered = node => {
+    if (node.matches('mjx-container')) return [];
+    if (!node.querySelector('mjx-container')) return [node];
+    // In v3, scanning generated assistive MathML again produces nested output.
+    return Array.from(node.children).flatMap(unrendered);
+  };
+
+  const refresh = () => {
+    // A separate chain also serializes v3, without changing v4's startup promise.
+    queue = queue.then(async () => {
+      const notebooks = Array.from(document.querySelectorAll('.jupyter-wrapper'));
+      if (!notebooks.length && !previous.length) return;
+      if (notebooks.length === previous.length &&
+          notebooks.every((node, index) => node === previous[index])) return;
+      const math = await ready();
+      if (previous.length) {
+        math.typesetClear(previous);
+        math.texReset();
+      }
+      previous = notebooks.filter(node => node.isConnected);
+      const pending = previous.flatMap(unrendered);
+      if (pending.length) await math.typesetPromise(pending);
+    }).catch(error => console.error('mkdocs-jupyter: MathJax rendering failed', error));
+    return queue;
+  };
+
+  window.mkdocsJupyterMathJax = { refresh };
+  const start = () => {
+    if (typeof document$ !== 'undefined') document$.subscribe(refresh);
+    else refresh();
+  };
+  // Theme bundles and user-provided MathJax scripts can follow notebook content.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else start();
+})();
+
+</script>
+</body>
 </html>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-skip">
+        <a href="#fastforward.export.stages.gguf.adapter-classes" class="md-skip">
           Skip to content
         </a>
       
@@ -614,6 +614,34 @@
     
   
     gptq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../algorithms/hessian_calculation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    hessian_calculation
   
 
     
@@ -1388,34 +1416,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attributes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attributes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TensorTransformT
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.adapter-classes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1471,17 +1471,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter.TensorFusion" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TensorFusion
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1511,6 +1500,34 @@
     
   
     gguf_export_stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rules
   
 
     
@@ -3601,34 +3618,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter-attributes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Attributes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Attributes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TensorTransformT
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.adapter-classes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3684,17 +3673,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#fastforward.export.stages.gguf.adapter.TensorFusion" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TensorFusion
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -3731,7 +3709,7 @@
 
         <p>Public <code>ArchAdapter</code> and <code>GgufQuantFormat</code> — the seams by which users configure the GGUF pipeline.</p>
 <p>FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
-parameter-name assumption, every architecture-specific tensor transform, and
+parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
 adapters (<code>LLAMA_ADAPTER</code>, <code>QWEN2_ADAPTER</code>, <code>QWEN3_ADAPTER</code>) are shipped
 alongside as reference implementations; for a model whose module tree differs
@@ -3742,7 +3720,7 @@ encapsulated in :class:<code>GgufQuantFormat</code>. Built-in formats <code>GGUF
 <code>GGUF_Q8_0</code> are provided. Users targeting a custom GGUF type construct their
 own <code>GgufQuantFormat</code> with the appropriate pack function.</p>
 <p>Example::</p>
-<div class="highlight"><pre><span></span><code>from fastforward.export.stages.gguf import ArchAdapter, GgufQuantFormat
+<div class="highlight"><pre><span></span><code>from fastforward.export.stages.gguf import DROP_TIED_LM_HEAD, ArchAdapter, Rename
 
 def my_name_map(hf_name: str) -&gt; str | None:
     # Map user's own parameter naming onto GGUF's blk.&lt;i&gt;.&lt;slot&gt;.weight scheme.
@@ -3750,13 +3728,13 @@ def my_name_map(hf_name: str) -&gt; str | None:
 
 adapter = ArchAdapter(
     gguf_arch="my-arch",
-    name_map=my_name_map,
-    transforms=[],
+    tensor_rules=(DROP_TIED_LM_HEAD, Rename(my_name_map)),
     write_metadata=my_write_metadata,
     tokenizer_model="gpt2",
     tokenizer_pre="default",
 )
 </code></pre></div>
+<p>See :mod:<code>fastforward.export.stages.gguf.rules</code> for the available tensor rules.</p>
 
 
 
@@ -3773,27 +3751,7 @@ adapter = ArchAdapter(
 
 
 
-<h3 id="fastforward.export.stages.gguf.adapter-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter-attributes" class="headerlink" title="Permanent link">#</a></h3>
 
-<div class="doc doc-object doc-attribute">
-
-
-
-<h4 id="fastforward.export.stages.gguf.adapter.TensorTransformT" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">TensorTransformT</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">'ExtractedTensor'</span><span class="p">,</span> <span class="n">GgufSourceConfig</span><span class="p">,</span> <span class="s1">'GgufQuantFormat'</span><span class="p">],</span> <span class="s1">'ExtractedTensor'</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.TensorTransformT" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
 
 <h3 id="fastforward.export.stages.gguf.adapter-classes">Classes<a href="#fastforward.export.stages.gguf.adapter-classes" class="headerlink" title="Permanent link">#</a></h3>
 
@@ -3802,7 +3760,7 @@ adapter = ArchAdapter(
 
 
 <h4 id="fastforward.export.stages.gguf.adapter.ArchAdapter" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">name_map</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">is_tied</span><span class="o">=</span><span class="n">_default_is_tied</span><span class="p">,</span> <span class="n">float_type</span><span class="o">=</span><span class="s1">'F32'</span><span class="p">,</span> <span class="n">float_type_overrides</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span> <span class="n">fusions</span><span class="o">=</span><span class="nb">list</span><span class="p">())</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">tensor_rules</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
@@ -3816,8 +3774,12 @@ adapter = ArchAdapter(
 
 
         <p>Bundle of architecture-specific choices consumed by the GGUF stages.</p>
-<p>Every field is consumed by exactly one stage — this is the whole surface
-between generic FastForward code and model-specific knowledge.</p>
+<p>This is the whole surface between generic FastForward code and
+model-specific knowledge: what the tensors become (<code>tensor_rules</code>) and
+what the header says (<code>gguf_arch</code>, <code>write_metadata</code>, tokenizer
+discriminators). Per-export policy (float output types, allowed quant
+formats) is not architecture knowledge and lives on
+<code>GgufLlamaCppOptions</code> instead.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -3847,43 +3809,22 @@ into the GGUF header and used by llama.cpp to pick its loader.</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;name_map&lt;/span&gt;&lt;/code&gt;
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;tensor_rules&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.name_map&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.name_map">name_map</a></code></td>
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.tensor_rules&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tensor_rules">tensor_rules</a></code></td>
             <td>
-                  <code><span title="fastforward.export.stages.gguf.adapter._NameMapT">_NameMapT</span></code>
+                  <code><span title="typing.Sequence">Sequence</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.export.stages.gguf.rules.TensorRule&lt;/code&gt;" href="../rules/#fastforward.export.stages.gguf.rules.TensorRule">TensorRule</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Maps a HuggingFace parameter name (e.g.
-<code>"model.layers.0.self_attn.q_proj.weight"</code>) to its GGUF tensor
-name (<code>"blk.0.attn_q.weight"</code>), or <code>None</code> to skip the parameter.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;transforms&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.transforms&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.transforms">transforms</a></code></td>
-            <td>
-                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;TensorTransformT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#x27;ExtractedTensor&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;GgufSourceConfig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#x27;GgufQuantFormat&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#x27;ExtractedTensor&#x27;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorTransformT&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorTransformT">TensorTransformT</a>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Ordered list of per-tensor transform functions applied by
-<code>stage_apply_target_transforms</code>. Each receives an
-:class:<code>ExtractedTensor</code>, the source config, and the quant format,
-and returns a (possibly modified) <code>ExtractedTensor</code>. Built-in
-helpers like :func:<code>llama_rope_permute</code> slot in here. An empty list
-means no transforms are applied.</p>
+                <p>Ordered :class:<code>~fastforward.export.stages.gguf.rules.TensorRule</code>
+sequence rewriting the extracted model tensors into GGUF tensors
+(renaming, per-tensor transforms, fusion, dropping).
+Only model parameters claimed by a rule are extracted, and only
+tensors that end up with a GGUF name are written. See
+:mod:<code>fastforward.export.stages.gguf.rules</code>.</p>
               </div>
             </td>
           </tr>
@@ -3936,88 +3877,6 @@ head counts) onto an open <code>GGUFWriter</code> from the source config.</p>
               </div>
             </td>
           </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;is_tied&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_default_is_tied&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied">is_tied</a></code></td>
-            <td>
-                  <code><span title="fastforward.export.stages.gguf.adapter._IsTiedT">_IsTiedT</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Predicate that decides whether a parameter should be skipped
-because it shares storage with another exported parameter. Receives
-the HF parameter name and the source config. The default
-implementation skips <code>"lm_head.weight"</code> when
-<code>config.tie_word_embeddings</code> is true. Override for architectures
-with different or additional tied parameters.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;float_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#x27;F32&#x27;&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.float_type&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.float_type">float_type</a></code></td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>GGML type name for float tensors (e.g. <code>"F32"</code>,
-<code>"F16"</code>, <code>"BF16"</code>). All non-quantized tensors are cast to this
-type at write time. Defaults to <code>"F32"</code>.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;float_type_overrides&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;default_factory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.float_type_overrides&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.float_type_overrides">float_type_overrides</a></code></td>
-            <td>
-                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Mapping of regex patterns (matched against the
-GGUF tensor name) to GGML type names. First matching pattern wins;
-unmatched tensors fall back to <code>float_type</code>. Use this to keep
-specific layers at higher precision (e.g. norms at F32 while the
-rest is F16).</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fusions&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;field&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;default_factory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.fusions&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.fusions">fusions</a></code></td>
-            <td>
-                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;TensorFusion&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sources&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;target_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;axis&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorFusion&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorFusion">TensorFusion</a>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>List of :class:<code>TensorFusion</code> specifications declaring which
-source tensors to concatenate into a single output tensor. Applied
-by <code>stage_fuse_tensors</code> before per-tensor transforms. An empty
-list (the default) means no fusion is performed.</p>
-              </div>
-            </td>
-          </tr>
       </tbody>
     </table>
 
@@ -4028,7 +3887,7 @@ list (the default) means no fusion is performed.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L194" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L142" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4039,69 +3898,6 @@ list (the default) means no fusion is performed.</p>
 
 
 <h5 id="fastforward.export.stages.gguf.adapter.ArchAdapter-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter-attributes" class="headerlink" title="Permanent link">#</a></h5>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.float_type" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">float_type</span> <span class="o">=</span> <span class="s1">'F32'</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.float_type" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.float_type_overrides" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">float_type_overrides</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.float_type_overrides" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.fusions" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fusions</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.fusions" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
 
 <div class="doc doc-object doc-attribute">
 
@@ -4127,35 +3923,14 @@ list (the default) means no fusion is performed.</p>
 
 
 
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">is_tied</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">_default_is_tied</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.is_tied" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.name_map" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">name_map</span></code>
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.tensor_rules" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">tensor_rules</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.name_map" class="headerlink" title="Permanent link">#</a></h6>
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tensor_rules" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4196,26 +3971,6 @@ list (the default) means no fusion is performed.</p>
   </span>
 
 <a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_pre" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.transforms" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">transforms</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.transforms" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4288,7 +4043,7 @@ registry.register(my_k_quant_format)
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L267" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L193" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4317,7 +4072,7 @@ registry.register(my_k_quant_format)
         <p>Return the first registered format (for fallback/default contexts).</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L279" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L205" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4336,7 +4091,7 @@ registry.register(my_k_quant_format)
         <p>Register a format, keyed by <code>(num_bits, symmetric, block_size)</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L270" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L196" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4355,7 +4110,7 @@ registry.register(my_k_quant_format)
         <p>Look up the format matching the given quantizer properties.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L275" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L201" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4532,7 +4287,7 @@ to select a default compute type).</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L151" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L99" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4757,7 +4512,7 @@ the packed block bytes.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L56" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L55" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4768,200 +4523,6 @@ the packed block bytes.</p>
 
 
 
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h4 id="fastforward.export.stages.gguf.adapter.TensorFusion" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">TensorFusion</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">target_name</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.TensorFusion" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-
-
-        <p>Declarative specification of a tensor fusion operation.</p>
-<p>A fusion combines N source tensors into a single output tensor by
-concatenation along a specified axis. Source names are regex patterns
-with capture groups; the <code>target_name</code> may use back-references (<code>\1</code>,
-<code>\2</code>, ...) to substitute matched groups from the sources.</p>
-<p>All sources must match with the same captured groups (i.e. belong to the
-same layer/instance). For each such match set, the sources are concatenated
-in the order listed.</p>
-<p>Example — fuse Q/K/V per layer::</p>
-<div class="highlight"><pre><span></span><code>TensorFusion(
-    sources=(
-        r"model\.layers\.(\d+)\.self_attn\.q_proj\.weight",
-        r"model\.layers\.(\d+)\.self_attn\.k_proj\.weight",
-        r"model\.layers\.(\d+)\.self_attn\.v_proj\.weight",
-    ),
-    target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
-    axis=0,
-)
-</code></pre></div>
-
-
-<p><span class="doc-section-title">Attributes:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;sources&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorFusion.sources&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorFusion.sources">sources</a></code></td>
-            <td>
-                  <code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Regex patterns identifying the tensors to fuse, in concat
-order. Each pattern must have the same capture groups. Non-regex
-literal names are also valid (no metacharacters = exact match).</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;target_name&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorFusion.target_name&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorFusion.target_name">target_name</a></code></td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Name for the fused output tensor. May contain back-
-references (<code>\1</code>, <code>\2</code>) that are substituted from the matched
-capture groups.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;axis&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;/code&gt;
-
-  &lt;span class=&quot;doc doc-labels&quot;&gt;
-      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
-      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
-  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.TensorFusion.axis&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.TensorFusion.axis">axis</a></code></td>
-            <td>
-                  <code><span title="int">int</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Concatenation axis. 0 = row-concat (the common case for
-QKV fusion where each tensor contributes its rows).</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L103" target="_blank" rel="noopener">[source]</a></p>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-<h5 id="fastforward.export.stages.gguf.adapter.TensorFusion-attributes">Attributes<a href="#fastforward.export.stages.gguf.adapter.TensorFusion-attributes" class="headerlink" title="Permanent link">#</a></h5>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.TensorFusion.axis" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.TensorFusion.axis" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.TensorFusion.sources" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">sources</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.TensorFusion.sources" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h6 id="fastforward.export.stages.gguf.adapter.TensorFusion.target_name" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">target_name</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#fastforward.export.stages.gguf.adapter.TensorFusion.target_name" class="headerlink" title="Permanent link">#</a></h6>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
 
 
 
@@ -5031,15 +4592,122 @@ QKV fusion where each tensor contributes its rows).</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
         <script src="../../../../../../javascripts/clickable-cards.js"></script>
       
         <script src="../../../../../../javascripts/api-heading-styling.js"></script>
       
     
-  </body>
+  <script data-mkdocs-jupyter-mathjax="{&quot;url&quot;: &quot;https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js&quot;, &quot;version&quot;: 4}">
+/* Shared by full pages and Material's instant navigation. */
+(() => {
+  const config = JSON.parse(document.currentScript.dataset.mkdocsJupyterMathjax);
+  if (window.mkdocsJupyterMathJax) return;
+
+  let loading;
+  let queue = Promise.resolve();
+  let previous = [];
+
+  const ready = async () => {
+    if (!loading) {
+      loading = (async () => {
+        let math = window.MathJax;
+        if (!math?.typesetPromise) {
+          const url = new URL(config.url, document.baseURI).href;
+          const existing = Array.from(document.scripts).find(script =>
+            script.src && (script.src === url || script.id === 'MathJax-script' ||
+              (/mathjax/i.test(script.src) &&
+               /\/(?:MathJax|latest|(?:tex|mml)(?:-mml)?-(?:chtml|svg))\.js(?:[?#]|$)/i.test(script.src))));
+          if (existing) {
+            if (!math?.startup?.promise) {
+              await new Promise((resolve, reject) => {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+              });
+            }
+          } else {
+            // Keep site macros, delimiters and startup hooks when supplied.
+            const options = math || {};
+            window.MathJax = {
+              ...options,
+              loader: {
+                ...options.loader,
+                load: Array.from(new Set(['ui/safe', ...(options.loader?.load || [])]))
+              },
+              startup: { typeset: false, ...options.startup },
+              tex: {
+                tags: 'ams',
+                useLabelIds: true,
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                ...options.tex
+              }
+            };
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = config.url;
+              script.id = 'MathJax-script';
+              script.async = true;
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          }
+        }
+        math = window.MathJax;
+        await math.startup.promise;
+        return math;
+      })();
+    }
+    const math = await loading;
+    // A site owner can extend the v3 queue again on each navigation.
+    await math.startup.promise;
+    return math;
+  };
+
+  const unrendered = node => {
+    if (node.matches('mjx-container')) return [];
+    if (!node.querySelector('mjx-container')) return [node];
+    // In v3, scanning generated assistive MathML again produces nested output.
+    return Array.from(node.children).flatMap(unrendered);
+  };
+
+  const refresh = () => {
+    // A separate chain also serializes v3, without changing v4's startup promise.
+    queue = queue.then(async () => {
+      const notebooks = Array.from(document.querySelectorAll('.jupyter-wrapper'));
+      if (!notebooks.length && !previous.length) return;
+      if (notebooks.length === previous.length &&
+          notebooks.every((node, index) => node === previous[index])) return;
+      const math = await ready();
+      if (previous.length) {
+        math.typesetClear(previous);
+        math.texReset();
+      }
+      previous = notebooks.filter(node => node.isConnected);
+      const pending = previous.flatMap(unrendered);
+      if (pending.length) await math.typesetPromise(pending);
+    }).catch(error => console.error('mkdocs-jupyter: MathJax rendering failed', error));
+    return queue;
+  };
+
+  window.mkdocsJupyterMathJax = { refresh };
+  const start = () => {
+    if (typeof document$ !== 'undefined') document$.subscribe(refresh);
+    else refresh();
+  };
+  // Theme bundles and user-provided MathJax scripts can follow notebook content.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else start();
+})();
+
+</script>
+</body>
 </html>

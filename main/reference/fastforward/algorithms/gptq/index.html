@@ -16,14 +16,14 @@
         <link rel="prev" href="../adaround/">
       
       
-        <link rel="next" href="../../autoquant/">
+        <link rel="next" href="../hessian_calculation/">
       
       
         
       
       
       <link rel="icon" href="../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -704,17 +704,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.algorithms.gptq.calculate_hessian" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        calculate_hessian
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#fastforward.algorithms.gptq.column_quantizer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -730,17 +719,6 @@
     <span class="md-ellipsis">
       
         gptq
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.algorithms.gptq.invert_hessian" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        invert_hessian
       
     </span>
   </a>
@@ -767,6 +745,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hessian_calculation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    hessian_calculation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1507,6 +1513,34 @@
     
   
     gguf_export_stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../export/stages/gguf/rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    rules
   
 
     
@@ -3637,17 +3671,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fastforward.algorithms.gptq.calculate_hessian" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        calculate_hessian
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#fastforward.algorithms.gptq.column_quantizer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3663,17 +3686,6 @@
     <span class="md-ellipsis">
       
         gptq
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fastforward.algorithms.gptq.invert_hessian" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        invert_hessian
       
     </span>
   </a>
@@ -3764,106 +3776,6 @@
 
 
 <h3 id="fastforward.algorithms.gptq-functions">Functions<a href="#fastforward.algorithms.gptq-functions" class="headerlink" title="Permanent link">#</a></h3>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.algorithms.gptq.calculate_hessian" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">gptq</span><span class="o">.</span><span class="n">calculate_hessian</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">activations</span><span class="p">)</span></code>
-
-<a href="#fastforward.algorithms.gptq.calculate_hessian" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Calculate approximate Hessian matrix from layer activations.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>layer</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.linear.QuantizedLinear&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedLinear&lt;/code&gt;)" href="../../nn/linear/#fastforward.nn.linear.QuantizedLinear">QuantizedLinear</a> | <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.nn.conv.QuantizedConv2d&lt;/code&gt; (&lt;code&gt;fastforward.nn.QuantizedConv2d&lt;/code&gt;)" href="../../nn/conv/#fastforward.nn.conv.QuantizedConv2d">QuantizedConv2d</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>QuantizedLinear or QuantizedConv2d layer to quantize.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>activations</code>
-            </td>
-            <td>
-                  <code><span title="typing.Iterable">Iterable</span>[<span title="tuple">tuple</span>[<span title="tuple">tuple</span>[<span title="typing.Any">Any</span>, ...], <span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Input activations flowing from the previous layer, an iterable.
-Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Hessian matrix of shape [in_features, in_features] in float32, where</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>in_features = weight.shape[1] for Linear and in_channels/groups * kH * kW for Conv2d.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L280" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
 
 <div class="doc doc-object doc-function">
 
@@ -3968,7 +3880,7 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L149" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L150" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3977,7 +3889,7 @@ to a PerChannel(channel_dim=0) setting (one scale/offset per row).</p>
 
 
 <h4 id="fastforward.algorithms.gptq.gptq" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">gptq</span><span class="o">.</span><span class="n">gptq</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">perc_damp</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">actorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">layer_name</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">gptq</span><span class="o">.</span><span class="n">gptq</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">hessian</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">perc_damp</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">actorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">layer_name</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span></code>
 
 <a href="#fastforward.algorithms.gptq.gptq" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -4018,15 +3930,16 @@ are supported on Conv2d.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>dataset</code>
+                <code>hessian</code>
             </td>
             <td>
-                  <code><span title="typing.Iterable">Iterable</span>[<span title="tuple">tuple</span>[<span title="tuple">tuple</span>[<span title="typing.Any">Any</span>, ...], <span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]]</code>
+                  <code><span title="torch.Tensor">Tensor</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Input activations flowing from the previous layer, an iterable.
-Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
+                <p>The Hessian of the layer, a tensor of shape [in_features, in_features], with
+in_channels/groups * kH * kW for Conv2d. It is inverted in its own dtype, and the
+inverse is cast to float32 for the weight updates.</p>
               </div>
             </td>
             <td>
@@ -4102,95 +4015,6 @@ Each entry is a tuple of args (tuple of obj) and kwargs (dict).</p>
 
 
             <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L24" target="_blank" rel="noopener">[source]</a></p>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="fastforward.algorithms.gptq.invert_hessian" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">gptq</span><span class="o">.</span><span class="n">invert_hessian</span><span class="p">(</span><span class="n">hessian</span><span class="p">,</span> <span class="n">perc_damp</span><span class="p">)</span></code>
-
-<a href="#fastforward.algorithms.gptq.invert_hessian" class="headerlink" title="Permanent link">#</a></h4>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Invert Hessian matrix using Cholesky decomposition with dampening.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>hessian</code>
-            </td>
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Square Hessian matrix of shape [n, n]</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>perc_damp</code>
-            </td>
-            <td>
-                  <code><span title="float">float</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Dampening factor as percentage of mean diagonal value</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="torch.Tensor">Tensor</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Inverted Hessian matrix of shape [n, n]</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L364" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4311,7 +4135,7 @@ write (e.g. <code>(slice(None), col_block_idx)</code> to write one column group)
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L238" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/gptq.py#L239" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4372,15 +4196,122 @@ write (e.g. <code>(slice(None), col_block_idx)</code> to write one column group)
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "toc.follow"], "search": "../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
         <script src="../../../../javascripts/clickable-cards.js"></script>
       
         <script src="../../../../javascripts/api-heading-styling.js"></script>
       
     
-  </body>
+  <script data-mkdocs-jupyter-mathjax="{&quot;url&quot;: &quot;https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-mml-chtml.js&quot;, &quot;version&quot;: 4}">
+/* Shared by full pages and Material's instant navigation. */
+(() => {
+  const config = JSON.parse(document.currentScript.dataset.mkdocsJupyterMathjax);
+  if (window.mkdocsJupyterMathJax) return;
+
+  let loading;
+  let queue = Promise.resolve();
+  let previous = [];
+
+  const ready = async () => {
+    if (!loading) {
+      loading = (async () => {
+        let math = window.MathJax;
+        if (!math?.typesetPromise) {
+          const url = new URL(config.url, document.baseURI).href;
+          const existing = Array.from(document.scripts).find(script =>
+            script.src && (script.src === url || script.id === 'MathJax-script' ||
+              (/mathjax/i.test(script.src) &&
+               /\/(?:MathJax|latest|(?:tex|mml)(?:-mml)?-(?:chtml|svg))\.js(?:[?#]|$)/i.test(script.src))));
+          if (existing) {
+            if (!math?.startup?.promise) {
+              await new Promise((resolve, reject) => {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+              });
+            }
+          } else {
+            // Keep site macros, delimiters and startup hooks when supplied.
+            const options = math || {};
+            window.MathJax = {
+              ...options,
+              loader: {
+                ...options.loader,
+                load: Array.from(new Set(['ui/safe', ...(options.loader?.load || [])]))
+              },
+              startup: { typeset: false, ...options.startup },
+              tex: {
+                tags: 'ams',
+                useLabelIds: true,
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                ...options.tex
+              }
+            };
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = config.url;
+              script.id = 'MathJax-script';
+              script.async = true;
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          }
+        }
+        math = window.MathJax;
+        await math.startup.promise;
+        return math;
+      })();
+    }
+    const math = await loading;
+    // A site owner can extend the v3 queue again on each navigation.
+    await math.startup.promise;
+    return math;
+  };
+
+  const unrendered = node => {
+    if (node.matches('mjx-container')) return [];
+    if (!node.querySelector('mjx-container')) return [node];
+    // In v3, scanning generated assistive MathML again produces nested output.
+    return Array.from(node.children).flatMap(unrendered);
+  };
+
+  const refresh = () => {
+    // A separate chain also serializes v3, without changing v4's startup promise.
+    queue = queue.then(async () => {
+      const notebooks = Array.from(document.querySelectorAll('.jupyter-wrapper'));
+      if (!notebooks.length && !previous.length) return;
+      if (notebooks.length === previous.length &&
+          notebooks.every((node, index) => node === previous[index])) return;
+      const math = await ready();
+      if (previous.length) {
+        math.typesetClear(previous);
+        math.texReset();
+      }
+      previous = notebooks.filter(node => node.isConnected);
+      const pending = previous.flatMap(unrendered);
+      if (pending.length) await math.typesetPromise(pending);
+    }).catch(error => console.error('mkdocs-jupyter: MathJax rendering failed', error));
+    return queue;
+  };
+
+  window.mkdocsJupyterMathJax = { refresh };
+  const start = () => {
+    if (typeof document$ !== 'undefined') document$.subscribe(refresh);
+    else refresh();
+  };
+  // Theme bundles and user-provided MathJax scripts can follow notebook content.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else start();
+})();
+
+</script>
+</body>
 </html>

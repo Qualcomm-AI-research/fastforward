@@ -14,6 +14,8 @@
 
 # %% [markdown]
 # ---
+# title: "Exporting Quantized Models to GGUF"
+# ---
 # # Exporting Quantized Models to GGUF
 #
 # > ⚠️ **WARNING**: GGUF export is experimental and its API may change.
@@ -47,7 +49,6 @@ import re
 import shutil
 import subprocess
 
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -314,6 +315,8 @@ def export_gguf(
     tokenizer: Any,
     adapter: ArchAdapter,
     model_name: str,
+    float_type: str = "F32",
+    float_type_overrides: dict[str, str] | None = None,
 ) -> Path:
     """Export a calibrated model through the registered GGUF pipeline."""
     options = GgufLlamaCppOptions(
@@ -321,6 +324,8 @@ def export_gguf(
         quant_format=GGUF_Q4_0,
         model_config=model.config,
         tokenizer=tokenizer,
+        float_type=float_type,
+        float_type_overrides=float_type_overrides or {},
     )
     artifacts = export_with_pipeline(
         ExportRequest(
@@ -427,24 +432,23 @@ with ff.strict_quantization(False):
 print(f"Qwen Q4_0 perplexity: {qwen_q4_perplexity:.4f}")
 
 # %% [markdown]
-# The built-in adapter supplies Qwen3 metadata and tensor names. We derive a precision-policy
-# variant that writes ordinary floating-point tensors as F16 while retaining normalization tensors
-# and biases in F32.
+# The built-in adapter supplies Qwen3 metadata and tensor names. The float precision is a
+# per-export choice passed through `GgufLlamaCppOptions`: we write ordinary floating-point tensors
+# as F16 while retaining normalization tensors and biases in F32.
 
 # %%
-qwen_adapter = replace(
-    QWEN3_ADAPTER,
-    float_type="F16",
-    float_type_overrides={
-        r".*norm.*": "F32",
-        r".*\.bias": "F32",
-    },
-)
+qwen_float_type = "F16"
+qwen_float_type_overrides = {
+    r".*norm.*": "F32",
+    r".*\.bias": "F32",
+}
 qwen_gguf_path = export_gguf(
     qwen_model,
     qwen_tokenizer,
-    qwen_adapter,
+    QWEN3_ADAPTER,
     "qwen3-0.6b-q4_0",
+    float_type=qwen_float_type,
+    float_type_overrides=qwen_float_type_overrides,
 )
 qwen_reader, qwen_summary = inspect_gguf(qwen_gguf_path)
 
@@ -520,8 +524,10 @@ print(f"Qwen GPTQ Q4_0 perplexity: {qwen_gptq_perplexity:.4f}")
 qwen_gptq_gguf_path = export_gguf(
     qwen_gptq_model,
     qwen_tokenizer,
-    qwen_adapter,
+    QWEN3_ADAPTER,
     "qwen3-0.6b-gptq-q4_0",
+    float_type=qwen_float_type,
+    float_type_overrides=qwen_float_type_overrides,
 )
 qwen_gptq_reader, qwen_gptq_summary = inspect_gguf(qwen_gptq_gguf_path)
 
