@@ -32,7 +32,7 @@ from packaging.version import Version
 from torch import nn
 from typing_extensions import override
 
-from ._models import KwargForward, TwoLinear
+from ._models import KwargForward, ResidualStack, TwoLinear
 from .conftest import make_flows, sgd_step
 
 pytestmark = pytest.mark.skipif(
@@ -761,3 +761,64 @@ def test_layerwise_optimize_rejects_chunking_one_tensor(two_linear: TwoLinear) -
             sample_args=(data,),
             config=ff.OrchestrationConfig(chunk_size=2),
         )
+
+
+def test_layerwise_optimize_with_checkpointed_layers_reads_the_same_gradients() -> None:
+    # GIVEN a residual stack with a region in every layer that records its gradient
+    model = ResidualStack(depth=3).eval()
+    calibration = [torch.randn(2, 3, 8) for _ in range(2)]
+    regions = [model.get_submodule(f"layers.{index}.mlp.up") for index in range(3)]
+
+    def run(config: ff.OrchestrationConfig) -> dict[nn.Module, list[torch.Tensor]]:
+        reads: dict[nn.Module, list[torch.Tensor]] = {}
+
+        def record(module: nn.Module, gradients: ActivationBundle) -> None:
+            reads[module] = [args[0] for args, _ in gradients]
+
+        objective = Gradient(_sum_of_squares, outputs=ModelOutputs("original"))
+        spec = AlgorithmSpec(fn=record, selector=normalize(regions), flows=[objective])
+        ff.layerwise_optimize(
+            model, calibration, spec, sample_args=(calibration[0],), config=config
+        )
+        return reads
+
+    # WHEN we run without a checkpoint and with a checkpoint on every layer
+    kept = run(ff.OrchestrationConfig())
+    checkpointed = run(ff.OrchestrationConfig(grad_checkpoint=ff.mpath.query("layers/*")))
+
+    # THEN every region reads the same gradients
+    assert kept.keys() == checkpointed.keys() == set(regions)
+    for region in regions:
+        for one, two in zip(kept[region], checkpointed[region], strict=True):
+            torch.testing.assert_close(one, two)
+
+
+def test_layerwise_optimize_ignores_checkpointed_layers_that_enclose_no_target() -> None:
+    # GIVEN a residual stack with a target in the first layer only
+    model = ResidualStack(depth=3).eval()
+    calibration = [torch.randn(2, 3, 8)]
+    reads: list[torch.Tensor] = []
+
+    def record(_module: nn.Module, gradients: ActivationBundle) -> None:
+        reads.extend(args[0] for args, _ in gradients)
+
+    objective = Gradient(_sum_of_squares, outputs=ModelOutputs("original"))
+    target = model.get_submodule("layers.0.mlp.up")
+    spec = AlgorithmSpec(fn=record, selector=normalize([target]), flows=[objective])
+
+    # WHEN we checkpoint every layer
+    ff.layerwise_optimize(
+        model,
+        calibration,
+        spec,
+        sample_args=(calibration[0],),
+        config=ff.OrchestrationConfig(grad_checkpoint=ff.mpath.query("layers/*")),
+    )
+
+    # THEN the layers without a target are ignored and the target reads its gradient
+    assert len(reads) == 1
+
+
+def _sum_of_squares(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
+    for (output,), _ in outputs:
+        yield output.square().sum()

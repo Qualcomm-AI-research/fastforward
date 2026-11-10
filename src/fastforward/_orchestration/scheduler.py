@@ -1162,7 +1162,8 @@ def schedule(
         chunked: Whether the program runs on chunks of the data. Each spec must then read
             only `FlowOp`s, and they must read pinned flows.
         checkpoint: The modules whose inner values the backward pass computes again,
-            instead of keeping them from the forward pass.
+            instead of keeping them from the forward pass. A module that is not a fold of
+            `graph` is ignored.
 
     Returns:
         The instruction program to run.
@@ -1225,11 +1226,6 @@ def schedule(
         for fold in graph._fold_ids
         if id(graph._nodes[fold].target) in selected
     ]
-    fold_modules = {id(graph._nodes[fold].target) for fold in graph._fold_ids}
-    if unmatched := [module for module in checkpoint if id(module) not in fold_modules]:
-        names = ", ".join(type(module).__name__ for module in unmatched)
-        msg = f"Only folds can be checkpointed, and these modules are not folds: {names}."
-        raise ValueError(msg)
     instructions = Scheduler(graph, chunked=chunked, checkpoint=folds).run(interventions)
 
     return InstructionProgram(instructions=instructions, input_refs=graph._inputs)

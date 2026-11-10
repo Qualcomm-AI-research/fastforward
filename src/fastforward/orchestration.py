@@ -119,13 +119,17 @@ class _ExecutionContext(_GraphExecutionContext):
         super().__init__(graph, program, InstructionEngine())
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class OrchestrationConfig:
     """How `layerwise_optimize` configures any orchestration optimization.
 
     Args:
         offloading: Where weights and activations rest between uses. `None` keeps them
             where they are at runtime. See also `Offload`.
+
+        grad_checkpoint: The modules for which gradient checkpointing is active. Accepts the
+            same forms as the `targets` argument of `layerwise_optimize`, for example
+            `ff.mpath.query("**/layers/*")`. A module that encloses no target is ignored.
 
         chunk_size: The number of calibration items grouped into each model input.
             When set, `data` is consumed lazily and the chunk-wise part of the
@@ -139,6 +143,7 @@ class OrchestrationConfig:
     """
 
     offloading: OffloadingStrategy | None = None
+    grad_checkpoint: registry.TargetType | registry.Selector | None = None
     chunk_size: int | None = None
 
     def __post_init__(self) -> None:
@@ -175,7 +180,7 @@ def layerwise_optimize(
             disjoint regions.
         targets: Override which modules to target. If None, uses the default targets the
             algorithm was registered with. Cannot be combined with explicit AlgorithmSpec(s).
-        config: Orchestration settings (offloading strategy, chunk size).
+        config: Orchestration settings (offloading strategy, gradient checkpointing, chunk size).
         graph: Pre-built GraphModule (traces model if None).
         sample_args: Positional example inputs for tracing.
         sample_kwargs: Keyword example inputs for tracing.
@@ -229,7 +234,16 @@ def layerwise_optimize(
     graph, optimization_specs = reduce_resolution(graph, optimization_specs)
 
     # (3) Schedule instruction program
-    program = schedule(graph, optimization_specs, chunked=config.chunk_size is not None)
+    grad_checkpoint: list[torch.nn.Module] = []
+    if config.grad_checkpoint is not None:
+        grad_checkpoint = [
+            region
+            for region in registry.normalize(config.grad_checkpoint).resolve(model)
+            if isinstance(region, torch.nn.Module)
+        ]
+    program = schedule(
+        graph, optimization_specs, checkpoint=grad_checkpoint, chunked=config.chunk_size is not None
+    )
 
     # (4) Execute
     passes: list[InstructionPass] = [lifetime_management_pass]

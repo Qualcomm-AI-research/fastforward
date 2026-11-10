@@ -1811,16 +1811,18 @@ def test_gradient_checkpointing_rejects_a_fold_that_reads_a_value_it_does_not_re
         schedule(graph, specs=[_spec(model.attn.q_proj, flow)], checkpoint=[model.mlp])
 
 
-def test_gradient_checkpointing_rejects_a_module_that_is_not_a_fold() -> None:
+def test_gradient_checkpointing_ignores_a_module_that_is_not_a_fold() -> None:
     # GIVEN a module that is a single node of the graph, not a fold
     model = DecoderLayer().eval()
     graph = model.to_graph_module()
     flow = Gradient(_square_loss, outputs=ModelOutputs(ORIGINAL))
+    specs = [_spec(model.attn.q_proj, flow)]
 
     # WHEN scheduling with that module checkpointed
-    # THEN there is no fold to compute again, so the scheduler raises
-    with pytest.raises(ValueError, match="these modules are not folds: Linear"):
-        schedule(graph, specs=[_spec(model.attn.q_proj, flow)], checkpoint=[model.attn.q_proj])
+    program = schedule(graph, specs=specs, checkpoint=[model.attn.q_proj])
+
+    # THEN there is no fold to compute again, so the program is the one without checkpoint
+    assert len(program.instructions) == len(schedule(graph, specs=specs).instructions)
 
 
 def test_lifetime_pass_separates_recomputed_value_lifetimes() -> None:
