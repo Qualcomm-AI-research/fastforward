@@ -10,8 +10,10 @@ likely to depend on (tensor rules, transforms).
 """
 
 from dataclasses import replace
+from types import SimpleNamespace
+from typing import Any
+from unittest import mock
 
-import gguf
 import pytest
 import torch
 
@@ -28,6 +30,7 @@ from fastforward.export.stages.gguf import (
     llama_rope_permute,
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
+from gguf import GGUFWriter, RopeScalingType
 from tests.export.stages.gguf.conftest import make_quantized_tensor
 
 
@@ -50,6 +53,21 @@ def _gguf_name(adapter: ArchAdapter, hf_name: str) -> str | None:
     tensor = ExtractedTensor(hf_name=hf_name, kind="float", rows=2, float_data=torch.zeros(2))
     result = apply_tensor_rules([tensor], adapter.tensor_rules, _Config(n_head=1, n_head_kv=1))
     return result[0].gguf_name if result else None
+
+
+def _metadata_config(**rope_fields: Any) -> SimpleNamespace:
+    """A config with every field the metadata writers read, plus `rope_fields`."""
+    return SimpleNamespace(
+        max_position_embeddings=128,
+        hidden_size=32,
+        num_hidden_layers=2,
+        intermediate_size=64,
+        num_attention_heads=2,
+        num_key_value_heads=2,
+        rms_norm_eps=1e-5,
+        vocab_size=64,
+        **rope_fields,
+    )
 
 
 def test_llama_adapter_name_map_covers_attention_and_mlp() -> None:
@@ -250,11 +268,84 @@ def test_llama_metadata_reads_rope_theta_from_transformers_config() -> None:
     config = transformers.LlamaConfig(
         rope_parameters={"rope_type": "default", "rope_theta": 500000.0}
     )
-    writer = gguf.GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
+    writer = GGUFWriter(None, arch=LLAMA_ADAPTER.gguf_arch)
 
     # WHEN: writing the llama metadata.
     LLAMA_ADAPTER.write_metadata(writer, config)
 
-    # THEN: the GGUF RoPE base is the model's, not the fallback default.
+    # THEN: the GGUF RoPE base is the model's.
     metadata = {key: value.value for key, value in writer.kv_data[0].items()}
     assert metadata["llama.rope.freq_base"] == 500000.0
+
+
+@pytest.mark.parametrize(
+    "rope_fields",
+    [
+        {"rope_parameters": {"rope_type": "default", "rope_theta": 500000.0}},
+        {"rope_theta": 500000.0},
+    ],
+    ids=["transformers-5-rope-parameters", "legacy-rope-theta"],
+)
+def test_metadata_writes_rope_theta_from_config(rope_fields: dict[str, Any]) -> None:
+    # GIVEN: a config carrying the RoPE base in one of the two supported places.
+    config = _metadata_config(**rope_fields)
+    writer = mock.create_autospec(GGUFWriter, instance=True)
+
+    # WHEN: writing the llama metadata.
+    LLAMA_ADAPTER.write_metadata(writer, config)
+
+    # THEN: the config's RoPE base is written, not a default.
+    writer.add_rope_freq_base.assert_called_once_with(500000.0)
+
+
+@pytest.mark.parametrize(
+    "rope_fields",
+    [
+        {"rope_parameters": {"rope_type": "default", "rope_theta": 500000.0}},
+        {"rope_theta": 500000.0},
+        {"rope_theta": 500000.0, "rope_scaling": None},
+    ],
+    ids=["transformers-5-rope-parameters", "legacy-no-rope-scaling", "legacy-rope-scaling-none"],
+)
+def test_metadata_writes_no_rope_scaling_for_unscaled_rope(rope_fields: dict[str, Any]) -> None:
+    # GIVEN: a config with unscaled RoPE.
+    config = _metadata_config(**rope_fields)
+    writer = mock.create_autospec(GGUFWriter, instance=True)
+
+    # WHEN: writing the llama metadata.
+    LLAMA_ADAPTER.write_metadata(writer, config)
+
+    # THEN: the scaling type is "none" and no scaling factor is written.
+    writer.add_rope_scaling_type.assert_called_once_with(RopeScalingType.NONE)
+    writer.add_rope_scaling_factor.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "rope_fields",
+    [
+        {"rope_parameters": {"rope_type": "linear", "factor": 2.0, "rope_theta": 500000.0}},
+        {"rope_theta": 500000.0, "rope_scaling": {"type": "linear", "factor": 2.0}},
+    ],
+    ids=["transformers-5-rope-parameters", "legacy-rope-scaling"],
+)
+def test_metadata_writes_rope_scaling_from_config(rope_fields: dict[str, Any]) -> None:
+    # GIVEN: a config with linearly scaled RoPE.
+    config = _metadata_config(**rope_fields)
+    writer = mock.create_autospec(GGUFWriter, instance=True)
+
+    # WHEN: writing the llama metadata.
+    LLAMA_ADAPTER.write_metadata(writer, config)
+
+    # THEN: the scaling type and factor are written.
+    writer.add_rope_scaling_type.assert_called_once_with(RopeScalingType.LINEAR)
+    writer.add_rope_scaling_factor.assert_called_once_with(2.0)
+
+
+def test_metadata_without_rope_theta_raises() -> None:
+    # GIVEN: a config with neither rope_parameters nor rope_theta.
+    config = _metadata_config()
+    writer = mock.create_autospec(GGUFWriter, instance=True)
+
+    # WHEN / THEN: the metadata writer refuses instead of guessing a RoPE base.
+    with pytest.raises(ExportError, match="rope_theta"):
+        LLAMA_ADAPTER.write_metadata(writer, config)

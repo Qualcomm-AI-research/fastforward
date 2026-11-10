@@ -6,10 +6,16 @@
 Any HuggingFace ``PretrainedConfig`` (or a ``SimpleNamespace``) that carries
 these attributes satisfies this Protocol structurally — no inheritance
 required. Fields that are optional across source architectures
-(``num_key_value_heads``, ``rope_theta``, ``head_dim``, ``rope_scaling``,
+(``num_key_value_heads``, ``head_dim``, ``rope_scaling``,
 ``tie_word_embeddings``) are deliberately excluded: every call site reads them
 via ``getattr(..., default)`` with a documented fallback, so a config that
 omits them still exports correctly.
+
+The RoPE base frequency is required but also excluded, because its location
+depends on the transformers version: ``rope_parameters["rope_theta"]`` from
+transformers 5 on, ``rope_theta`` before. The built-in metadata writers accept
+either and raise :class:`~fastforward.exceptions.ExportError` if both are
+missing.
 """
 
 from typing import Protocol, runtime_checkable

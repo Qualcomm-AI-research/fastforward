@@ -20,7 +20,6 @@ architecture should construct their own :class:`ArchAdapter` from
 
 from __future__ import annotations
 
-import logging
 import re
 
 from dataclasses import replace
@@ -39,8 +38,6 @@ from fastforward.export.stages.gguf._naming import (
 )
 from fastforward.export.stages.gguf.adapter import ArchAdapter
 from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename, Transform
-
-logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from fastforward.export.stages.gguf._extract import ExtractedTensor
@@ -125,13 +122,15 @@ def _rope_theta(config: GgufSourceConfig) -> float:
 
     transformers>=5 moves ``rope_theta`` into ``config.rope_parameters``; older
     configs (and plain namespaces) carry it as an attribute.
+
+    Raises:
+        ExportError: If the config carries neither.
     """
-    rope_theta = getattr(config, "rope_theta", None)
+    rope_parameters = getattr(config, "rope_parameters", None) or {}
+    rope_theta = rope_parameters.get("rope_theta", getattr(config, "rope_theta", None))
     if rope_theta is None:
-        rope_theta = (getattr(config, "rope_parameters", None) or {}).get("rope_theta")
-    if rope_theta is None:
-        rope_theta = 1000000.0
-        logger.warning("model_config has no 'rope_theta'; defaulting to %.1f", rope_theta)
+        msg = "model_config has neither rope_parameters['rope_theta'] nor rope_theta"
+        raise ExportError(msg)
     return float(rope_theta)
 
 
@@ -147,16 +146,19 @@ def _write_common_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None
     writer.add_layer_norm_rms_eps(config.rms_norm_eps)
     writer.add_vocab_size(config.vocab_size)
 
-    rope_scaling = getattr(config, "rope_scaling", None)
-    if rope_scaling:
-        scaling_type = rope_scaling.get("type", rope_scaling.get("rope_type", ""))
+    # transformers 5 aliases `rope_scaling` to `rope_parameters`, which is always set and has
+    # rope_type "default" for unscaled RoPE; older configs set `rope_scaling` only when scaled.
+    rope_parameters = getattr(config, "rope_parameters", None) or {}
+    rope_scaling = rope_parameters or getattr(config, "rope_scaling", None) or {}
+    scaling_type = rope_scaling.get("type", rope_scaling.get("rope_type", "default"))
+    if scaling_type == "default":
+        writer.add_rope_scaling_type(RopeScalingType.NONE)
+    else:
         type_map = {member.value: member for member in RopeScalingType}
         if scaling_type in type_map:
             writer.add_rope_scaling_type(type_map[scaling_type])
         if "factor" in rope_scaling:
             writer.add_rope_scaling_factor(rope_scaling["factor"])
-    else:
-        writer.add_rope_scaling_type(RopeScalingType.NONE)
 
 
 def _write_qwen3_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:

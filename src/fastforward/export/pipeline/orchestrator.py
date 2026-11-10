@@ -95,9 +95,10 @@ class GgufLlamaCppOptions:
             :class:`~fastforward.export.stages.gguf.GgufSourceConfig`. Required
             attributes: ``hidden_size``, ``num_attention_heads``,
             ``num_hidden_layers``, ``intermediate_size``,
-            ``max_position_embeddings``, ``rms_norm_eps``, ``vocab_size``.
-            Optional (accessed via ``getattr`` with defaults):
-            ``num_key_value_heads``, ``rope_theta``, ``head_dim``,
+            ``max_position_embeddings``, ``rms_norm_eps``, ``vocab_size``, and
+            the RoPE base as ``rope_parameters["rope_theta"]`` (transformers 5)
+            or ``rope_theta``. Optional (accessed via ``getattr`` with
+            defaults): ``num_key_value_heads``, ``head_dim``,
             ``rope_scaling``, ``tie_word_embeddings``. A HuggingFace
             ``PretrainedConfig`` or a ``SimpleNamespace`` carrying these fields
             both work.
