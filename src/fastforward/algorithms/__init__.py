@@ -5,3 +5,4 @@
 
 from .adaround import adaround as adaround
 from .gptq import gptq as gptq
+from .yaqa import yaqa as yaqa

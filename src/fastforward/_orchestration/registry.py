@@ -20,7 +20,13 @@ import torch
 import fastforward as ff
 
 from fastforward import mpath
-from fastforward._orchestration.data_flow import FlowInput, FlowOp, InputActivations
+from fastforward._orchestration.data_flow import (
+    FlowInput,
+    FlowOp,
+    Gradient,
+    InputActivations,
+    ModelOutputs,
+)
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
 from fastforward.algorithms.gptq import gptq
@@ -29,6 +35,13 @@ from fastforward.algorithms.hessian_calculation import (
     finalize_hessian,
     hessian_settings,
     hessian_sum_and_count,
+)
+from fastforward.algorithms.yaqa import (
+    calculate_kronecker_factors,
+    combine_kronecker_factors,
+    finalize_kronecker_factors,
+    sampled_nll,
+    yaqa,
 )
 
 Algorithm: TypeAlias = Callable[..., Any]
@@ -357,4 +370,17 @@ register(
     adaround,
     (ff.nn.QuantizedLinear, ff.nn.QuantizedConv2d),
     flows=[InputActivations("original"), InputActivations("quantized")],
+)
+register(
+    yaqa,
+    ff.nn.QuantizedLinear,
+    flows=[
+        FlowOp(
+            calculate_kronecker_factors,
+            combine=combine_kronecker_factors,
+            finalize=finalize_kronecker_factors,
+            inputs=InputActivations("original"),
+            gradients=Gradient(sampled_nll, logits=ModelOutputs("original")),
+        )
+    ],
 )
