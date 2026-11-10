@@ -434,7 +434,9 @@ print(f"Qwen Q4_0 perplexity: {qwen_q4_perplexity:.4f}")
 # %% [markdown]
 # The built-in adapter supplies Qwen3 metadata and tensor names. The float precision is a
 # per-export choice passed through `GgufLlamaCppOptions`: we write ordinary floating-point tensors
-# as F16 while retaining normalization tensors and biases in F32.
+# as F16. Normalization weights and biases must stay F32: llama.cpp's CPU backend can't multiply or
+# add F32 activations with F16/BF16 norm weights or biases, so the overrides below are required for
+# llama.cpp, not a precision choice.
 
 # %%
 qwen_float_type = "F16"

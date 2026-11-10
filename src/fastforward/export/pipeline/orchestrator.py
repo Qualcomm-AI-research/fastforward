@@ -114,9 +114,10 @@ class GgufLlamaCppOptions:
             type at write time. Defaults to ``"F32"``.
         float_type_overrides: Mapping of regex patterns (matched against the
             GGUF tensor name) to GGML type names. First matching pattern wins;
-            unmatched tensors fall back to ``float_type``. Use this to keep
-            specific tensors at higher precision (e.g. norms at F32 while the
-            rest is F16).
+            unmatched tensors fall back to ``float_type``. llama.cpp's CPU
+            backend can't combine F32 activations with F16/BF16 norm weights
+            or biases, so map those to ``"F32"`` when ``float_type`` is
+            ``"F16"`` or ``"BF16"``.
     """
 
     arch_adapter: ArchAdapter
