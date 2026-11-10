@@ -1,4 +1,20 @@
 # serializer version: 1
+# name: test_snapshot_folds_that_read_items_of_a_dict_output
+  '''
+  CallModule(caller=DictLayer, args=[InputRef(x)], kwargs={'mask': InputRef(mask)}, target=NodeRef(first), context=_disable_quantization, cache=True, input_location=None, output_location=None)
+  CallDelegate(fn=_noop, module=DictLayer, args=[InputRef(x)], kwargs={'mask': InputRef(mask)}, contexts=[_disable_quantization], targets=[])
+  StoreValue(target=Const(hidden), value=Const(hidden), context=_disable_quantization)
+  CallFunction(caller=getitem, args=[NodeRef(first), Const(hidden)], kwargs={}, target=NodeRef(getitem_call_function), context=_disable_quantization, cache=True, input_location=None, output_location=None)
+  CallDelegate(fn=_noop, module=DictLayer, args=[NodeRef(getitem_call_function)], kwargs={'mask': InputRef(mask)}, contexts=[_disable_quantization], targets=[])
+  '''
+# ---
+# name: test_snapshot_folds_that_share_an_input
+  '''
+  CallModule(caller=CastingBlock, args=[InputRef(x), InputRef(temb)], kwargs={}, target=NodeRef(blocks.0), context=_disable_quantization, cache=True, input_location=None, output_location=None)
+  CallDelegate(fn=_noop, module=CastingBlock, args=[InputRef(x), InputRef(temb)], kwargs={}, contexts=[_disable_quantization], targets=[])
+  CallDelegate(fn=_noop, module=CastingBlock, args=[NodeRef(blocks.0), InputRef(temb)], kwargs={}, contexts=[_disable_quantization], targets=[])
+  '''
+# ---
 # name: test_snapshot_input_activations_original_and_quantized
   '''
   CallModule(caller=Linear, args=[InputRef(x)], kwargs={}, target=NodeRef(fc1), context=_disable_quantization, cache=True, input_location=None, output_location=None)

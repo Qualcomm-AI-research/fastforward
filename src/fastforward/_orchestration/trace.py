@@ -13,11 +13,13 @@ import weakref
 from typing import Any, Callable, Iterator, cast
 
 import torch
+import torch.fx._pytree as fx_pytree
 import torch.nn as nn
 import torch.utils._pytree as pytree
 
 from packaging.version import Version
 from torch import fx
+from torch.fx.proxy import GraphAppendingTracer
 
 import fastforward as ff
 
@@ -379,6 +381,88 @@ def _fuse_in_place_writes(graph: fx.Graph) -> None:
             graph.erase_node(node)
 
 
+def _is_plain_pytree(spec: pytree.TreeSpec) -> bool:
+    """Whether argument conversion can reconstruct every container in a tree.
+
+    A dict must have string keys because it can become the keyword arguments of a call.
+    """
+    if spec.is_leaf():
+        return True
+    if spec.type not in (tuple, list, dict):
+        return False
+    if spec.type is dict and not all(isinstance(key, str) for key in spec.context):
+        return False
+    children = spec.children() if hasattr(spec, "children") else spec.children_specs
+    return all(_is_plain_pytree(child) for child in children)
+
+
+def _resolve_pytree_glue(gm: fx.GraphModule) -> None:
+    """Remove the pytree glue that `torch.export.unflatten` adds around preserved calls.
+
+    The glue is the `tree_unflatten`, `tree_flatten_spec` and `getitem` nodes with which the
+    caller packs all inputs of a preserved call into one tree and unpacks them again, and the
+    callee does the same for its inputs and outputs. Each input of the call then depends on all
+    of them: the gradient of a decoder layer output flows into the attention mask of the next
+    layer.
+
+    The glue only packs and unpacks values, so it is evaluated here instead of copied:
+    `getitem(tree_unflatten([a, b], spec), 0)` is `a`. A `getitem` on a node, an item of a
+    value whose structure is not known, is kept. Trees containing typed containers
+    stay packed at runtime because argument conversion only rebuilds plain containers.
+
+    Args:
+        gm: The graph module to rewrite in place.
+    """
+    graph = fx.Graph()
+    tracer = GraphAppendingTracer(graph)
+    values: dict[fx.Node, Any] = {}
+
+    def value(node: fx.Node) -> Any:
+        return values[node]
+
+    def to_proxy(arg: Any) -> Any:
+        return fx.Proxy(arg, tracer) if isinstance(arg, fx.Node) else arg
+
+    def to_node(arg: Any) -> Any:
+        return arg.node if isinstance(arg, fx.Proxy) else arg
+
+    for node in gm.graph.nodes:
+        args = fx.node.map_arg(node.args, value)
+        if node.op == "get_attr" and isinstance(getattr(gm, node.target, None), pytree.TreeSpec):
+            values[node] = getattr(gm, node.target)
+        elif node.target in (pytree.tree_unflatten, fx_pytree.tree_flatten_spec) and not (
+            _is_plain_pytree(args[1])
+        ):
+            # Keep typed containers out of FX argument mapping and `_GraphBuilder`,
+            # which can otherwise erase their types or fail to find their node leaves.
+            # `tree_flatten_spec` also cannot flatten a proxy of a type, such as
+            # `transformers.ModelOutput`, that has no `fx_pytree` flatten function.
+            spec = graph.get_attr(node.args[1].target)
+            values[node] = graph.call_function(node.target, (args[0], spec))
+        elif node.target in (pytree.tree_unflatten, fx_pytree.tree_flatten_spec):
+            # Proxies let `tree_flatten_spec` read an item of a node of unknown structure.
+            proxied = fx.node.map_aggregate(args, to_proxy)
+            result: Any = fx.node.map_aggregate(node.target(*proxied), to_node)
+            if isinstance(result, fx.Node) or all(user.op != "output" for user in node.users):
+                values[node] = result
+            else:
+                # An output that is a container stays packed by its `tree_unflatten`.
+                spec = graph.get_attr(node.args[1].target)
+                values[node] = graph.call_function(node.target, (args[0], spec))
+        elif node.target is operator.getitem and not isinstance(args[0], fx.Node):
+            item = args[0][args[1]]
+            if isinstance(item, fx.Node) and item.target is operator.getitem and not item.meta:
+                item.meta = node.meta
+            values[node] = item
+        else:
+            values[node] = graph.node_copy(node, value)
+    for node in reversed(graph.nodes):
+        if node.target is operator.getitem and not node.users:
+            graph.erase_node(node)
+    graph.owning_module = gm
+    gm.graph = graph
+
+
 def _export_and_unflatten(
     module: nn.Module,
     args: tuple[Any, ...],
@@ -400,6 +484,7 @@ def _export_and_unflatten(
         unflattened = torch.export.unflatten(exported_program)
     for submodule in unflattened.modules():
         if _is_non_leaf_graph_module(submodule):
+            _resolve_pytree_glue(cast(fx.GraphModule, submodule))
             _fuse_in_place_writes(cast(fx.Graph, submodule.graph))
     return unflattened
 

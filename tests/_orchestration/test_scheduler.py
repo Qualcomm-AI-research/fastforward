@@ -72,7 +72,9 @@ from packaging.version import Version
 from typing_extensions import override
 
 from ._models import (
+    CastingBlockStack,
     DecoderLayer,
+    DictLayerStack,
     ResidualStack,
     ReturnTuple,
     TiedBranches,
@@ -1234,6 +1236,39 @@ def test_snapshot_input_activations_quantized_on_reduced_folds(
 
     # THEN each fold runs after its own intervention, exactly as a Linear leaf would.
     # The resolution of the graph decides what a call covers, not where it goes.
+    assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
+
+
+def test_snapshot_folds_that_share_an_input(snapshot: syrupy.assertion.SnapshotAssertion) -> None:
+    # GIVEN specs on two traced blocks that read the same `temb`
+    model = CastingBlockStack(dim=4).eval()
+    shared_temb = torch.randn(4, dtype=torch.float16)
+    graph = trace(model, torch.randn(2, 4), shared_temb)
+    reduced, specs = reduce_resolution(
+        graph, [_spec(block, InputActivations(ORIGINAL)) for block in model.blocks]
+    )
+
+    # WHEN scheduling the reduced graph
+    program = schedule(reduced, specs=specs)
+
+    # THEN both blocks read `temb` from the graph input, without pytree glue
+    assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
+
+
+def test_snapshot_folds_that_read_items_of_a_dict_output(
+    snapshot: syrupy.assertion.SnapshotAssertion,
+) -> None:
+    # GIVEN specs on two traced layers, the second reading an item of the dict of the first
+    model = DictLayerStack().eval()
+    graph = trace(model, torch.randn(2, 4), mask=torch.randn(4))
+    reduced, specs = reduce_resolution(
+        graph, [_spec(layer, InputActivations(ORIGINAL)) for layer in (model.first, model.second)]
+    )
+
+    # WHEN scheduling the reduced graph
+    program = schedule(reduced, specs=specs)
+
+    # THEN `second` reads `first["hidden"]` with one `getitem` and `mask` from the graph input
     assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
 
 

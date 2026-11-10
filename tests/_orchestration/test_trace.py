@@ -10,6 +10,7 @@ import torch
 from fastforward._orchestration.graph_module import (
     GraphModule,
     Op,
+    reduce_resolution,
 )
 from fastforward._orchestration.trace import (
     _MIN_TORCH_VERSION,
@@ -29,6 +30,8 @@ from ._models import (
     CastingBlockStack,
     CatModel,
     DeviceCastModel,
+    HiddenStateModel,
+    IndexedLayerModel,
     InPlaceReadBetweenWrites,
     InPlaceRotary,
     KwargForward,
@@ -38,6 +41,7 @@ from ._models import (
     MultiAxisIndex,
     NestedMLP,
     NestedWithTensorOps,
+    PairLayerModel,
     TinyMLP,
     ToyDecoderLayer,
     ToyLlama,
@@ -232,6 +236,26 @@ def test_trace_kwarg_input_names_match_module_signature(kwarg_forward: KwargForw
     #      and the forward output matches the eager output
     assert "scale" in graph.input_names
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("model_type", [PairLayerModel, HiddenStateModel, IndexedLayerModel])
+def test_reduced_graph_passes_typed_containers_through_preserved_calls(
+    model_type: type[torch.nn.Module],
+) -> None:
+    # GIVEN a preserved `layer` with a container that argument conversion cannot rebuild
+    model = model_type().eval()
+    graph = trace(model, torch.randn(2, 4), torch.randn(2, 4))
+
+    # WHEN reducing the graph to calls of the original wrappers
+    reduced, _ = reduce_resolution(graph, [])
+
+    # THEN the reduced graph calls `layer` and matches eager on new inputs
+    assert any(node.target is model.layer for node in reduced._nodes.values())
+    new_x, new_y = torch.randn(2, 4), torch.randn(2, 4)
+    with torch.no_grad():
+        expected = model(new_x, new_y)
+        torch.testing.assert_close(graph(new_x, new_y), expected)
+        torch.testing.assert_close(reduced(new_x, new_y), expected)
 
 
 def test_trace_constant_indexing_via_unflatten_arg(multi_axis_index: MultiAxisIndex) -> None:

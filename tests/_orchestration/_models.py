@@ -14,11 +14,14 @@ Groups below:
   * Llama-shaped "toy" family (mirrors HuggingFace naming so mpath patterns match).
 """
 
-from typing import Any
+import dataclasses
+
+from typing import Any, NamedTuple
 
 import torch
 
 from fastforward._orchestration.graph_module import GraphModule
+from typing_extensions import override
 
 
 class Add(torch.nn.Module):
@@ -474,6 +477,134 @@ class KwargForward(torch.nn.Module):
         """Forward pass with a keyword-only `scale`: fc(x) * scale."""
         y: torch.Tensor = self.fc(x) * scale
         return y
+
+
+class DictLayer(torch.nn.Module):
+    """Layer with a keyword mask that returns a dict, so its output has an unknown structure."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    def forward(self, x: torch.Tensor, *, mask: torch.Tensor) -> dict[str, torch.Tensor]:
+        """Forward pass: {"hidden": fc(x) * mask, "skip": x}."""
+        return {"hidden": self.fc(x) * mask, "skip": x}
+
+
+class DictLayerStack(torch.nn.Module):
+    """Two `DictLayer`s where the second reads one item of the dict of the first."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.first = DictLayer()
+        self.second = DictLayer()
+
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Forward pass: second(first(x)["hidden"]) + first(x)["skip"]."""
+        out = self.first(x, mask=mask)
+        y: torch.Tensor = self.second(out["hidden"], mask=mask)["hidden"] + out["skip"]
+        return y
+
+
+class TensorPair(NamedTuple):
+    """Typed input whose fields must survive preserved-call argument packing."""
+
+    x: torch.Tensor
+    y: torch.Tensor
+
+
+class PairLayer(torch.nn.Module):
+    """Preserved wrapper that reads namedtuple fields."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, pair: TensorPair) -> torch.Tensor:
+        """Forward pass: fc(pair.x) + pair.y."""
+        result: torch.Tensor = self.fc(pair.x) + pair.y
+        return result
+
+
+class PairLayerModel(torch.nn.Module):
+    """Pass a typed container to a preserved wrapper."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.layer = PairLayer()
+
+    @override
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Forward pass: pack the tensors into a `TensorPair` for the wrapper."""
+        result: torch.Tensor = self.layer(TensorPair(x, y))
+        return result
+
+
+@dataclasses.dataclass
+class HiddenState:
+    """Typed output registered only with `pytree`, like `transformers.ModelOutput`."""
+
+    hidden: torch.Tensor
+
+
+torch.export.register_dataclass(HiddenState, serialized_type_name="tests.HiddenState")
+
+
+class HiddenStateLayer(torch.nn.Module):
+    """Preserved wrapper that returns a `HiddenState`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> HiddenState:
+        """Forward pass: HiddenState(fc(x) * mask)."""
+        return HiddenState(self.fc(x) * mask)
+
+
+class HiddenStateModel(torch.nn.Module):
+    """Read the field of a typed output, like `LlamaForCausalLM` reads `LlamaModel`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.layer = HiddenStateLayer()
+        self.head = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Forward pass: head(layer(x, mask).hidden)."""
+        result: torch.Tensor = self.head(self.layer(x, mask).hidden)
+        return result
+
+
+class IndexedLayer(torch.nn.Module):
+    """Preserved wrapper that reads a dict with integer keys."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, inputs: dict[int, torch.Tensor]) -> torch.Tensor:
+        """Forward pass: fc(inputs[0]) * inputs[1]."""
+        result: torch.Tensor = self.fc(inputs[0]) * inputs[1]
+        return result
+
+
+class IndexedLayerModel(torch.nn.Module):
+    """Pass a dict with integer keys, which cannot be keyword arguments, to a preserved wrapper."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.layer = IndexedLayer()
+
+    @override
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Forward pass: layer({0: x, 1: y})."""
+        result: torch.Tensor = self.layer({0: x, 1: y})
+        return result
 
 
 class NestedMLP(torch.nn.Module):
