@@ -604,3 +604,41 @@ def test_write_gguf_rejects_export_without_tensors(tmp_path: Any) -> None:
         with pytest.raises(ExportError, match="produced no tensors"):
             stage_write_gguf((packed,), [], context)
     writer_cls.assert_not_called()
+
+
+# --- Adapters without a tokenizer_model ---
+
+
+def test_write_gguf_rejects_tokenizer_for_adapter_without_tokenizer_model(tmp_path: Any) -> None:
+    # GIVEN: an adapter without a tokenizer_model, and a tokenizer in the context.
+    adapter = replace(LLAMA_ADAPTER, tokenizer_model=None, tokenizer_pre=None)
+    context = _float_only_context(tmp_path, arch_adapter=adapter, tokenizer=object())
+
+    # WHEN / THEN: the write stage raises before opening a writer.
+    with mock.patch("fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter") as writer_cls:
+        with pytest.raises(ExportError, match="has no tokenizer_model"):
+            stage_write_gguf((_float_only_packed(),), [], context)
+    writer_cls.assert_not_called()
+
+
+def test_write_gguf_adapter_without_tokenizer_model_writes_no_vocab(tmp_path: Any) -> None:
+    # GIVEN: an adapter without a tokenizer_model whose vocab writer must not run,
+    # and no tokenizer in the context.
+    write_vocab = mock.MagicMock()
+    adapter = replace(
+        LLAMA_ADAPTER, tokenizer_model=None, tokenizer_pre=None, write_vocab=write_vocab
+    )
+    context = _float_only_context(tmp_path, arch_adapter=adapter)
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((_float_only_packed(),), [], context)
+
+    # THEN: no vocabulary is written, and the float tensors are.
+    write_vocab.assert_not_called()
+    written = {call.args[0] for call in mock_writer.add_tensor.call_args_list}
+    assert written == {"output_norm.weight", "token_embd.weight"}

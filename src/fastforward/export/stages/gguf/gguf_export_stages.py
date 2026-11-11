@@ -182,6 +182,9 @@ def stage_write_gguf(
     Float tensors are cast per ``context["float_type"]`` (default ``"F32"``),
     the adapter's ``pin_float_type``, and ``context["float_type_overrides"]``
     (regex on the GGUF name -> type), which take precedence over the pins.
+
+    The vocabulary is written only when ``context["tokenizer"]`` is set; the
+    adapter must then name a ``tokenizer_model``.
     """
     del sample_inputs
     (packed,) = modules
@@ -199,12 +202,19 @@ def stage_write_gguf(
     float_entries: dict[str, torch.Tensor] = packed["float"]
     file_type = _resolve_file_type(quantized_entries, float_entries, default_float_type)
 
+    tokenizer = context.get("tokenizer")
+    if tokenizer is not None and adapter.tokenizer_model is None:
+        msg = (
+            f"Adapter for GGUF arch '{adapter.gguf_arch}' has no tokenizer_model, so it "
+            + "cannot write a vocabulary; export without a tokenizer"
+        )
+        raise ExportError(msg)
+
     writer = GGUFWriter(str(output_path), arch=adapter.gguf_arch)
     try:
         adapter.write_metadata(writer, config)
         writer.add_file_type(file_type)
 
-        tokenizer = context.get("tokenizer")
         if tokenizer is not None:
             adapter.write_vocab(writer, tokenizer, config, adapter)
 

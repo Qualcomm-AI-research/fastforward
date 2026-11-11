@@ -72,6 +72,9 @@ def tokenizer_dir(tokenizer: Any) -> Iterator[pathlib.Path]:
 
 
 def _write_tokenizer_discriminators(writer: GGUFWriter, adapter: ArchAdapter) -> None:
+    if adapter.tokenizer_model is None:
+        msg = f"Adapter for GGUF arch '{adapter.gguf_arch}' has no tokenizer_model"
+        raise ExportError(msg)
     writer.add_tokenizer_model(adapter.tokenizer_model)
     if adapter.tokenizer_pre is not None:
         writer.add_tokenizer_pre(adapter.tokenizer_pre)

@@ -94,7 +94,7 @@ class _StubTokenizer:
 
 
 def _make_adapter(
-    tokenizer_model: str = "gpt2",
+    tokenizer_model: str | None = "gpt2",
     tokenizer_pre: str | None = "default",
     write_vocab: WriteVocabT | None = None,
 ) -> ArchAdapter:
@@ -226,6 +226,16 @@ def test_write_bpe_vocab_writes_adapter_tokenizer_discriminators(tmp_path: pathl
     assert _string_field(reader, "tokenizer.ggml.pre") == "llama-bpe"
 
 
+def test_write_bpe_vocab_rejects_adapter_without_tokenizer_model(tmp_path: pathlib.Path) -> None:
+    # GIVEN: an adapter with no tokenizer_model (e.g. a vision projector's).
+    adapter = _make_adapter(tokenizer_model=None, tokenizer_pre=None)
+    tokenizer = _StubTokenizer(vocab={"a": 0})
+
+    # WHEN / THEN: writing a vocabulary with it raises.
+    with pytest.raises(ff.exceptions.ExportError, match="has no tokenizer_model"):
+        _write_and_read(tmp_path, tokenizer, _Config(vocab_size=1), adapter)
+
+
 def test_write_bpe_vocab_materializes_in_memory_tokenizer_for_merges(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -298,6 +308,7 @@ def test_adapter_accepts_custom_vocab_writer(tmp_path: pathlib.Path) -> None:
     def write_custom_vocab(
         writer: GGUFWriter, tokenizer: Any, config: Any, adapter: ArchAdapter
     ) -> None:
+        assert adapter.tokenizer_model is not None
         writer.add_tokenizer_model(adapter.tokenizer_model)
         writer.add_token_list([f"tok{i}" for i in range(config.vocab_size)])
         with tokenizer_dir(tokenizer) as model_dir:

@@ -285,7 +285,8 @@ def test_gguf_pipeline_exports_claimed_buffers_from_bf16_model(
 def test_gguf_pipeline_writes_float_only_file_for_unquantized_model(
     tmp_path: pathlib.Path, _seed_prngs: int
 ) -> None:
-    # GIVEN: a tiny Llama-shaped model with no FF quantizers.
+    # GIVEN: a tiny Llama-shaped model with no FF quantizers, and an adapter
+    # without a tokenizer_model (as a vision projector's would be).
     vocab, hidden, inter, n_layers = 64, 32, 64, 2
     model = _TinyLlama(vocab, hidden, inter, n_layers)
     model.eval()
@@ -302,9 +303,10 @@ def test_gguf_pipeline_writes_float_only_file_for_unquantized_model(
         tie_word_embeddings=False,
         rope_scaling=None,
     )
+    adapter = replace(LLAMA_ADAPTER, tokenizer_model=None, tokenizer_pre=None)
 
-    # WHEN: exporting with F16 floats.
-    options = GgufLlamaCppOptions(arch_adapter=LLAMA_ADAPTER, model_config=config, float_type="F16")
+    # WHEN: exporting with F16 floats and no tokenizer.
+    options = GgufLlamaCppOptions(arch_adapter=adapter, model_config=config, float_type="F16")
     artifacts = export_with_pipeline(
         ExportRequest(
             model=model,
@@ -317,10 +319,12 @@ def test_gguf_pipeline_writes_float_only_file_for_unquantized_model(
         )
     )
 
-    # THEN: the file reads back with an F16 file type and every tensor F16.
+    # THEN: the file reads back with an F16 file type, every tensor F16, and no
+    # tokenizer keys.
     reader = gguf.GGUFReader(str(artifacts.stage_outputs["write_gguf"]))
     file_type = reader.get_field("general.file_type")
     assert file_type is not None
     assert file_type.contents() == gguf.LlamaFileType.MOSTLY_F16
     assert {tensor.tensor_type for tensor in reader.tensors} == {gguf.GGMLQuantizationType.F16}
     assert "blk.0.attn_q.weight" in {tensor.name for tensor in reader.tensors}
+    assert not any(key.startswith("tokenizer.") for key in reader.fields)

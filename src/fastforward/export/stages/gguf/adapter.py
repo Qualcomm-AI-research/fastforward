@@ -184,6 +184,9 @@ class ArchAdapter:
             head counts) onto an open ``GGUFWriter`` from the source config.
         tokenizer_model: Value passed to ``writer.add_tokenizer_model(...)``
             (llama.cpp's tokenizer-model discriminator, e.g. ``"gpt2"``).
+            ``None`` for files that carry no vocabulary, e.g. a vision
+            projector (``mmproj``); exporting such an adapter with a tokenizer
+            raises.
         tokenizer_pre: Value passed to ``writer.add_tokenizer_pre(...)``
             (llama.cpp's pre-tokenizer discriminator, e.g. ``"llama-bpe"``,
             ``"qwen2"``, or ``"default"``). ``None`` writes no pre-tokenizer,
@@ -203,7 +206,7 @@ class ArchAdapter:
     gguf_arch: str
     tensor_rules: Sequence[TensorRule]
     write_metadata: _WriteMetadataT
-    tokenizer_model: str
+    tokenizer_model: str | None
     tokenizer_pre: str | None
     write_vocab: WriteVocabT = write_bpe_vocab
     pin_float_type: PinFloatTypeT | None = None

@@ -105,7 +105,8 @@ class GgufLlamaCppOptions:
             ``PretrainedConfig`` or a ``SimpleNamespace`` carrying these fields
             both work.
         tokenizer: Optional HuggingFace tokenizer; when provided, its vocabulary
-            is written into the GGUF.
+            is written into the GGUF. Leave unset for adapters without a
+            ``tokenizer_model`` (e.g. a vision projector).
         format_registry: Optional :class:`GgufFormatRegistry` of allowed quant
             formats, for mixed-precision exports or custom formats. Each weight
             quantizer is matched against it by ``(num_bits, symmetric,
