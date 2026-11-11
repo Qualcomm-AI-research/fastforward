@@ -15,7 +15,13 @@ import pytest
 import torch
 
 from fastforward._orchestration import registry
-from fastforward._orchestration.data_flow import FlowOp, InputActivations
+from fastforward._orchestration.data_flow import (
+    FlowOp,
+    Gradient,
+    InputActivations,
+    ModelOutputs,
+    OutputActivations,
+)
 from fastforward._orchestration.graph_module import Region, Span
 from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.location import BudgetLocation, DiskLocation, LocationLike
@@ -404,18 +410,185 @@ def test_layerwise_optimize_with_multiple_specs(two_linear: TwoLinear) -> None:
     assert not torch.allclose(initial_w2, model.fc2.weight.data)
 
 
-def test_layerwise_optimize_overlapping_specs_raises(two_linear: TwoLinear) -> None:
-    # GIVEN a model and two specs that both target fc1
+def _double_weight(module: nn.Linear) -> None:
+    """An algorithm that reads no data, and doubles the weight."""
+    with torch.no_grad():
+        module.weight.mul_(2.0)
+
+
+@pytest.mark.parametrize("data_free_first", [True, False], ids=["data-free-first", "data-first"])
+def test_layerwise_optimize_runs_the_specs_on_one_layer_in_list_order(
+    two_linear: TwoLinear, data_free_first: bool
+) -> None:
+    # GIVEN a spec on fc1 that reads no data, and one that reads the original inputs of fc1.
+    # The two steps give a different result in the other order.
+    model = two_linear.eval()
+    reference = copy.deepcopy(model)
+    calibration = [torch.randn(2, 8) for _ in range(3)]
+    double = AlgorithmSpec(fn=_double_weight, selector=normalize([model.fc1]), flows=[])
+    step = AlgorithmSpec(
+        fn=sgd_step, selector=normalize([model.fc1]), flows=[InputActivations("original")]
+    )
+    specs = [double, step] if data_free_first else [step, double]
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, specs, sample_args=(calibration[0],))
+
+    # THEN fc1 is the result of the two steps run eagerly, in list order, and fc2 is unchanged
+    for spec in specs:
+        if spec is double:
+            _double_weight(reference.fc1)
+        else:
+            sgd_step(reference.fc1, [((batch,), {}) for batch in calibration])  # type: ignore[arg-type]
+    torch.testing.assert_close(model.fc1.weight, reference.fc1.weight)
+    torch.testing.assert_close(model.fc2.weight, reference.fc2.weight)
+
+
+def test_layerwise_optimize_runs_specs_that_read_no_data_on_one_layer(
+    two_linear: TwoLinear,
+) -> None:
+    # GIVEN two specs on fc1 that read no data
+    model = two_linear.eval()
+    initial = model.fc1.weight.detach().clone()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+    spec = AlgorithmSpec(fn=_double_weight, selector=normalize([model.fc1]), flows=[])
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, [spec, spec], sample_args=(calibration[0],))
+
+    # THEN both ran
+    torch.testing.assert_close(model.fc1.weight, 4 * initial)
+
+
+@pytest.mark.parametrize("chunk_size", [None, 2], ids=["whole", "chunked"])
+def test_layerwise_optimize_gives_each_spec_on_one_layer_the_result_of_its_flowop(
+    two_linear: TwoLinear, chunk_size: int | None
+) -> None:
+    # GIVEN two specs on fc1 that read an op over the original outputs of fc1, and the first
+    # spec changes the weight
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 5, 8) for _ in range(3)]
+    with torch.no_grad():
+        expected = sum(model.fc1(batch).sum() for batch in calibration)
+    received: list[torch.Tensor] = []
+
+    def record_then_double(module: nn.Linear, total: torch.Tensor) -> None:
+        received.append(total)
+        _double_weight(module)
+
+    def record(module: nn.Module, total: torch.Tensor) -> None:
+        del module
+        received.append(total)
+
+    op = FlowOp(_total, combine=operator.add, activations=OutputActivations("original"))
+    specs = [
+        AlgorithmSpec(fn=fn, selector=normalize([model.fc1]), flows=[op])
+        for fn in (record_then_double, record)
+    ]
+
+    # WHEN the model is optimized
+    with torch.no_grad():
+        ff.layerwise_optimize(
+            model,
+            calibration,
+            specs,
+            sample_args=(calibration[0],),
+            config=ff.OrchestrationConfig(chunk_size=chunk_size),
+        )
+
+    # THEN both specs received the result of the op on the weights from before the change
+    assert len(received) == 2
+    for total in received:
+        torch.testing.assert_close(total, expected)
+
+
+def _squared_outputs(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
+    """Yield the sum of the squared model outputs for every batch."""
+    for (output,), _ in outputs:
+        yield output.pow(2).sum()
+
+
+def test_layerwise_optimize_gives_each_spec_on_one_layer_the_original_gradient(
+    two_linear: TwoLinear,
+) -> None:
+    # GIVEN two specs on fc1 that read the gradient of the original outputs of fc1, and change
+    # the weight
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+    expected = []
+    for batch in calibration:
+        hidden = model.fc1(batch).detach().requires_grad_()
+        model.fc2(model.act(hidden)).pow(2).sum().backward()
+        assert hidden.grad is not None
+        expected.append(hidden.grad)
+    model.zero_grad()
+    received: list[list[torch.Tensor]] = []
+
+    def record_then_double(module: nn.Linear, gradient: ActivationBundle) -> None:
+        received.append([g for (g,), _ in gradient])
+        _double_weight(module)
+
+    gradient = Gradient(_squared_outputs, outputs=ModelOutputs("original"))
+    spec = AlgorithmSpec(fn=record_then_double, selector=normalize([model.fc1]), flows=[gradient])
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, [spec, spec], sample_args=(calibration[0],))
+
+    # THEN both specs received the gradient on the original weights
+    assert len(received) == 2
+    for gradients in received:
+        torch.testing.assert_close(gradients, expected)
+
+
+def test_layerwise_optimize_runs_specs_on_an_equal_span_on_one_subgraph(
+    two_linear: TwoLinear,
+) -> None:
+    # GIVEN two specs on the same Span
+    model = two_linear.eval()
+    calibration = [torch.randn(2, 8) for _ in range(2)]
+    seen: list[tuple[str, nn.Module]] = []
+
+    class _SpanSelector(registry.Selector):
+        def resolve(self, model: nn.Module) -> list[Region]:
+            return [Span(start=model.fc1, end=model.act)]  # type: ignore[arg-type]
+
+    def record(name: str, module: nn.Module, bundle: ActivationBundle) -> None:
+        del bundle
+        seen.append((name, module))
+
+    specs = [
+        AlgorithmSpec(
+            fn=functools.partial(record, name), selector=_SpanSelector(), flows=make_flows()
+        )
+        for name in ("first", "second")
+    ]
+
+    # WHEN we optimize
+    ff.layerwise_optimize(model, calibration, specs, sample_args=(calibration[0],))
+
+    # THEN both specs ran in list order, on one subgraph
+    assert [name for name, _ in seen] == ["first", "second"]
+    assert seen[0][1] is seen[1][1]
+
+
+def test_layerwise_optimize_rejects_specs_that_share_part_of_a_region(
+    two_linear: TwoLinear,
+) -> None:
+    # GIVEN a spec on a Span over fc1 and act, and a spec on fc1 only
     model = two_linear.eval()
     calibration = [torch.randn(2, 8) for _ in range(2)]
 
-    spec1 = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
-    spec2 = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+    class _SpanSelector(registry.Selector):
+        def resolve(self, model: nn.Module) -> list[Region]:
+            return [Span(start=model.fc1, end=model.act)]  # type: ignore[arg-type]
 
-    # WHEN we pass overlapping specs
-    # THEN a ValueError is raised
-    with pytest.raises(ValueError, match="Overlapping nodes"):
-        ff.layerwise_optimize(model, calibration, [spec1, spec2], sample_args=(calibration[0],))
+    span = AlgorithmSpec(fn=sgd_step, selector=_SpanSelector(), flows=make_flows())
+    fc1 = AlgorithmSpec(fn=sgd_step, selector=normalize([model.fc1]), flows=make_flows())
+
+    # WHEN we optimize
+    # THEN it is refused, because the order of the two specs on fc1 is not clear
+    with pytest.raises(ValueError, match="equal or disjoint regions"):
+        ff.layerwise_optimize(model, calibration, [span, fc1], sample_args=(calibration[0],))
 
 
 def test_layerwise_optimize_with_span_region(two_linear: TwoLinear) -> None:

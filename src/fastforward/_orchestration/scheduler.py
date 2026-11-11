@@ -1173,7 +1173,8 @@ def schedule(
             OptimizeIntervention(region=region, module=module, spec=spec, flows=flows)
         )
 
-    # Optimizations run in graph order, a region's inputs must already be generated.
+    # Optimizations run in graph order, a region's inputs must already be generated. The
+    # sort is stable, so the specs on one region run in the order they are given.
     topo_index = {ref: i for i, ref in enumerate(graph.topo_order)}
     optimizations.sort(key=lambda intervention: topo_index[intervention.region])
 

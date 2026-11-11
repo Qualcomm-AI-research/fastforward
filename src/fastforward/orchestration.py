@@ -170,7 +170,9 @@ def layerwise_optimize(
         model: The model to optimize.
         data: Calibration data to run through the model.
         algorithm: The optimization algorithm. Accepts a callable (looked up in the
-            registry), a single `AlgorithmSpec`, or a list of specs.
+            registry), a single `AlgorithmSpec`, or a list of specs. The specs on one region
+            run one after the other, in list order. Two specs must target equal or
+            disjoint regions.
         targets: Override which modules to target. If None, uses the default targets the
             algorithm was registered with. Cannot be combined with explicit AlgorithmSpec(s).
         config: Orchestration settings (offloading strategy, chunk size).
@@ -183,7 +185,8 @@ def layerwise_optimize(
             example input are both given, or if `config.chunk_size` is set and `data` is
             one tensor.
         ValueError: If `config.chunk_size` is set and an algorithm cannot run on chunks of
-            the data, or no algorithm reads any data.
+            the data, or no algorithm reads any data. Also if two specs share part of a
+            region.
     """
     # (1) Trace if no static graph provided
     has_sample = bool(sample_args) or bool(sample_kwargs)

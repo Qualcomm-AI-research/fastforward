@@ -395,7 +395,9 @@ class FlowOp:
 
     If the operation needs layer specific parameters, use the `from_module` and provide
     a callable that, given the layer, returns a dictionary with values. In this case,
-    it is expected that `fn` has at least these arguments.
+    it is expected that `fn` has at least these arguments. `from_module` runs once, when the
+    program is built and before any algorithm runs. Thus, it must only read settings that the
+    algorithms do not change, such as shapes, and not, for example, the ranges of a quantizer.
 
     Layers that share the same input, same `fn` and same `from_module` are considered
     equal, and a single FlowOp will be used. This means you can think of a Flow Op also

@@ -1468,6 +1468,44 @@ def test_nested_flow_ops(two_linear: TwoLinear) -> None:
     torch.testing.assert_close(reads[model.fc1][0], 2 * expected)
 
 
+def _add_one(module: torch.nn.Module) -> None:
+    """An intervention that reads no data, and adds one to every weight."""
+    with torch.no_grad():
+        for parameter in module.parameters():
+            parameter.add_(1.0)
+
+
+@pytest.mark.parametrize("generator", [ORIGINAL, QUANTIZED], ids=["pinned", "live"])
+def test_specs_on_one_region_run_in_the_order_given(
+    two_linear: TwoLinear, generator: FlowGenerator
+) -> None:
+    # GIVEN a spec on fc1 that reads no data and changes the weights, then a spec on fc1
+    # that reads the outputs of fc1
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(3)]
+    changed = copy.deepcopy(model.fc1)
+    _add_one(changed)
+    weights = copy.deepcopy(model.fc1) if generator.pinned else changed
+    reads: dict[torch.nn.Module, list[Any]] = {}
+    record = _record_and_mutate(reads)
+    specs = [
+        SubgraphSpec(region=model.fc1, fn=_add_one, flows=[]),
+        SubgraphSpec(region=model.fc1, fn=record, flows=[OutputActivations(generator)]),
+    ]
+
+    # WHEN scheduling and running
+    program = schedule(trace(model, batches[0]), specs)
+    _run(program, batches)
+
+    # THEN the specs run in the order given
+    assert [optimize.fn for optimize in _optimizes(program)] == [_add_one, record]
+
+    # THEN a pinned flow reads the weights from before the first spec, and a live flow the
+    # weights after it
+    with torch.no_grad():
+        _assert_close(reads[model.fc1][0], [weights(batch) for batch in batches])
+
+
 def _plain_loss(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
     """Yield the same loss of the model outputs for every batch, wherever it sits in a chunk."""
     for (output,), _ in outputs:

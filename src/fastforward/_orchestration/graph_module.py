@@ -1342,6 +1342,11 @@ def _resolve_subgraph_input(name: str, context: dict[str, _BaseRef]) -> _BaseRef
         return attr_ref
 
 
+def _region_names(nodes: Collection[NodeRef]) -> str:
+    """Return the names of `nodes`, sorted, for an error message."""
+    return "{" + ", ".join(sorted(ref.name for ref in nodes)) + "}"
+
+
 def reduce_resolution(
     graph: GraphModule, specs: list[SubgraphSpec]
 ) -> tuple[GraphModule, list[SubgraphSpec]]:
@@ -1357,21 +1362,52 @@ def reduce_resolution(
 
     Returns the reduced graph and remapped specs with regions anchored on concrete
     modules in the reduced graph (original modules for leaves, wrapping subgraphs
-    for Span/Group).
+    for Span/Group). Specs on equal regions share one anchor.
+
+    Raises:
+        ValueError: If two specs share some of their leaves, but not all, or if a spec on a
+            module and a spec on a subgraph target the same nodes.
     """
     targets: set[NodeRef] = set()
     subgraphs: list[tuple[set[NodeRef], GraphModule]] = []
-    seen_targets: set[NodeRef] = set()
     spec_targets: list[torch.nn.Module] = []
+    region_targets: dict[frozenset[NodeRef], torch.nn.Module] = {}
+    # The region of an earlier spec for each leaf it contains. A fold contains its leaves.
+    leaf_regions: dict[NodeRef, frozenset[NodeRef]] = {}
 
     # Create "targets": the most granular collection of nodes we need to have, given the specs.
     for spec in specs:
         resolved = spec.resolve(graph)
-        if overlap := resolved.nodes & seen_targets:
-            msg = f"Overlapping nodes in subgraph specs: {overlap}"
+        nodes = frozenset(resolved.nodes)
+        leaves = frozenset(
+            leaf
+            for ref in nodes
+            for leaf in (graph.leaf_nodes(ref) if ref.id in graph._fold_ids else {ref})
+        )
+        if (anchor := region_targets.get(leaves)) is not None:
+            # A spec on a region that an earlier spec targets runs on the same anchor, which
+            # must be the kind of module that this spec asks for.
+            if isinstance(anchor, GraphModule) != isinstance(resolved.target, GraphModule):
+                msg = (
+                    "Specs on the same nodes must all target the module or all target a "
+                    f"subgraph, but {_region_names(nodes)} is targeted as both."
+                )
+                raise ValueError(msg)
+            spec_targets.append(anchor)
+            continue
+
+        if overlap := leaves & leaf_regions.keys():
+            earlier = leaf_regions[next(iter(overlap))]
+            shared = {leaf for leaf in overlap if leaf_regions[leaf] == earlier}
+            msg = (
+                "Specs must target equal or disjoint regions, but the region "
+                f"{_region_names(nodes)} shares {_region_names(shared)} with the region "
+                f"{_region_names(earlier)}."
+            )
             raise ValueError(msg)
 
-        seen_targets |= resolved.nodes
+        region_targets[leaves] = resolved.target
+        leaf_regions.update(dict.fromkeys(leaves, nodes))
         targets |= resolved.nodes
         spec_targets.append(resolved.target)
         if isinstance(resolved.target, GraphModule):

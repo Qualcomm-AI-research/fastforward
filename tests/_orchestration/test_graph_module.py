@@ -14,6 +14,7 @@ from fastforward._orchestration.graph_module import (
     Group,
     InputRef,
     NodeRef,
+    Region,
     Span,
     SubgraphSpec,
     _BaseRef,
@@ -481,6 +482,37 @@ def test_group_single_module(two_layer_model: TwoLayerModel) -> None:
 
     # THEN forward output still matches
     torch.testing.assert_close(reduced(x), expected)
+
+
+@pytest.mark.parametrize("reverse", [False, True], ids=["in-order", "reversed"])
+@pytest.mark.parametrize(
+    ("case", "match"),
+    [
+        ("span-and-leaf-in-it", "equal or disjoint regions"),
+        ("fold-and-leaf-in-it", "equal or disjoint regions"),
+        ("module-and-subgraph-on-one-leaf", "all target the module or all target a subgraph"),
+    ],
+)
+def test_reduce_resolution_rejects_specs_on_regions_that_are_not_equal_or_disjoint(
+    two_layer_model: TwoLayerModel, case: str, match: str, reverse: bool
+) -> None:
+    # GIVEN two specs on regions that share a leaf, in either order
+    model = two_layer_model
+    graph = model.to_graph_module()
+    q_proj = model.layer_1.attn.q_proj
+    cases: dict[str, tuple[Region, Region]] = {
+        "span-and-leaf-in-it": (Span(start=model.layer_0.mlp.down, end=q_proj), q_proj),
+        "fold-and-leaf-in-it": (model.layer_0.mlp, model.layer_0.mlp.down),
+        "module-and-subgraph-on-one-leaf": (Span(start=q_proj, end=q_proj), q_proj),
+    }
+    specs = [make_spec(region=region, fn=noop) for region in cases[case]]
+    if reverse:
+        specs.reverse()
+
+    # WHEN we reduce
+    # THEN it is refused, because it is not clear which module each spec gets
+    with pytest.raises(ValueError, match=match):
+        reduce_resolution(graph, specs)
 
 
 def test_reduce_resolution_multi_output_fold_unwraps_first_output(
