@@ -77,20 +77,19 @@ class AffineQuantizationFunction(QuantizationFunction[AffineQuantParams]):
     @classmethod
     @override
     def quantize(cls, data: torch.Tensor, params: AffineQuantParams) -> "QuantizedTensor":
-        # The check is performed here with an if statement instead
-        # of using the `match` function because dynamo does not
-        # support this custom case.
+
         if ff.get_export_mode():
             # In the export case this function will return a standard torch.Tensor
             # instead of a QuantizedTensor. We ignore the type error due to how
             # entangled the QuantizedTensor return is with the rest of the codebase.
             return cls._export_quantize(data, params)  # type: ignore[return-value]
 
-        match params:
-            case StaticAffineQuantParams():
-                return cls._static_quantize(data, params)
-            case DynamicAffineQuantParams():
-                return cls._dynamic_quantize(data, params)
+        # avoid using `match` as dynamo (torch<2.13) has no handler for the
+        # MATCH_CLASS bytecode and would graph break here.
+        if isinstance(params, StaticAffineQuantParams):
+            return cls._static_quantize(data, params)
+        if isinstance(params, DynamicAffineQuantParams):
+            return cls._dynamic_quantize(data, params)
 
         msg = f"Unsupported type for argument 'params': '{type(params)}'"
         raise TypeError(msg)

@@ -5,8 +5,10 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+import torch
 import yaml
 
+from fastforward.quantization import granularity
 from fastforward.serialization import _has_custom_method, yamlable
 from typing_extensions import Self
 
@@ -149,3 +151,42 @@ def test_init_subclass_multiple_inheritance() -> None:
         init_subclass_mock.assert_called_once()
         # THEN: Args of Derived.__init__ should be stored
         assert getattr(Derived(), "__initargs_ex__", (None, None)) == ((), {})
+
+
+# Torch 2.8 - 2.13 instantiate autograd.Function classes while dynamo traces them,
+# emitting a DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+# Importing torch._inductor on torch 2.11+ emits the torch.jit.script_method DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning")
+def test_yamlable_object_created_in_compiled_region_is_serializable() -> None:
+    """Test that objects created in `torch.compile` serialize like eagerly created ones."""
+
+    def create_granularity() -> granularity.PerTile:
+        return granularity.PerTile((2, 4))
+
+    # GIVEN: A function creating a yamlable granularity, compiled as a single graph
+    torch._dynamo.reset()
+    compiled = torch.compile(create_granularity, fullgraph=True, backend="eager")
+
+    # WHEN: The granularity is created eagerly and in the compiled region
+    eager_granularity = create_granularity()
+    compiled_granularity = compiled()
+
+    # THEN: Creating it in the compiled region does not fail and yields an equal object
+    assert isinstance(compiled_granularity, granularity.PerTile)
+    assert compiled_granularity.tile_shape == eager_granularity.tile_shape
+
+    # THEN: The stored constructor args are the same as for the eagerly created object
+    assert getattr(compiled_granularity, "__initargs_ex__") == getattr(
+        eager_granularity, "__initargs_ex__"
+    )
+
+    # THEN: Both objects serialize to the same yaml
+    eager_yaml = yaml.dump(eager_granularity)
+    compiled_yaml = yaml.dump(compiled_granularity)
+    assert compiled_yaml == eager_yaml
+
+    # THEN: The yaml of the compiled object restores an equivalent granularity
+    restored = yaml.load(compiled_yaml, Loader=yaml.Loader)
+    assert isinstance(restored, granularity.PerTile)
+    assert restored.tile_shape == eager_granularity.tile_shape

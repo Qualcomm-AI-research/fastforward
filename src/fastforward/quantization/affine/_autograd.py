@@ -38,7 +38,10 @@ def affine_static_quantize_fn(
     dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
     scale = tensor_or_none(scale, dtype=dtype, device=data.device)
     offset = tensor_or_none(offset, dtype=dtype, device=data.device)
-    return AffineStaticQuantizeFn.apply(data, scale, offset, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
+    encoded_tile_size = _encode_tile_size(tile_size, data.shape)
+    return AffineStaticQuantizeFn.apply(  # type: ignore[no-any-return]
+        data, scale, offset, encoded_tile_size, num_bits, quantized_dtype
+    )
 
 
 def affine_dynamic_quantize_fn(
@@ -49,8 +52,9 @@ def affine_dynamic_quantize_fn(
     allow_one_sided: bool,
     quantized_dtype: torch.dtype | None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
+    encoded_tile_size = _encode_tile_size(tile_size, data.shape)
     return AffineDynamicQuantizeFn.apply(  # type: ignore[no-any-return]
-        data, tile_size, num_bits, symmetric, allow_one_sided, quantized_dtype
+        data, encoded_tile_size, num_bits, symmetric, allow_one_sided, quantized_dtype
     )
 
 
@@ -65,7 +69,10 @@ def affine_dequantize_fn(
         dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
     scale = tensor_or_none(scale, dtype=dtype, device=data.device)
     offset = tensor_or_none(offset, dtype=dtype, device=data.device)
-    return AffineDequantizeFn.apply(data, scale, offset, tile_size, dtype)  # type: ignore[no-any-return]
+    encoded_tile_size = _encode_tile_size(tile_size, data.shape)
+    return AffineDequantizeFn.apply(  # type: ignore[no-any-return]
+        data, scale, offset, encoded_tile_size, dtype
+    )
 
 
 def affine_static_qdq_fn(
@@ -79,7 +86,10 @@ def affine_static_qdq_fn(
     dtype = data.dtype if data.dtype.is_floating_point else torch.get_default_dtype()
     scale = tensor_or_none(scale, dtype=dtype, device=data.device)
     offset = tensor_or_none(offset, dtype=dtype, device=data.device)
-    return AffineStaticQdqFn.apply(data, scale, offset, tile_size, num_bits, quantized_dtype)  # type: ignore[no-any-return]
+    encoded_tile_size = _encode_tile_size(tile_size, data.shape)
+    return AffineStaticQdqFn.apply(  # type: ignore[no-any-return]
+        data, scale, offset, encoded_tile_size, num_bits, quantized_dtype
+    )
 
 
 class AffineStaticQuantizeFn(torch.autograd.Function):
@@ -96,7 +106,7 @@ class AffineStaticQuantizeFn(torch.autograd.Function):
     ) -> torch.Tensor:
         quant_dtype = quantized_dtype or data.dtype
         ctx.save_for_backward(data, scale, offset)
-        tile_size = data.shape if tile_size == "data_shape" else tile_size
+        tile_size = _decode_tile_size(tile_size, data.shape)
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
 
@@ -134,7 +144,7 @@ class AffineDynamicQuantizeFn(torch.autograd.Function):
         quantized_dtype: torch.dtype | None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         quant_dtype = quantized_dtype or data.dtype
-        tile_size = data.shape if tile_size == "data_shape" else tile_size
+        tile_size = _decode_tile_size(tile_size, data.shape)
         return ops.affine_dynamic_quantize_op(  # type: ignore[no-any-return]
             data, tile_size, num_bits, symmetric, allow_one_sided, quant_dtype
         )
@@ -161,7 +171,7 @@ class AffineDequantizeFn(torch.autograd.Function):
         tile_size: torch.Size | Literal["data_shape"],
         dtype: torch.dtype | None,
     ) -> torch.Tensor:
-        tile_size = data.shape if tile_size == "data_shape" else tile_size
+        tile_size = _decode_tile_size(tile_size, data.shape)
         return ops.affine_dequantize_op(  # type: ignore[no-any-return]
             data, scale, tile_size, offset, dtype
         )
@@ -189,7 +199,7 @@ class AffineStaticQdqFn(torch.autograd.Function):
     ) -> torch.Tensor:
         quant_dtype = quantized_dtype or data.dtype
         ctx.save_for_backward(data, scale, offset)
-        tile_size = data.shape if tile_size == "data_shape" else tile_size
+        tile_size = _decode_tile_size(tile_size, data.shape)
         ctx.tile_size = tile_size
         ctx.num_bits = num_bits
         return ops.affine_static_qdq_op(data, scale, tile_size, num_bits, quant_dtype, offset)  # type: ignore[no-any-return]
@@ -209,3 +219,30 @@ class AffineStaticQdqFn(torch.autograd.Function):
         data_grad, scale_grad, offset_grad_ = grads
         offset_grad = offset_grad_ if offset is not None else None
         return (data_grad, scale_grad, offset_grad, None, None, None)
+
+
+def _encode_tile_size(
+    tile_size: torch.Size | Literal["data_shape"], data_shape: torch.Size
+) -> torch.Size | Literal["data_shape"]:
+    """Replace tile dimensions that span the whole data dimension by -1 (full-dim).
+
+    When dynamo compiles with dynamic shapes, `tile_size` contains symbolic sizes
+    (e.g., `(s0, s1, 1)`).
+
+    Dynamo (torch<2.11) can not pass these as non-tensor arguments to
+    `autograd.Function.apply`. Dimensions that cover the data dimension are the
+    ones that are symbolic, so they are encoded as a constant and recovered from
+    the data shape in `_decode_tile_size`.
+    """
+    if isinstance(tile_size, str):
+        return tile_size
+    return torch.Size(-1 if tile == dim else tile for tile, dim in zip(tile_size, data_shape))
+
+
+def _decode_tile_size(
+    tile_size: torch.Size | Literal["data_shape"], data_shape: torch.Size
+) -> torch.Size:
+    """Inverse of `_encode_tile_size`."""
+    if isinstance(tile_size, str):
+        return data_shape
+    return torch.Size(dim if tile == -1 else tile for tile, dim in zip(tile_size, data_shape))

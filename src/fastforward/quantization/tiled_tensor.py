@@ -1,10 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
-import itertools
 
 from typing import (
-    Iterable,
     Literal,
     Sequence,
     TypeVar,
@@ -46,14 +44,17 @@ T = TypeVar("T")
 
 
 @overload
-def _interleave(seq1: Sequence[T], seq2: Sequence[T]) -> Iterable[T]: ...
+def _interleave(seq1: Sequence[T], seq2: Sequence[T]) -> list[T]: ...
 
 
 @overload
-def _interleave(seq1: Sequence[T], seq2: T) -> Iterable[T]: ...
+def _interleave(seq1: Sequence[T], seq2: T) -> list[T]: ...
 
 
-def _interleave(seq1: Sequence[T], seq2: Sequence[T] | T) -> Iterable[T]:
+def _interleave(seq1: Sequence[T], seq2: Sequence[T] | T) -> list[T]:
+    # Implemented without generators/`itertools.cycle` so that dynamo (torch<=2.8)
+    # can inline it (it fails on `next()` over the cycled list).
+
     left = list(seq1)
     if not isinstance(seq2, Sequence):
         right = [seq2]
@@ -63,9 +64,13 @@ def _interleave(seq1: Sequence[T], seq2: Sequence[T] | T) -> Iterable[T]:
     if len(left) == 1 and len(right) > 1:
         left = left * len(right)
 
-    for a, b in zip(left, itertools.cycle(right)):
-        yield a
-        yield b
+    result: list[T] = []
+    if not right:
+        return result
+    for i, a in enumerate(left):
+        result.append(a)
+        result.append(right[i % len(right)])
+    return result
 
 
 def tiles_to_rows(data: torch.Tensor, tile_size: SizeT | Literal["data_shape"]) -> torch.Tensor:
@@ -139,6 +144,6 @@ def rows_to_tiles(
     ndims = len(tiled_intermediate_shape)
     permutation = list(range(0, ndims, 2)) + list(range(1, ndims, 2))
     tiled_shape = [tiled_intermediate_shape[i] for i in permutation]
-    reverse_permutation = list(_interleave(range(0, ndims // 2), range(ndims // 2, ndims)))
+    reverse_permutation = _interleave(range(0, ndims // 2), range(ndims // 2, ndims))
     data = tiled_data.reshape(tiled_shape).permute(reverse_permutation)
     return data.reshape(data_size)

@@ -41,3 +41,22 @@ def test_tiles_to_rows_and_rows_to_tiles() -> None:
 
     with pytest.raises(ValueError):
         tiled_tensor.rows_to_tiles(row_representation[:, :-1], input.shape, (2, 2, 2))
+
+
+@pytest.mark.parametrize(
+    "seq1,seq2,expected",
+    [
+        ([1, 2], [3, 4], [1, 3, 2, 4]),
+        ([1, 2, 3], 0, [1, 0, 2, 0, 3, 0]),
+        ([1], [3, 4], [1, 3, 1, 4]),
+        ([1, 2, 3, 4], [5, 6], [1, 5, 2, 6, 3, 5, 4, 6]),
+        ([], [], []),
+    ],
+)
+def test_interleave(seq1: list[int], seq2: list[int] | int, expected: list[int]) -> None:
+    # GIVEN two sequences (or a sequence and a scalar)
+    # WHEN they are interleaved
+    actual = list(tiled_tensor._interleave(seq1, seq2))
+
+    # THEN the elements alternate, the second sequence repeating cyclically
+    assert actual == expected

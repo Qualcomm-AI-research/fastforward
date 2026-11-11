@@ -42,8 +42,13 @@ def _wrap(func: Callable[_P, _R]) -> Callable[_P, _R]:
 
     @functools.wraps(func)
     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        # Store arguments (excluding self/cls)
-        fn_args = copy.deepcopy(tuple((args[1:], kwargs)))
+        if torch.compiler.is_compiling():
+            # Dynamo (torch<=2.12) can not trace `copy.deepcopy`; store a shallow
+            # copy instead so objects created in a compiled region stay serializable.
+            fn_args = tuple((tuple(args[1:]), dict(kwargs)))
+        else:
+            # Store arguments (excluding self/cls)
+            fn_args = copy.deepcopy(tuple((args[1:], kwargs)))
         fn_name = func.__name__.replace("__", "")
         result = func(*args, **kwargs)
         setattr(args[0], f"__{fn_name}args_ex__", fn_args)
