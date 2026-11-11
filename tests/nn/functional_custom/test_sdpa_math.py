@@ -227,6 +227,27 @@ def test_unquantized_sdpa_upcast_disabled_imply_small_error(
     assert torch.allclose(out_torch, out_ff, atol=1e-2)
 
 
+def test_sdpa_upcast_restores_the_previous_dtype() -> None:
+    # GIVEN the default upcast dtype and an upcast context that is entered more than once
+    default = fastforward.sdpa_upcast.dtype
+    upcast = fastforward.sdpa_upcast(torch.float64)
+    seen: list[torch.dtype | None] = []
+
+    # WHEN the context is re-entered while nested in another upcast context
+    with upcast:
+        seen.append(fastforward.sdpa_upcast.dtype)
+        with fastforward.sdpa_upcast(None):
+            seen.append(fastforward.sdpa_upcast.dtype)
+            with upcast:
+                seen.append(fastforward.sdpa_upcast.dtype)
+            seen.append(fastforward.sdpa_upcast.dtype)
+        seen.append(fastforward.sdpa_upcast.dtype)
+
+    # THEN every exit restores the dtype that was active when the context was entered
+    assert seen == [torch.float64, None, torch.float64, None, torch.float64]
+    assert fastforward.sdpa_upcast.dtype == default
+
+
 # ------------------------------------------------------------------------------
 # STRICTLY QUANTIZED TESTS
 
@@ -438,10 +459,13 @@ def _attention_results(
     groups: int,
     use_attn_mask: bool | str,
     train: bool,
+    dtype: torch.dtype = torch.float32,
 ) -> tuple[torch.Tensor, ...]:
     """Return the output of `attention` and, in training, the query, key and value gradients."""
     torch.manual_seed(0)
-    q, k, v, attn_mask, is_causal = _make_attn_inputs("self_attn", groups, use_attn_mask, "cpu")
+    q, k, v, attn_mask, is_causal = _make_attn_inputs(
+        "self_attn", groups, use_attn_mask, "cpu", dtype
+    )
     kwargs: dict[str, Any] = {"is_causal": is_causal, "enable_gqa": groups > 1}
     if not train:
         with torch.no_grad():
@@ -525,3 +549,46 @@ def test_compiled_quantized_attn_matches_eager_in_qdq_mode(
     # THEN compilation succeeds without graph breaks and the results match eager
     for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
         assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+@pytest.mark.parametrize("train", [False, True], ids=lambda t: "train" if t else "inference")
+@pytest.mark.parametrize("in_compiled_region", [False, True], ids=["outside", "inside"])
+@pytest.mark.parametrize("upcast", [True, None], ids=lambda u: f"upcast={u}")
+def test_compiled_attn_matches_eager_for_half_precision_inputs(
+    upcast: bool | None, in_compiled_region: bool, train: bool
+) -> None:
+    # GIVEN the eager output (and gradients) of the MATH kernel over bfloat16 inputs,
+    #       which are upcast unless upcasting is disabled
+    torch._dynamo.reset()
+
+    def attention(
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        attn_mask: torch.Tensor | None,
+        **kwargs: Any,
+    ) -> torch.Tensor:
+        with fastforward.sdpa_upcast(upcast):
+            return _attention(q, k, v, attn_mask, **kwargs)
+
+    def results(attention: Callable[..., torch.Tensor]) -> tuple[torch.Tensor, ...]:
+        return _attention_results(attention, 1, "float", train, torch.bfloat16)
+
+    expected = results(attention)
+
+    # WHEN the same attention is compiled into a single graph, with the upcast context
+    #       entered either inside or outside the compiled region
+    if in_compiled_region:
+        actual = results(torch.compile(attention, backend="aot_eager", fullgraph=True))
+    else:
+        compiled = torch.compile(_attention, backend="aot_eager", fullgraph=True)
+        with fastforward.sdpa_upcast(upcast):
+            actual = results(compiled)
+
+    # THEN compilation succeeds without graph breaks, the results match eager and the
+    #      default upcast dtype is restored
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+    assert fastforward.sdpa_upcast.dtype == torch.float32

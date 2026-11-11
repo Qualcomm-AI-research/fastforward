@@ -591,11 +591,12 @@ def _prepare_sdpa_operands(
     # very sensitive to overflow, leading to inf values (NaNs later on).
     # So when float16 is used we move to float32 for this operation.
     orig_dtype = query.dtype
-    if sdpa_upcast.dtype is not None:
+    upcast_dtype = _SDPA_UPCAST_DTYPE
+    if upcast_dtype is not None:
         if query.dtype == torch.float16 or query.dtype == torch.bfloat16:
-            query = query.to(sdpa_upcast.dtype)
-            key = key.to(sdpa_upcast.dtype)
-            value = value.to(sdpa_upcast.dtype)
+            query = query.to(upcast_dtype)
+            key = key.to(upcast_dtype)
+            value = value.to(upcast_dtype)
 
     if enable_gqa:
         if strict_quantization:
@@ -686,8 +687,8 @@ def _quantized_safe_softmax(
     Reference:
         https://github.com/pytorch/pytorch/blob/a177d1852953f460cc0f0d412f311875f77dd4de/aten/src/ATen/native/transformers/attention.cpp#L672
     """
-    # Dequantize explicitly instead of disabling strict quantization through the 
-    # global flag: this enable the ability to compile this function when is run 
+    # Dequantize explicitly instead of disabling strict quantization through the
+    # global flag: this enable the ability to compile this function when is run
     # inside a gradient-checkpointed chunk, as torch.compile cannot trace changes
     # to the global state.
     if isinstance(t, QuantizedTensor):
@@ -768,6 +769,12 @@ def _torch_sdpa_fallback(
     )
 
 
+# The active upcast dtype of `sdpa_upcast`. A module global rather than a class attribute:
+# `torch.compile` can not trace `setattr` on a class, nor does it evaluate `classproperty`
+# when it is read from a class, so kernels read this global directly.
+_SDPA_UPCAST_DTYPE: torch.dtype | None = torch.float32
+
+
 class _SDPAUpcast:
     """Context Manager that can be used to select the upcast dtype for fastforward SDPA Math kernel.
 
@@ -779,10 +786,10 @@ class _SDPAUpcast:
     """
 
     __DEFAULT_UPCAST_DTYPE: torch.dtype = torch.float32
-    _DTYPE: torch.dtype | None = __DEFAULT_UPCAST_DTYPE
 
     def __init__(self, dtype: torch.dtype | bool | None):
-        self._orig_dtype = _SDPAUpcast._DTYPE
+        # A stack so the same instance can be re-entered, including nested.
+        self._orig_dtypes: list[torch.dtype | None] = []
         self._dtype: torch.dtype | None
 
         if isinstance(dtype, torch.dtype):
@@ -796,7 +803,9 @@ class _SDPAUpcast:
             self._dtype = None
 
     def __enter__(self) -> None:
-        _SDPAUpcast._DTYPE = self._dtype
+        global _SDPA_UPCAST_DTYPE
+        self._orig_dtypes.append(_SDPA_UPCAST_DTYPE)
+        _SDPA_UPCAST_DTYPE = self._dtype
 
     def __exit__(
         self,
@@ -804,11 +813,12 @@ class _SDPAUpcast:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        _SDPAUpcast._DTYPE = self._orig_dtype
+        global _SDPA_UPCAST_DTYPE
+        _SDPA_UPCAST_DTYPE = self._orig_dtypes.pop()
 
     @classproperty
     def dtype(cls) -> torch.dtype | None:
-        return cls._DTYPE
+        return _SDPA_UPCAST_DTYPE
 
     @classmethod
     def upcast(cls, t: torch.Tensor) -> torch.Tensor:
@@ -913,9 +923,8 @@ class _SDPAMemEfficient:
         for field in dataclasses.fields(orig):
             setattr(_MEM_EFFICIENT_CONFIG, field.name, getattr(orig, field.name))
 
-
-    # Read-only views of the active settings for eager code. Kernels should read 
-    # `_MEM_EFFICIENT_CONFIG` directly because `torch.compile` can not evaluate 
+    # Read-only views of the active settings for eager code. Kernels should read
+    # `_MEM_EFFICIENT_CONFIG` directly because `torch.compile` can not evaluate
     # class-level descriptors.
 
     @classproperty
