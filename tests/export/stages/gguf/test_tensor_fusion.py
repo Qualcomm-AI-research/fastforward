@@ -14,6 +14,7 @@ import torch
 
 from fastforward.export.stages.gguf import GGUF_Q4_0, GGUF_Q8_0, ArchAdapter, Fuse
 from fastforward.export.stages.gguf._extract import ExtractedTensor, _is_claimed
+from fastforward.export.stages.gguf._fusion import _resolve_target_name
 
 # Fuse ignores the source config.
 _CONFIG: Any = SimpleNamespace()
@@ -308,3 +309,14 @@ def test_fusion_propagates_quant_format() -> None:
     # THEN: the fused tensor carries the shared format.
     assert len(result) == 1
     assert result[0].quant_format is GGUF_Q4_0
+
+
+def test_target_name_back_references_read_whole_numbers() -> None:
+    # GIVEN: a target template referencing groups 10 and 1, and an unknown group 11.
+    groups = tuple("abcdefghij")
+
+    # WHEN: resolving it.
+    resolved = _resolve_target_name(r"x.\10.\1.\11", groups)
+
+    # THEN: \10 is group 10 (not group 1 followed by "0"); \11 is left as is.
+    assert resolved == r"x.j.a.\11"

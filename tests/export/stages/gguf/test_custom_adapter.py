@@ -24,7 +24,7 @@ import pytest
 import torch
 
 from fastforward.export.pipeline import ExportRequest, GgufLlamaCppOptions, export_with_pipeline
-from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter, Rename, Synthesize
+from fastforward.export.stages.gguf import GGUF_Q4_0, ArchAdapter, Rename, Split, Synthesize
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -270,3 +270,116 @@ def test_user_defined_arch_adapter_writes_extra_tensors(
     torch.testing.assert_close(
         torch.from_numpy(rope_freqs.data.copy()), torch.arange(hidden // 2, dtype=torch.float32)
     )
+
+
+class _ToyFusedAttn(torch.nn.Module):
+    def __init__(self, hidden: int) -> None:
+        super().__init__()
+        self.qkv = torch.nn.Linear(hidden, 3 * hidden, bias=True)
+
+
+class _ToyFusedBlock(torch.nn.Module):
+    def __init__(self, hidden: int) -> None:
+        super().__init__()
+        self.attn = _ToyFusedAttn(hidden)
+
+
+class _ToyFusedNet(torch.nn.Module):
+    def __init__(self, hidden: int, n_blocks: int) -> None:
+        super().__init__()
+        self.blocks = torch.nn.ModuleList([_ToyFusedBlock(hidden) for _ in range(n_blocks)])
+
+
+class _ToyFusedModel(ff.nn.QuantizedModule):
+    """A quantized model whose attention keeps Q, K and V in one fused projection."""
+
+    def __init__(self, hidden: int, n_blocks: int) -> None:
+        super().__init__()
+        self.net = _ToyFusedNet(hidden, n_blocks)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        for block in self.net.blocks:
+            hidden = cast(_ToyFusedBlock, block).attn.qkv(hidden)[..., : hidden.shape[-1]]
+        return hidden
+
+
+def _toy_split_name_map(hf_name: str) -> str | None:
+    """Map the split parts net.blocks.<i>.attn.<q|k|v>.<kind> to blk.<i>.attn_<q|k|v>.<kind>."""
+    match = re.fullmatch(r"net\.blocks\.(\d+)\.attn\.([qkv])\.(weight|bias)", hf_name)
+    if match is None:
+        return None
+    idx, slot, kind = match.groups()
+    return f"blk.{idx}.attn_{slot}.{kind}"
+
+
+@pytest.mark.slow
+def test_user_defined_arch_adapter_splits_fused_tensors(
+    tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
+    # GIVEN: a toy model with a quantized fused qkv projection and a float bias.
+    hidden, n_blocks = 32, 2
+    model = _ToyFusedModel(hidden, n_blocks)
+    _quantize_linears(model)
+    model.eval()
+    config = SimpleNamespace(
+        max_position_embeddings=128,
+        hidden_size=hidden,
+        num_hidden_layers=n_blocks,
+        intermediate_size=hidden,
+        num_attention_heads=4,
+        num_key_value_heads=4,
+        rms_norm_eps=1e-5,
+        vocab_size=8,
+    )
+
+    # GIVEN: an adapter that splits qkv into q, k and v before naming them.
+    adapter = ArchAdapter(
+        gguf_arch="toy",
+        tensor_rules=(
+            Split(
+                r"net\.blocks\.(\d+)\.attn\.qkv\.(weight|bias)",
+                (
+                    r"net.blocks.\1.attn.q.\2",
+                    r"net.blocks.\1.attn.k.\2",
+                    r"net.blocks.\1.attn.v.\2",
+                ),
+            ),
+            Rename(_toy_split_name_map),
+        ),
+        write_metadata=_toy_write_metadata,
+        tokenizer_model="gpt2",
+        tokenizer_pre=None,
+    )
+    options = GgufLlamaCppOptions(arch_adapter=adapter, quant_format=GGUF_Q4_0, model_config=config)
+
+    # WHEN: exporting through the registered gguf/llama_cpp pipeline.
+    artifacts = export_with_pipeline(
+        ExportRequest(
+            model=model,
+            sample_inputs=[((torch.randn(1, hidden),), {})],
+            output_dir=tmp_path,
+            model_name="toy-split",
+            target="gguf",
+            format="llama_cpp",
+            options=options.to_context(),
+        )
+    )
+
+    # THEN: every layer has separate Q4_0 q, k and v weights of hidden x hidden,
+    # and no fused tensor is written.
+    reader = gguf.GGUFReader(str(artifacts.stage_outputs["write_gguf"]))
+    tensors = {tensor.name: tensor for tensor in reader.tensors}
+    assert len(tensors) == 6 * n_blocks
+    for layer in range(n_blocks):
+        qkv_bias = cast(_ToyFusedBlock, model.net.blocks[layer]).attn.qkv.bias.detach()
+        for index, slot in enumerate("qkv"):
+            weight = tensors[f"blk.{layer}.attn_{slot}.weight"]
+            assert weight.tensor_type == gguf.GGMLQuantizationType.Q4_0
+            assert list(weight.shape) == [hidden, hidden]
+
+            # THEN: the float bias parts hold the matching slices of the fused bias.
+            bias = tensors[f"blk.{layer}.attn_{slot}.bias"]
+            assert bias.tensor_type == gguf.GGMLQuantizationType.F32
+            torch.testing.assert_close(
+                torch.from_numpy(bias.data.copy()), qkv_bias[hidden * index : hidden * (index + 1)]
+            )

@@ -12,14 +12,15 @@ tensors the model does not carry:
 - :class:`Rename` assigns GGUF names (1 -> 1).
 - :class:`Transform` rewrites tensors matching a pattern (1 -> 1).
 - :class:`Fuse` concatenates groups of tensors (N -> 1).
+- :class:`Split` cuts tensors into consecutive parts (1 -> N).
 - :class:`Drop` removes tensors matching a pattern (1 -> 0).
 - :class:`Synthesize` adds config-derived tensors (0 -> N).
 
 Every pattern is matched against :attr:`ExtractedTensor.hf_name`; :class:`Rename`
 only sets ``gguf_name``, so rules placed after it still see HuggingFace names.
-Tensors produced by :class:`Fuse` take the fusion's ``target_name`` as their
-``hf_name`` and need a :class:`Rename` placed after the fusion. After the last
-rule, tensors without a GGUF name are dropped with a warning.
+Tensors produced by :class:`Fuse` and :class:`Split` take the rule's target
+names as their ``hf_name`` and need a :class:`Rename` placed after the rule.
+After the last rule, tensors without a GGUF name are dropped with a warning.
 
 For rewrites the built-in rules cannot express, subclass :class:`TensorRule`
 and implement :meth:`TensorRule.apply` (and :meth:`TensorRule.claims` if the
@@ -34,6 +35,14 @@ rule consumes model parameters no other rule claims)::
                 r"model\.layers\.(\d+)\.self_attn\.v_proj\.weight",
             ),
             target_name=r"model.layers.\1.self_attn.qkv_proj.weight",
+        ),
+        Split(
+            pattern=r"visual\.blocks\.(\d+)\.attn\.qkv\.(weight|bias)",
+            targets=(
+                r"visual.blocks.\1.attn.q.\2",
+                r"visual.blocks.\1.attn.k.\2",
+                r"visual.blocks.\1.attn.v.\2",
+            ),
         ),
         Rename(my_name_map),
         Synthesize(my_extra_tensors),
@@ -58,12 +67,14 @@ from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
 from fastforward.export.stages.gguf._extract import ExtractedTensor
 from fastforward.export.stages.gguf._fusion import fuse_matching
+from fastforward.export.stages.gguf._split import split_matching
 
 logger = logging.getLogger(__name__)
 
 _NameMapT: TypeAlias = Callable[[str], str | None]
 _ConditionT: TypeAlias = Callable[[GgufSourceConfig], bool]
 _SynthesizeT: TypeAlias = Callable[[GgufSourceConfig], dict[str, torch.Tensor]]
+_SplitSizesT: TypeAlias = Callable[[GgufSourceConfig], Sequence[int]]
 
 TensorTransformT: TypeAlias = Callable[[ExtractedTensor, GgufSourceConfig], ExtractedTensor]
 """A 1 -> 1 tensor rewrite used by :class:`Transform`.
@@ -208,6 +219,79 @@ class Fuse(TensorRule):
     @override
     def claims(self, hf_name: str) -> bool:
         return any(re.fullmatch(pattern, hf_name) for pattern in self.sources)
+
+
+@dataclass(frozen=True, slots=True)
+class Split(TensorRule):
+    r"""Cut every tensor whose ``hf_name`` fully matches ``pattern`` into parts.
+
+    The counterpart of :class:`Fuse`: the tensor is split along ``axis`` into
+    ``len(targets)`` consecutive parts, which replace it at its position in the
+    tensor list. ``targets`` may use back-references (``\1``, ``\2``, ...) to
+    the pattern's capture groups, so one rule covers every layer.
+
+    Float tensors can be split along any axis. Quantized tensors can only be
+    split along axis 0: whole rows move with their scales and offsets, so every
+    quantization block stays intact.
+
+    Example — split a fused vision QKV projection (weight and bias) per layer::
+
+        Split(
+            pattern=r"visual\.blocks\.(\d+)\.attn\.qkv\.(weight|bias)",
+            targets=(
+                r"visual.blocks.\1.attn.q.\2",
+                r"visual.blocks.\1.attn.k.\2",
+                r"visual.blocks.\1.attn.v.\2",
+            ),
+        )
+
+    Example — split a Conv3D patch embedding ``[C, 3, 2, P, P]`` along time
+    into two Conv2D kernels ``[C, 3, P, P]``::
+
+        Split(
+            pattern=r"visual\.patch_embed\.proj\.weight",
+            targets=(r"visual.patch_embed.proj.weight.0", r"visual.patch_embed.proj.weight.1"),
+            axis=2,
+            squeeze=True,
+        )
+
+    Attributes:
+        pattern: Regex matched (``re.fullmatch``) against ``hf_name``. Matching
+            parameters are claimed for extraction.
+        targets: ``hf_name`` of every part, in order along ``axis``, with
+            back-references substituted from the captured groups. At least two.
+        axis: The axis to split along. Must be 0 for quantized tensors.
+        sizes: Optional function of the source config returning the size of
+            every part along ``axis``, for unequal splits. ``None`` splits into
+            equal parts. Only called when a tensor matches ``pattern``, so it
+            may read config fields that only exist then (e.g. a vision config).
+        squeeze: Drop ``axis`` from every part; each part must then have size
+            1 along it. Float tensors only.
+    """
+
+    pattern: str
+    targets: tuple[str, ...]
+    axis: int = 0
+    sizes: _SplitSizesT | None = None
+    squeeze: bool = False
+
+    def __post_init__(self) -> None:
+        if len(self.targets) < 2:
+            msg = f"Split of '{self.pattern}' needs at least two targets, got {len(self.targets)}"
+            raise ExportError(msg)
+
+    @override
+    def apply(
+        self, tensors: list[ExtractedTensor], config: GgufSourceConfig
+    ) -> list[ExtractedTensor]:
+        if not any(self.claims(tensor.hf_name) for tensor in tensors):
+            return list(tensors)
+        sizes = None if self.sizes is None else self.sizes(config)
+        return split_matching(tensors, self.pattern, self.targets, self.axis, sizes, self.squeeze)
+
+    @override
+    def claims(self, hf_name: str) -> bool:
+        return re.fullmatch(self.pattern, hf_name) is not None
 
 
 @dataclass(frozen=True, slots=True)

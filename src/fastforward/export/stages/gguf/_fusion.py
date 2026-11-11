@@ -16,13 +16,22 @@ import torch
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._extract import ExtractedTensor
 
+_BACK_REFERENCE_RE = re.compile(r"\\(\d+)")
+
 
 def _resolve_target_name(target_template: str, groups: tuple[str, ...]) -> str:
-    """Substitute back-references in a target name template."""
-    result = target_template
-    for i, group_value in enumerate(groups, start=1):
-        result = result.replace(f"\\{i}", group_value)
-    return result
+    r"""Substitute back-references (``\1``, ``\2``, ...) in a target name template.
+
+    Each reference is read as a whole number, so ``\10`` is group 10, not group
+    1 followed by ``0``. References to groups the pattern does not have are
+    left as they are.
+    """
+
+    def substitute(match: re.Match[str]) -> str:
+        index = int(match.group(1))
+        return groups[index - 1] if 1 <= index <= len(groups) else match.group(0)
+
+    return _BACK_REFERENCE_RE.sub(substitute, target_template)
 
 
 def _match_sources(
