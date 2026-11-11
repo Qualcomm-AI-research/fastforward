@@ -1,6 +1,7 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+import dataclasses
 import logging
 import math
 
@@ -16,6 +17,7 @@ from fastforward.flags import get_sdpa_torch_fallback_allowed, get_strict_quanti
 from fastforward.flags import strict_quantization as strict_quantization_ctx
 from fastforward.nn import functional as functional
 from fastforward.nn.quantizer import Quantizer, QuantizerStub
+from fastforward.quantized_tensor import QuantizedTensor
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ def scaled_dot_product_attention(
 
 def _math_sdpa_predicate(*_args: Any, **_kwargs: Any) -> bool:
     """Select the MATH kernel unless the memory-efficient kernel is enabled."""
-    return not sdpa_mem_efficient.enabled
+    return not _MEM_EFFICIENT_CONFIG.enabled
 
 
 @register("scaled_dot_product_attention", Predicate(_math_sdpa_predicate))
@@ -261,7 +263,7 @@ def scaled_dot_product_attention_math(
 
 def _mem_efficient_sdpa_predicate(*_args: Any, **_kwargs: Any) -> bool:
     """Select the memory-efficient kernel when it is enabled."""
-    return bool(sdpa_mem_efficient.enabled)
+    return bool(_MEM_EFFICIENT_CONFIG.enabled)
 
 
 @register("scaled_dot_product_attention", Predicate(_mem_efficient_sdpa_predicate))
@@ -322,8 +324,8 @@ def scaled_dot_product_attention_mem_efficient(
     has_heads = bool(head_sizes)
     H_q = max(head_sizes, default=1)
 
-    query_chunk_size = sdpa_mem_efficient.query_chunk_size or L
-    head_chunk_size = sdpa_mem_efficient.head_chunk_size or H_q
+    query_chunk_size = _MEM_EFFICIENT_CONFIG.query_chunk_size or L
+    head_chunk_size = _MEM_EFFICIENT_CONFIG.head_chunk_size or H_q
 
     if L == 0 or (L <= query_chunk_size and H_q <= head_chunk_size):
         # A single chunk, or no query positions to chunk: delegate the math kernel.
@@ -553,7 +555,7 @@ def _use_gradient_checkpointing(
     range estimator observes the chunk a second time. Running min/max estimation is
     unaffected, since it is idempotent, but estimators that accumulate state may not be.
     """
-    if not sdpa_mem_efficient.checkpoint or not torch.is_grad_enabled():
+    if not _MEM_EFFICIENT_CONFIG.checkpoint or not torch.is_grad_enabled():
         return False
     if any(tensor is not None and tensor.requires_grad for tensor in tensors):
         return True
@@ -684,23 +686,28 @@ def _quantized_safe_softmax(
     Reference:
         https://github.com/pytorch/pytorch/blob/a177d1852953f460cc0f0d412f311875f77dd4de/aten/src/ATen/native/transformers/attention.cpp#L672
     """
-    with strict_quantization_ctx(False):
-        out = functional.softmax(t, dim, dtype)
-        if neg_inf == float("-inf"):
-            masked = t.isneginf()
-        else:
-            masked = t <= neg_inf
-        masked_rows = torch.all(masked, dim=dim, keepdim=True)
-        zero = out.new_tensor(0.0)
-        if out.requires_grad:
-            # `torch.where` does not accept `out=` when it has to be differentiated.
-            out = torch.where(condition=masked_rows, input=zero, other=out)
-        else:
-            # Zero the fully masked rows in place to avoid allocating a second
-            # tensor of the size of the attention scores.
-            torch.where(condition=masked_rows, input=zero, other=out, out=out)
-        if output_quantizer:
-            out = output_quantizer(out)
+    # Dequantize explicitly instead of disabling strict quantization through the 
+    # global flag: this enable the ability to compile this function when is run 
+    # inside a gradient-checkpointed chunk, as torch.compile cannot trace changes
+    # to the global state.
+    if isinstance(t, QuantizedTensor):
+        t = t.dequantize()
+    out = functional.softmax(t, dim, dtype, strict_quantization=False)
+    if neg_inf == float("-inf"):
+        masked = t.isneginf()
+    else:
+        masked = t <= neg_inf
+    masked_rows = torch.all(masked, dim=dim, keepdim=True)
+    zero = out.new_tensor(0.0)
+    if out.requires_grad:
+        # `torch.where` does not accept `out=` when it has to be differentiated.
+        out = torch.where(condition=masked_rows, input=zero, other=out)
+    else:
+        # Zero the fully masked rows in place to avoid allocating a second
+        # tensor of the size of the attention scores.
+        torch.where(condition=masked_rows, input=zero, other=out, out=out)
+    if output_quantizer:
+        out = output_quantizer(out)
     return out
 
 
@@ -813,6 +820,25 @@ class _SDPAUpcast:
 sdpa_upcast = _SDPAUpcast
 
 
+@dataclasses.dataclass
+class _MemEfficientConfig:
+    """Settings of the memory-efficient SDPA kernel, see `sdpa_mem_efficient`."""
+
+    enabled: bool = False
+    query_chunk_size: int | None = None
+    head_chunk_size: int | None = 1
+    checkpoint: bool = True
+    gradient_query_chunks: int | None = None
+    gradient_row_sampling: bool = False
+
+
+# The active settings. This is deliberately a plain module global holding a dataclass:
+# `torch.compile` traces (and guards on) reads of its attributes, whereas it does not evaluate
+# custom descriptors such as `classproperty` when they are read from a class. The instance is
+# only ever mutated in place, never rebound, so every reader sees the same object.
+_MEM_EFFICIENT_CONFIG = _MemEfficientConfig()
+
+
 class _SDPAMemEfficient:
     """Context manager that selects the memory-efficient FastForward SDPA kernel.
 
@@ -843,14 +869,6 @@ class _SDPAMemEfficient:
             raises an error. Keep checkpointing enabled for that case.
     """
 
-    __DEFAULT_QUERY_CHUNK_SIZE: int | None = None
-    __DEFAULT_HEAD_CHUNK_SIZE: int | None = 1
-
-    _ENABLED: bool = False
-    _QUERY_CHUNK_SIZE: int | None = __DEFAULT_QUERY_CHUNK_SIZE
-    _HEAD_CHUNK_SIZE: int | None = __DEFAULT_HEAD_CHUNK_SIZE
-    _CHECKPOINT: bool = True
-
     def __init__(
         self,
         enabled: bool = True,
@@ -871,23 +889,18 @@ class _SDPAMemEfficient:
         self._head_chunk_size = head_chunk_size
         self._checkpoint = checkpoint
         # A stack so the same instance can be re-entered, including nested.
-        self._orig_settings: list[tuple[bool, int | None, int | None, bool]] = []
+        self._orig_settings: list[_MemEfficientConfig] = []
 
     def __enter__(self) -> None:
-        cls = _SDPAMemEfficient
-        self._orig_settings.append((
-            cls._ENABLED,
-            cls._QUERY_CHUNK_SIZE,
-            cls._HEAD_CHUNK_SIZE,
-            cls._CHECKPOINT,
-        ))
-        cls._ENABLED = self._enabled
+        global _MEM_EFFICIENT_CONFIG
+        self._orig_settings.append(dataclasses.replace(_MEM_EFFICIENT_CONFIG))
+        _MEM_EFFICIENT_CONFIG.enabled = self._enabled
         if self._query_chunk_size is not None:
-            cls._QUERY_CHUNK_SIZE = self._query_chunk_size
+            _MEM_EFFICIENT_CONFIG.query_chunk_size = self._query_chunk_size
         if self._head_chunk_size is not None:
-            cls._HEAD_CHUNK_SIZE = self._head_chunk_size
+            _MEM_EFFICIENT_CONFIG.head_chunk_size = self._head_chunk_size
         if self._checkpoint is not None:
-            cls._CHECKPOINT = self._checkpoint
+            _MEM_EFFICIENT_CONFIG.checkpoint = self._checkpoint
 
     def __exit__(
         self,
@@ -895,26 +908,31 @@ class _SDPAMemEfficient:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        cls = _SDPAMemEfficient
-        cls._ENABLED, cls._QUERY_CHUNK_SIZE, cls._HEAD_CHUNK_SIZE, cls._CHECKPOINT = (
-            self._orig_settings.pop()
-        )
+        global _MEM_EFFICIENT_CONFIG
+        orig = self._orig_settings.pop()
+        for field in dataclasses.fields(orig):
+            setattr(_MEM_EFFICIENT_CONFIG, field.name, getattr(orig, field.name))
+
+
+    # Read-only views of the active settings for eager code. Kernels should read 
+    # `_MEM_EFFICIENT_CONFIG` directly because `torch.compile` can not evaluate 
+    # class-level descriptors.
 
     @classproperty
     def enabled(cls) -> bool:
-        return cls._ENABLED
+        return _MEM_EFFICIENT_CONFIG.enabled
 
     @classproperty
     def query_chunk_size(cls) -> int | None:
-        return cls._QUERY_CHUNK_SIZE
+        return _MEM_EFFICIENT_CONFIG.query_chunk_size
 
     @classproperty
     def head_chunk_size(cls) -> int | None:
-        return cls._HEAD_CHUNK_SIZE
+        return _MEM_EFFICIENT_CONFIG.head_chunk_size
 
     @classproperty
     def checkpoint(cls) -> bool:
-        return cls._CHECKPOINT
+        return _MEM_EFFICIENT_CONFIG.checkpoint
 
 
 sdpa_mem_efficient = _SDPAMemEfficient

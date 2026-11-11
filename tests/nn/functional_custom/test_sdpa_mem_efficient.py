@@ -970,6 +970,162 @@ def _linear_quantizer(granularity: str = "per_tensor") -> fastforward.nn.LinearQ
 
 
 # ------------------------------------------------------------------------------
+# TORCH.COMPILE TESTS
+# ------------------------------------------------------------------------------
+
+# Importing torch._inductor on torch 2.11+ emits the torch.jit.script_method DeprecationWarning.
+_IGNORE_SCRIPT_METHOD_DEPRECATION = pytest.mark.filterwarnings(
+    "ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning"
+)
+
+# The inputs of `_attention_inputs` have 4 heads and 8 query positions.
+_COMPILE_SETTINGS = [
+    pytest.param({"head_chunk_size": 100}, id="single_chunk"),
+    pytest.param({"query_chunk_size": 3, "head_chunk_size": 100}, id="query_chunks"),
+    pytest.param({"head_chunk_size": 1}, id="head_chunks"),
+    pytest.param({"query_chunk_size": 3, "head_chunk_size": 3}, id="query_and_head_chunks"),
+    pytest.param(
+        {"query_chunk_size": 3, "head_chunk_size": 3, "checkpoint": False},
+        id="query_and_head_chunks-no_checkpoint",
+    ),
+]
+
+
+def _attention_inputs() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    torch.manual_seed(0)
+    q, k, v, _ = _make_sdpa_input_tensors(N=2, H=4, S=6, L=8, E=4)
+    return q, k, v
+
+
+def _compiled_attention_results(
+    attention: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor], train: bool
+) -> tuple[torch.Tensor, ...]:
+    """Return the output of `attention` and, in training, the query, key and value gradients."""
+    q, k, v = _attention_inputs()
+    if not train:
+        with torch.no_grad():
+            return (attention(q, k, v),)
+
+    q, k, v = (tensor.requires_grad_(True) for tensor in (q, k, v))
+    out = attention(q, k, v)
+    out.square().sum().backward()
+    assert q.grad is not None and k.grad is not None and v.grad is not None
+    return out.detach(), q.grad, k.grad, v.grad
+
+
+def _causal_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+    return FF.scaled_dot_product_attention(q, k, v, is_causal=True, strict_quantization=False)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+@pytest.mark.parametrize("settings", _COMPILE_SETTINGS)
+@pytest.mark.parametrize("train", [False, True], ids=lambda t: "train" if t else "inference")
+def test_compiled_kernel_matches_eager(settings: dict[str, Any], train: bool) -> None:
+    # GIVEN the eager output (and gradients) of the memory-efficient kernel
+    torch._dynamo.reset()
+    with sdpa_mem_efficient(**settings):
+        expected = _compiled_attention_results(_causal_attention, train)
+
+        # WHEN the same attention is compiled into a single graph, forward and backward
+        compiled = torch.compile(_causal_attention, backend="aot_eager", fullgraph=True)
+        actual = _compiled_attention_results(compiled, train)
+
+    # THEN compilation succeeds without graph breaks and the results match eager
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+# Torch 2.8 - 2.13 instantiate autograd.Function classes while dynamo traces them,
+# emitting a DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+@pytest.mark.parametrize("settings", _COMPILE_SETTINGS)
+@pytest.mark.parametrize("train", [False, True], ids=lambda t: "train" if t else "inference")
+def test_compiled_quantized_kernel_matches_eager_in_qdq_mode(
+    settings: dict[str, Any], train: bool
+) -> None:
+    # GIVEN a quantized SDPA whose ranges were estimated eagerly, run in qdq mode so
+    #       that quantizers return plain tensors, as `QuantizedTensor` cannot be compiled
+    torch._dynamo.reset()
+    qsdpa = _QuantizedSDPA(8)
+    kwargs: dict[str, Any] = {"is_causal": True, "strict_quantization": False, "neg_inf": -1000.0}
+    with torch.no_grad(), estimate_ranges(qsdpa, range_setting.running_minmax):
+        qsdpa(*_attention_inputs(), None, **kwargs)
+
+    def attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+        out: torch.Tensor = qsdpa(q, k, v, None, **kwargs)
+        return out
+
+    with fastforward.qdq_mode(True), sdpa_mem_efficient(**settings):
+        expected = _compiled_attention_results(attention, train)
+
+        # WHEN the same attention is compiled into a single graph, forward and backward
+        compiled = torch.compile(attention, backend="aot_eager", fullgraph=True)
+        actual = _compiled_attention_results(compiled, train)
+
+    # THEN compilation succeeds without graph breaks and the results match eager
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+def test_compiled_kernel_recompiles_when_settings_change() -> None:
+    # GIVEN an attention compiled into a single graph, and its eager results for
+    #       several kernel settings
+    torch._dynamo.reset()
+    counter = torch._dynamo.testing.CompileCounterWithBackend("aot_eager")
+    compiled = torch.compile(_causal_attention, backend=counter, fullgraph=True)
+    contexts = [
+        sdpa_mem_efficient(query_chunk_size=3),
+        sdpa_mem_efficient(query_chunk_size=2),
+        sdpa_mem_efficient(query_chunk_size=3),
+        sdpa_mem_efficient(False),
+    ]
+    expected = []
+    for context in contexts:
+        with context:
+            expected.append(_compiled_attention_results(_causal_attention, train=False))
+
+    # WHEN the compiled attention runs under each of them in turn
+    actual = []
+    for context in contexts:
+        with context:
+            actual.append(_compiled_attention_results(compiled, train=False))
+
+    # THEN every result matches eager, i.e. no graph is reused for different settings
+    for expected_results, actual_results in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_results[0], actual_results[0], atol=1e-6)
+
+    # AND a graph is compiled once per distinct setting and reused when it repeats
+    assert counter.frame_count == 3
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+def test_context_manager_can_be_entered_in_compiled_region() -> None:
+    # GIVEN an attention that selects the memory-efficient kernel itself
+    torch._dynamo.reset()
+    default_settings = _settings()
+
+    def attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+        with sdpa_mem_efficient(query_chunk_size=3, head_chunk_size=3):
+            return _causal_attention(q, k, v)
+
+    (expected,) = _compiled_attention_results(attention, train=False)
+
+    # WHEN it is compiled into a single graph and run
+    compiled = torch.compile(attention, backend="aot_eager", fullgraph=True)
+    (actual,) = _compiled_attention_results(compiled, train=False)
+
+    # THEN the result matches eager and the settings are restored afterwards
+    assert_max_abs_err(expected, actual, atol=1e-6)
+    assert _settings() == default_settings
+
+
+# ------------------------------------------------------------------------------
 # MEMORY TESTS
 # ------------------------------------------------------------------------------
 

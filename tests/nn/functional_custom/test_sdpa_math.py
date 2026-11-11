@@ -1,11 +1,14 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+from typing import Any, Callable
+
 import fastforward
 import pytest
 import torch
 
 from fastforward import estimate_ranges, range_setting
+from fastforward.nn import functional as FF
 from torch.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
@@ -419,3 +422,106 @@ def test_partially_quantized_attn(
     assert len(list(qsdpa.named_quantizers())) == 1
     _print_abs_max_err(out_ff, out_torch, tol)
     assert_max_abs_err(out_torch, out_ff, atol=tol)
+
+
+# ------------------------------------------------------------------------------
+# TORCH.COMPILE TESTS
+
+# Importing torch._inductor on torch 2.11+ emits the torch.jit.script_method DeprecationWarning.
+_IGNORE_SCRIPT_METHOD_DEPRECATION = pytest.mark.filterwarnings(
+    "ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning"
+)
+
+
+def _attention_results(
+    attention: Callable[..., torch.Tensor],
+    groups: int,
+    use_attn_mask: bool | str,
+    train: bool,
+) -> tuple[torch.Tensor, ...]:
+    """Return the output of `attention` and, in training, the query, key and value gradients."""
+    torch.manual_seed(0)
+    q, k, v, attn_mask, is_causal = _make_attn_inputs("self_attn", groups, use_attn_mask, "cpu")
+    kwargs: dict[str, Any] = {"is_causal": is_causal, "enable_gqa": groups > 1}
+    if not train:
+        with torch.no_grad():
+            return (attention(q, k, v, attn_mask, **kwargs),)
+
+    q, k, v = (tensor.requires_grad_(True) for tensor in (q, k, v))
+    out = attention(q, k, v, attn_mask, **kwargs)
+    out.square().sum().backward()
+    assert q.grad is not None and k.grad is not None and v.grad is not None
+    return out.detach(), q.grad, k.grad, v.grad
+
+
+def _attention(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    attn_mask: torch.Tensor | None,
+    **kwargs: Any,
+) -> torch.Tensor:
+    return FF.scaled_dot_product_attention(q, k, v, attn_mask, strict_quantization=False, **kwargs)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+@pytest.mark.parametrize("train", [False, True], ids=lambda t: "train" if t else "inference")
+@pytest.mark.parametrize("use_attn_mask", _ATTN_MASK_OPTS, ids=lambda mask: f"attn_mask={mask}")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
+def test_compiled_attn_matches_eager(groups: int, use_attn_mask: bool | str, train: bool) -> None:
+    # GIVEN the eager output (and gradients) of the MATH kernel, which is the one
+    #       selected by default
+    torch._dynamo.reset()
+    expected = _attention_results(_attention, groups, use_attn_mask, train)
+
+    # WHEN the same attention is compiled into a single graph, forward and backward
+    compiled = torch.compile(_attention, backend="aot_eager", fullgraph=True)
+    actual = _attention_results(compiled, groups, use_attn_mask, train)
+
+    # THEN compilation succeeds without graph breaks and the results match eager
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+# Torch 2.8 - 2.13 instantiate autograd.Function classes while dynamo traces them,
+# emitting a DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+@pytest.mark.parametrize("train", [False, True], ids=lambda t: "train" if t else "inference")
+@pytest.mark.parametrize("use_attn_mask", ["float", "causal"], ids=lambda m: f"attn_mask={m}")
+@pytest.mark.parametrize("groups", GROUP_ATTN_VALUES, ids=lambda g: f"gqa={g}" if g > 1 else "")
+def test_compiled_quantized_attn_matches_eager_in_qdq_mode(
+    groups: int, use_attn_mask: bool | str, train: bool
+) -> None:
+    # GIVEN a quantized SDPA whose ranges were estimated eagerly, run in qdq mode so
+    #       that quantizers return plain tensors, as `QuantizedTensor` cannot be compiled
+    torch._dynamo.reset()
+    qsdpa = _QuantizedSDPA(8)
+
+    def attention(
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        attn_mask: torch.Tensor | None,
+        **kwargs: Any,
+    ) -> torch.Tensor:
+        out: torch.Tensor = qsdpa(
+            q, k, v, attn_mask, strict_quantization=False, neg_inf=-1000.0, **kwargs
+        )
+        return out
+
+    with estimate_ranges(qsdpa, range_setting.running_minmax):
+        _attention_results(attention, groups, use_attn_mask, train=False)
+
+    with fastforward.qdq_mode(True):
+        expected = _attention_results(attention, groups, use_attn_mask, train)
+
+        # WHEN the same attention is compiled into a single graph, forward and backward
+        compiled = torch.compile(attention, backend="aot_eager", fullgraph=True)
+        actual = _attention_results(compiled, groups, use_attn_mask, train)
+
+    # THEN compilation succeeds without graph breaks and the results match eager
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
