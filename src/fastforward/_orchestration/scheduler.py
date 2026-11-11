@@ -405,7 +405,22 @@ class Timeline:
 
     def value(self, ref: _BaseRef, generator: FlowGenerator) -> Value:
         """Return the `Value` for `ref` under `generator`, at the current generation."""
-        generation = 0 if generator.pinned else self._generation[ref.unwrap_ref()]
+        base = ref.unwrap_ref()
+        if generator.pinned:
+            generation = 0
+        elif isinstance(base, FlowOpRef):
+            # The result of an op includes the mutations of the newest data it reads.
+            generation = max(
+                (
+                    self.value(read, leaf.generator).generation
+                    for plan in base.inputs
+                    for leaf in plan.leaves()
+                    for read in leaf.refs()
+                ),
+                default=0,
+            )
+        else:
+            generation = self._generation[base]
         return Value(ref=ref, generator=generator, generation=generation)
 
     def input_values(self, value: Value) -> Iterator[Value]:
@@ -419,7 +434,7 @@ class Timeline:
         base = value.ref.unwrap_ref()
         if value.generator.pinned:
             return self._mutated[base] != 0
-        return value.generation != self._generation[base]
+        return value.generation != self.value(value.ref, value.generator).generation
 
 
 class Scheduler:

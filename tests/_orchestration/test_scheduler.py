@@ -1506,6 +1506,43 @@ def test_specs_on_one_region_run_in_the_order_given(
         _assert_close(reads[model.fc1][0], [weights(batch) for batch in batches])
 
 
+@pytest.mark.parametrize("generator", [ORIGINAL, QUANTIZED], ids=["pinned", "live"])
+def test_flow_op_on_a_region_runs_again_only_if_a_spec_changed_the_data_it_reads(
+    two_linear: TwoLinear, generator: FlowGenerator
+) -> None:
+    # GIVEN two specs on fc1 that read one op over the outputs of fc1, and change the weights
+    model = two_linear.eval()
+    batches = [torch.randn(2, 8) for _ in range(3)]
+    original = copy.deepcopy(model.fc1)
+    changed = copy.deepcopy(model.fc1)
+    _add_one(changed)
+    calls: list[int] = []
+
+    def counted_mean_square(x: ActivationBundle) -> torch.Tensor:
+        calls.append(1)
+        return _mean_square(x)
+
+    op = FlowOp(counted_mean_square, x=OutputActivations(generator))
+    first: dict[torch.nn.Module, list[Any]] = {}
+    second: dict[torch.nn.Module, list[Any]] = {}
+    specs = [
+        SubgraphSpec(region=model.fc1, fn=_record_and_mutate(reads), flows=[op])
+        for reads in (first, second)
+    ]
+
+    # WHEN scheduling and running
+    _run(schedule(trace(model, batches[0]), specs), batches)
+
+    # THEN a pinned op runs once, and both specs read its result on the original weights
+    # THEN a live op runs again for the second spec, on the weights the first spec changed
+    with torch.no_grad():
+        before = _expected_mean_square([original(batch) for batch in batches])
+        after = _expected_mean_square([changed(batch) for batch in batches])
+    assert len(calls) == (1 if generator.pinned else 2)
+    torch.testing.assert_close(first[model.fc1][0], before)
+    torch.testing.assert_close(second[model.fc1][0], before if generator.pinned else after)
+
+
 def _plain_loss(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
     """Yield the same loss of the model outputs for every batch, wherever it sits in a chunk."""
     for (output,), _ in outputs:
