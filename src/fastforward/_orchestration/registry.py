@@ -29,6 +29,7 @@ from fastforward._orchestration.data_flow import (
 )
 from fastforward._orchestration.graph_module import Region, SubgraphSpec
 from fastforward.algorithms.adaround import adaround
+from fastforward.algorithms.adascale import adascale
 from fastforward.algorithms.gptq import gptq
 from fastforward.algorithms.hessian_calculation import (
     combine_hessians,
@@ -383,4 +384,10 @@ register(
             gradients=Gradient(sampled_nll, logits=ModelOutputs("original")),
         )
     ],
+)
+# Every decoder layer of a Hugging Face causal language model.
+register(
+    adascale,
+    mpath.query("model/layers/*"),
+    flows=[InputActivations("original"), InputActivations("quantized")],
 )
