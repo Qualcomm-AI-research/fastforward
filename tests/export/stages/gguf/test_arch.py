@@ -324,8 +324,23 @@ def test_metadata_writes_rope_theta_from_config(rope_fields: dict[str, Any]) -> 
         {"rope_parameters": {"rope_type": "default", "rope_theta": 500000.0}},
         {"rope_theta": 500000.0},
         {"rope_theta": 500000.0, "rope_scaling": None},
+        {
+            "rope_parameters": {
+                "type": "mrope",
+                "mrope_section": [16, 24, 24],
+                "rope_theta": 1e6,
+                "rope_type": "default",
+            }
+        },
+        {"rope_theta": 1e6, "rope_scaling": {"type": "mrope", "mrope_section": [16, 24, 24]}},
     ],
-    ids=["transformers-5-rope-parameters", "legacy-no-rope-scaling", "legacy-rope-scaling-none"],
+    ids=[
+        "transformers-5-rope-parameters",
+        "legacy-no-rope-scaling",
+        "legacy-rope-scaling-none",
+        "qwen2.5-vl-stale-legacy-type",
+        "legacy-mrope",
+    ],
 )
 def test_metadata_writes_no_rope_scaling_for_unscaled_rope(rope_fields: dict[str, Any]) -> None:
     # GIVEN: a config with unscaled RoPE.

@@ -153,8 +153,19 @@ def _rope_scaling(config: GgufSourceConfig) -> dict[str, Any]:
     return rope_parameters or getattr(config, "rope_scaling", None) or {}
 
 
+# Multimodal RoPE splits plain RoPE into sections without scaling it; Qwen2-VL
+# configs name it in the legacy ``type`` key. The sections are written separately.
+_ROPE_TYPE_ALIASES = {"mrope": "default"}
+
+
 def _rope_scaling_type(rope_scaling: dict[str, Any]) -> str:
-    return str(rope_scaling.get("type", rope_scaling.get("rope_type", "default")))
+    """Return the RoPE scaling type, preferring ``rope_type`` over the legacy ``type``.
+
+    transformers 5 sets ``rope_type`` on every config but can keep a stale
+    legacy ``type`` next to it (Qwen2.5-VL: ``type="mrope"``, ``rope_type="default"``).
+    """
+    rope_type = str(rope_scaling.get("rope_type", rope_scaling.get("type", "default")))
+    return _ROPE_TYPE_ALIASES.get(rope_type, rope_type)
 
 
 def llama3_rope_freqs(config: GgufSourceConfig) -> dict[str, torch.Tensor]:
