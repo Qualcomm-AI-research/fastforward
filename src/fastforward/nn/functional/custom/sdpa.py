@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 import dataclasses
+import functools
 import logging
 import math
 
@@ -398,6 +399,11 @@ def scaled_dot_product_attention_mem_efficient(
         orig_dtype=orig_dtype,
     )
 
+    # Within a region that is already being compiled, the chunk function is traced inline.
+    compile_chunks = _MEM_EFFICIENT_CONFIG.compile_chunks and not torch.compiler.is_compiling()
+    attention_for_query_chunk = (
+        _compiled_attention_for_query_chunk() if compile_chunks else _attention_for_query_chunk
+    )
     head_outputs: list[torch.Tensor] = []
     for h_start in range(0, H_q, head_chunk_size):
         h_stop = min(h_start + head_chunk_size, H_q)
@@ -413,18 +419,24 @@ def scaled_dot_product_attention_mem_efficient(
             mask_chunk = _slice_attn_mask(mask_heads, -2, c_start, c_stop)
 
             attn_args = (query_chunk, key_heads, value_heads, mask_chunk)
+            # The offset only matters for causal attention, other chunks share a constant. A
+            # compiled chunk function specializes on integer arguments, so it receives the
+            # offset as a tensor: one graph then serves every chunk start.
+            causal_diagonal: int | torch.Tensor = c_start if is_causal else 0
+            if is_causal and compile_chunks:
+                causal_diagonal = torch.tensor(c_start, device=query.device)
             if use_checkpoint:
                 attn_out = torch.utils.checkpoint.checkpoint(
-                    _attention_for_query_chunk,
+                    attention_for_query_chunk,
                     *attn_args,
                     use_reentrant=False,
-                    causal_diagonal=c_start,
+                    causal_diagonal=causal_diagonal,
                     **shared_kwargs,
                 )
             else:
-                attn_out = _attention_for_query_chunk(
+                attn_out = attention_for_query_chunk(
                     *attn_args,
-                    causal_diagonal=c_start,
+                    causal_diagonal=causal_diagonal,
                     **shared_kwargs,
                 )
             chunk_outputs.append(attn_out)
@@ -458,7 +470,7 @@ def _attention_for_query_chunk(
     *,
     S: int,
     is_causal: bool,
-    causal_diagonal: int,
+    causal_diagonal: int | torch.Tensor,
     dropout_p: float,
     neg_inf: float,
     attn_scores_quantizer: Quantizer | None,
@@ -520,6 +532,18 @@ def _attention_for_query_chunk(
     )
 
     return attn_out.to(orig_dtype)
+
+
+@functools.cache
+def _compiled_attention_for_query_chunk() -> Any:
+    """Return `_attention_for_query_chunk` compiled, for the `compile_chunks` setting.
+
+    Cached because creating the `torch.compile` wrapper has a cost on every attention call,
+    whereas the compiled graphs are shared by all wrappers of the same function.
+    """
+    # Static shapes: a chunk function sees few distinct shapes (full and last query chunk,
+    # self- and cross-attention keys), each compiled once and reused for every chunk.
+    return torch.compile(_attention_for_query_chunk, dynamic=False)
 
 
 def _slice_heads(tensor: torch.Tensor, start: int, stop: int) -> torch.Tensor:
@@ -635,12 +659,13 @@ def _get_quantized_attn_bias(
     *,
     neg_inf: float = float("-inf"),
     output_quantizer: Quantizer | None = None,
-    causal_diagonal: int = 0,
+    causal_diagonal: int | torch.Tensor = 0,
 ) -> torch.Tensor:
     """Build the additive attention bias for `L` target and `S` source positions.
 
     `causal_diagonal` is the offset of the `L` target positions within the full
     target sequence (non-zero only when the query is processed in chunks).
+    It may be a 0-dim tensor, which a compiled caller does not specialize on.
     """
     if attn_mask is not None and is_causal:
         # Raise the same error raised by torch in the same situation
@@ -654,7 +679,9 @@ def _get_quantized_attn_bias(
             attn_bias = attn_mask
 
     elif is_causal:
-        temp_mask = torch.ones(L, S, dtype=torch.bool, device=device).tril(diagonal=causal_diagonal)
+        # Equal to `ones(L, S).tril(causal_diagonal)`, but also for a tensor offset.
+        target_positions = torch.arange(L, device=device).unsqueeze(-1) + causal_diagonal
+        temp_mask = torch.arange(S, device=device) <= target_positions
         attn_bias = torch.zeros(L, S, dtype=dtype, device=device)
         attn_bias.masked_fill_(temp_mask.logical_not(), neg_inf)
         del temp_mask
@@ -838,8 +865,7 @@ class _MemEfficientConfig:
     query_chunk_size: int | None = None
     head_chunk_size: int | None = 1
     checkpoint: bool = True
-    gradient_query_chunks: int | None = None
-    gradient_row_sampling: bool = False
+    compile_chunks: bool = False
 
 
 # The active settings. This is deliberately a plain module global holding a dataclass:
@@ -877,6 +903,11 @@ class _SDPAMemEfficient:
             chunk inside an active `estimate_ranges` context is not supported: each
             chunk updates the shared quantization parameters, so the backward pass
             raises an error. Keep checkpointing enabled for that case.
+        compile_chunks: `torch.compile` the attention of one (head group, query chunk) on its
+            own, and keep the chunk loop in Python. The graph is compiled once per distinct
+            chunk shape and reused for every chunk, instead of unrolling all chunks into the
+            graph of a compiled caller. Unused within a region that is already being compiled.
+            If None, the current value is kept (default False).
     """
 
     def __init__(
@@ -886,6 +917,7 @@ class _SDPAMemEfficient:
         query_chunk_size: int | None = None,
         head_chunk_size: int | None = None,
         checkpoint: bool | None = None,
+        compile_chunks: bool | None = None,
     ) -> None:
         if query_chunk_size is not None and query_chunk_size < 1:
             msg = f"`query_chunk_size` must be a positive integer, but got {query_chunk_size}"
@@ -898,6 +930,7 @@ class _SDPAMemEfficient:
         self._query_chunk_size = query_chunk_size
         self._head_chunk_size = head_chunk_size
         self._checkpoint = checkpoint
+        self._compile_chunks = compile_chunks
         # A stack so the same instance can be re-entered, including nested.
         self._orig_settings: list[_MemEfficientConfig] = []
 
@@ -911,6 +944,8 @@ class _SDPAMemEfficient:
             _MEM_EFFICIENT_CONFIG.head_chunk_size = self._head_chunk_size
         if self._checkpoint is not None:
             _MEM_EFFICIENT_CONFIG.checkpoint = self._checkpoint
+        if self._compile_chunks is not None:
+            _MEM_EFFICIENT_CONFIG.compile_chunks = self._compile_chunks
 
     def __exit__(
         self,
@@ -942,6 +977,10 @@ class _SDPAMemEfficient:
     @classproperty
     def checkpoint(cls) -> bool:
         return _MEM_EFFICIENT_CONFIG.checkpoint
+
+    @classproperty
+    def compile_chunks(cls) -> bool:
+        return _MEM_EFFICIENT_CONFIG.compile_chunks
 
 
 sdpa_mem_efficient = _SDPAMemEfficient

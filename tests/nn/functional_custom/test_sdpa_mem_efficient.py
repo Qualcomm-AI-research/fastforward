@@ -90,6 +90,7 @@ def test_mem_efficient_kernel_disabled_by_default() -> None:
     #       contiguous while a query chunk spanning every head is not)
     assert not enabled
     assert checkpoint
+    assert not sdpa_mem_efficient.compile_chunks
     assert query_chunk_size is None
     assert head_chunk_size == 1
 
@@ -978,6 +979,13 @@ _IGNORE_SCRIPT_METHOD_DEPRECATION = pytest.mark.filterwarnings(
     "ignore:.*torch.jit.script_method. is deprecated:DeprecationWarning"
 )
 
+# Dynamo reads `.grad` of the non-leaf chunk tensors it receives when `compile_chunks` compiles
+# the chunk function in a training forward pass, which warns. Raised as an error, the warning
+# aborts dynamo with its frame hook still installed, breaking the tests that run after.
+_IGNORE_NON_LEAF_GRAD_WARNING = pytest.mark.filterwarnings(
+    "ignore:The .grad attribute of a Tensor that is not a leaf:UserWarning"
+)
+
 # The inputs of `_attention_inputs` have 4 heads and 8 query positions.
 _COMPILE_SETTINGS = [
     pytest.param({"head_chunk_size": 100}, id="single_chunk"),
@@ -987,6 +995,11 @@ _COMPILE_SETTINGS = [
     pytest.param(
         {"query_chunk_size": 3, "head_chunk_size": 3, "checkpoint": False},
         id="query_and_head_chunks-no_checkpoint",
+    ),
+    pytest.param(
+        {"query_chunk_size": 3, "head_chunk_size": 3, "compile_chunks": True},
+        id="query_and_head_chunks-compile_chunks",
+        marks=_IGNORE_NON_LEAF_GRAD_WARNING,
     ),
 ]
 
@@ -1123,6 +1136,69 @@ def test_context_manager_can_be_entered_in_compiled_region() -> None:
     # THEN the result matches eager and the settings are restored afterwards
     assert_max_abs_err(expected, actual, atol=1e-6)
     assert _settings() == default_settings
+
+
+@pytest.mark.slow
+@_IGNORE_SCRIPT_METHOD_DEPRECATION
+# Torch 2.8 - 2.13 instantiate autograd.Function classes while dynamo traces them,
+# emitting a DeprecationWarning.
+@pytest.mark.filterwarnings("ignore:.*should not be instantiated:DeprecationWarning")
+@_IGNORE_NON_LEAF_GRAD_WARNING
+@pytest.mark.parametrize("checkpoint", [False, True], ids=lambda c: f"checkpoint={c}")
+@pytest.mark.parametrize("is_causal", [False, True], ids=lambda c: "causal" if c else "")
+def test_compile_chunks_matches_eager_and_reuses_chunk_graphs(
+    monkeypatch: pytest.MonkeyPatch, is_causal: bool, checkpoint: bool
+) -> None:
+    # GIVEN a quantized SDPA whose ranges were estimated eagerly, run in qdq mode, over a
+    #       query of 8 positions attended in chunks of 3, so 2 full chunks and a shorter one
+    from fastforward.nn.functional.custom import sdpa
+    from torch._dynamo.utils import counters
+
+    qsdpa = _QuantizedSDPA(8)
+    kwargs: dict[str, Any] = {
+        "is_causal": is_causal,
+        "strict_quantization": False,
+        "neg_inf": -1000.0,
+    }
+    with torch.no_grad(), estimate_ranges(qsdpa, range_setting.running_minmax):
+        qsdpa(*_attention_inputs(), None, **kwargs)
+
+    calls: list[int] = []
+    compiled_chunk = torch.compile(
+        sdpa._attention_for_query_chunk, fullgraph=True, backend="aot_eager", dynamic=False
+    )
+
+    def chunk_function(*args: Any, **kwargs: Any) -> torch.Tensor:
+        calls.append(args[0].size(-2))
+        return compiled_chunk(*args, **kwargs)
+
+    monkeypatch.setattr(sdpa, "_compiled_attention_for_query_chunk", lambda: chunk_function)
+
+    def attention(compile_chunks: bool) -> tuple[torch.Tensor, ...]:
+        settings = sdpa_mem_efficient(
+            query_chunk_size=3,
+            head_chunk_size=4,
+            checkpoint=checkpoint,
+            compile_chunks=compile_chunks,
+        )
+        with settings, fastforward.qdq_mode(True):
+            return _compiled_attention_results(lambda q, k, v: qsdpa(q, k, v, None, **kwargs), True)
+
+    # WHEN the attention runs with and without compiled chunks
+    torch._dynamo.reset()
+    counters.clear()
+    expected = attention(compile_chunks=False)
+    actual = attention(compile_chunks=True)
+
+    # THEN the outputs and gradients match
+    for expected_tensor, actual_tensor in zip(expected, actual, strict=True):
+        assert_max_abs_err(expected_tensor, actual_tensor, atol=1e-6)
+
+    # AND every chunk ran through the compiled function (again when the backward pass
+    #     recomputes a checkpointed chunk), which has one graph per distinct chunk shape;
+    #     the offset of causal chunks does not specialize it
+    assert sorted(calls) == sorted([3, 3, 2] * (2 if checkpoint else 1))
+    assert counters["stats"]["unique_graphs"] == 2
 
 
 # ------------------------------------------------------------------------------
