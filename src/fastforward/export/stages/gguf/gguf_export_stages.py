@@ -65,12 +65,12 @@ def _require_format_registry(context: dict[str, Any]) -> GgufFormatRegistry:
     return default_format_registry()
 
 
-def _require_config(context: dict[str, Any]) -> GgufSourceConfig:
+def _require_config(context: dict[str, Any], adapter: ArchAdapter) -> GgufSourceConfig:
     model_config = context.get("model_config")
     if model_config is None:
         msg = "GGUF export requires 'model_config' in the pipeline options"
         raise ExportError(msg)
-    return cast(GgufSourceConfig, model_config)
+    return adapter.resolve_config(model_config)
 
 
 def _require_adapter(context: dict[str, Any]) -> ArchAdapter:
@@ -95,7 +95,7 @@ def stage_extract_quantized_weights(
     del sample_inputs
     (model,) = modules
     adapter = _require_adapter(context)
-    config = _require_config(context)
+    config = _require_config(context, adapter)
     format_registry = _require_format_registry(context)
 
     return extract_module_tensors(
@@ -117,7 +117,7 @@ def stage_apply_tensor_rules(
     del sample_inputs
     (tensors,) = modules
     adapter = _require_adapter(context)
-    config = _require_config(context)
+    config = _require_config(context, adapter)
     return apply_tensor_rules(tensors, adapter.tensor_rules, config)
 
 
@@ -190,7 +190,7 @@ def stage_write_gguf(
     (packed,) = modules
 
     adapter = _require_adapter(context)
-    config = _require_config(context)
+    config = _require_config(context, adapter)
     default_float_type: str = context.get("float_type", "F32")
     float_type_overrides: dict[str, str] = context.get("float_type_overrides") or {}
 

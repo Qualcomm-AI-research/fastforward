@@ -21,6 +21,9 @@ architecture should construct their own :class:`ArchAdapter` from
   layers with different head dims, shares KV across its last layers, feeds
   per-layer input embeddings, and needs a synthesized ``rope_freqs`` tensor.
   It uses a byte-fallback BPE vocabulary with no pre-tokenizer.
+- **Qwen2.5-VL / Qwen3-VL** text decoders are Qwen2 / Qwen3 decoders nested
+  in a vision-language checkpoint. They add multimodal RoPE sections and, for
+  Qwen3-VL, the deepstack layer count, and take the top-level config.
 """
 
 from __future__ import annotations
@@ -36,18 +39,22 @@ import torch
 from gguf import GGUFWriter, RopeScalingType
 
 from fastforward.exceptions import ExportError
-from fastforward.export.stages.gguf._config import GgufSourceConfig
+from fastforward.export.stages.gguf._config import GgufSourceConfig, text_config_view
 from fastforward.export.stages.gguf._naming import (
     gemma4_name_map,
     llama_name_map,
     qwen2_name_map,
+    qwen2vl_name_map,
     qwen3_name_map,
+    qwen3vl_name_map,
 )
 from fastforward.export.stages.gguf._vocab import make_llama_hf_vocab_writer
 from fastforward.export.stages.gguf.adapter import ArchAdapter
 from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename, Synthesize, Transform
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from fastforward.export.stages.gguf._extract import ExtractedTensor
 
 _Q_PROJ_RE = re.compile(r"model\.layers\.\d+\.self_attn\.q_proj\.weight$")
@@ -168,6 +175,10 @@ def _rope_scaling_type(rope_scaling: dict[str, Any]) -> str:
     return _ROPE_TYPE_ALIASES.get(rope_type, rope_type)
 
 
+def _head_dim(config: GgufSourceConfig) -> int:
+    return getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+
+
 def llama3_rope_freqs(config: GgufSourceConfig) -> dict[str, torch.Tensor]:
     """Synthesize llama.cpp's ``rope_freqs.weight`` for Llama 3 RoPE scaling.
 
@@ -190,7 +201,7 @@ def llama3_rope_freqs(config: GgufSourceConfig) -> dict[str, torch.Tensor]:
     if _rope_scaling_type(rope_scaling) != "llama3":
         return {}
 
-    head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+    head_dim = _head_dim(config)
     exponents = torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim
     inv_freq = 1.0 / _rope_theta(config) ** exponents
 
@@ -304,6 +315,93 @@ def _write_qwen3_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
     if head_dim is not None:
         writer.add_key_length(head_dim)
         writer.add_value_length(head_dim)
+
+
+def _require_multimodal_config(config: Any) -> GgufSourceConfig:
+    """Resolve the top-level config of a vision-language checkpoint to its text view.
+
+    Rejects a bare ``text_config``: it lacks ``vision_config`` and, in
+    transformers 5, may lack ``tie_word_embeddings``, which would silently
+    change the export.
+    """
+    if (
+        getattr(config, "text_config", None) is None
+        or getattr(config, "vision_config", None) is None
+    ):
+        msg = (
+            "Vision-language GGUF export needs the top-level model config (with "
+            + "'text_config' and 'vision_config'), e.g. model.config, not its text_config"
+        )
+        raise ExportError(msg)
+    return text_config_view(config)
+
+
+# llama.cpp's multimodal RoPE sections: [time, height, width, extra].
+_N_MROPE_SECTIONS = 4
+
+
+# transformers' fallback when a Qwen3-VL config omits ``mrope_section``.
+_QWEN3VL_DEFAULT_MROPE_SECTION = (24, 20, 20)
+
+
+def _write_mrope_sections(
+    writer: GGUFWriter, config: GgufSourceConfig, default: Sequence[int] = ()
+) -> None:
+    """Write the multimodal RoPE sections, padded to llama.cpp's four.
+
+    Each section is a number of rotary frequency pairs, so together they must
+    cover half the head dimension. ``default`` is used if the config sets none.
+    """
+    sections = [int(n) for n in _rope_scaling(config).get("mrope_section") or default]
+    if not 0 < len(sections) <= _N_MROPE_SECTIONS:
+        msg = (
+            f"Multimodal RoPE export needs 1 to {_N_MROPE_SECTIONS} entries in "
+            + f"rope_parameters['mrope_section'], got {sections}"
+        )
+        raise ExportError(msg)
+    head_dim = _head_dim(config)
+    if 2 * sum(sections) != head_dim:
+        msg = (
+            f"rope_parameters['mrope_section'] {sections} covers {2 * sum(sections)} "
+            + f"rotary dims, but the head dimension is {head_dim}"
+        )
+        raise ExportError(msg)
+    writer.add_rope_dimension_sections(sections + [0] * (_N_MROPE_SECTIONS - len(sections)))
+
+
+def _write_qwen2vl_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
+    """Write Qwen2.5-VL text-decoder metadata (Qwen2 set plus multimodal RoPE sections)."""
+    _write_common_metadata(writer, config)
+    _write_mrope_sections(writer, config)
+
+
+def _write_qwen3vl_metadata(writer: GGUFWriter, config: GgufSourceConfig) -> None:
+    """Write Qwen3-VL text-decoder metadata.
+
+    Adds the multimodal RoPE sections (transformers' ``[24, 20, 20]`` if the
+    config sets none) and the number of deepstack layers, i.e. the vision
+    features injected into the first decoder layers, to the Qwen3 set. Mirrors
+    llama.cpp's ``Qwen3VLTextModel`` converter.
+
+    Raises:
+        ExportError: If the deepstack layers are not fewer than the decoder
+            layers. llama.cpp keeps only the output rows at the last layer
+            and then adds the full-length deepstack features to them, which
+            crashes multi-token decoding.
+    """
+    _write_qwen3_metadata(writer, config)
+    _write_mrope_sections(writer, config, _QWEN3VL_DEFAULT_MROPE_SECTION)
+    vision_config = getattr(config, "vision_config", None)
+    deepstack_visual_indexes = getattr(vision_config, "deepstack_visual_indexes", None) or ()
+    n_deepstack_layers = len(deepstack_visual_indexes)
+    if n_deepstack_layers >= config.num_hidden_layers:
+        msg = (
+            f"Qwen3-VL has {n_deepstack_layers} deepstack layers but only "
+            + f"{config.num_hidden_layers} decoder layers; llama.cpp needs more decoder "
+            + "layers than deepstack layers"
+        )
+        raise ExportError(msg)
+    writer.add_num_deepstack_layers(n_deepstack_layers)
 
 
 def _require_config(config: GgufSourceConfig, name: str) -> Any:
@@ -451,6 +549,37 @@ QWEN3_ADAPTER = ArchAdapter(
     tokenizer_pre="qwen2",
 )
 """Built-in adapter for Qwen3 models."""
+
+QWEN25VL_ADAPTER = ArchAdapter(
+    gguf_arch="qwen2vl",
+    tensor_rules=(DROP_TIED_LM_HEAD, Rename(qwen2vl_name_map)),
+    write_metadata=_write_qwen2vl_metadata,
+    tokenizer_model="gpt2",
+    tokenizer_pre="qwen2",
+    resolve_config=_require_multimodal_config,
+)
+"""Built-in adapter for Qwen2.5-VL text decoders.
+
+Exports the text decoder of ``Qwen2_5_VLForConditionalGeneration``; the vision
+tower is not exported. Pass the top-level config (``model.config``) as
+``model_config``: transformers 5 keeps ``tie_word_embeddings`` there, not on
+``text_config``.
+"""
+
+QWEN3VL_ADAPTER = ArchAdapter(
+    gguf_arch="qwen3vl",
+    tensor_rules=(DROP_TIED_LM_HEAD, Rename(qwen3vl_name_map)),
+    write_metadata=_write_qwen3vl_metadata,
+    tokenizer_model="gpt2",
+    tokenizer_pre="qwen2",
+    resolve_config=_require_multimodal_config,
+)
+"""Built-in adapter for Qwen3-VL text decoders.
+
+Exports the text decoder of ``Qwen3VLForConditionalGeneration``; the vision
+tower is not exported. Pass the top-level config (``model.config``) as
+``model_config``: the deepstack layer count comes from its ``vision_config``.
+"""
 
 
 def _pin_gemma4_float_type(gguf_name: str, ndim: int, float_type: str) -> str | None:

@@ -4,7 +4,7 @@
 """Tests for the built-in GGUF architecture adapters.
 
 The adapters (:data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, :data:`QWEN3_ADAPTER`,
-:data:`GEMMA4_ADAPTER`) are the pipeline's default reference implementations of
+:data:`GEMMA4_ADAPTER`, :data:`QWEN25VL_ADAPTER`, :data:`QWEN3VL_ADAPTER`) are the pipeline's default reference implementations of
 the public :class:`ArchAdapter` surface. These tests exercise the fields users
 are most likely to depend on (tensor rules, transforms, metadata).
 """
@@ -27,6 +27,8 @@ from fastforward.export.stages.gguf import (
     LLAMA_ADAPTER,
     QWEN2_ADAPTER,
     QWEN3_ADAPTER,
+    QWEN3VL_ADAPTER,
+    QWEN25VL_ADAPTER,
     ArchAdapter,
     ExtractedTensor,
     GgufSourceConfig,
@@ -34,6 +36,7 @@ from fastforward.export.stages.gguf import (
     gemma4_rope_freqs,
     llama3_rope_freqs,
     llama_rope_permute,
+    text_config_view,
 )
 from fastforward.export.stages.gguf.rules import apply_tensor_rules
 from gguf import GGUFWriter, RopeScalingType
@@ -645,3 +648,255 @@ def test_gemma4_rope_freqs_rejects_unsupported_config(
     # WHEN/THEN: synthesizing raises.
     with pytest.raises(ExportError, match=match):
         gemma4_rope_freqs(config)
+
+
+def _vl_config(tie_word_embeddings: bool = True, **text_overrides: Any) -> SimpleNamespace:
+    """A top-level vision-language config whose text_config has no tie flag."""
+    text_config = _metadata_config(
+        rope_parameters={"rope_type": "default", "rope_theta": 1e6, "mrope_section": [4, 2, 2]},
+        **text_overrides,
+    )
+    return SimpleNamespace(
+        text_config=text_config,
+        vision_config=SimpleNamespace(deepstack_visual_indexes=[0, 2]),
+        tie_word_embeddings=tie_word_embeddings,
+    )
+
+
+def test_text_config_view_reads_text_config_then_top_level() -> None:
+    # GIVEN: a multimodal config whose text_config sets one field to None.
+    config = SimpleNamespace(
+        text_config=SimpleNamespace(hidden_size=32, tie_word_embeddings=None),
+        tie_word_embeddings=True,
+        hidden_size=999,
+    )
+
+    # WHEN: viewing it as a text config.
+    view: Any = text_config_view(config)
+
+    # THEN: text_config wins, None and missing fields fall back to the top level,
+    # and fields missing on both raise AttributeError (so getattr defaults work).
+    assert view.hidden_size == 32
+    assert view.tie_word_embeddings is True
+    assert view.text_config is config.text_config
+    assert getattr(view, "head_dim", "default") == "default"
+
+
+def test_text_config_view_passes_text_only_config_through() -> None:
+    # GIVEN: a config without a text_config.
+    config = _metadata_config()
+
+    # WHEN / THEN: it is returned unchanged.
+    assert text_config_view(config) is config
+
+
+@pytest.mark.parametrize(
+    ("adapter", "extra_names"),
+    [
+        (QWEN25VL_ADAPTER, {"self_attn.q_proj.bias": "attn_q.bias"}),
+        (QWEN3VL_ADAPTER, {"self_attn.q_norm.weight": "attn_q_norm.weight"}),
+    ],
+    ids=["qwen2.5-vl", "qwen3-vl"],
+)
+def test_qwen_vl_adapter_name_map_exports_only_the_text_decoder(
+    adapter: ArchAdapter, extra_names: dict[str, str]
+) -> None:
+    # GIVEN: the resolved top-level config of an untied vision-language checkpoint.
+    config = adapter.resolve_config(_vl_config(tie_word_embeddings=False))
+
+    def name_map(hf_name: str) -> str | None:
+        return _gguf_name(adapter, hf_name, config)
+
+    # WHEN / THEN: the nested text decoder maps like its Qwen2/Qwen3 counterpart.
+    prefix = "model.language_model."
+    assert name_map(f"{prefix}embed_tokens.weight") == "token_embd.weight"
+    assert name_map(f"{prefix}norm.weight") == "output_norm.weight"
+    assert name_map(f"{prefix}layers.1.mlp.down_proj.weight") == "blk.1.ffn_down.weight"
+    for hf_suffix, gguf_suffix in extra_names.items():
+        assert name_map(f"{prefix}layers.1.{hf_suffix}") == f"blk.1.{gguf_suffix}"
+    assert name_map("lm_head.weight") == "output.weight"
+
+    # THEN: the vision tower is not exported.
+    assert name_map("model.visual.blocks.0.attn.qkv.weight") is None
+    assert name_map("model.visual.merger.mlp.0.weight") is None
+
+
+@pytest.mark.parametrize(
+    "adapter", [QWEN25VL_ADAPTER, QWEN3VL_ADAPTER], ids=["qwen2.5-vl", "qwen3-vl"]
+)
+def test_qwen_vl_adapter_drops_lm_head_tied_on_top_level_config(adapter: ArchAdapter) -> None:
+    # GIVEN: a config that ties the embeddings only at the top level, as
+    # transformers 5 does for Qwen2.5-VL.
+    config = adapter.resolve_config(_vl_config(tie_word_embeddings=True))
+
+    # WHEN / THEN: the tied lm_head is dropped.
+    assert _gguf_name(adapter, "lm_head.weight", config) is None
+
+
+@pytest.mark.parametrize(
+    "adapter", [QWEN25VL_ADAPTER, QWEN3VL_ADAPTER], ids=["qwen2.5-vl", "qwen3-vl"]
+)
+def test_qwen_vl_adapter_rejects_bare_text_config(adapter: ArchAdapter) -> None:
+    # GIVEN: the text_config of a vision-language checkpoint.
+    text_config = _vl_config().text_config
+
+    # WHEN / THEN: resolving it raises instead of losing the top-level fields.
+    with pytest.raises(ExportError, match="top-level model config"):
+        adapter.resolve_config(text_config)
+
+
+def _qwen25vl_7b_config() -> Any:
+    # Qwen2.5-VL checkpoints name multimodal RoPE in the legacy `type` key.
+    return SimpleNamespace(
+        text_config=SimpleNamespace(
+            vocab_size=152064,
+            hidden_size=3584,
+            intermediate_size=18944,
+            num_hidden_layers=28,
+            num_attention_heads=28,
+            num_key_value_heads=4,
+            max_position_embeddings=128000,
+            rms_norm_eps=1e-6,
+            rope_theta=1e6,
+            rope_scaling={"type": "mrope", "mrope_section": [16, 24, 24]},
+        ),
+        vision_config=SimpleNamespace(),
+        tie_word_embeddings=False,
+    )
+
+
+def _qwen3vl_2b_config() -> Any:
+    return SimpleNamespace(
+        text_config=SimpleNamespace(
+            vocab_size=151936,
+            hidden_size=2048,
+            intermediate_size=6144,
+            num_hidden_layers=28,
+            num_attention_heads=16,
+            num_key_value_heads=8,
+            head_dim=128,
+            max_position_embeddings=262144,
+            rms_norm_eps=1e-6,
+            rope_parameters={
+                "rope_type": "default",
+                "rope_theta": 5e6,
+                "mrope_section": [24, 20, 20],
+                "mrope_interleaved": True,
+            },
+        ),
+        vision_config=SimpleNamespace(deepstack_visual_indexes=[5, 11, 17]),
+        tie_word_embeddings=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("adapter", "make_config", "expected"),
+    [
+        (
+            QWEN25VL_ADAPTER,
+            _qwen25vl_7b_config,
+            {
+                "qwen2vl.block_count": 28,
+                "qwen2vl.context_length": 128000,
+                "qwen2vl.embedding_length": 3584,
+                "qwen2vl.feed_forward_length": 18944,
+                "qwen2vl.attention.head_count": 28,
+                "qwen2vl.attention.head_count_kv": 4,
+                "qwen2vl.rope.freq_base": 1e6,
+                "qwen2vl.rope.dimension_sections": [16, 24, 24, 0],
+            },
+        ),
+        (
+            QWEN3VL_ADAPTER,
+            _qwen3vl_2b_config,
+            {
+                "qwen3vl.block_count": 28,
+                "qwen3vl.context_length": 262144,
+                "qwen3vl.embedding_length": 2048,
+                "qwen3vl.feed_forward_length": 6144,
+                "qwen3vl.attention.head_count": 16,
+                "qwen3vl.attention.head_count_kv": 8,
+                "qwen3vl.attention.key_length": 128,
+                "qwen3vl.attention.value_length": 128,
+                "qwen3vl.rope.freq_base": 5e6,
+                "qwen3vl.rope.dimension_sections": [24, 20, 20, 0],
+                "qwen3vl.n_deepstack_layers": 3,
+            },
+        ),
+    ],
+    ids=["qwen2.5-vl-7b", "qwen3-vl-2b"],
+)
+def test_qwen_vl_metadata_matches_reference_gguf(
+    adapter: ArchAdapter, make_config: Any, expected: dict[str, Any]
+) -> None:
+    # GIVEN: the top-level config of a released checkpoint.
+    config = adapter.resolve_config(make_config())
+    writer = GGUFWriter(None, arch=adapter.gguf_arch)
+
+    # WHEN: writing the text-decoder metadata.
+    adapter.write_metadata(writer, config)
+
+    # THEN: the architecture keys match the llama.cpp-converted GGUF that AI Hub
+    # ships (unsloth/Qwen2.5-VL-7B-Instruct-GGUF, unsloth/Qwen3-VL-2B-Instruct-GGUF),
+    # and the legacy `type="mrope"` is not mistaken for RoPE scaling.
+    metadata = {key: value.value for key, value in writer.kv_data[0].items()}
+    assert {key: metadata.get(key) for key in expected} == expected
+    assert metadata[f"{adapter.gguf_arch}.attention.layer_norm_rms_epsilon"] == pytest.approx(1e-6)
+    assert metadata[f"{adapter.gguf_arch}.rope.scaling.type"] == "none"
+
+
+@pytest.mark.parametrize(
+    ("mrope_section", "match"),
+    [
+        (None, "1 to 4 entries"),
+        ([2, 2, 2, 1, 1], "1 to 4 entries"),
+        ([4, 4, 4], "covers 24 rotary dims, but the head dimension is 16"),
+    ],
+    ids=["missing", "too-many", "wrong-head-dim"],
+)
+def test_qwen_vl_metadata_rejects_invalid_mrope_section(
+    mrope_section: list[int] | None, match: str
+) -> None:
+    # GIVEN: a config (head dim 16) with an unusable mrope_section.
+    rope_parameters: dict[str, Any] = {"rope_type": "default", "rope_theta": 1e6}
+    if mrope_section is not None:
+        rope_parameters["mrope_section"] = mrope_section
+    config = _vl_config()
+    config.text_config.rope_parameters = rope_parameters
+    writer = GGUFWriter(None, arch=QWEN25VL_ADAPTER.gguf_arch)
+
+    # WHEN / THEN: writing the metadata raises.
+    with pytest.raises(ExportError, match=match):
+        QWEN25VL_ADAPTER.write_metadata(writer, QWEN25VL_ADAPTER.resolve_config(config))
+
+
+def test_qwen3vl_metadata_defaults_mrope_section() -> None:
+    # GIVEN: a Qwen3-VL config (head dim 128) that omits mrope_section, as
+    # transformers' defaults do.
+    config = _vl_config(head_dim=128)
+    config.text_config.rope_parameters = {"rope_type": "default", "rope_theta": 5e6}
+    config.text_config.num_hidden_layers = 3
+    writer = GGUFWriter(None, arch=QWEN3VL_ADAPTER.gguf_arch)
+
+    # WHEN: writing the metadata.
+    QWEN3VL_ADAPTER.write_metadata(writer, QWEN3VL_ADAPTER.resolve_config(config))
+
+    # THEN: transformers' default sections are written.
+    metadata = {key: value.value for key, value in writer.kv_data[0].items()}
+    assert metadata["qwen3vl.rope.dimension_sections"] == [24, 20, 20, 0]
+
+
+@pytest.mark.parametrize("n_deepstack_layers", [2, 3])
+def test_qwen3vl_metadata_rejects_deepstack_layers_not_below_decoder_layers(
+    n_deepstack_layers: int,
+) -> None:
+    # GIVEN: a two-layer Qwen3-VL config with as many deepstack layers as, or
+    # more than, decoder layers, which crashes llama.cpp's multi-token decoding.
+    config = _vl_config()
+    config.text_config.num_hidden_layers = 2
+    config.vision_config.deepstack_visual_indexes = list(range(n_deepstack_layers))
+    writer = GGUFWriter(None, arch=QWEN3VL_ADAPTER.gguf_arch)
+
+    # WHEN / THEN: writing the metadata raises.
+    with pytest.raises(ExportError, match="needs more decoder layers than deepstack layers"):
+        QWEN3VL_ADAPTER.write_metadata(writer, QWEN3VL_ADAPTER.resolve_config(config))

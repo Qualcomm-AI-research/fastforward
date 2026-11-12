@@ -103,7 +103,10 @@ class GgufLlamaCppOptions:
             defaults): ``num_key_value_heads``, ``head_dim``,
             ``rope_scaling``, ``tie_word_embeddings``. A HuggingFace
             ``PretrainedConfig`` or a ``SimpleNamespace`` carrying these fields
-            both work.
+            both work. The adapter's ``resolve_config`` is applied first: the
+            vision-language adapters (``QWEN25VL_ADAPTER``, ``QWEN3VL_ADAPTER``)
+            take the top-level config (``model.config``) and read the decoder
+            fields from its ``text_config``.
         tokenizer: Optional HuggingFace tokenizer; when provided, its vocabulary
             is written into the GGUF. Leave unset for adapters without a
             ``tokenizer_model`` (e.g. a vision projector).

@@ -3,8 +3,9 @@
 
 """Public API for FastForward's GGUF export stages.
 
-Users pick a shipped :data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, or
-:data:`QWEN3_ADAPTER`, or construct their own :class:`ArchAdapter` when
+Users pick a shipped :data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`,
+:data:`QWEN3_ADAPTER`, :data:`GEMMA4_ADAPTER`, :data:`QWEN25VL_ADAPTER`, or
+:data:`QWEN3VL_ADAPTER`, or construct their own :class:`ArchAdapter` when
 targeting a model with a non-standard module tree; its ``tensor_rules`` are
 built from :class:`Rename`, :class:`Transform`, :class:`Fuse`, :class:`Split`,
 :class:`Drop`, :class:`Synthesize`, or a custom :class:`TensorRule`. The quantization format
@@ -30,10 +31,13 @@ from fastforward.export.stages.gguf._arch import GEMMA4_ADAPTER as GEMMA4_ADAPTE
 from fastforward.export.stages.gguf._arch import LLAMA_ADAPTER as LLAMA_ADAPTER
 from fastforward.export.stages.gguf._arch import QWEN2_ADAPTER as QWEN2_ADAPTER
 from fastforward.export.stages.gguf._arch import QWEN3_ADAPTER as QWEN3_ADAPTER
+from fastforward.export.stages.gguf._arch import QWEN3VL_ADAPTER as QWEN3VL_ADAPTER
+from fastforward.export.stages.gguf._arch import QWEN25VL_ADAPTER as QWEN25VL_ADAPTER
 from fastforward.export.stages.gguf._arch import gemma4_rope_freqs as gemma4_rope_freqs
 from fastforward.export.stages.gguf._arch import llama3_rope_freqs as llama3_rope_freqs
 from fastforward.export.stages.gguf._arch import llama_rope_permute as llama_rope_permute
 from fastforward.export.stages.gguf._config import GgufSourceConfig as GgufSourceConfig
+from fastforward.export.stages.gguf._config import text_config_view as text_config_view
 from fastforward.export.stages.gguf._extract import ExtractedTensor as ExtractedTensor
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0 as GGUF_Q4_0
 from fastforward.export.stages.gguf._packing import GGUF_Q4_1 as GGUF_Q4_1

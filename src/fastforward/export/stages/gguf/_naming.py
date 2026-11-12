@@ -80,9 +80,10 @@ _GEMMA4_LAYER_PATTERNS = {
     r"model\.layers\.(\d+)\.layer_scalar$": "blk.{}.layer_output_scale.weight",
 }
 
-# ``Gemma4ForConditionalGeneration`` nests the text decoder under this prefix,
-# next to the vision and audio towers; ``Gemma4ForCausalLM`` uses plain ``model.``.
-_GEMMA4_MULTIMODAL_TEXT_PREFIX = "model.language_model."
+# Multimodal ``*ForConditionalGeneration`` models (Gemma4, Qwen2.5-VL, Qwen3-VL)
+# nest the text decoder under this prefix, next to the vision (and audio)
+# towers; the text-only ``*ForCausalLM`` models use plain ``model.``.
+_MULTIMODAL_TEXT_PREFIX = "model.language_model."
 
 
 def _build_name_map(
@@ -102,20 +103,31 @@ def _build_name_map(
     return name_map
 
 
+def _with_multimodal_text_layout(name_map: _NameMapT) -> _NameMapT:
+    """Extend a text-decoder name map to the multimodal checkpoint layout.
+
+    The returned map accepts both the text-only (``model.layers...``) and the
+    multimodal (``model.language_model.layers...``) names. Vision and audio
+    tower tensors don't match the text patterns and map to ``None``, so they
+    are not exported.
+    """
+
+    def multimodal_name_map(hf_name: str) -> str | None:
+        if hf_name.startswith(_MULTIMODAL_TEXT_PREFIX):
+            hf_name = "model." + hf_name.removeprefix(_MULTIMODAL_TEXT_PREFIX)
+        return name_map(hf_name)
+
+    return multimodal_name_map
+
+
 llama_name_map: _NameMapT = _build_name_map(_COMMON_LAYER_PATTERNS)
 qwen3_name_map: _NameMapT = _build_name_map({**_COMMON_LAYER_PATTERNS, **_QWEN3_EXTRA_PATTERNS})
 qwen2_name_map: _NameMapT = _build_name_map({**_COMMON_LAYER_PATTERNS, **_QWEN2_EXTRA_PATTERNS})
 
-_gemma4_text_name_map: _NameMapT = _build_name_map(_GEMMA4_LAYER_PATTERNS, _GEMMA4_STATIC_MAP)
+# The Qwen2.5-VL and Qwen3-VL text decoders are Qwen2 and Qwen3 decoders.
+qwen2vl_name_map: _NameMapT = _with_multimodal_text_layout(qwen2_name_map)
+qwen3vl_name_map: _NameMapT = _with_multimodal_text_layout(qwen3_name_map)
 
-
-def gemma4_name_map(hf_name: str) -> str | None:
-    """Map a Gemma4 parameter or buffer name to its GGUF name.
-
-    Accepts both the text-only (``model.layers...``) and the multimodal
-    (``model.language_model.layers...``) layouts. Vision and audio tower
-    tensors map to ``None`` and are not exported.
-    """
-    if hf_name.startswith(_GEMMA4_MULTIMODAL_TEXT_PREFIX):
-        hf_name = "model." + hf_name.removeprefix(_GEMMA4_MULTIMODAL_TEXT_PREFIX)
-    return _gemma4_text_name_map(hf_name)
+gemma4_name_map: _NameMapT = _with_multimodal_text_layout(
+    _build_name_map(_GEMMA4_LAYER_PATTERNS, _GEMMA4_STATIC_MAP)
+)

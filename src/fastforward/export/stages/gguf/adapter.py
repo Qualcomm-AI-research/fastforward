@@ -7,10 +7,10 @@ FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
 parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
 adapters (``LLAMA_ADAPTER``, ``QWEN2_ADAPTER``, ``QWEN3_ADAPTER``,
-``GEMMA4_ADAPTER``) are shipped alongside as reference implementations; for a
-model whose module tree differs (custom wrapper class, LoRA-merged copy, non-HF
-codebase), construct your own ``ArchAdapter`` and pass it via
-``GgufLlamaCppOptions.arch_adapter``.
+``GEMMA4_ADAPTER``, ``QWEN25VL_ADAPTER``, ``QWEN3VL_ADAPTER``) are shipped
+alongside as reference implementations; for a model whose module tree differs
+(custom wrapper class, LoRA-merged copy, non-HF codebase), construct your own
+``ArchAdapter`` and pass it via ``GgufLlamaCppOptions.arch_adapter``.
 
 Similarly, the quantization format (block size, byte layout, GGML type) is
 encapsulated in :class:`GgufQuantFormat`. Built-in formats ``GGUF_Q4_0`` and
@@ -39,7 +39,16 @@ See :mod:`fastforward.export.stages.gguf.rules` for the available tensor rules.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Protocol, Sequence, TypeAlias, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Protocol,
+    Sequence,
+    TypeAlias,
+    cast,
+    runtime_checkable,
+)
 
 import torch
 
@@ -52,6 +61,7 @@ if TYPE_CHECKING:
     from fastforward.export.stages.gguf.rules import TensorRule
 
 _WriteMetadataT: TypeAlias = Callable[[GGUFWriter, GgufSourceConfig], None]
+_ResolveConfigT: TypeAlias = Callable[[Any], GgufSourceConfig]
 PinFloatTypeT: TypeAlias = Callable[[str, int, str], str | None]
 """A float-type pin used as ``ArchAdapter.pin_float_type``.
 
@@ -159,7 +169,11 @@ class GgufQuantFormat:
     file_type: int
 
 
-@dataclass(frozen=True, slots=True)
+def _passthrough_config(config: Any) -> GgufSourceConfig:
+    return cast(GgufSourceConfig, config)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ArchAdapter:
     """Bundle of architecture-specific choices consumed by the GGUF stages.
 
@@ -201,6 +215,11 @@ class ArchAdapter:
             of tensors whose type the target runtime constrains, regardless of
             the export's ``float_type``. ``GgufLlamaCppOptions.float_type_overrides``
             still take precedence over it.
+        resolve_config: Maps the ``model_config`` passed to the export onto
+            the source config every other hook receives, once per stage.
+            Defaults to passing it through unchanged; use
+            :func:`~fastforward.export.stages.gguf.text_config_view` for
+            adapters that take the top-level config of a multimodal checkpoint.
     """
 
     gguf_arch: str
@@ -210,6 +229,7 @@ class ArchAdapter:
     tokenizer_pre: str | None
     write_vocab: WriteVocabT = write_bpe_vocab
     pin_float_type: PinFloatTypeT | None = None
+    resolve_config: _ResolveConfigT = _passthrough_config
 
 
 class GgufFormatRegistry:
