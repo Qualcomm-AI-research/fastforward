@@ -6,5 +6,6 @@
 from .adaround import adaround as adaround
 from .adascale import AdaScaleParameters as AdaScaleParameters
 from .adascale import adascale as adascale
+from .adascale import adascale_hessian as adascale_hessian
 from .gptq import gptq as gptq
 from .yaqa import yaqa as yaqa

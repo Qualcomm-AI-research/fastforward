@@ -3,6 +3,9 @@
 #
 # AdaScale combines the weight scaling of FlexRound (https://arxiv.org/abs/2306.00317) with the
 # learnable weight clipping of OmniQuant (https://arxiv.org/abs/2308.13137).
+#
+# `adascale` and `adascale_hessian` learn the same parameters with the same optimizer. They
+# differ only in the loss.
 
 from __future__ import annotations
 
@@ -142,6 +145,56 @@ def adascale(
     for name, layer in layers.items():
         scalings[name].store(layer)
     _log_losses("AdaScale", len(layers), layer_name, losses)
+
+
+def adascale_hessian(
+    module: ff.nn.QuantizedLinear,
+    hessian: torch.Tensor,
+    num_iterations: int = 1500,
+    clip_learning_rate: float = 1e-3,
+    scale_learning_rate: float = 5e-4,
+    range_estimator: _RangeEstimator | None = smoothed_minmax,
+    layer_name: str = "",
+) -> None:
+    """Quantize a QuantizedLinear layer in-place with AdaScale on the input Hessian.
+
+    Learns the parameters of `adascale`, but minimizes the layer output error in closed form,
+    `tr((W - W_q) H (W - W_q)^T)` with `H = 2/N sum_x x x^T`. Each step uses all calibration
+    tokens, at a cost independent of their number. The logged losses are halved, which makes
+    them equal to those of `adascale` on the same layer and inputs.
+
+    Args:
+        module: A QuantizedLinear layer with a `LinearQuantizer` as `weight_quantizer`.
+        hessian: The Hessian `H` of the layer inputs, of shape [in_features, in_features].
+        num_iterations: Number of optimization steps.
+        clip_learning_rate: Learning rate of `gamma` and `beta`.
+        scale_learning_rate: Learning rate of `S2` and `s3`.
+        range_estimator: Range estimator for the initial weight grid. `None` keeps the
+            existing grid.
+        layer_name: Name for logging.
+
+    Raises:
+        ValueError: If the weight quantizer is invalid.
+        RuntimeError: Under `torch.inference_mode`. Use `torch.no_grad` instead.
+    """
+    scaling = AdaScaleParameters.from_layer(module, range_estimator)
+    hessian = hessian.to(device=scaling.weight.device, dtype=torch.float32)
+
+    def loss() -> torch.Tensor:
+        # The layer output error `tr((W - W_q) H (W - W_q)^T)`.
+        delta = scaling.weight - scaling.quantized_weight()
+        return ((delta @ hessian) * delta).sum()
+
+    losses = _optimize(
+        [scaling],
+        loss,
+        num_iterations=num_iterations,
+        clip_learning_rate=clip_learning_rate,
+        scale_learning_rate=scale_learning_rate,
+    )
+    scaling.store(module)
+    # `H = 2/N sum x x^T` doubles the output error, so halve it to log the loss of `adascale`.
+    _log_losses("AdaScale Hessian", 1, layer_name, losses / 2)
 
 
 def _log_losses(algorithm: str, num_layers: int, layer_name: str, losses: torch.Tensor) -> None:

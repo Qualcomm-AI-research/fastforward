@@ -5,7 +5,8 @@ import fastforward as ff
 import pytest
 import torch
 
-from fastforward.algorithms.adascale import adascale
+from fastforward.algorithms.adascale import adascale, adascale_hessian
+from fastforward.algorithms.hessian_calculation import finalize_hessian, hessian_sum_and_count
 
 
 def _quantized_linear(
@@ -353,3 +354,31 @@ def test_adascale_raises_under_inference_mode() -> None:
     # WHEN we run AdaScale on the block, THEN it reports that inference mode cannot be used
     with torch.inference_mode(), pytest.raises(RuntimeError, match="inference_mode"):
         adascale(block, batches, batches, num_iterations=1)
+
+
+def _hessian(activations: torch.Tensor) -> torch.Tensor:
+    """Return the Hessian of `activations` as the `hessian_original` flow gives it."""
+    state = hessian_sum_and_count([((activations,), {})])
+    return finalize_hessian(state)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("symmetric", [False, True], ids=["asymmetric", "symmetric"])
+def test_adascale_hessian_reduces_the_output_error_over_nearest_rounding(symmetric: bool) -> None:
+    # GIVEN a 3 bit layer, activations with a dominant direction and the round-to-nearest error
+    granularity = ff.granularity.PerChannel(channel_dim=0)
+    activations = _activations()
+    original = _quantized_linear(granularity, num_bits=3, symmetric=symmetric)
+
+    def output_error(weight: torch.Tensor) -> torch.Tensor:
+        return (activations @ (weight - original.weight.data).T).pow(2).sum(dim=-1).mean()
+
+    nearest_error = output_error(_nearest_weight(original))
+
+    # WHEN we quantize the same layer with AdaScale on the Hessian of the activations
+    module = _quantized_linear(granularity, num_bits=3, symmetric=symmetric)
+    with torch.no_grad():
+        adascale_hessian(module, _hessian(activations), num_iterations=500)
+
+    # THEN the output error is far below the round-to-nearest error
+    assert output_error(module.weight.data) < 0.2 * nearest_error
