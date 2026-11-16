@@ -516,3 +516,91 @@ def test_write_gguf_mixed_precision_dominant_file_type(tmp_path: Any) -> None:
 
     # THEN: file_type is set to Q4_0's (dominant: 2 out of 3 tensors).
     mock_writer.add_file_type.assert_called_once_with(GGUF_Q4_0.file_type)
+
+
+# --- Float-only files ---
+
+
+def _float_only_context(tmp_path: Any, **overrides: Any) -> dict[str, Any]:
+    context: dict[str, Any] = {
+        "arch_adapter": LLAMA_ADAPTER,
+        "model_config": _make_full_config(),
+        "output_dir": tmp_path,
+        "model_name": "float-only",
+    }
+    context.update(overrides)
+    return context
+
+
+def _float_only_packed() -> dict[str, dict[str, Any]]:
+    return {
+        "quantized": {},
+        "float": {"output_norm.weight": torch.ones(32), "token_embd.weight": torch.ones(64, 32)},
+    }
+
+
+@pytest.mark.parametrize(
+    ("float_type", "expected_file_type"),
+    [
+        ("F32", gguf.LlamaFileType.ALL_F32),
+        ("F16", gguf.LlamaFileType.MOSTLY_F16),
+        ("BF16", gguf.LlamaFileType.MOSTLY_BF16),
+    ],
+)
+def test_write_gguf_float_only_takes_float_file_type(
+    tmp_path: Any, float_type: str, expected_file_type: gguf.LlamaFileType
+) -> None:
+    # GIVEN: packed data with float tensors only, and a default float type.
+    context = _float_only_context(tmp_path, float_type=float_type)
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((_float_only_packed(),), [], context)
+
+    # THEN: the header file_type is the default float type's llama.cpp file type.
+    mock_writer.add_file_type.assert_called_once_with(int(expected_file_type))
+
+
+def test_write_gguf_float_only_ignores_float_type_overrides_for_file_type(tmp_path: Any) -> None:
+    # GIVEN: a float-only export with an F16 default and norms overridden to F32.
+    context = _float_only_context(
+        tmp_path, float_type="F16", float_type_overrides={r".*norm.*": "F32"}
+    )
+    mock_writer = mock.MagicMock()
+
+    # WHEN: invoking the write stage.
+    with mock.patch(
+        "fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter",
+        return_value=mock_writer,
+    ):
+        stage_write_gguf((_float_only_packed(),), [], context)
+
+    # THEN: the file type follows the default float type, not the overrides.
+    mock_writer.add_file_type.assert_called_once_with(int(gguf.LlamaFileType.MOSTLY_F16))
+
+
+def test_write_gguf_float_only_rejects_float_type_without_file_type(tmp_path: Any) -> None:
+    # GIVEN: a float-only export whose default float type has no llama.cpp file type.
+    context = _float_only_context(tmp_path, float_type="F64")
+
+    # WHEN / THEN: the write stage raises before opening a writer.
+    with mock.patch("fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter") as writer_cls:
+        with pytest.raises(ExportError, match="float-only GGUF file needs a float_type"):
+            stage_write_gguf((_float_only_packed(),), [], context)
+    writer_cls.assert_not_called()
+
+
+def test_write_gguf_rejects_export_without_tensors(tmp_path: Any) -> None:
+    # GIVEN: packed data with neither quantized nor float tensors.
+    context = _float_only_context(tmp_path)
+    packed: dict[str, dict[str, Any]] = {"quantized": {}, "float": {}}
+
+    # WHEN / THEN: the write stage raises before opening a writer.
+    with mock.patch("fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter") as writer_cls:
+        with pytest.raises(ExportError, match="produced no tensors"):
+            stage_write_gguf((packed,), [], context)
+    writer_cls.assert_not_called()

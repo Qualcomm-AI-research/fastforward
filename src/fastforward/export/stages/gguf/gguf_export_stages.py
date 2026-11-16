@@ -18,7 +18,7 @@ from typing import Any, TypeAlias, cast
 
 import torch
 
-from gguf import GGMLQuantizationType, GGUFWriter
+from gguf import GGMLQuantizationType, GGUFWriter, LlamaFileType
 
 from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._config import GgufSourceConfig
@@ -175,7 +175,9 @@ def stage_write_gguf(
 
     The GGUF header ``file_type`` is set to the dominant quantization format
     (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
-    convention.
+    convention. A file with no quantized tensors (e.g. a float vision
+    projector) takes the file type of ``context["float_type"]`` instead, as
+    llama.cpp's converter does for ``--outtype f16``.
 
     Float tensors are cast per ``context["float_type"]`` (default ``"F32"``),
     the adapter's ``pin_float_type``, and ``context["float_type_overrides"]``
@@ -194,21 +196,13 @@ def stage_write_gguf(
     output_path = output_dir / f"{model_name}.gguf"
 
     quantized_entries: dict[str, tuple[torch.Tensor, GgufQuantFormat]] = packed["quantized"]
-
-    format_counts: Counter[int] = Counter()
-    for _, fmt in quantized_entries.values():
-        format_counts[fmt.file_type] += 1
-
-    if not format_counts:
-        msg = "GGUF export produced no quantized tensors — cannot determine file_type"
-        raise ExportError(msg)
-
-    dominant_file_type = format_counts.most_common(1)[0][0]
+    float_entries: dict[str, torch.Tensor] = packed["float"]
+    file_type = _resolve_file_type(quantized_entries, float_entries, default_float_type)
 
     writer = GGUFWriter(str(output_path), arch=adapter.gguf_arch)
     try:
         adapter.write_metadata(writer, config)
-        writer.add_file_type(dominant_file_type)
+        writer.add_file_type(file_type)
 
         tokenizer = context.get("tokenizer")
         if tokenizer is not None:
@@ -217,7 +211,7 @@ def stage_write_gguf(
         for gguf_name, (block_bytes, fmt) in quantized_entries.items():
             raw_dtype = GGMLQuantizationType[fmt.name]
             writer.add_tensor(gguf_name, block_bytes.numpy(), raw_dtype=raw_dtype)
-        for gguf_name, float_data in packed["float"].items():
+        for gguf_name, float_data in float_entries.items():
             float_type = _resolve_float_type(
                 gguf_name,
                 float_data.ndim,
@@ -235,6 +229,45 @@ def stage_write_gguf(
         writer.close()
 
     return output_path
+
+
+_FLOAT_FILE_TYPES: dict[str, LlamaFileType] = {
+    "F32": LlamaFileType.ALL_F32,
+    "F16": LlamaFileType.MOSTLY_F16,
+    "BF16": LlamaFileType.MOSTLY_BF16,
+}
+
+
+def _resolve_file_type(
+    quantized_entries: dict[str, tuple[torch.Tensor, GgufQuantFormat]],
+    float_entries: dict[str, torch.Tensor],
+    default_float_type: str,
+) -> int:
+    """Pick the GGUF header ``file_type`` for the tensors being written.
+
+    The dominant quantization format wins when any tensor is quantized.
+    Otherwise the file is float-only and takes the file type of the default
+    float type. Raises if there is nothing to write, or if the default float
+    type has no llama.cpp file type (e.g. ``"F64"``).
+    """
+    format_counts = Counter(fmt.file_type for _, fmt in quantized_entries.values())
+    if format_counts:
+        return format_counts.most_common(1)[0][0]
+
+    if not float_entries:
+        msg = (
+            "GGUF export produced no tensors; check that the adapter's tensor rules match the model"
+        )
+        raise ExportError(msg)
+
+    float_file_type = _FLOAT_FILE_TYPES.get(default_float_type)
+    if float_file_type is None:
+        msg = (
+            "A float-only GGUF file needs a float_type with a llama.cpp file type "
+            + f"({sorted(_FLOAT_FILE_TYPES)}), got '{default_float_type}'"
+        )
+        raise ExportError(msg)
+    return int(float_file_type)
 
 
 def _resolve_float_type(

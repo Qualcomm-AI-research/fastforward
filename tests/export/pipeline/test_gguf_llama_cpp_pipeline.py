@@ -279,3 +279,48 @@ def test_gguf_pipeline_exports_claimed_buffers_from_bf16_model(
     torch.testing.assert_close(
         torch.from_numpy(embd.data.copy()), model.model.embed_tokens.weight.float()
     )
+
+
+@pytest.mark.slow
+def test_gguf_pipeline_writes_float_only_file_for_unquantized_model(
+    tmp_path: pathlib.Path, _seed_prngs: int
+) -> None:
+    # GIVEN: a tiny Llama-shaped model with no FF quantizers.
+    vocab, hidden, inter, n_layers = 64, 32, 64, 2
+    model = _TinyLlama(vocab, hidden, inter, n_layers)
+    model.eval()
+    config = SimpleNamespace(
+        max_position_embeddings=128,
+        hidden_size=hidden,
+        num_hidden_layers=n_layers,
+        intermediate_size=inter,
+        num_attention_heads=4,
+        num_key_value_heads=4,
+        rope_theta=10000.0,
+        rms_norm_eps=1e-5,
+        vocab_size=vocab,
+        tie_word_embeddings=False,
+        rope_scaling=None,
+    )
+
+    # WHEN: exporting with F16 floats.
+    options = GgufLlamaCppOptions(arch_adapter=LLAMA_ADAPTER, model_config=config, float_type="F16")
+    artifacts = export_with_pipeline(
+        ExportRequest(
+            model=model,
+            sample_inputs=[],
+            output_dir=tmp_path,
+            model_name="tiny-llama-float",
+            target="gguf",
+            format="llama_cpp",
+            options=options.to_context(),
+        )
+    )
+
+    # THEN: the file reads back with an F16 file type and every tensor F16.
+    reader = gguf.GGUFReader(str(artifacts.stage_outputs["write_gguf"]))
+    file_type = reader.get_field("general.file_type")
+    assert file_type is not None
+    assert file_type.contents() == gguf.LlamaFileType.MOSTLY_F16
+    assert {tensor.tensor_type for tensor in reader.tensors} == {gguf.GGMLQuantizationType.F16}
+    assert "blk.0.attn_q.weight" in {tensor.name for tensor in reader.tensors}

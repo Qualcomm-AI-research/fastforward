@@ -77,7 +77,8 @@ class GgufLlamaCppOptions:
     """Options for the GGUF -> llama.cpp export pipeline.
 
     This typed container is optional and can be converted to stage context with
-    `to_context()`. The pipeline expects an already-quantized model.
+    `to_context()`. The pipeline expects an already-quantized model; a model
+    with no initialized weight quantizers exports as a float-only file.
 
     Attributes:
         arch_adapter: :class:`ArchAdapter` carrying all HF-to-GGUF assumptions

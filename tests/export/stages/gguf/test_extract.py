@@ -13,6 +13,7 @@ import fastforward as ff
 import pytest
 import torch
 
+from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._extract import extract_module_tensors
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q4_1, GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter
@@ -300,6 +301,51 @@ def test_extract_uninitialized_quantizer_passes_as_float(_seed_prngs: int) -> No
     # THEN: the weight arrives as float because no initialized quantizer exists.
     (tensor,) = [t for t in extracted if t.hf_name == "proj.weight"]
     assert tensor.kind == "float"
+
+
+def _make_uncalibrated_linear(out_features: int, in_features: int) -> QuantizedLinear:
+    """Build a QuantizedLinear whose weight quantizer is set up but never calibrated."""
+    linear = torch.nn.Linear(in_features, out_features, bias=False)
+    linear.__class__ = QuantizedLinear
+    quantized = cast(QuantizedLinear, linear)
+    quantized.__init_quantization__()
+    quantizers = ff.find_quantizers(quantized, "[quantizer:parameter/weight]")
+    quantizers.initialize(ff.nn.LinearQuantizer, num_bits=4, granularity=_PER_BLOCK, symmetric=True)
+    return quantized
+
+
+def test_extract_rejects_uncalibrated_weight_quantizer(_seed_prngs: int) -> None:
+    # GIVEN: a model with one calibrated and one set-up-but-uncalibrated weight quantizer.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calibrated = _make_quantized_linear(4, 32)
+            self.forgotten = _make_uncalibrated_linear(4, 32)
+
+    model = Model()
+
+    # WHEN / THEN: extraction fails instead of silently writing the weight as float,
+    # naming only the uncalibrated one.
+    with pytest.raises(ExportError, match=r"uninitialized.*forgotten\.weight") as exc_info:
+        extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+    assert "calibrated.weight" not in str(exc_info.value)
+
+
+def test_extract_ignores_uncalibrated_quantizer_on_unclaimed_weight(_seed_prngs: int) -> None:
+    # GIVEN: an uncalibrated quantizer on a weight that no tensor rule claims.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.proj = _make_quantized_linear(4, 32)
+            self.unused = _make_uncalibrated_linear(4, 32)
+
+    adapter = _make_adapter(lambda name: name if name == "proj.weight" else None)
+
+    # WHEN: extracting.
+    extracted = extract_module_tensors(Model(), adapter=adapter, quant_format=GGUF_Q4_0)
+
+    # THEN: only the claimed, calibrated weight is exported and nothing raises.
+    assert [t.hf_name for t in extracted] == ["proj.weight"]
 
 
 def _make_quantized_linear_custom(

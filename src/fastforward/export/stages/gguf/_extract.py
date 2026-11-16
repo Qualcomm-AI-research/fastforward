@@ -58,27 +58,32 @@ class ExtractedTensor:
     quant_format: GgufQuantFormat | None = None  # Resolved per-tensor for quantized tensors.
 
 
-def _build_quantizer_map(model: torch.nn.Module) -> dict[str, LinearQuantizer]:
+def _build_quantizer_map(
+    model: torch.nn.Module,
+) -> tuple[dict[str, LinearQuantizer], set[str]]:
     """Map parameter paths to their initialized weight quantizers.
 
     Uses ``ff.find_quantizers`` with the ``[quantizer:parameter/weight]`` tag to
     discover all weight quantizers in the model. Returns a dict keyed by the
     weight parameter's full name (e.g. ``"model.layers.0.self_attn.q_proj.weight"``)
-    mapped to the corresponding initialized ``LinearQuantizer``.
+    mapped to the corresponding initialized ``LinearQuantizer``, and the set of
+    weight names whose ``LinearQuantizer`` was set up but never calibrated.
     """
     quantizer_map: dict[str, LinearQuantizer] = {}
+    uncalibrated: set[str] = set()
     for result in ff.find_quantizers(model, "**/[quantizer:parameter/weight]"):
         quantizer = result.module
         if not isinstance(quantizer, LinearQuantizer):
-            continue
-        if quantizer.has_uninitialized_params:
             continue
         # The quantizer lives at e.g. "layers.0.q_proj.weight_quantizer".
         # The corresponding parameter is at "layers.0.q_proj.weight".
         parent_path = result.full_name.rsplit(".", 1)[0]
         param_name = f"{parent_path}.weight"
+        if quantizer.has_uninitialized_params:
+            uncalibrated.add(param_name)
+            continue
         quantizer_map[param_name] = quantizer
-    return quantizer_map
+    return quantizer_map, uncalibrated
 
 
 def _validate_quantizer(
@@ -258,7 +263,8 @@ def extract_module_tensors(
 
     Raises:
         ExportError: If a quantizer does not match any registered format or is
-            otherwise incompatible, or if a claimed float tensor has a
+            otherwise incompatible, if a claimed weight has a quantizer that was
+            set up but never calibrated, or if a claimed float tensor has a
             non-floating-point dtype.
     """
     if format_registry is None:
@@ -267,15 +273,20 @@ def extract_module_tensors(
         else:
             format_registry = GgufFormatRegistry()
             format_registry.register(quant_format)
-    quantizer_map = _build_quantizer_map(model)
+    quantizer_map, uncalibrated = _build_quantizer_map(model)
     extracted: list[ExtractedTensor] = []
     skipped: list[str] = []
+    uncalibrated_claimed: list[str] = []
 
     for hf_name, param in model.named_parameters():
         if not _is_claimed(hf_name, adapter, config):
             skipped.append(hf_name)
             continue
         if isinstance(param, torch.nn.UninitializedParameter):
+            continue
+
+        if hf_name in uncalibrated:
+            uncalibrated_claimed.append(hf_name)
             continue
 
         quantizer = quantizer_map.get(hf_name)
@@ -309,6 +320,15 @@ def extract_module_tensors(
             )
         else:
             extracted.append(_extract_float(hf_name, param.data))
+
+    if uncalibrated_claimed:
+        msg = (
+            f"{len(uncalibrated_claimed)} weight quantizer(s) are set up but uninitialized "
+            + "(was the model calibrated?), so exporting would silently write the weights as "
+            + f"float: {', '.join(uncalibrated_claimed)}. Run range estimation, or remove the "
+            + "quantizers to export these weights as float on purpose"
+        )
+        raise ExportError(msg)
 
     # Unclaimed buffers are skipped silently: most are quantizer state or caches.
     extracted.extend(

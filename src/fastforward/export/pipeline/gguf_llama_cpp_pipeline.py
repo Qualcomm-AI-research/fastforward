@@ -21,7 +21,9 @@ def gguf_llama_cpp_pipeline(pipeline_kwargs: dict[str, Any]) -> Pipeline:
     calibration or GPTQ — quantization is the user's separate upstream step.
     Parameters without an initialized FastForward quantizer (embeddings, norms,
     biases) and claimed persistent buffers pass through in their source dtype
-    and are cast once at write time (``float_type``, F32 by default).
+    and are cast once at write time (``float_type``, F32 by default). A model
+    with no quantized weights, e.g. a float vision projector, is written as a
+    float-only file.
 
     GGUF export is weight-only, so the extraction stage is a pipeline root that
     reads the live quantized module directly rather than reusing the FX
