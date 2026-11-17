@@ -31,7 +31,6 @@
 # +
 import os
 
-import datasets
 import fastforward as ff
 import torch
 
@@ -40,8 +39,6 @@ from fastforward.testing.data import tokenize_dataset
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 from transformers import AutoTokenizer, LlamaForCausalLM, default_data_collator
-
-datasets.utils.logging.get_logger("datasets.packaged_modules.cache").setLevel("ERROR")
 
 model_dtype = torch.float32
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,8 +63,8 @@ tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, legacy=False, use_
 # Load Dataset
 _valid_split = "validation" if valid_percent is None else f"validation[:{valid_percent}%]"
 _train_split = "train" if train_percent is None else f"train[:{train_percent}%]"
-validset = load_dataset("wikitext", "wikitext-2-v1", split=_valid_split)
-trainset = load_dataset("wikitext", "wikitext-2-v1", split=_train_split)
+validset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split=_valid_split)
+trainset = load_dataset("Salesforce/wikitext", "wikitext-2-v1", split=_train_split)
 
 # Tokenize Dataset
 tokenized_validset = tokenize_dataset(validset, tokenizer, sequence_length)

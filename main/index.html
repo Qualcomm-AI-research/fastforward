@@ -750,6 +750,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/fastforward/algorithms/yaqa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    yaqa
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3755,21 +3783,32 @@ model. <a href="examples/autoquant/">Tutorial</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">fastforward</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ff</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="c1"># 1. Convert any PyTorch model to a quantization-ready one.</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">MyModel</span><span class="p">()</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">"cuda"</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">"cpu"</span><span class="p">)</span>
+
+<span class="c1"># 1. Convert any PyTorch model to a quantization-ready one. Autoquant writes</span>
+<span class="c1">#    quantized versions of your own module classes; quantize_model swaps them in.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MyModel</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">ff</span><span class="o">.</span><span class="n">autoquantize</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">"quantized_my_model.py"</span><span class="p">,</span> <span class="n">auto_import</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">ff</span><span class="o">.</span><span class="n">quantize_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 
 <span class="c1"># 2. Attach 8-bit per-channel weight quantizers to every linear layer.</span>
 <span class="n">weight_quantizers</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">find_quantizers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">"**/[quantizer:parameter/weight]"</span><span class="p">)</span>
-<span class="n">weight_quantizers</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">ff</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">())</span>
+<span class="n">weight_quantizers</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span>
+    <span class="n">ff</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LinearQuantizer</span><span class="p">,</span> <span class="n">num_bits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">ff</span><span class="o">.</span><span class="n">PerChannel</span><span class="p">(),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+<span class="p">)</span>
 
-<span class="c1"># 3. Calibrate on real data.</span>
-<span class="k">with</span> <span class="n">ff</span><span class="o">.</span><span class="n">estimate_ranges</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ff</span><span class="o">.</span><span class="n">range_setting</span><span class="o">.</span><span class="n">RunningMinMaxRangeEstimator</span><span class="p">):</span>
+<span class="c1"># 3. Calibrate on real data. Only the weights are quantized, so strict mode is off.</span>
+<span class="k">with</span> <span class="p">(</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">(),</span>
+    <span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+    <span class="n">ff</span><span class="o">.</span><span class="n">estimate_ranges</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ff</span><span class="o">.</span><span class="n">range_setting</span><span class="o">.</span><span class="n">running_minmax</span><span class="p">),</span>
+<span class="p">):</span>
     <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">calibration_loader</span><span class="p">:</span>
         <span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">batch</span><span class="p">)</span>
 
 <span class="c1"># 4. Run the quantized model like any PyTorch model — pdb and print still work.</span>
-<span class="n">output</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">input_batch</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">ff</span><span class="o">.</span><span class="n">strict_quantization</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">input_batch</span><span class="p">)</span>
 </code></pre></div>
 <p><a class="md-button md-button--primary" href="examples/quick_start_quantize_llms.nb/">Full walkthrough on Llama-v3 <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span></a>
 <a class="md-button" href="examples/">All tutorials</a></p>

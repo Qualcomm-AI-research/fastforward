@@ -655,6 +655,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../algorithms/yaqa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    yaqa
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3557,8 +3585,8 @@
 <p>Users pick a shipped :data:<code>LLAMA_ADAPTER</code>, :data:<code>QWEN2_ADAPTER</code>, or
 :data:<code>QWEN3_ADAPTER</code>, or construct their own :class:<code>ArchAdapter</code> when
 targeting a model with a non-standard module tree; its <code>tensor_rules</code> are
-built from :class:<code>Rename</code>, :class:<code>Transform</code>, :class:<code>Fuse</code>, :class:<code>Drop</code>, or a
-custom :class:<code>TensorRule</code>. The quantization format
+built from :class:<code>Rename</code>, :class:<code>Transform</code>, :class:<code>Fuse</code>, :class:<code>Split</code>,
+:class:<code>Drop</code>, :class:<code>Synthesize</code>, or a custom :class:<code>TensorRule</code>. The quantization format
 is selected via :data:<code>GGUF_Q4_0</code> / :data:<code>GGUF_Q4_1</code> / :data:<code>GGUF_Q8_0</code>
 or a custom :class:<code>GgufQuantFormat</code>.</p>
 <p>Custom packing formats can be defined by implementing a function matching the

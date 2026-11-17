@@ -655,6 +655,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../algorithms/yaqa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    yaqa
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2240,6 +2268,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.functional.custom.sdpa.sdpa_mem_efficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sdpa_mem_efficient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.functional.custom.sdpa.sdpa_upcast" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2283,6 +2322,17 @@
     <span class="md-ellipsis">
       
         scaled_dot_product_attention_math
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.functional.custom.sdpa.scaled_dot_product_attention_mem_efficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scaled_dot_product_attention_mem_efficient
       
     </span>
   </a>
@@ -3658,6 +3708,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fastforward.nn.functional.custom.sdpa.sdpa_mem_efficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sdpa_mem_efficient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.nn.functional.custom.sdpa.sdpa_upcast" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3701,6 +3762,17 @@
     <span class="md-ellipsis">
       
         scaled_dot_product_attention_math
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fastforward.nn.functional.custom.sdpa.scaled_dot_product_attention_mem_efficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scaled_dot_product_attention_mem_efficient
       
     </span>
   </a>
@@ -3782,6 +3854,26 @@
 
 
 
+<h4 id="fastforward.nn.functional.custom.sdpa.sdpa_mem_efficient" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">sdpa</span><span class="o">.</span><span class="n">sdpa_mem_efficient</span> <span class="o">=</span> <span class="n">_SDPAMemEfficient</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.nn.functional.custom.sdpa.sdpa_mem_efficient" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h4 id="fastforward.nn.functional.custom.sdpa.sdpa_upcast" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">sdpa</span><span class="o">.</span><span class="n">sdpa_upcast</span> <span class="o">=</span> <span class="n">_SDPAUpcast</span></code>
 
@@ -3815,7 +3907,7 @@
         <p>Quantized version of torch.nn.functional.scaled_dot_product_attention.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/sdpa.py#L22" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/sdpa.py#L30" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4245,7 +4337,84 @@ produce quantized tensors; this is incompatible with <code>enable_gqa=True</code
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/sdpa.py#L126" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/sdpa.py#L137" target="_blank" rel="noopener">[source]</a></p>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fastforward.nn.functional.custom.sdpa.scaled_dot_product_attention_mem_efficient" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">custom</span><span class="o">.</span><span class="n">sdpa</span><span class="o">.</span><span class="n">scaled_dot_product_attention_mem_efficient</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dropout_p</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">is_causal</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">enable_gqa</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">neg_inf</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">'-inf'</span><span class="p">),</span> <span class="n">attn_scores_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attn_mask_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">masked_scores_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attn_weights_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scaled_query_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scaled_key_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dropout_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_quantizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_quantization</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#fastforward.nn.functional.custom.sdpa.scaled_dot_product_attention_mem_efficient" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Memory-efficient quantized version of scaled_dot_product_attention.</p>
+<p>Computes the same result as <code>scaled_dot_product_attention_math</code> without
+materializing the full (N, ..., H_q, L, S) attention matrix: attention is
+computed per (head group, query chunk) pair, with sizes taken from
+<code>sdpa_mem_efficient</code>. Chunks hold complete attention rows, so quantizers
+observe the same values as in the math kernel, with two exceptions: range
+estimators that fit parameters to a full tensor (e.g. MSE) observe one chunk
+at a time, and dropout masks are drawn per chunk.
+Under <code>enable_gqa=True</code>, key and value are repeated once before chunking.
+Chunks are gradient checkpointed by default (see <code>sdpa_mem_efficient</code>).</p>
+<p>Arguments and return value are as in <code>scaled_dot_product_attention_math</code>.
+Enable this kernel with the <code>sdpa_mem_efficient</code> context manager:</p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">fastforward</span><span class="o">.</span><span class="n">sdpa_mem_efficient</span><span class="p">(</span><span class="n">query_chunk_size</span><span class="o">=</span><span class="mi">512</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>attn_mask</code> is provided together with <code>is_causal=True</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;fastforward.exceptions.QuantizationError&lt;/code&gt;" href="../../../../exceptions/#fastforward.exceptions.QuantizationError">QuantizationError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>enable_gqa=True</code> is used under strict quantization.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="NotImplementedError">NotImplementedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If a quantized <code>query</code> cannot be split into chunks
+because its granularity is not supported by <code>QuantizedTensor.__getitem__</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/nn/functional/custom/sdpa.py#L267" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>

@@ -76,7 +76,7 @@ if not torch.cuda.is_available():
     raise RuntimeError(msg)
 
 device = torch.device("cuda")
-model_dtype = torch.float16
+model_dtype = torch.bfloat16
 sequence_length = 1024
 batch_size = 1
 evaluation_steps = 8
@@ -279,6 +279,9 @@ def optimize_with_gptq(
     calibration_inputs: Sequence[torch.Tensor],
 ) -> None:
     """Apply the tutorial's Q4_0-compatible GPTQ configuration."""
+    # By default GPTQ targets every QuantizedLinear and QuantizedConv2d. Only the decoder
+    # projections were converted to QuantizedLinear (`lm_head` stays a plain Linear), so these
+    # targets select the same modules and only make the intent explicit.
     targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
     gptq_fn = functools.partial(ff.algorithms.gptq, perc_damp=0.05)
     with torch.no_grad(), ff.strict_quantization(False):
@@ -434,10 +437,12 @@ print(f"Qwen Q4_0 perplexity: {qwen_q4_perplexity:.4f}")
 # %% [markdown]
 # The built-in adapter supplies Qwen3 metadata and tensor names. The float precision is a
 # per-export choice passed through `GgufLlamaCppOptions`: we write ordinary floating-point tensors
-# as F16 while retaining normalization tensors and biases in F32.
+# as BF16. Normalization weights and biases must stay F32: llama.cpp's CPU backend can't multiply
+# or add F32 activations with F16/BF16 norm weights or biases, so the overrides below are required
+# for llama.cpp, not a precision choice.
 
 # %%
-qwen_float_type = "F16"
+qwen_float_type = "BF16"
 qwen_float_type_overrides = {
     r".*norm.*": "F32",
     r".*\.bias": "F32",
@@ -455,9 +460,9 @@ qwen_reader, qwen_summary = inspect_gguf(qwen_gguf_path)
 assert qwen_reader.get_field("general.architecture") is not None
 assert tensor_type(qwen_reader, "blk.0.attn_q.weight") == gguf.GGMLQuantizationType.Q4_0
 assert tensor_type(qwen_reader, "blk.0.ffn_up.weight") == gguf.GGMLQuantizationType.Q4_0
-assert tensor_type(qwen_reader, "token_embd.weight") == gguf.GGMLQuantizationType.F16
+assert tensor_type(qwen_reader, "token_embd.weight") == gguf.GGMLQuantizationType.BF16
 if any(tensor.name == "output.weight" for tensor in qwen_reader.tensors):
-    assert tensor_type(qwen_reader, "output.weight") == gguf.GGMLQuantizationType.F16
+    assert tensor_type(qwen_reader, "output.weight") == gguf.GGMLQuantizationType.BF16
 
 qwen_results = {
     "fp_perplexity": qwen_fp_perplexity,
@@ -483,6 +488,7 @@ qwen_gptq_model = AutoModelForCausalLM.from_pretrained(
     qwen_model_id,
     dtype=model_dtype,
     attn_implementation="eager",
+    # The tracer used by layerwise_optimize can't handle HF's KV cache output.
     use_cache=False,
 )
 
@@ -534,7 +540,7 @@ qwen_gptq_reader, qwen_gptq_summary = inspect_gguf(qwen_gptq_gguf_path)
 assert qwen_gptq_reader.get_field("general.architecture") is not None
 assert tensor_type(qwen_gptq_reader, "blk.0.attn_q.weight") == gguf.GGMLQuantizationType.Q4_0
 assert tensor_type(qwen_gptq_reader, "blk.0.ffn_up.weight") == gguf.GGMLQuantizationType.Q4_0
-assert tensor_type(qwen_gptq_reader, "token_embd.weight") == gguf.GGMLQuantizationType.F16
+assert tensor_type(qwen_gptq_reader, "token_embd.weight") == gguf.GGMLQuantizationType.BF16
 
 qwen_gptq_results = {
     "perplexity": qwen_gptq_perplexity,
@@ -570,7 +576,7 @@ qwen_gptq_ppl_delta = abs(qwen_gptq_perplexity - qwen_gptq_llama_ppl) / qwen_gpt
 comparison_table = f"""
 | Variant | FastForward PPL | llama.cpp PPL | Relative delta |
 | --- | ---: | ---: | ---: |
-| FP16 | {qwen_fp_perplexity:.4f} | — | — |
+| BF16 | {qwen_fp_perplexity:.4f} | — | — |
 | Min/max Q4_0 | {qwen_q4_perplexity:.4f} | {qwen_llama_ppl:.4f} ± {qwen_llama_ppl_uncertainty:.5f} | {qwen_ppl_delta:.2%} |
 | GPTQ Q4_0 | {qwen_gptq_perplexity:.4f} | {qwen_gptq_llama_ppl:.4f} ± {qwen_gptq_llama_ppl_uncertainty:.5f} | {qwen_gptq_ppl_delta:.2%} |
 """
@@ -597,7 +603,7 @@ qwen_gptq_results["perplexity_relative_delta"] = qwen_gptq_ppl_delta
 
 # %% [markdown]
 # `llama-perplexity` performs real CPU inference directly from each exported GGUF file. Small
-# differences remain possible because FastForward evaluates with CUDA FP16 kernels while llama.cpp
+# differences remain possible because FastForward evaluates with CUDA BF16 kernels while llama.cpp
 # uses its CPU kernels. A relative delta above 5% is highlighted without failing documentation
 # generation.
 

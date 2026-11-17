@@ -16,7 +16,7 @@
         <link rel="prev" href="../gptq/">
       
       
-        <link rel="next" href="../../autoquant/">
+        <link rel="next" href="../yaqa/">
       
       
         
@@ -778,6 +778,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../yaqa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    yaqa
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3771,7 +3799,7 @@
 
 
 <h4 id="fastforward.algorithms.hessian_calculation.calculate_hessian" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">hessian_calculation</span><span class="o">.</span><span class="n">calculate_hessian</span><span class="p">(</span><span class="n">activations</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">accumulation_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">hessian_calculation</span><span class="o">.</span><span class="n">calculate_hessian</span><span class="p">(</span><span class="n">activations</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">accumulation_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></code>
 
 <a href="#fastforward.algorithms.hessian_calculation.calculate_hessian" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -3806,22 +3834,6 @@
             </td>
             <td>
                 <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>device</code>
-            </td>
-            <td>
-                  <code><span title="torch.device">device</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The device to accumulate on, as for <code>hessian_sum_and_count</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -4060,7 +4072,7 @@
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L165" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L158" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4170,7 +4182,7 @@
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L183" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L176" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4236,7 +4248,7 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The device of the weight, and the settings of the convolution for a <code>Conv2d</code>. The</p>
+                <p>The settings of the convolution for a <code>Conv2d</code>, and no settings for other layers. The</p>
               </div>
             </td>
           </tr>
@@ -4246,7 +4258,17 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>values are hashable.</p>
+                <p>values are hashable. The device is not a setting: the sum is made on the device of the</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>activations, which the orchestration moves to its compute device.</p>
               </div>
             </td>
           </tr>
@@ -4288,7 +4310,7 @@ than zeros.</p>
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L126" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L120" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4297,7 +4319,7 @@ than zeros.</p>
 
 
 <h4 id="fastforward.algorithms.hessian_calculation.hessian_sum_and_count" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">hessian_calculation</span><span class="o">.</span><span class="n">hessian_sum_and_count</span><span class="p">(</span><span class="n">activations</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">accumulation_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">hessian_calculation</span><span class="o">.</span><span class="n">hessian_sum_and_count</span><span class="p">(</span><span class="n">activations</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dilation</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">accumulation_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></code>
 
 <a href="#fastforward.algorithms.hessian_calculation.hessian_sum_and_count" class="headerlink" title="Permanent link">#</a></h4>
 
@@ -4337,23 +4359,6 @@ tensor of shape [..., in_features], or of shape [N, C, H, W] for a convolution.<
             </td>
             <td>
                 <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>device</code>
-            </td>
-            <td>
-                  <code><span title="torch.device">device</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The device to accumulate on. Each batch is moved there. If <code>None</code>, the
-device of the first batch.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -4431,8 +4436,8 @@ patches of a convolution are its samples.</p>
             <td>
               <div class="doc-md-description">
                 <p>The dtype of the sum. The products x x^T are made in float32
-and added in this dtype. The sum stays in this dtype between the chunks of a
-chunked run.</p>
+on the device of the activations, and added in this dtype. The sum stays in
+this dtype between the chunks of a chunked run.</p>
               </div>
             </td>
             <td>
@@ -4509,7 +4514,7 @@ chunked run.</p>
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L57" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L54" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4598,7 +4603,7 @@ chunked run.</p>
     </table>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L207" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/algorithms/hessian_calculation.py#L200" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>

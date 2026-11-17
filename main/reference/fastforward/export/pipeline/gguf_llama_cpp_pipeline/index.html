@@ -655,6 +655,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../algorithms/yaqa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    yaqa
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3676,17 +3704,18 @@ writes a GGUF file whose quantized tensors preserve FastForward's learned
 scales (via <code>GGUFWriter</code>'s <code>raw_dtype</code> path). It does <strong>not</strong> run
 calibration or GPTQ — quantization is the user's separate upstream step.
 Parameters without an initialized FastForward quantizer (embeddings, norms,
-biases) pass through as F32.</p>
+biases) and claimed persistent buffers pass through in their source dtype
+and are cast once at write time (<code>float_type</code>, F32 by default).</p>
 <p>GGUF export is weight-only, so the extraction stage is a pipeline root that
 reads the live quantized module directly rather than reusing the FX
 capture/convert/cleanup chain of the ONNX pipeline.</p>
 <p>High-level flow:</p>
 <div class="highlight"><pre><span></span><code>ff_model (pipeline input)
     |
-    | +--&gt; extract_quantized_weights   (root; int codes + scales + float passthroughs)
+    | +--&gt; extract_quantized_weights   (root; int codes + scales + float params/buffers)
                 |
                 v
-            apply_tensor_rules          (adapter rules: rename/transform/fuse/drop)
+            apply_tensor_rules          (adapter rules: rename/transform/fuse/drop/synthesize)
                 |
                 v
             pack_gguf_blocks            (Q4_0/Q8_0 convention convert + nibble pack)
