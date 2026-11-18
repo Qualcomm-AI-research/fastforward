@@ -34,11 +34,11 @@ jobs:
       image: python:3.12  # should match VER_PYTHON from `scripts/versions.py default --field python`
     steps:
       - name: Checkout the "$PAGES_BRANCH" branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "${{ env.PAGES_BRANCH }}"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check notebook copyright footers
         run: ./scripts/verify --notebook-copyright
@@ -49,7 +49,7 @@ jobs:
           python3 -m pip install uv
 
       - name: Cache llama.cpp
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/llama.cpp
           key: llama-cpp-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-llama-cpp.sh') }}
@@ -107,7 +107,7 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: "${{ env.PAGES_BRANCH }}"
       - uses: actions/upload-pages-artifact@v2
@@ -151,10 +151,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: "${{ env.PAGES_BRANCH }}"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           python3 -m pip install uv
           uv pip install --system --no-cache . --group pyproject.toml:docs

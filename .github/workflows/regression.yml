@@ -29,7 +29,7 @@ jobs:
       IMAGE_NAME: ${{ steps.versions.outputs.IMAGE_NAME }}
       IMAGE_TAG: ${{ steps.versions.outputs.IMAGE_TAG }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Resolve default versions and image ref
         id: versions
         env:
@@ -68,7 +68,7 @@ jobs:
             echo "Image ref not yet available, proceeding to build."
           fi
       - if: ${{ !env.SKIP_BUILD }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - if: ${{ !env.SKIP_BUILD }}
         run: |
           docker build -f docker/Dockerfile.regression -t "${IMAGE_NAME}:${IMAGE_TAG}" --build-arg VER_PYTHON="${{ needs.prepare.outputs.VER_PYTHON }}" --build-arg VER_CUDA="${{ needs.prepare.outputs.VER_CUDA }}" --build-arg VER_TORCH="${{ needs.prepare.outputs.VER_TORCH }}" .
@@ -82,7 +82,7 @@ jobs:
     container:
       image: python:3.12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           python3 -m pip install build
           python3 -m build --verbose --wheel --outdir=wheelhouse/
@@ -115,7 +115,7 @@ jobs:
       HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           sparse-checkout: |
             tests_regression

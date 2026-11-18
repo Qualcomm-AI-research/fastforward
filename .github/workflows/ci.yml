@@ -21,7 +21,7 @@ jobs:
     outputs:
       matrix: ${{ steps.final.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set an image tag (use only 8 first symbols)
         run: |
           test $(git hash-object .dockerignore) = 33dafa6305deba799c6f414184eb723f07ef8c1d # Reminder: If .dockerignore is changed, the files included in the image tag computation in the next line must be updated, too.
@@ -61,7 +61,7 @@ jobs:
             echo "Image ref not yet available, proceeding to build."
           fi
       - if: ${{ !env.SKIP_BUILD }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - if: ${{ !env.SKIP_BUILD }}
         run: |
           docker build -f docker/Dockerfile.ci -t "${IMAGE_NAME}:${IMAGE_TAG}" --build-arg VER_PYTHON="${{ matrix.VER_PYTHON }}" --build-arg VER_CUDA="${{ matrix.VER_CUDA }}" --build-arg VER_TORCH="${{ matrix.VER_TORCH}}" .
@@ -95,7 +95,7 @@ jobs:
             echo "Image ref not yet available, proceeding to build."
           fi
       - if: ${{ !env.SKIP_BUILD }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - if: ${{ !env.SKIP_BUILD }}
         run: sudo apt update -qq && sudo apt install -y make
       - if: ${{ !env.SKIP_BUILD }}
@@ -112,7 +112,7 @@ jobs:
     container:
       image: python:3.12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           python3 -m pip install uv
           uv build --wheel --out-dir=wheelhouse/
@@ -143,7 +143,7 @@ jobs:
       - name: check if tests can be skipped
         run: echo "RUN_TESTS=${{ github.ref_name == github.event.repository.default_branch || matrix.VER_PYTHON == '3.12' }}" >> $GITHUB_ENV
       - if: env.RUN_TESTS == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           sparse-checkout: |
             scripts
@@ -169,7 +169,7 @@ jobs:
       # On any other branch, check all commits that are not on the default branch.
       COMMIT_BASE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.event.before || format('origin/{0}', github.event.repository.default_branch) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Check conventional commit titles
@@ -204,7 +204,7 @@ jobs:
           - ${{ fromJSON(needs.prepare.outputs.matrix)[0] }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: "Setup verify step"
         run: |
           ${{ matrix.JOB.PREPARE || ':' }}
