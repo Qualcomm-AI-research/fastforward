@@ -1456,6 +1456,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter.PinFloatTypeT" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PinFloatTypeT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.adapter.WriteVocabT" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3686,6 +3697,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#fastforward.export.stages.gguf.adapter.PinFloatTypeT" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PinFloatTypeT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fastforward.export.stages.gguf.adapter.WriteVocabT" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3795,10 +3817,11 @@
 <p>FastForward's GGUF pipeline is deliberately model-agnostic: every HuggingFace
 parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
-adapters (<code>LLAMA_ADAPTER</code>, <code>QWEN2_ADAPTER</code>, <code>QWEN3_ADAPTER</code>) are shipped
-alongside as reference implementations; for a model whose module tree differs
-(custom wrapper class, LoRA-merged copy, non-HF codebase), construct your own
-<code>ArchAdapter</code> and pass it via <code>GgufLlamaCppOptions.arch_adapter</code>.</p>
+adapters (<code>LLAMA_ADAPTER</code>, <code>QWEN2_ADAPTER</code>, <code>QWEN3_ADAPTER</code>,
+<code>GEMMA4_ADAPTER</code>) are shipped alongside as reference implementations; for a
+model whose module tree differs (custom wrapper class, LoRA-merged copy, non-HF
+codebase), construct your own <code>ArchAdapter</code> and pass it via
+<code>GgufLlamaCppOptions.arch_adapter</code>.</p>
 <p>Similarly, the quantization format (block size, byte layout, GGML type) is
 encapsulated in :class:<code>GgufQuantFormat</code>. Built-in formats <code>GGUF_Q4_0</code> and
 <code>GGUF_Q8_0</code> are provided. Users targeting a custom GGUF type construct their
@@ -3841,6 +3864,33 @@ adapter = ArchAdapter(
 
 
 
+<h4 id="fastforward.export.stages.gguf.adapter.PinFloatTypeT" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">PinFloatTypeT</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.stages.gguf.adapter.PinFloatTypeT" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>A float-type pin used as <code>ArchAdapter.pin_float_type</code>.</p>
+<p>Called as <code>pin_float_type(gguf_name, ndim, float_type)</code> for every float
+tensor, with its GGUF name, its number of dimensions, and the export's default
+<code>float_type</code>. Returns the GGML float type the target runtime requires for
+that tensor (e.g. <code>"F32"</code> for a tensor llama.cpp only loads as F32), or
+<code>None</code> to write it as <code>float_type</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h4 id="fastforward.export.stages.gguf.adapter.WriteVocabT" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">WriteVocabT</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">GGUFWriter</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">GgufSourceConfig</span><span class="p">,</span> <span class="s1">'ArchAdapter'</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span></code>
 
@@ -3871,7 +3921,7 @@ understands), the source config, and the adapter (for <code>tokenizer_model</cod
 
 
 <h4 id="fastforward.export.stages.gguf.adapter.ArchAdapter" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">tensor_rules</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">write_vocab</span><span class="o">=</span><span class="n">write_bpe_vocab</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">tensor_rules</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">write_vocab</span><span class="o">=</span><span class="n">write_bpe_vocab</span><span class="p">,</span> <span class="n">pin_float_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
@@ -3888,7 +3938,8 @@ understands), the source config, and the adapter (for <code>tokenizer_model</cod
 <p>This is the whole surface between generic FastForward code and
 model-specific knowledge: what the tensors become (<code>tensor_rules</code>) and
 what the header says (<code>gguf_arch</code>, <code>write_metadata</code>, tokenizer
-discriminators and vocabulary writer). Per-export policy (float output
+discriminators and vocabulary writer), and which float types the runtime
+requires (<code>pin_float_type</code>). Per-export policy (float output
 types, allowed quant formats) is not architecture knowledge and lives on
 <code>GgufLlamaCppOptions</code> instead.</p>
 
@@ -4014,6 +4065,29 @@ supply your own for other tokenizer types.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;pin_float_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.pin_float_type&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.pin_float_type">pin_float_type</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;PinFloatTypeT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Callable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-module-attribute&quot;&gt;&lt;code&gt;module-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.PinFloatTypeT&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.PinFloatTypeT">PinFloatTypeT</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional :data:<code>PinFloatTypeT</code> pinning the float type
+of tensors whose type the target runtime constrains, regardless of
+the export's <code>float_type</code>. <code>GgufLlamaCppOptions.float_type_overrides</code>
+still take precedence over it.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -4024,7 +4098,7 @@ supply your own for other tokenizer types.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L152" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L162" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4048,6 +4122,27 @@ supply your own for other tokenizer types.</p>
   </span>
 
 <a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.gguf_arch" class="headerlink" title="Permanent link">#</a></h6>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.pin_float_type" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">pin_float_type</span> <span class="o">=</span> <span class="kc">None</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.pin_float_type" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4201,7 +4296,7 @@ registry.register(my_k_quant_format)
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L211" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L227" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4230,7 +4325,7 @@ registry.register(my_k_quant_format)
         <p>Return the first registered format (for fallback/default contexts).</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L223" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L239" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4249,7 +4344,7 @@ registry.register(my_k_quant_format)
         <p>Register a format, keyed by <code>(num_bits, symmetric, block_size)</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L214" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L230" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4268,7 +4363,7 @@ registry.register(my_k_quant_format)
         <p>Look up the format matching the given quantizer properties.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L219" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L235" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4445,7 +4540,7 @@ to select a default compute type).</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L109" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L119" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4670,7 +4765,7 @@ the packed block bytes.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L65" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L75" target="_blank" rel="noopener">[source]</a></p>
 
 
 

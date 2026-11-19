@@ -3779,7 +3779,7 @@ operates on the live quantized module rather than a captured FX graph.</p>
 received a GGUF name.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L101" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L106" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3801,7 +3801,7 @@ claimed by the adapter's tensor rules into an architecture-neutral list of
 :class:<code>ExtractedTensor</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L79" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L84" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3824,7 +3824,7 @@ supporting mixed quantization types in a single file.</p>
 <code>{"quantized": {name: (block_bytes, format)}, "float": {name: tensor}}</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L119" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L124" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -3847,11 +3847,12 @@ tensor is written with its own GGML type, supporting mixed quantization.</p>
 <p>The GGUF header <code>file_type</code> is set to the dominant quantization format
 (the format with the most tensors), matching llama.cpp's "MOSTLY_Q*"
 convention.</p>
-<p>Float tensors are cast per <code>context["float_type"]</code> (default <code>"F32"</code>)
-and <code>context["float_type_overrides"]</code> (regex on the GGUF name -&gt; type).</p>
+<p>Float tensors are cast per <code>context["float_type"]</code> (default <code>"F32"</code>),
+the adapter's <code>pin_float_type</code>, and <code>context["float_type_overrides"]</code>
+(regex on the GGUF name -&gt; type), which take precedence over the pins.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L160" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/gguf_export_stages.py#L165" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
