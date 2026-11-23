@@ -80,6 +80,89 @@ def test_find_required_imports_resolves_relative_imports(
     assert expected_import in imports
 
 
+def _find_required_imports_of_last_function(
+    module_lines: list[str], module_name: str
+) -> set[ImportSymbol]:
+    """Find the imports that the last top-level function in a module requires.
+
+    Test modules put their module-level bindings first and the function under
+    test last, so the function can reference any of those bindings.
+
+    Args:
+        module_lines: Source lines of the module; the last statement must be a
+            function definition.
+        module_name: Qualified name of the module. Module-level names that are
+            not imports are imported from this module.
+
+    Returns:
+        The `ImportSymbol`s that the generated version of the function needs.
+    """
+    module = libcst.parse_module("\n".join(module_lines))
+    funcdef = module.body[-1]
+    assert isinstance(funcdef, libcst.FunctionDef)
+    scopes = infer_scopes(module)
+    return find_required_imports(funcdef, scopes[funcdef], module_name=module_name)
+
+
+@pytest.mark.parametrize(
+    "module_lines",
+    [
+        # Conditional import with fallback assignment, as in `transformers.masking_utils`.
+        [
+            "import torch",
+            "if flex_available():",
+            "    from torch.nn.attention.flex_attention import BlockMask",
+            "else:",
+            "    BlockMask = torch.Tensor",
+            "",
+            "def demo(mask: BlockMask) -> BlockMask:",
+            "    return mask",
+        ],
+        # Fallback import from a different module.
+        [
+            "try:",
+            "    from fast_impl import BlockMask",
+            "except ImportError:",
+            "    from slow_impl import BlockMask",
+            "",
+            "def demo(mask):",
+            "    return isinstance(mask, BlockMask)",
+        ],
+    ],
+)
+def test_find_required_imports_imports_ambiguous_binding_from_defining_module(
+    module_lines: list[str],
+) -> None:
+    # GIVEN a module-level name bound by multiple statements that resolve to different objects
+
+    # WHEN finding the required imports of a function referencing that name
+    imports = _find_required_imports_of_last_function(module_lines, "pkg.masking")
+
+    # THEN the name is imported once, from the module that defines the function
+    block_mask_imports = {symbol for symbol in imports if symbol.name == "BlockMask"}
+    assert block_mask_imports == {ImportSymbol(name="BlockMask", module="pkg.masking")}
+
+
+def test_find_required_imports_keeps_repeated_identical_import() -> None:
+    # GIVEN a module-level name bound by the same import statement twice
+    module_lines = [
+        "if flag():",
+        "    from torch.nn.attention.flex_attention import BlockMask",
+        "else:",
+        "    from torch.nn.attention.flex_attention import BlockMask",
+        "",
+        "def demo(mask):",
+        "    return isinstance(mask, BlockMask)",
+    ]
+
+    # WHEN finding the required imports of a function referencing that name
+    imports = _find_required_imports_of_last_function(module_lines, "pkg.masking")
+
+    # THEN the original import is kept
+    assert ImportSymbol(name="BlockMask", module="torch.nn.attention.flex_attention") in imports
+    assert ImportSymbol(name="BlockMask", module="pkg.masking") not in imports
+
+
 @pytest.mark.parametrize(
     ("symbol", "expected"),
     [

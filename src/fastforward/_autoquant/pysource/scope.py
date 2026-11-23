@@ -208,25 +208,39 @@ class _RequiredSymbolsVisitor(libcst.CSTVisitor):
         if symbol not in self._outer_scope:
             return False
 
-        for assignment in self._outer_scope[symbol]:
+        assignments = self._outer_scope[symbol]
+        symbols: set[ImportSymbol] = set()
+        for assignment in assignments:
             if not (node := getattr(assignment, "node")):
                 continue
 
             match node:
                 case libcst.Import() | libcst.ImportFrom():
-                    self._record_symbol_from_import_node(node, symbol)
+                    symbols.update(self._symbols_from_import_node(node, symbol))
                 case _:
-                    self._import_symbols.add(ImportSymbol(name=symbol, module=self._module_name))
+                    symbols.add(ImportSymbol(name=symbol, module=self._module_name))
 
+        # Multiple bindings can result from conditional imports or fallbacks.
+        # Since we cannot statically determine which binding ran, import the symbol
+        # from the original module, which already holds the correct runtime value.
+        if (
+            len(symbols) > 1
+            and is_valid_identifier(symbol)
+            and all(isinstance(assignment.scope, GlobalScope) for assignment in assignments)
+        ):
+            symbols = {ImportSymbol(name=symbol, module=self._module_name)}
+
+        self._import_symbols.update(symbols)
         return True
 
-    def _record_symbol_from_import_node(
+    def _symbols_from_import_node(
         self, node: libcst.Import | libcst.ImportFrom, symbol: str
-    ) -> None:
+    ) -> list[ImportSymbol]:
         names = node.names
         if isinstance(names, libcst.ImportStar):
-            return
+            return []
 
+        symbols: list[ImportSymbol] = []
         for name in names:
             asname = _node_to_str(name.asname.name) if name.asname else None
             target = _node_to_str(name.name)
@@ -240,7 +254,8 @@ class _RequiredSymbolsVisitor(libcst.CSTVisitor):
                     module = _resolve_relative_module_name(
                         self._module_name, relative_levels, import_module
                     )
-                self._import_symbols.add(ImportSymbol(name=target, asname=asname, module=module))
+                symbols.append(ImportSymbol(name=target, asname=asname, module=module))
+        return symbols
 
     def _symbol_in_function_scope(self, symbol: str) -> bool:
         symbol_parts = _importable_attribute_parts(libcst.parse_expression(symbol))
