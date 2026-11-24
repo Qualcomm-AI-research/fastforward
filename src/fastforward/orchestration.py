@@ -171,6 +171,10 @@ def layerwise_optimize(
     When `graph` is None the model is traced, which needs one example input: give it through
     `sample_args`, `sample_kwargs`, or both.
 
+    The orchestration assumes that a forward of the model has no side effects: the same inputs
+    and weights always give the same outputs. Stateful objects, such as a KV cache, break this
+    assumption and can silently give wrong results. Disable them before optimization.
+
     Args:
         model: The model to optimize.
         data: Calibration data to run through the model.
