@@ -110,12 +110,18 @@ def adascale(
 
         # Each element of a mixed input comes from the quantized input with probability
         # `quantized_input_ratio`, else from the original input. Inputs that are not
-        # floating-point tensors come from the quantized inputs.
+        # floating-point tensors come from the quantized inputs. Either input can be a
+        # `QuantizedTensor`, for example when both come from the quantized model. These are
+        # dequantized first, as `torch.where` does not take them under strict quantization.
         def mix(quantized_input: Any, original_input: Any) -> Any:
             if not (
                 isinstance(quantized_input, torch.Tensor) and quantized_input.is_floating_point()
             ):
                 return quantized_input
+            if isinstance(quantized_input, ff.QuantizedTensor):
+                quantized_input = quantized_input.dequantize()
+            if isinstance(original_input, ff.QuantizedTensor):
+                original_input = original_input.dequantize()
             from_quantized = (
                 torch.rand(quantized_input.shape, device=device) < quantized_input_ratio
             )

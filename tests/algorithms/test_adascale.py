@@ -271,6 +271,54 @@ def test_adascale_with_a_zero_ratio_ignores_the_quantized_keyword_inputs() -> No
         torch.testing.assert_close(layer.weight.data, reference_layer.weight.data)
 
 
+@pytest.mark.parametrize(
+    ("original_is_quantized", "quantized_is_quantized"),
+    [(False, True), (True, False), (True, True)],
+    ids=["plain_and_quantized", "quantized_and_plain", "both_quantized"],
+)
+def test_adascale_mixes_quantized_tensor_inputs_under_strict_quantization(
+    original_is_quantized: bool, quantized_is_quantized: bool
+) -> None:
+    # GIVEN plain minibatches, the same minibatches as the `QuantizedTensor` outputs of an
+    # 8 bit activation quantizer, and those dequantized
+    granularity = ff.granularity.PerChannel(channel_dim=0)
+    activations = _activations()
+    activation_quantizer = ff.nn.LinearQuantizer(num_bits=8)
+    with (
+        ff.strict_quantization(False),
+        ff.estimate_ranges(activation_quantizer, ff.range_setting.smoothed_minmax),
+    ):
+        activation_quantizer(activations)
+    plain = _batches(activations)
+    with torch.no_grad():
+        quantized: list[_Batch] = [((activation_quantizer(x),), {}) for (x,), _ in plain]
+    dequantized: list[_Batch] = [((x.dequantize(),), {}) for (x,), _ in quantized]
+
+    # WHEN we run AdaScale under strict quantization with `QuantizedTensor` minibatches as the
+    # original inputs, the quantized inputs or both, and again with the dequantized minibatches
+    # in their place, with the same random state
+    module = _quantized_linear(granularity, num_bits=3)
+    reference = _quantized_linear(granularity, num_bits=3)
+    with torch.no_grad(), ff.strict_quantization(True):
+        torch.manual_seed(0)
+        adascale(
+            module,
+            quantized if original_is_quantized else plain,
+            quantized if quantized_is_quantized else plain,
+            num_iterations=20,
+        )
+        torch.manual_seed(0)
+        adascale(
+            reference,
+            dequantized if original_is_quantized else plain,
+            dequantized if quantized_is_quantized else plain,
+            num_iterations=20,
+        )
+
+    # THEN both runs store the same weight
+    torch.testing.assert_close(module.weight.data, reference.weight.data)
+
+
 def test_adascale_leaves_the_biases_and_the_gradient_state_unchanged() -> None:
     # GIVEN a block whose bias of one layer does not require a gradient, outside
     # `torch.no_grad`
