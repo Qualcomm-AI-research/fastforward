@@ -656,6 +656,7 @@ class GraphModule(torch.nn.Module):
         op: Op = Op.torch_module,
         node_id: uuid.UUID | None = None,
         parent: NodeRef | None = None,
+        held_modules: set[torch.nn.Module] | None = None,
     ) -> NodeRef:
         """Add a node to this 'GraphModule'.
 
@@ -671,6 +672,9 @@ class GraphModule(torch.nn.Module):
             op: Discriminator for the kind of callable. Defaults to Op.torch_module.
             node_id: Optional node ID. If not provided, a new one will be generated.
             parent: Optional fold that this node belongs to in the hierarchy.
+            held_modules: The modules that this graph holds, so that a caller that adds many
+                nodes collects them once. `add_node` adds each module that it registers. If not
+                provided, `add_node` collects the modules of this graph.
 
         Returns:
             NodeRef: Reference to the created node
@@ -690,13 +694,19 @@ class GraphModule(torch.nn.Module):
         ref = NodeRef(node_id, name)
         self._node_refs[node_id] = ref
 
-        if isinstance(node.target, torch.nn.Module):
+        # Each module has one name, so that each of its tensors has one `state_dict` key. A module
+        # that several nodes run, e.g. one per call, keeps the name of its first node.
+        held = held_modules
+        if held is None:
+            held = set(self.modules()) if isinstance(node.target, torch.nn.Module) else set()
+        if isinstance(node.target, torch.nn.Module) and node.target not in held:
             *module_path, leaf_name = name.split(".")
             parent_module: torch.nn.Module = self
             for attr in module_path:
                 if not hasattr(parent_module, attr):
                     parent_module.add_module(attr, torch.nn.Module())
                 parent_module = getattr(parent_module, attr)
+                held.add(parent_module)
 
             # Don't overwrite children of original modules registered as folds —
             # those belong to the user's model and must not be mutated.
@@ -704,7 +714,16 @@ class GraphModule(torch.nn.Module):
                 parent_module is self._nodes[fid].target for fid in self._fold_ids
             )
             if not is_fold_original:
+                # A module inside the new module keeps only its name in there. The search skips
+                # the modules of the user, so that it does not change them.
+                inside = set(node.target.modules())
+                if not inside.isdisjoint(held):
+                    for container in [self, *(m for m in held if type(m) is torch.nn.Module)]:
+                        for child_name, child in list(container.named_children()):
+                            if child in inside:
+                                delattr(container, child_name)
                 parent_module.add_module(leaf_name, node.target)
+                held.update(inside)
 
         return ref
 
@@ -805,6 +824,7 @@ class GraphModule(torch.nn.Module):
             key=lambda n: 0 if n.id in subgraph._fold_ids else 1,
         )
 
+        held = set(self.modules())
         for node in sorted_nodes:
             node_args = [remap_reference(old_reference=arg) for arg in node.args]
             node_kwargs = {
@@ -824,6 +844,7 @@ class GraphModule(torch.nn.Module):
                 op=node.op,
                 node_id=node.id,
                 parent=node_parent,
+                held_modules=held,
             )
             if node.id in subgraph._fold_ids:
                 self._fold_ids.add(node.id)
@@ -963,6 +984,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
         subgraph_nodes={ref.name: ref.id for ref in path_nodes},
     )
 
+    held = set(subgraph.modules())
     for node_id in node_ids:
         source_node = graph._nodes[node_id]
         subgraph.add_node(
@@ -974,6 +996,7 @@ def create_subgraph(graph: GraphModule, path_nodes: set[NodeRef]) -> GraphModule
             },
             op=source_node.op,
             node_id=source_node.id,
+            held_modules=held,
         )
 
     remapped_outputs: list[NodeRef | AttributeRef] = []
@@ -1421,6 +1444,7 @@ def reduce_resolution(
         targets -= path_nodes
 
     new_graph = GraphModule()
+    held = set(new_graph.modules())
     context: dict[str, _BaseRef] = {name: new_graph.add_input(name) for name in graph.input_names}
     subgraph_idx = 0
 
@@ -1454,6 +1478,7 @@ def reduce_resolution(
                     args,
                     kwargs={},
                     parent=_retain_parent(graph, new_graph, _common_parent(graph, path_nodes)),
+                    held_modules=held,
                 )
                 subgraph_idx += 1
 
@@ -1475,6 +1500,7 @@ def reduce_resolution(
                     kwargs=kwargs,
                     op=original_node.op,
                     parent=_retain_parent(graph, new_graph, original_node.parent),
+                    held_modules=held,
                 )
                 context[node_name] = ref
 
@@ -1496,6 +1522,7 @@ def reduce_resolution(
                     kwargs,
                     op=original_node.op,
                     parent=_retain_parent(graph, new_graph, original_node.parent),
+                    held_modules=held,
                 )
                 context[node_name] = node_ref
 

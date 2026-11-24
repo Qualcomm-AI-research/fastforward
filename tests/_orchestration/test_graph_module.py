@@ -752,6 +752,103 @@ def test_add_node_duplicate_id_raises() -> None:
         graph.add_node("second", torch.nn.Identity(), [inp], node_id=node_id)
 
 
+def test_add_node_keeps_the_name_of_the_first_node_of_a_module() -> None:
+    # GIVEN a graph with a node that runs a linear layer
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    linear = torch.nn.Linear(2, 2)
+    first = graph.add_node("linear", linear, [inp])
+
+    # WHEN a second node runs the same layer
+    graph.add_node("linear@1", linear, [first])
+
+    # THEN the layer has one name, so each of its tensors has one `state_dict` key
+    assert list(graph.state_dict()) == ["linear.weight", "linear.bias"]
+
+
+def test_add_node_keeps_the_name_of_a_module_that_the_graph_holds() -> None:
+    # GIVEN a graph that holds a block of two linear layers before its first node
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    block = torch.nn.Sequential(torch.nn.Linear(2, 2), torch.nn.Linear(2, 2))
+    graph.add_module("block", block)
+
+    # WHEN nodes with other names run the block and one of its layers
+    first = graph.add_node("first", block, [inp])
+    graph.add_node("second", block[0], [first])
+
+    # THEN the block and its layers keep their names
+    assert list(graph.state_dict()) == [
+        "block.0.weight",
+        "block.0.bias",
+        "block.1.weight",
+        "block.1.bias",
+    ]
+
+
+def test_add_node_keeps_the_name_of_the_module_of_an_earlier_node_for_its_children() -> None:
+    # GIVEN a graph with a node that runs a block of two linear layers
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    block = torch.nn.Sequential(torch.nn.Linear(2, 2), torch.nn.Linear(2, 2))
+    first = graph.add_node("block", block, [inp])
+
+    # WHEN a second node runs one layer of the block
+    graph.add_node("layer", block[1], [first])
+
+    # THEN the layer keeps its name in the block
+    assert [name for name, _ in graph.named_modules()] == ["", "block", "block.0", "block.1"]
+
+
+def test_add_node_keeps_the_name_of_a_module_that_the_graph_got_after_its_first_node() -> None:
+    # GIVEN a graph with a node, that then gets a linear layer
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    first = graph.add_node("identity", torch.nn.Identity(), [inp])
+    linear = torch.nn.Linear(2, 2)
+    graph.add_module("linear", linear)
+
+    # WHEN a node with another name runs the layer
+    graph.add_node("second", linear, [first])
+
+    # THEN the layer keeps its name
+    assert list(graph.state_dict()) == ["linear.weight", "linear.bias"]
+
+
+def test_add_node_registers_a_module_that_the_graph_no_longer_holds() -> None:
+    # GIVEN a graph with a node that runs a linear layer, and the layer is then removed
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    linear = torch.nn.Linear(2, 2)
+    first = graph.add_node("linear", linear, [inp])
+    del graph.linear
+
+    # WHEN a second node runs the layer
+    graph.add_node("again", linear, [first])
+
+    # THEN the layer gets the name of the second node
+    assert list(graph.state_dict()) == ["again.weight", "again.bias"]
+
+
+def test_add_node_removes_the_name_of_a_module_that_the_module_of_a_later_node_holds() -> None:
+    # GIVEN a graph with a node that runs one linear layer of a block
+    graph = GraphModule()
+    inp = graph.add_input("x")
+    block = torch.nn.Sequential(torch.nn.Linear(2, 2), torch.nn.Linear(2, 2))
+    first = graph.add_node("layer", block[1], [inp])
+
+    # WHEN a second node runs the block
+    graph.add_node("block", block, [first])
+
+    # THEN the layer keeps only its name in the block
+    assert list(graph.state_dict()) == [
+        "block.0.weight",
+        "block.0.bias",
+        "block.1.weight",
+        "block.1.bias",
+    ]
+
+
 def test_add_subgraph_without_outputs_raises() -> None:
     # GIVEN a subgraph that never declared an output
     graph = GraphModule()
