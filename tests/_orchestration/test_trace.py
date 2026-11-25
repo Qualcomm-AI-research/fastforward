@@ -14,6 +14,8 @@ from fastforward._orchestration.graph_module import (
 )
 from fastforward._orchestration.trace import (
     _MIN_TORCH_VERSION,
+    _Call,
+    _CallRecorder,
     _is_export_guard,
     _make_dict,
     _make_list,
@@ -22,10 +24,11 @@ from fastforward._orchestration.trace import (
     trace,
 )
 from packaging.version import Version
-from torch import nn
+from torch import fx, nn
 
 from ._models import (
     BufferCounter,
+    Calls,
     CastingBlock,
     CastingBlockStack,
     CatModel,
@@ -41,8 +44,13 @@ from ._models import (
     MultiAxisIndex,
     NestedMLP,
     NestedWithTensorOps,
+    NoAutocastLeaf,
+    NoGradLeaf,
     PairLayerModel,
+    ReadsAfterCastingCall,
+    ReadsWeightAfterCastingCall,
     RotaryScaled,
+    ScaledLeaf,
     TinyMLP,
     ToyDecoderLayer,
     ToyLlama,
@@ -737,3 +745,130 @@ def test_make_container_helpers_round_trip_values() -> None:
     assert _make_list(1, 2, 3) == [1, 2, 3]
     assert _make_slice(1, 5, 2) == slice(1, 5, 2)
     assert _make_dict(a=1, b=2) == {"a": 1, "b": 2}
+
+
+def _record(model: nn.Module, *args: torch.Tensor) -> _Call:
+    with _CallRecorder(model) as recorder:
+        torch.export.export(model, args, strict=False)
+    assert recorder.root is not None
+    return recorder.root
+
+
+def test_record_gives_each_call_of_a_module_its_own_call() -> None:
+    # GIVEN a model that calls its child twice
+    model = Calls(ScaledLeaf(), {}, {})
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN each call of the child is a call of its own, with the ops that it made
+    assert [call.name for call in root.children] == ["child", "child@1"]
+    assert all(call.module is model.child for call in root.children)
+    assert all(any(isinstance(item, fx.Node) for item in call.body) for call in root.children)
+
+    # THEN the recorder removes its hooks
+    assert not any(module._forward_pre_hooks or module._forward_hooks for module in model.modules())
+
+
+def test_record_binds_the_arguments_of_a_call_to_its_signature() -> None:
+    # GIVEN a model that passes an argument of its child by keyword
+    model = Calls(ScaledLeaf(), {"scale": 2.0})
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the call has the argument at its position in the signature
+    (call,) = root.children
+    assert call.kwargs == {}
+    assert call.args[0].nodes == root.args[0].nodes
+    assert call.args[1].leaves == [2.0]
+
+
+def test_record_marks_the_output_of_a_call_that_makes_no_op() -> None:
+    # GIVEN a model whose first child returns its input
+    model = nn.Sequential(nn.Identity(), nn.Linear(4, 4))
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the first call returns an alias of its input, and the second call reads the alias
+    identity, linear = root.children
+    assert identity.output is not None
+    (marker,) = identity.output.nodes
+    assert marker.target is torch.ops.aten.alias.default
+    assert identity.markers == {marker}
+    assert linear.args[0].nodes == [marker]
+
+
+@pytest.mark.parametrize("child", [NoGradLeaf(), NoAutocastLeaf()], ids=["no_grad", "autocast"])
+def test_record_keeps_the_nodes_of_a_call_that_changes_the_grad_mode(child: nn.Module) -> None:
+    # GIVEN a model whose child runs its op without autograd or without autocast
+    model = Calls(child, {})
+
+    # WHEN the export of the model is recorded
+    with _CallRecorder(model) as recorder:
+        exported = torch.export.export(model, (torch.randn(2, 4),), strict=False)
+
+    # THEN the exported graph has the recorded op of the child, and no grad-mode or autocast node
+    assert recorder.root is not None
+    (call,) = recorder.root.children
+    (op,) = call.body
+    assert isinstance(op, fx.Node)
+    assert op in exported.graph.nodes
+    assert [node.op for node in exported.graph.nodes] == ["placeholder", "call_function", "output"]
+
+
+def test_record_takes_the_arguments_of_a_call_before_the_pre_hooks_of_the_user() -> None:
+    # GIVEN a model whose child has a forward pre-hook that doubles the input
+    model = Calls(ScaledLeaf(), {})
+    model.child.register_forward_pre_hook(lambda _, args: (args[0] * 2,))
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the call takes the input of the model, and the op of the hook is in the call
+    (call,) = root.children
+    assert call.args[0].nodes == root.args[0].nodes
+    (hook_op, *_) = call.body
+    assert isinstance(hook_op, fx.Node)
+    assert hook_op.args == (root.args[0].nodes[0], 2)
+
+
+def test_record_keeps_a_tensor_that_the_trace_did_not_make_as_a_constant() -> None:
+    # GIVEN a model that passes a tensor to its child that is not an input, parameter or buffer
+    scale = torch.tensor(0.5)
+    model = Calls(ScaledLeaf(), {"scale": scale})
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the call has the tensor as a constant
+    (call,) = root.children
+    assert call.args[1].leaves[0] is scale
+    assert call.args[1].nodes == []
+
+
+def test_record_keeps_the_node_of_an_argument_that_an_op_of_the_call_returns_itself() -> None:
+    # GIVEN a model whose child casts its float32 input to float32, which returns the input itself
+    model = ReadsAfterCastingCall()
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the call maps the node of the cast to the node of its argument
+    child = root.children[1]
+    (cast, *_) = child.body
+    assert child.relinked == {cast: child.args[0].nodes[0]}
+
+
+def test_record_keeps_the_node_of_a_weight_that_an_op_of_the_call_returns_itself() -> None:
+    # GIVEN a model whose child casts its float32 weight to float32, which returns the weight itself
+    model = ReadsWeightAfterCastingCall()
+
+    # WHEN the export of the model is recorded
+    root = _record(model, torch.randn(2, 4))
+
+    # THEN the call maps the node of the cast to the node of the weight
+    lin = root.children[0]
+    (cast, *_) = lin.body
+    assert lin.relinked == {cast: cast.args[0]}

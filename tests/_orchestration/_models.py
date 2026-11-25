@@ -937,3 +937,131 @@ class TiedMatmul(torch.nn.Module):
     def forward(self, ids: torch.Tensor) -> torch.Tensor:
         """Forward pass: fc(emb(ids)) @ emb.weight.T."""
         return self.fc(self.emb(ids)) @ self.emb.weight.T  # type: ignore[no-any-return]
+
+
+class NoGradLeaf(torch.nn.Module):
+    """Leaf that runs its op without autograd, like the rotary embedding of HuggingFace."""
+
+    @override
+    @torch.no_grad()
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: sin(x), without autograd."""
+        return x.sin()
+
+
+class NoAutocastLeaf(torch.nn.Module):
+    """Leaf that turns off autocast for its op."""
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: cos(x), without autocast."""
+        with torch.autocast("cpu", enabled=False):
+            return x.cos()
+
+
+class CastsToFloat(torch.nn.Module):
+    """Leaf that casts its input to float32, like the RMSNorm of a HuggingFace model.
+
+    The cast of a float32 input returns the input itself.
+    """
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: 2 * x as float32."""
+        return x.to(torch.float32) * 2
+
+
+class ReadsAfterCastingCall(torch.nn.Module):
+    """Reads a tensor after its child casts the tensor to its own dtype."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+        self.child = CastsToFloat()
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: residual = fc(x); child(residual) + residual."""
+        residual: torch.Tensor = self.fc(x)
+        out: torch.Tensor = self.child(residual)
+        return out + residual
+
+
+class CastsWeightLinear(torch.nn.Linear):
+    """Linear that casts its weight to the dtype of its input, like a mixed-precision layer.
+
+    The cast of a float32 weight for a float32 input returns the weight itself.
+    """
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: x @ weight.T, with the weight cast to the dtype of x."""
+        return x @ self.weight.to(x.dtype).T
+
+
+class SumsWeightOfLinear(torch.nn.Module):
+    """Fold that adds the weight sum of its linear child to the output of the child."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4, bias=False)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc(x) + sum(fc.weight)."""
+        out: torch.Tensor = self.fc(x)
+        return out + self.fc.weight.sum()
+
+
+class ReadsWeightAfterCastingCall(torch.nn.Module):
+    """Reads the weight of its child after the child casts the weight to its own dtype.
+
+    The model reads the weight itself, and a later fold reads it through a tied linear.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lin = CastsWeightLinear(4, 4, bias=False)
+        self.tied = SumsWeightOfLinear()
+        self.tied.fc.weight = self.lin.weight
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: tied(lin(x)) + sum(lin.weight)."""
+        out: torch.Tensor = self.tied(self.lin(x))
+        return out + self.lin.weight.sum()
+
+
+class Calls(torch.nn.Module):
+    """Calls `child` once per entry of `calls`, each time on the output of the call before.
+
+    Each entry holds the keyword arguments of one call. A keyword argument that is callable is
+    applied to the input of the call, so that a call can pass a tensor such as `y=torch.sin`.
+    """
+
+    def __init__(self, child: torch.nn.Module, *calls: dict[str, Any]) -> None:
+        super().__init__()
+        self.child = child
+        self.calls = calls
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: x = child(x, **call) for each call."""
+        for call in self.calls:
+            kwargs = {name: value(x) if callable(value) else value for name, value in call.items()}
+            x = self.child(x, **kwargs)
+        return x
+
+
+class ScaledLeaf(torch.nn.Module):
+    """Leaf with a weight and non-tensor arguments that have defaults."""
+
+    def __init__(self, dim: int = 4) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(dim))
+
+    @override
+    def forward(self, x: torch.Tensor, scale: float = 1.0, negate: bool = False) -> torch.Tensor:
+        """Forward pass: x * weight * scale, negated if `negate`."""
+        out = x * self.weight * scale
+        return -out if negate else out

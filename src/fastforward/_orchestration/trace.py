@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import collections
 import contextlib
+import dataclasses
 import inspect
 import operator
 import re
@@ -19,6 +21,7 @@ import torch.utils._pytree as pytree
 
 from packaging.version import Version
 from torch import fx
+from torch.fx.experimental import proxy_tensor
 from torch.fx.proxy import GraphAppendingTracer
 
 import fastforward as ff
@@ -394,6 +397,271 @@ def _is_plain_pytree(spec: pytree.TreeSpec) -> bool:
         return False
     children = spec.children() if hasattr(spec, "children") else spec.children_specs
     return all(_is_plain_pytree(child) for child in children)
+
+
+# The ops that export records for `torch.no_grad`, `torch.enable_grad` and `torch.autocast`.
+_GRAD_AND_AUTOCAST_OPS = frozenset({
+    torch._C._set_grad_enabled,
+    torch.amp.autocast_mode._enter_autocast,
+    torch.amp.autocast_mode._exit_autocast,
+})
+
+
+@dataclasses.dataclass
+class _Tree:
+    """A value that a module call takes or returns, flattened by `pytree`.
+
+    Each tensor leaf is replaced by the graph node that made the tensor. The other leaves are
+    constants.
+
+    Args:
+        leaves: The leaves of the value, in `pytree` order.
+        spec: The structure of the value.
+        paths: The key path of each leaf, or None if a container type has no key paths.
+    """
+
+    leaves: list[Any]
+    spec: pytree.TreeSpec
+    paths: list[pytree.KeyPath] | None
+
+    @property
+    def nodes(self) -> list[fx.Node]:
+        """The leaves that are graph nodes, in order."""
+        return [leaf for leaf in self.leaves if isinstance(leaf, fx.Node)]
+
+
+@dataclasses.dataclass(eq=False)
+class _Call:
+    """One call of a module during the export, with the graph nodes that the call made.
+
+    Args:
+        module: The module that was called.
+        name: The node name of the call: the path of the module relative to the module of the
+            parent call. The n-th later call of the same path in one parent call gets `@<n>`.
+        parent: The call that made this call, or None for the call of the model.
+        args: The positional arguments, bound to the signature of `forward`.
+        kwargs: The keyword-only arguments, and the arguments of a `**kwargs` parameter.
+        output: The return value.
+        body: The nodes that the call made itself and its child calls, in the order of the trace.
+        markers: The nodes of `body` that only mark an output that the call did not make.
+        relinked: The node of each argument, parameter or buffer tensor whose link the call
+            changed to a node of `body`, by that node.
+    """
+
+    module: nn.Module
+    name: str
+    parent: _Call | None
+    args: list[_Tree]
+    kwargs: dict[str, _Tree]
+    output: _Tree | None = None
+    body: list[fx.Node | _Call] = dataclasses.field(default_factory=list)
+    markers: set[fx.Node] = dataclasses.field(default_factory=set)
+    relinked: dict[fx.Node, fx.Node] = dataclasses.field(default_factory=dict)
+
+    @property
+    def children(self) -> list[_Call]:
+        """The child calls, in call order."""
+        return [item for item in self.body if isinstance(item, _Call)]
+
+
+class _CallRecorder:
+    """Record each module call of a non-strict `torch.export` as a tree of `_Call`.
+
+    Non-strict export runs the model on fake tensors under a proxy mode. The mode appends each op
+    to one fx graph and links each tensor to the node that made it. A hook on each module reads
+    these links, so it gets the exact nodes that a call reads and returns. The nodes that the graph
+    gets between two hooks belong to the innermost open call.
+
+    A call can return a tensor that it did not make, for example a no-op quantizer that returns
+    its input. The forward hook then returns an `aten.alias` of the tensor. The caller reads the
+    alias, so the call stays in the data flow of the caller.
+
+    A tensor that the trace did not make, such as a plain tensor attribute, has no node. It stays
+    a constant leaf of the call.
+
+    An op can return its input itself, for example `x.to(torch.float32)` on a float32 tensor. The
+    trace then links the tensor to the node of the op, also for the code that reads the tensor
+    after the call. For each argument, parameter and buffer of the call, the call records the node
+    of the tensor before the call in `relinked`.
+    """
+
+    def __init__(self, model: nn.Module) -> None:
+        self._model = model
+        self._paths = {module: path for path, module in model.named_modules()}
+        self._graph: fx.Graph | None = None
+        self._seen: set[fx.Node] = set()
+        self._owner: dict[fx.Node, _Call] = {}
+        self._open: list[_Call] = []
+        self._links_before: dict[_Call, list[tuple[torch.Tensor, fx.Node]]] = {}
+        self._name_counts: collections.defaultdict[_Call, collections.Counter[str]] = (
+            collections.defaultdict(collections.Counter)
+        )
+        self._handles: list[torch.utils.hooks.RemovableHandle] = []
+        self.root: _Call | None = None
+
+    def __enter__(self) -> _CallRecorder:
+        for module in self._model.modules():
+            # The pre-hook runs before the pre-hooks of the user, so that the call records the
+            # arguments that the module gets. A leaf node runs the module, with its hooks.
+            self._handles.append(
+                module.register_forward_pre_hook(self._enter_call, with_kwargs=True, prepend=True)
+            )
+            self._handles.append(module.register_forward_hook(self._exit_call, with_kwargs=True))
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        for handle in self._handles:
+            handle.remove()
+        self._handles.clear()
+
+    def _tracer(self) -> Any:
+        """Return the tracer of the export, which appends each op to the exported graph."""
+        mode = proxy_tensor.get_proxy_mode()
+        if mode is None:
+            msg = "A module was called outside the trace of `torch.export`."
+            raise RuntimeError(msg)
+        if self._graph is not None and mode.tracer.graph is not self._graph:
+            msg = "A module was called inside a nested trace, such as the branch of `torch.cond`."
+            raise NotImplementedError(msg)
+        return mode.tracer
+
+    def _node_of(self, tensor: torch.Tensor) -> fx.Node | None:
+        """Return the node that made `tensor`, or None if the trace did not make it."""
+        slot = proxy_tensor.get_proxy_slot(tensor, self._tracer(), None)
+        if slot is None:
+            return None
+        node: fx.Node = slot.proxy.node
+        return node
+
+    def _flatten(self, value: Any) -> _Tree:
+        try:
+            keyed_leaves, spec = pytree.tree_flatten_with_path(value)
+        except ValueError:
+            # A type that is registered without `flatten_with_keys_fn`, e.g. `ModelOutput`.
+            leaves, spec = pytree.tree_flatten(value)
+            return _Tree([self._leaf(x) for x in leaves], spec, None)
+        paths = [path for path, _ in keyed_leaves]
+        return _Tree([self._leaf(x) for _, x in keyed_leaves], spec, paths)
+
+    def _leaf(self, value: Any) -> Any:
+        """Return the node that made a tensor leaf, or the leaf itself if it is a constant."""
+        if not isinstance(value, torch.Tensor):
+            return value
+        node = self._node_of(value)
+        return value if node is None else node
+
+    def _claim_new_nodes(self, owner: _Call | None) -> list[fx.Node]:
+        """Give the nodes that the graph got since the last hook to `owner`."""
+        assert self._graph is not None
+        new_nodes: list[fx.Node] = []
+        for node in reversed(self._graph.nodes):
+            if node in self._seen:
+                break
+            new_nodes.append(node)
+        new_nodes.reverse()
+        self._seen.update(new_nodes)
+        if owner is not None:
+            owner.body.extend(new_nodes)
+            self._owner.update(dict.fromkeys(new_nodes, owner))
+        return new_nodes
+
+    def _call_name(self, parent: _Call, module: nn.Module) -> str:
+        parent_path, path = self._paths[parent.module], self._paths[module]
+        relative_path = path.removeprefix(f"{parent_path}.") if parent_path else path
+        earlier_calls = self._name_counts[parent][relative_path]
+        self._name_counts[parent][relative_path] += 1
+        return f"{relative_path}@{earlier_calls}" if earlier_calls else relative_path
+
+    def _enter_call(self, module: nn.Module, args: tuple[Any, ...], kwargs: dict[str, Any]) -> None:
+        graph = self._tracer().graph
+        # A call records its arguments bound to the signature, so that `f(x)` and `f(input=x)`
+        # give the same node: only keyword-only arguments stay keyword arguments.
+        bound = inspect.signature(module.forward).bind(*args, **kwargs)
+        flat_args = [self._flatten(arg) for arg in bound.args]
+        flat_kwargs = {key: self._flatten(value) for key, value in bound.kwargs.items()}
+        if not self._open:
+            if self.root is not None or module is not self._model:
+                msg = "`trace` needs exactly one call of the model in the export."
+                raise RuntimeError(msg)
+            self._graph = graph
+            self._claim_new_nodes(None)
+            call = self.root = _Call(module, "", None, flat_args, flat_kwargs)
+        else:
+            parent = self._open[-1]
+            self._claim_new_nodes(parent)
+            call = _Call(module, self._call_name(parent, module), parent, flat_args, flat_kwargs)
+            parent.body.append(call)
+        self._open.append(call)
+        # The ops of the call can relink its arguments and the parameters and buffers of its module.
+        tensors = pytree.tree_leaves((bound.args, bound.kwargs))
+        tensors += [*module.parameters(), *module.buffers()]
+        self._links_before[call] = [
+            (tensor, node)
+            for tensor in tensors
+            if isinstance(tensor, torch.Tensor) and (node := self._node_of(tensor)) is not None
+        ]
+
+    def _exit_call(
+        self, module: nn.Module, args: tuple[Any, ...], kwargs: dict[str, Any], output: Any
+    ) -> Any:
+        del module, args, kwargs
+        call = self._open.pop()
+        self._claim_new_nodes(call)
+        for tensor, node in self._links_before.pop(call):
+            relinked = self._node_of(tensor)
+            # A tensor that the call writes in place keeps the node of the write. A read of it
+            # after the call then fails in `_CallSplitter`, and does not read the old value.
+            if relinked is not None and relinked is not node and not _written_nodes(relinked):
+                call.relinked[relinked] = node
+        if call is self.root:
+            self._erase_grad_and_autocast_nodes()
+        # A tensor that the call returns but did not make (for example its input) becomes an
+        # alias, so that the caller reads it from this call.
+        leaves, spec = pytree.tree_flatten(output)
+        aliased = [
+            self._alias_passthrough(call, x) if isinstance(x, torch.Tensor) else x for x in leaves
+        ]
+        if all(new is old for new, old in zip(aliased, leaves)):
+            call.output = self._flatten(output)
+            # The hook returns None to keep the output of the module.
+            return None
+        output = pytree.tree_unflatten(aliased, spec)
+        call.output = self._flatten(output)
+        return output
+
+    def _erase_grad_and_autocast_nodes(self) -> None:
+        """Remove the grad-mode and autocast nodes from the exported graph.
+
+        If the graph has such nodes, export replaces each region between them with a higher-order
+        op: it splits the graph and inlines the parts again, which makes new nodes. The recorded
+        nodes are then not in the exported graph. Without these nodes, the graph stays the
+        recorded graph. A leaf node runs its module, so it keeps the grad mode and the autocast
+        state of the module. The ops of a fold run in the grad mode and the autocast state of the
+        caller.
+        """
+        assert self._graph is not None
+        for node in reversed(self._graph.nodes):
+            if node.op == "call_function" and node.target in _GRAD_AND_AUTOCAST_OPS:
+                if (owner := self._owner.pop(node, None)) is not None:
+                    owner.body.remove(node)
+                self._graph.erase_node(node)
+
+    def _alias_passthrough(self, call: _Call, tensor: torch.Tensor) -> torch.Tensor:
+        """Return `tensor` if `call` or one of its child calls made it, else an alias of it.
+
+        A tensor that the trace did not make stays a constant, so it is returned as it is.
+        """
+        node = self._node_of(tensor)
+        if node is None:
+            return tensor
+        owner = self._owner.get(node)
+        while owner is not None and owner is not call:
+            owner = owner.parent
+        if owner is call:
+            return tensor
+        marker: torch.Tensor = torch.ops.aten.alias.default(tensor)
+        call.markers.update(self._claim_new_nodes(call))
+        return marker
 
 
 def _resolve_pytree_glue(gm: fx.GraphModule) -> None:
