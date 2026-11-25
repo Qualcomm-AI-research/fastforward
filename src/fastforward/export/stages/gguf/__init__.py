@@ -37,6 +37,7 @@ from fastforward.export.stages.gguf._arch import gemma4_rope_freqs as gemma4_rop
 from fastforward.export.stages.gguf._arch import llama3_rope_freqs as llama3_rope_freqs
 from fastforward.export.stages.gguf._arch import llama_rope_permute as llama_rope_permute
 from fastforward.export.stages.gguf._config import GgufSourceConfig as GgufSourceConfig
+from fastforward.export.stages.gguf._config import MmprojSourceConfig as MmprojSourceConfig
 from fastforward.export.stages.gguf._config import text_config_view as text_config_view
 from fastforward.export.stages.gguf._extract import ExtractedTensor as ExtractedTensor
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0 as GGUF_Q4_0

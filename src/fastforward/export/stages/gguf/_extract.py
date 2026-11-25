@@ -20,6 +20,7 @@ import logging
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 
@@ -186,14 +187,35 @@ def _resolve_quant_format(
     return fmt
 
 
-def _is_claimed(hf_name: str, adapter: ArchAdapter, config: GgufSourceConfig | None = None) -> bool:
-    """Check if a tensor rule needs ``hf_name`` before any rule removes it."""
+def _rule_decision(
+    hf_name: str, adapter: ArchAdapter, config: GgufSourceConfig | None
+) -> Literal["claimed", "removed"] | None:
+    """Return the decision of the first tensor rule, in adapter order, that decides on ``hf_name``.
+
+    Args:
+        hf_name: Name of the model parameter or buffer.
+        adapter: Architecture adapter whose ``tensor_rules`` are consulted.
+        config: Source model config. Removal is only checked when it is given,
+            since conditional rules (``Drop.when``) read it.
+
+    Returns:
+        ``"claimed"`` if a rule needs the tensor extracted (``TensorRule.claims``,
+        e.g. ``Rename``); ``"removed"`` if a rule drops it unchanged
+        (``TensorRule.removes``, i.e. ``Drop``), so it is skipped without
+        validating its quantizer or warning; ``None`` if no rule decides, so it
+        is skipped with a warning.
+    """
     for rule in adapter.tensor_rules:
         if rule.claims(hf_name):
-            return True
+            return "claimed"
         if config is not None and rule.removes(hf_name, config):
-            return False
-    return False
+            return "removed"
+    return None
+
+
+def _is_claimed(hf_name: str, adapter: ArchAdapter, config: GgufSourceConfig | None = None) -> bool:
+    """Check if a tensor rule needs ``hf_name`` before any rule removes it."""
+    return _rule_decision(hf_name, adapter, config) == "claimed"
 
 
 def _named_persistent_buffers(model: torch.nn.Module) -> Iterator[tuple[str, torch.Tensor]]:
@@ -249,7 +271,8 @@ def extract_module_tensors(
             parameters and buffers are exportable (see ``TensorRule.claims``).
         config: Source model config. When given, parameters a rule removes
             before any rule claims them (see ``TensorRule.removes``, e.g.
-            ``DROP_TIED_LM_HEAD``) are skipped without validating their quantizer.
+            ``DROP_TIED_LM_HEAD``) are skipped without validating their quantizer,
+            and without the warning logged for unclaimed parameters.
         format_registry: Registry of allowed GGUF quantization formats. Each
             quantizer is matched against the registry by its properties. If no
             format matches, an :class:`ExportError` is raised.
@@ -279,8 +302,12 @@ def extract_module_tensors(
     uncalibrated_claimed: list[str] = []
 
     for hf_name, param in model.named_parameters():
-        if not _is_claimed(hf_name, adapter, config):
-            skipped.append(hf_name)
+        decision = _rule_decision(hf_name, adapter, config)
+        if decision != "claimed":
+            # Parameters a rule removes (e.g. the other half of a multimodal
+            # checkpoint) are dropped on purpose; only unclaimed ones warn.
+            if decision is None:
+                skipped.append(hf_name)
             continue
         if isinstance(param, torch.nn.UninitializedParameter):
             continue

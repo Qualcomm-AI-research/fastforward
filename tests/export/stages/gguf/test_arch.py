@@ -4,8 +4,9 @@
 """Tests for the built-in GGUF architecture adapters.
 
 The adapters (:data:`LLAMA_ADAPTER`, :data:`QWEN2_ADAPTER`, :data:`QWEN3_ADAPTER`,
-:data:`GEMMA4_ADAPTER`, :data:`QWEN25VL_ADAPTER`, :data:`QWEN3VL_ADAPTER`) are the pipeline's default reference implementations of
-the public :class:`ArchAdapter` surface. These tests exercise the fields users
+:data:`GEMMA4_ADAPTER`, :data:`QWEN25VL_ADAPTER`, :data:`QWEN3VL_ADAPTER`) are the
+pipeline's default reference implementations of the public :class:`ArchAdapter`
+surface. The mmproj adapters are tested in ``test_mmproj.py``. These tests exercise the fields users
 are most likely to depend on (tensor rules, transforms, metadata).
 """
 

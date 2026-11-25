@@ -17,7 +17,7 @@ from fastforward.exceptions import ExportError
 from fastforward.export.stages.gguf._extract import extract_module_tensors
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q4_1, GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter
-from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename
+from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Drop, Rename
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -458,6 +458,39 @@ def test_extract_rejects_mismatched_block_size(_seed_prngs: int) -> None:
     # WHEN/THEN: extraction raises ExportError mentioning block_size.
     with pytest.raises(ff.exceptions.ExportError, match="block_size"):
         extract_module_tensors(model, adapter=_make_adapter(), quant_format=GGUF_Q4_0)
+
+
+def test_extract_does_not_warn_for_parameters_a_rule_drops(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # GIVEN: a model whose `visual` half a leading Drop removes, and a
+    # parameter no rule decides on.
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.embed = torch.nn.Embedding(8, 32)
+            self.visual = torch.nn.Linear(4, 4)
+            self.extra = torch.nn.Parameter(torch.zeros(4))
+
+    def name_map(hf_name: str) -> str | None:
+        return hf_name if hf_name.startswith("embed.") else None
+
+    adapter = replace(_make_adapter(), tensor_rules=(Drop(r"visual\..*"), Rename(name_map)))
+    config: Any = SimpleNamespace()
+
+    # WHEN: extracting with the config, with WARNING-level capture enabled.
+    with caplog.at_level(logging.WARNING, logger="fastforward.export.stages.gguf._extract"):
+        extracted = extract_module_tensors(
+            Model(), adapter=adapter, config=config, quant_format=GGUF_Q4_0
+        )
+
+    # THEN: only the claimed tensor is extracted, and only the undecided
+    # parameter is warned about.
+    assert [tensor.hf_name for tensor in extracted] == ["embed.weight"]
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "extra" in warnings[0]
+    assert "visual" not in warnings[0]
 
 
 def test_extract_skips_parameters_dropped_before_any_claim(_seed_prngs: int) -> None:

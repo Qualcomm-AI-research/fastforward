@@ -97,7 +97,7 @@ def _build_name_map(
         for pattern, template in compiled:
             match = pattern.match(hf_name)
             if match:
-                return template.format(match.group(1))
+                return template.format(*match.groups())
         return None
 
     return name_map

@@ -21,7 +21,13 @@ import pytest
 import torch
 
 from fastforward.export.pipeline import ExportRequest, GgufLlamaCppOptions, export_with_pipeline
-from fastforward.export.stages.gguf import GGUF_Q4_0, LLAMA_ADAPTER, Rename
+from fastforward.export.stages.gguf import (
+    GGUF_Q4_0,
+    LLAMA_ADAPTER,
+    ArchAdapter,
+    MmprojSourceConfig,
+    Rename,
+)
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -83,13 +89,15 @@ class _TinyLlama(ff.nn.QuantizedModule):
         return cast(torch.Tensor, self.lm_head(hidden))
 
 
-def _quantize_linears(model: torch.nn.Module) -> None:
+def _quantize_linears(
+    model: torch.nn.Module, query: str = "**/layers/**/[cls:ff.nn.QuantizedLinear]"
+) -> None:
     for module in model.modules():
         for child_name, child in list(module.named_children()):
             if type(child) is torch.nn.Linear:
                 child.__class__ = QuantizedLinear
                 cast(QuantizedLinear, child).__init_quantization__()
-    targets = ff.mpath.query("**/layers/**/[cls:ff.nn.QuantizedLinear]")
+    targets = ff.mpath.query(query)
     weight_quantizers = ff.find_quantizers(model, targets / "[quantizer:parameter/weight]")
     weight_quantizers.initialize(
         ff.nn.LinearQuantizer, num_bits=4, granularity=_PER_BLOCK, symmetric=True
@@ -328,3 +336,46 @@ def test_gguf_pipeline_writes_float_only_file_for_unquantized_model(
     assert {tensor.tensor_type for tensor in reader.tensors} == {gguf.GGMLQuantizationType.F16}
     assert "blk.0.attn_q.weight" in {tensor.name for tensor in reader.tensors}
     assert not any(key.startswith("tokenizer.") for key in reader.fields)
+
+
+_TINY_VL_TEXT_CONFIG = {
+    "vocab_size": 128,
+    "hidden_size": 64,
+    "intermediate_size": 128,
+    "num_hidden_layers": 2,
+    "num_attention_heads": 2,
+    "num_key_value_heads": 1,
+    "max_position_embeddings": 256,
+    "bos_token_id": 0,
+    "eos_token_id": 1,
+}
+_TINY_VL_VISION_CONFIG = {
+    "depth": 2,
+    "hidden_size": 32,
+    "intermediate_size": 64,
+    "num_heads": 2,
+    "out_hidden_size": 64,
+}
+
+
+_TINY_PREPROCESSOR = {"image_mean": [0.5, 0.5, 0.5], "image_std": [0.25, 0.25, 0.25]}
+
+
+def _export_mmproj(model: Any, output_dir: pathlib.Path, adapter: ArchAdapter) -> pathlib.Path:
+    options = GgufLlamaCppOptions(
+        arch_adapter=adapter,
+        model_config=MmprojSourceConfig.from_hf(model.config, _TINY_PREPROCESSOR),
+        float_type="F16",
+    )
+    artifacts = export_with_pipeline(
+        ExportRequest(
+            model=model,
+            sample_inputs=[],
+            output_dir=output_dir,
+            model_name="tiny-mmproj",
+            target="gguf",
+            format="llama_cpp",
+            options=options.to_context(),
+        )
+    )
+    return cast(pathlib.Path, artifacts.stage_outputs["write_gguf"])

@@ -50,7 +50,13 @@ from fastforward.export.stages.gguf._naming import (
 )
 from fastforward.export.stages.gguf._vocab import make_llama_hf_vocab_writer
 from fastforward.export.stages.gguf.adapter import ArchAdapter
-from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Rename, Synthesize, Transform
+from fastforward.export.stages.gguf.rules import (
+    DROP_TIED_LM_HEAD,
+    Drop,
+    Rename,
+    Synthesize,
+    Transform,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -60,6 +66,10 @@ if TYPE_CHECKING:
 _Q_PROJ_RE = re.compile(r"model\.layers\.\d+\.self_attn\.q_proj\.weight$")
 _K_PROJ_RE = re.compile(r"model\.layers\.\d+\.self_attn\.k_proj\.weight$")
 _QK_PROJ_PATTERN = r"model\.layers\.\d+\.self_attn\.[qk]_proj\.weight"
+
+# The Qwen-VL vision towers (``model.visual.`` in transformers 5, ``visual.``
+# before), exported separately as an mmproj file.
+_DROP_QWENVL_VISION = Drop(r"(?:model\.)?visual\..*")
 
 
 def _rope_permute_row_index(n_rows: int, n_head: int) -> torch.Tensor:
@@ -552,7 +562,7 @@ QWEN3_ADAPTER = ArchAdapter(
 
 QWEN25VL_ADAPTER = ArchAdapter(
     gguf_arch="qwen2vl",
-    tensor_rules=(DROP_TIED_LM_HEAD, Rename(qwen2vl_name_map)),
+    tensor_rules=(_DROP_QWENVL_VISION, DROP_TIED_LM_HEAD, Rename(qwen2vl_name_map)),
     write_metadata=_write_qwen2vl_metadata,
     tokenizer_model="gpt2",
     tokenizer_pre="qwen2",
@@ -568,7 +578,7 @@ tower is not exported. Pass the top-level config (``model.config``) as
 
 QWEN3VL_ADAPTER = ArchAdapter(
     gguf_arch="qwen3vl",
-    tensor_rules=(DROP_TIED_LM_HEAD, Rename(qwen3vl_name_map)),
+    tensor_rules=(_DROP_QWENVL_VISION, DROP_TIED_LM_HEAD, Rename(qwen3vl_name_map)),
     write_metadata=_write_qwen3vl_metadata,
     tokenizer_model="gpt2",
     tokenizer_pre="qwen2",
