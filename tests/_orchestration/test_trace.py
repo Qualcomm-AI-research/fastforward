@@ -6,6 +6,7 @@ import importlib.util
 
 import pytest
 import torch
+import torch.utils._pytree as pytree
 
 from fastforward._orchestration.graph_module import (
     GraphModule,
@@ -14,13 +15,17 @@ from fastforward._orchestration.graph_module import (
 )
 from fastforward._orchestration.trace import (
     _MIN_TORCH_VERSION,
+    _after,
     _Call,
     _CallRecorder,
+    _CallSplitter,
     _is_export_guard,
     _make_dict,
     _make_list,
     _make_slice,
     _make_tuple,
+    _SplitTrace,
+    _strip_export_artifacts,
     trace,
 )
 from packaging.version import Version
@@ -37,6 +42,7 @@ from ._models import (
     IndexedLayerModel,
     InPlaceReadBetweenWrites,
     InPlaceRotary,
+    KeylessStateModel,
     KwargForward,
     MixedOps,
     ModuleReadsBetweenWrites,
@@ -45,12 +51,15 @@ from ._models import (
     NestedMLP,
     NestedWithTensorOps,
     NoAutocastLeaf,
+    NoGradInFold,
     NoGradLeaf,
     PairLayerModel,
     ReadsAfterCastingCall,
+    ReadsAfterInPlaceCall,
     ReadsWeightAfterCastingCall,
     RotaryScaled,
     ScaledLeaf,
+    ScalesChildWeightInPlace,
     TinyMLP,
     ToyDecoderLayer,
     ToyLlama,
@@ -818,6 +827,16 @@ def test_record_keeps_the_nodes_of_a_call_that_changes_the_grad_mode(child: nn.M
     assert [node.op for node in exported.graph.nodes] == ["placeholder", "call_function", "output"]
 
 
+def test_record_warns_for_a_fold_that_changes_the_grad_mode() -> None:
+    # GIVEN a model that runs an op of its own forward without autograd
+    model = NoGradInFold()
+
+    # WHEN the export of the model is recorded
+    # THEN the recorder warns that the call of the model loses the grad mode
+    with pytest.warns(UserWarning, match="'of the model' changes the grad mode"):
+        _record(model, torch.randn(2, 4))
+
+
 def test_record_takes_the_arguments_of_a_call_before_the_pre_hooks_of_the_user() -> None:
     # GIVEN a model whose child has a forward pre-hook that doubles the input
     model = Calls(ScaledLeaf(), {})
@@ -872,3 +891,91 @@ def test_record_keeps_the_node_of_a_weight_that_an_op_of_the_call_returns_itself
     lin = root.children[0]
     (cast, *_) = lin.body
     assert lin.relinked == {cast: cast.args[0]}
+
+
+def _split(model: nn.Module, *args: torch.Tensor) -> tuple[_Call, _SplitTrace]:
+    with _CallRecorder(model) as recorder:
+        exported = torch.export.export(model, args, strict=False)
+    assert recorder.root is not None
+    _strip_export_artifacts(exported.graph)
+    return recorder.root, _CallSplitter(exported).split(recorder.root)
+
+
+def test_split_gives_each_call_of_a_leaf_one_call_module_node() -> None:
+    # GIVEN a model that calls its leaf child twice
+    model = Calls(ScaledLeaf(), {}, {})
+
+    # WHEN the recorded export is split
+    root, split = _split(model, torch.randn(2, 4))
+
+    # THEN only the model has a graph, with one node per call of the child
+    assert list(split.graphs) == [root]
+    graph = split.graphs[root]
+    call_nodes = [node for node in graph.nodes if node.op == "call_module"]
+    assert [node.target for node in call_nodes] == ["child", "child@1"]
+    assert [split.calls[node] for node in call_nodes] == root.children
+
+    # THEN the graph takes the input by its name in the signature and returns the second call
+    assert [node.target for node in graph.nodes if node.op == "placeholder"] == ["x"]
+    assert list(graph.nodes)[-1].args[0] is call_nodes[1]
+
+
+def test_split_gives_each_call_of_a_fold_its_own_graph() -> None:
+    # GIVEN a model that calls a child twice, which calls a leaf
+    model = Calls(Calls(ScaledLeaf(), {}), {}, {})
+
+    # WHEN the recorded export is split
+    root, split = _split(model, torch.randn(2, 4))
+
+    # THEN each call of the child is a fold with its own graph
+    assert [call.name for call in split.graphs] == ["", "child", "child@1"]
+    for call in root.children:
+        graph = split.graphs[call]
+        assert [node.target for node in graph.nodes if node.op == "call_module"] == ["child"]
+
+
+def test_split_reads_a_tensor_after_the_call_that_writes_it_in_place() -> None:
+    # GIVEN a model that reads a tensor after its child writes the tensor in place
+    model = ReadsAfterInPlaceCall()
+
+    # WHEN the recorded export is split
+    root, split = _split(model, torch.randn(2, 4))
+
+    # THEN the model reads the tensor through a node that runs after the child call
+    graph = split.graphs[root]
+    (child,) = [node for node in graph.nodes if node.target == "child"]
+    (after,) = [node for node in graph.nodes if node.target is _after]
+    assert after.args[1] is child
+    (add,) = after.users
+    assert add.args == (child, after)
+
+
+@pytest.mark.filterwarnings("ignore:Node 'mul_' writes in place to a buffer")
+def test_split_calls_a_module_after_its_weight_is_written_in_place() -> None:
+    # GIVEN a model that scales the weight of its child in place before it calls the child
+    model = ScalesChildWeightInPlace()
+
+    # WHEN the recorded export is split
+    with torch.no_grad():
+        root, split = _split(model, torch.randn(2, 4))
+
+    # THEN the child call takes its input through a node that runs after the write
+    graph = split.graphs[root]
+    (write,) = [node for node in graph.nodes if node.target is torch.ops.aten.mul_.Tensor]
+    (fc,) = [node for node in graph.nodes if node.target == "fc"]
+    (after,) = [node for node in graph.nodes if node.target is _after]
+    assert fc.args[0] is after
+    assert after.args[1:] == (write,)
+
+
+def test_split_flattens_an_output_without_key_paths_once() -> None:
+    # GIVEN a model that reads two fields of a typed output without key paths
+    model = KeylessStateModel()
+
+    # WHEN the recorded export is split
+    root, split = _split(model, torch.randn(2, 4), torch.randn(2, 4))
+
+    # THEN the graph of the model flattens the output once, and reads each field at its index
+    graph = split.graphs[root]
+    (leaves,) = [node for node in graph.nodes if node.target is pytree.tree_leaves]
+    assert sorted(user.args[1] for user in leaves.users) == [0, 1]

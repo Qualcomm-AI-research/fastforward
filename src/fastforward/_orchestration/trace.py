@@ -21,6 +21,7 @@ import torch.utils._pytree as pytree
 
 from packaging.version import Version
 from torch import fx
+from torch.export.graph_signature import InputKind
 from torch.fx.experimental import proxy_tensor
 from torch.fx.proxy import GraphAppendingTracer
 
@@ -609,8 +610,7 @@ class _CallRecorder:
         self._claim_new_nodes(call)
         for tensor, node in self._links_before.pop(call):
             relinked = self._node_of(tensor)
-            # A tensor that the call writes in place keeps the node of the write. A read of it
-            # after the call then fails in `_CallSplitter`, and does not read the old value.
+            # `_CallSplitter` orders the reads of a tensor that the call writes in place.
             if relinked is not None and relinked is not node and not _written_nodes(relinked):
                 call.relinked[relinked] = node
         if call is self.root:
@@ -637,14 +637,28 @@ class _CallRecorder:
         nodes are then not in the exported graph. Without these nodes, the graph stays the
         recorded graph. A leaf node runs its module, so it keeps the grad mode and the autocast
         state of the module. The ops of a fold run in the grad mode and the autocast state of the
-        caller.
+        caller, so a fold whose own forward changes them gets a warning.
         """
         assert self._graph is not None
+        changes: dict[_Call, set[str]] = {}
         for node in reversed(self._graph.nodes):
             if node.op == "call_function" and node.target in _GRAD_AND_AUTOCAST_OPS:
                 if (owner := self._owner.pop(node, None)) is not None:
                     owner.body.remove(node)
+                    grad_mode = node.target is torch._C._set_grad_enabled
+                    changes.setdefault(owner, set()).add(
+                        "grad mode" if grad_mode else "autocast state"
+                    )
                 self._graph.erase_node(node)
+        live = set(self._graph.nodes)
+        for call, kinds in changes.items():
+            if _is_fold(call, live):
+                warnings.warn(
+                    f"The call {call.name or 'of the model'!r} changes the "
+                    f"{' and the '.join(sorted(kinds))} in its forward. The trace runs the ops of "
+                    "this call in the grad mode and the autocast state of its caller. Move the "
+                    "region into a child module to keep it.",
+                )
 
     def _alias_passthrough(self, call: _Call, tensor: torch.Tensor) -> torch.Tensor:
         """Return `tensor` if `call` or one of its child calls made it, else an alias of it.
@@ -662,6 +676,277 @@ class _CallRecorder:
         marker: torch.Tensor = torch.ops.aten.alias.default(tensor)
         call.markers.update(self._claim_new_nodes(call))
         return marker
+
+
+def _has_ops(call: _Call, live: set[fx.Node]) -> bool:
+    """Whether a call or one of its child calls runs an op of the exported graph."""
+    return any(
+        _has_ops(item, live)
+        if isinstance(item, _Call)
+        else item in live and item not in call.markers
+        for item in call.body
+    )
+
+
+def _is_fold(call: _Call, live: set[fx.Node]) -> bool:
+    """Whether the trace runs the ops of a call itself, and not the module of the call."""
+    return call.parent is None or any(_has_ops(child, live) for child in call.children)
+
+
+def _input_names(call: _Call) -> list[str]:
+    """Name each argument of a call: the parameter name of a positional one, else its keyword."""
+    parameter_names: list[str] = []
+    for parameter in inspect.signature(call.module.forward).parameters.values():
+        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD):
+            parameter_names.append(parameter.name)
+        elif parameter.kind is parameter.VAR_POSITIONAL:
+            extra = range(len(call.args) - len(parameter_names))
+            parameter_names.extend(f"{parameter.name}_{index}" for index in extra)
+    positional_names = [
+        parameter_names[index] if index < len(parameter_names) else f"arg{index}"
+        for index in range(len(call.args))
+    ]
+    return [*positional_names, *call.kwargs]
+
+
+def _bind_parts(graph: fx.Graph, base: fx.Node, tree: _Tree, env: dict[fx.Node, fx.Node]) -> None:
+    """Map each node leaf of `tree` to the part of `base` that holds the leaf.
+
+    A part is read at the key path of the leaf, so it needs no op. A container type without key
+    paths, such as `transformers.ModelOutput`, is flattened once, and each leaf is read at its
+    `pytree` index.
+    """
+    if tree.spec.is_leaf():
+        if tree.nodes:
+            env.setdefault(tree.nodes[0], base)
+        return
+    if tree.paths is None:
+        leaves = graph.call_function(pytree.tree_leaves, (base,))
+        for index, leaf in enumerate(tree.leaves):
+            if isinstance(leaf, fx.Node) and leaf not in env:
+                env[leaf] = graph.call_function(operator.getitem, (leaves, index))
+        return
+    for path, leaf in zip(tree.paths, tree.leaves):
+        if not isinstance(leaf, fx.Node) or leaf in env:
+            continue
+        part = base
+        for key in path:
+            match key:
+                case pytree.SequenceKey(idx=index):
+                    part = graph.call_function(operator.getitem, (part, index))
+                case pytree.MappingKey(key=mapping_key):
+                    part = graph.call_function(operator.getitem, (part, mapping_key))
+                case pytree.GetAttrKey(name=name):
+                    part = graph.call_function(getattr, (part, name))
+                case _:
+                    msg = f"Unsupported pytree key: {key!r}"
+                    raise NotImplementedError(msg)
+        env[leaf] = part
+
+
+def _after(value: Any, *_: Any) -> Any:
+    """Return `value`. The other arguments only make the node run after them."""
+    return value
+
+
+def _in_place_writes(call: _Call) -> Iterator[fx.Node]:
+    """Yield the nodes that write a tensor in place, in `call` and in its child calls."""
+    for item in call.body:
+        if isinstance(item, _Call):
+            yield from _in_place_writes(item)
+        elif _written_nodes(item):
+            yield item
+
+
+@dataclasses.dataclass
+class _SplitTrace:
+    """The exported graph, split into one fx graph per fold call.
+
+    Args:
+        graphs: The graph of each fold call. Each child call is a `call_module` node.
+        calls: The call of each `call_module` node.
+        lifted: The constant tensors that export lifted out of the model, by `get_attr` target.
+    """
+
+    graphs: dict[_Call, fx.Graph]
+    calls: dict[fx.Node, _Call]
+    lifted: dict[str, Any]
+
+
+class _CallSplitter:
+    """Split the flat exported graph into one fx graph per fold call.
+
+    A call is a fold if one of its child calls runs an op, and the call of the model is always a
+    fold. Every other call is a leaf: its graph is not needed, because the leaf node runs the
+    module itself.
+
+    The graph of a call has one placeholder per argument as called. The nodes that the call made
+    itself are copied. Each child call is one `call_module` node with the arguments of the call.
+    The parameters and buffers that the call reads become `get_attr` nodes.
+
+    A child call can write a tensor of the call in place. The call reads that tensor after the
+    child call through an `_after` node, which takes the child call node as an argument, so the
+    read runs after the write. A node that a call relinked to a tensor reads as that tensor, in
+    every graph.
+
+    The call can also write a parameter or buffer in place before a child call whose module holds
+    it. The child call then takes its first tensor argument through an `_after` node that takes
+    the write as an argument, so the child call runs after the write.
+    """
+
+    def __init__(self, exported: torch.export.ExportedProgram) -> None:
+        self._graph = exported.graph
+        self._live = set(self._graph.nodes)
+        placeholders = {node.name: node for node in self._graph.nodes if node.op == "placeholder"}
+        state_kinds = (InputKind.PARAMETER, InputKind.BUFFER, InputKind.CONSTANT_TENSOR)
+        self._state: dict[fx.Node, str] = {}
+        lifted: dict[str, Any] = {}
+        for spec in exported.graph_signature.input_specs:
+            if spec.kind in state_kinds and spec.target is not None:
+                self._state[placeholders[spec.arg.name]] = spec.target
+            if spec.kind is InputKind.CONSTANT_TENSOR and spec.target is not None:
+                lifted[spec.target] = exported.constants[spec.target]
+        self._result = _SplitTrace({}, {}, lifted)
+
+    def split(self, root: _Call) -> _SplitTrace:
+        """Build the graph of `root` and of each fold call inside it."""
+        self._tensors = {
+            **dict(root.module.named_parameters()),
+            **dict(root.module.named_buffers()),
+        }
+        self._relinked: dict[fx.Node, fx.Node] = {}
+        calls = [root]
+        while calls:
+            call = calls.pop()
+            self._relinked.update(call.relinked)
+            calls.extend(call.children)
+        self._check_every_op_has_a_call(root)
+        self._add_graph(root)
+        return self._result
+
+    def _check_every_op_has_a_call(self, root: _Call) -> None:
+        made: set[fx.Node] = set()
+        calls = [root]
+        while calls:
+            call = calls.pop()
+            made.update(item for item in call.body if isinstance(item, fx.Node))
+            calls.extend(call.children)
+        lost = [n.name for n in self._graph.nodes if n.op == "call_function" and n not in made]
+        if lost:
+            msg = f"No module call made the nodes {lost}, so `trace` cannot place them."
+            raise RuntimeError(msg)
+
+    def _written_state(self, node: fx.Node) -> list[fx.Node]:
+        """Return the parameters and buffers that `node` writes in place, also through a view."""
+        written: list[fx.Node] = []
+        for target in _written_nodes(node):
+            base: fx.Node | None = target
+            while base is not None and base not in self._state:
+                base = _aliased_node(base)
+            if base is not None:
+                written.append(base)
+        return written
+
+    def _holds_state(self, module: nn.Module, state: fx.Node) -> bool:
+        """Whether `module` or one of its submodules holds the parameter or buffer `state`."""
+        tensor = self._tensors.get(self._state[state])
+        held = [*module.parameters(), *module.buffers()]
+        return tensor is not None and any(other is tensor for other in held)
+
+    def _add_graph(self, call: _Call) -> None:
+        graph = self._call_graph(call)
+        _fuse_in_place_writes(graph)
+        self._result.graphs[call] = graph
+        for child in call.children:
+            if _is_fold(child, self._live):
+                self._add_graph(child)
+
+    def _call_graph(self, call: _Call) -> fx.Graph:
+        graph = fx.Graph()
+        env: dict[fx.Node, fx.Node] = {}
+
+        def lookup(node: fx.Node) -> fx.Node:
+            if node not in env and (target := self._state.get(node)) is not None:
+                env[node] = graph.get_attr(target)
+            if node not in env and (original := self._relinked.get(node)) is not None:
+                env[node] = lookup(original)
+            if node in env:
+                return env[node]
+            msg = f"The call {call.name or 'of the model'!r} reads {node.name!r}, not an input."
+            raise NotImplementedError(msg)
+
+        def read_after_writes(child: _Call, child_node: fx.Node) -> None:
+            for write in _in_place_writes(child):
+                base = _aliased_node(write)
+                while base is not None and base not in env and base not in self._state:
+                    base = _aliased_node(base)
+                if base is None:
+                    continue
+                after = graph.call_function(_after, (lookup(base), child_node))
+                env[base] = after
+                if _aliased_node(write) is base:
+                    env[write] = after
+
+        def argument(tree: _Tree) -> Any:
+            leaves = [lookup(leaf) if isinstance(leaf, fx.Node) else leaf for leaf in tree.leaves]
+            if _is_plain_pytree(tree.spec):
+                return pytree.tree_unflatten(leaves, tree.spec)
+            unflatten_args: tuple[Any, ...] = (leaves, tree.spec)
+            return graph.call_function(pytree.tree_unflatten, unflatten_args)
+
+        # The last in-place write of the call to each parameter or buffer, by its node.
+        state_writes: dict[fx.Node, fx.Node] = {}
+
+        def after_state_writes(child: _Call, arguments: Any) -> Any:
+            writes = [
+                write
+                for state, write in state_writes.items()
+                if self._holds_state(child.module, state)
+            ]
+            if not writes:
+                return arguments
+            leaves, spec = pytree.tree_flatten(arguments)
+            first = next((i for i, leaf in enumerate(leaves) if isinstance(leaf, fx.Node)), None)
+            if first is None:
+                msg = (
+                    f"The call {child.name!r} reads a parameter or buffer that is written in place "
+                    "before it, but it has no tensor argument to order it after the write."
+                )
+                raise NotImplementedError(msg)
+            leaves[first] = graph.call_function(_after, (leaves[first], *writes))
+            return pytree.tree_unflatten(leaves, spec)
+
+        for name, tree in zip(_input_names(call), [*call.args, *call.kwargs.values()]):
+            _bind_parts(graph, graph.placeholder(name), tree, env)
+
+        for item in call.body:
+            if isinstance(item, _Call):
+                args = tuple(argument(tree) for tree in item.args)
+                kwargs = {key: argument(tree) for key, tree in item.kwargs.items()}
+                args, kwargs = after_state_writes(item, (args, kwargs))
+                node = graph.call_module(item.name, args, kwargs)
+                self._result.calls[node] = item
+                assert item.output is not None
+                _bind_parts(graph, node, item.output, env)
+                read_after_writes(item, node)
+            elif item in self._live:
+                if item.op != "call_function":
+                    msg = f"Unsupported node {item.name!r} with op {item.op!r} in a module call."
+                    raise NotImplementedError(msg)
+                env[item] = graph.node_copy(item, lookup)
+                state_writes.update(dict.fromkeys(self._written_state(item), env[item]))
+
+        # The graph returns the output as the module returns it, so the fold and its module
+        # give the same value.
+        assert call.output is not None
+        graph.output(argument(call.output))
+        for node in reversed(graph.nodes):
+            if (
+                node.target in (operator.getitem, getattr, pytree.tree_leaves, _after)
+                and not node.users
+            ):
+                graph.erase_node(node)
+        return graph
 
 
 def _resolve_pytree_glue(gm: fx.GraphModule) -> None:

@@ -579,6 +579,52 @@ class HiddenStateModel(torch.nn.Module):
         return result
 
 
+class KeylessState:
+    """Typed output registered with `pytree` but without key paths, like `ModelOutput`."""
+
+    def __init__(self, hidden: torch.Tensor, residual: torch.Tensor) -> None:
+        self.hidden = hidden
+        self.residual = residual
+
+
+torch.utils._pytree.register_pytree_node(
+    KeylessState,
+    lambda state: ([state.hidden, state.residual], None),
+    lambda leaves, _: KeylessState(*leaves),
+    serialized_type_name="tests.KeylessState",
+)
+
+
+class KeylessStateLayer(torch.nn.Module):
+    """Preserved wrapper that returns a `KeylessState`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> KeylessState:
+        """Forward pass: KeylessState(fc(x) * mask, fc(x))."""
+        hidden = self.fc(x)
+        return KeylessState(hidden * mask, hidden)
+
+
+class KeylessStateModel(torch.nn.Module):
+    """Read the field of a typed output without key paths, like `LlamaForCausalLM` does."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.layer = KeylessStateLayer()
+        self.head = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Forward pass: head(state.hidden + state.residual), with state = layer(x, mask)."""
+        state = self.layer(x, mask)
+        result: torch.Tensor = self.head(state.hidden + state.residual)
+        return result
+
+
 class IndexedLayer(torch.nn.Module):
     """Preserved wrapper that reads a dict with integer keys."""
 
@@ -957,6 +1003,63 @@ class NoAutocastLeaf(torch.nn.Module):
         """Forward pass: cos(x), without autocast."""
         with torch.autocast("cpu", enabled=False):
             return x.cos()
+
+
+class NoGradInFold(torch.nn.Module):
+    """Runs an op of its own forward without autograd, between two linear layers."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc1 = torch.nn.Linear(4, 4)
+        self.fc2 = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc2(fc1(x) * 2), with the scale outside autograd."""
+        h = self.fc1(x)
+        with torch.no_grad():
+            h = h * 2
+        return self.fc2(h)  # type: ignore[no-any-return]
+
+
+class AddsInPlace(torch.nn.Module):
+    """Leaf that adds `x` to `buffer` in place."""
+
+    @override
+    def forward(self, x: torch.Tensor, buffer: torch.Tensor) -> torch.Tensor:
+        """Forward pass: buffer += x, then 2 * x."""
+        buffer.add_(x)
+        return x * 2
+
+
+class ReadsAfterInPlaceCall(torch.nn.Module):
+    """Reads a tensor after its child writes the tensor in place."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+        self.child = AddsInPlace()
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: buffer = fc(x); child(x, buffer) + buffer."""
+        buffer: torch.Tensor = self.fc(x).clone()
+        out: torch.Tensor = self.child(x, buffer)
+        return out + buffer
+
+
+class ScalesChildWeightInPlace(torch.nn.Module):
+    """Scales the weight of its linear layer in place, then calls the layer."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc.weight *= 0.5, then fc(x)."""
+        self.fc.weight.mul_(0.5)
+        return self.fc(x)  # type: ignore[no-any-return]
 
 
 class CastsToFloat(torch.nn.Module):
