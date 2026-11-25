@@ -3,9 +3,8 @@
   '''
   CallModule(caller=DictLayer, args=[InputRef(x)], kwargs={'mask': InputRef(mask)}, target=NodeRef(first), context=_disable_quantization, cache=True, input_location=None, output_location=None)
   CallDelegate(fn=_noop, module=DictLayer, args=[InputRef(x)], kwargs={'mask': InputRef(mask)}, contexts=[_disable_quantization], targets=[])
-  StoreValue(target=Const(hidden), value=Const(hidden), context=_disable_quantization)
-  CallFunction(caller=getitem, args=[NodeRef(first), Const(hidden)], kwargs={}, target=NodeRef(getitem_call_function), context=_disable_quantization, cache=True, input_location=None, output_location=None)
-  CallDelegate(fn=_noop, module=DictLayer, args=[NodeRef(getitem_call_function)], kwargs={'mask': InputRef(mask)}, contexts=[_disable_quantization], targets=[])
+  LoadAttribute(source=NodeRef(first), target=AttributeRef(reference=NodeRef(first), attribute='hidden'), attribute='hidden', context=_disable_quantization)
+  CallDelegate(fn=_noop, module=DictLayer, args=[AttributeRef(reference=NodeRef(first), attribute='hidden')], kwargs={'mask': InputRef(mask)}, contexts=[_disable_quantization], targets=[])
   '''
 # ---
 # name: test_snapshot_folds_that_share_an_input

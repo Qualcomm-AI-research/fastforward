@@ -1268,7 +1268,7 @@ def test_snapshot_folds_that_read_items_of_a_dict_output(
     # WHEN scheduling the reduced graph
     program = schedule(reduced, specs=specs)
 
-    # THEN `second` reads `first["hidden"]` with one `getitem` and `mask` from the graph input
+    # THEN `second` reads `first["hidden"]` with one attribute load and `mask` from the graph input
     assert snapshot == "\n".join(repr(instruction) for instruction in program.instructions)
 
 

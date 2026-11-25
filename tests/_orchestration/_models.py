@@ -12,6 +12,7 @@ Groups below:
   * Small helper modules (constants, tuple outputs, no-input generators, probes).
   * Tracer-shape probes (exercise specific `torch.export` / FX behaviours).
   * Llama-shaped "toy" family (mirrors HuggingFace naming so mpath patterns match).
+  * Quantized models with quantizers that a container module calls.
 """
 
 import dataclasses
@@ -21,6 +22,8 @@ from typing import Any, NamedTuple
 import torch
 
 from fastforward._orchestration.graph_module import GraphModule
+from fastforward.nn import QuantizedModule, QuantizerStub
+from fastforward.nn import functional as FF
 from typing_extensions import override
 
 
@@ -507,14 +510,14 @@ class DictLayerStack(torch.nn.Module):
 
 
 class TensorPair(NamedTuple):
-    """Typed input whose fields must survive preserved-call argument packing."""
+    """Typed input whose fields must survive the arguments of a module call."""
 
     x: torch.Tensor
     y: torch.Tensor
 
 
 class PairLayer(torch.nn.Module):
-    """Preserved wrapper that reads namedtuple fields."""
+    """Wrapper that reads namedtuple fields."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -528,7 +531,7 @@ class PairLayer(torch.nn.Module):
 
 
 class PairLayerModel(torch.nn.Module):
-    """Pass a typed container to a preserved wrapper."""
+    """Pass a typed container to a wrapper."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -543,7 +546,7 @@ class PairLayerModel(torch.nn.Module):
 
 @dataclasses.dataclass
 class HiddenState:
-    """Typed output registered only with `pytree`, like `transformers.ModelOutput`."""
+    """Typed output registered as a `pytree` dataclass, with key paths."""
 
     hidden: torch.Tensor
 
@@ -596,7 +599,7 @@ torch.utils._pytree.register_pytree_node(
 
 
 class KeylessStateLayer(torch.nn.Module):
-    """Preserved wrapper that returns a `KeylessState`."""
+    """Wrapper that returns a `KeylessState`."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -640,7 +643,7 @@ class IndexedLayer(torch.nn.Module):
 
 
 class IndexedLayerModel(torch.nn.Module):
-    """Pass a dict with integer keys, which cannot be keyword arguments, to a preserved wrapper."""
+    """Pass a dict with integer keys, which cannot be keyword arguments, to a wrapper."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -729,15 +732,13 @@ class DeviceCastModel(torch.nn.Module):
 class MetadataArgRotary(torch.nn.Module):
     """Rotary embedding that reads its first input for the dtype only.
 
-    `torch.export` drops the input from the call, so `trace` cannot call this module
-    and runs the module of `unflatten` instead. Used to verify that the fallback takes
-    the training mode of the original, also for an uncalled module inside it with another mode.
+    The exported graph only reads the dtype of the input. Used to verify that `trace` still
+    calls this module with all its inputs.
     """
 
     def __init__(self) -> None:
         super().__init__()
         self.register_buffer("inv_freq", torch.ones(4))
-        self.frozen = torch.nn.Dropout(0.1)
 
     def forward(self, x: torch.Tensor, position_ids: torch.Tensor) -> torch.Tensor:
         """Return the cosine of the positions times the frequencies, in the dtype of `x`."""
@@ -1062,6 +1063,21 @@ class ScalesChildWeightInPlace(torch.nn.Module):
         return self.fc(x)  # type: ignore[no-any-return]
 
 
+class ScalesByTensorAttribute(torch.nn.Module):
+    """Scales the output of its linear layer by a plain tensor attribute."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+        self.scale = torch.ones(4)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc(x) * scale."""
+        out: torch.Tensor = self.fc(x) * self.scale
+        return out
+
+
 class CastsToFloat(torch.nn.Module):
     """Leaf that casts its input to float32, like the RMSNorm of a HuggingFace model.
 
@@ -1135,6 +1151,36 @@ class ReadsWeightAfterCastingCall(torch.nn.Module):
         return out + self.lin.weight.sum()
 
 
+class SharedChildLayer(torch.nn.Module):
+    """Layer that calls a module that it gets as an argument."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(4, 4)
+
+    @override
+    def forward(self, x: torch.Tensor, shared: torch.nn.Module) -> torch.Tensor:
+        """Forward pass: shared(fc(x))."""
+        out: torch.Tensor = shared(self.fc(x))
+        return out
+
+
+class SharedChild(torch.nn.Module):
+    """Passes one of its modules to each layer, like the rotary embedding of a HuggingFace model."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.shared = ScaledLeaf()
+        self.layers = torch.nn.ModuleList([SharedChildLayer(), SharedChildLayer()])
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: x = layer(x, shared) for each layer."""
+        for layer in self.layers:
+            x = layer(x, self.shared)
+        return x
+
+
 class Calls(torch.nn.Module):
     """Calls `child` once per entry of `calls`, each time on the output of the call before.
 
@@ -1156,6 +1202,19 @@ class Calls(torch.nn.Module):
         return x
 
 
+class SumOfCalls(torch.nn.Module):
+    """Calls `child` on two inputs, which can have different shapes."""
+
+    def __init__(self, child: torch.nn.Module) -> None:
+        super().__init__()
+        self.child = child
+
+    @override
+    def forward(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        """Forward pass: child(a).sum() + child(b).sum()."""
+        return self.child(a).sum() + self.child(b).sum()  # type: ignore[no-any-return]
+
+
 class ScaledLeaf(torch.nn.Module):
     """Leaf with a weight and non-tensor arguments that have defaults."""
 
@@ -1168,3 +1227,109 @@ class ScaledLeaf(torch.nn.Module):
         """Forward pass: x * weight * scale, negated if `negate`."""
         out = x * self.weight * scale
         return -out if negate else out
+
+
+class PairBlock(torch.nn.Module):
+    """Block with a child and two inputs."""
+
+    def __init__(self, dim: int = 4) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(dim, dim)
+
+    @override
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        scale: float = 1.0,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Forward pass: fc(x * scale + y), multiplied by `mask` if given."""
+        out = self.fc(x * scale + y)
+        return out if mask is None else out * mask  # type: ignore[no-any-return]
+
+
+class InPlacePairBlock(torch.nn.Module):
+    """Block with two inputs that writes the halves of a fresh buffer in place."""
+
+    def __init__(self, dim: int = 4) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(dim, dim)
+
+    @override
+    def forward(self, x: torch.Tensor, y: torch.Tensor, scale: float = 1.0) -> torch.Tensor:
+        """Forward pass: fc of a buffer with the first half of `x` and the scaled second half of `y`."""
+        half = x.shape[-1] // 2
+        buffer = torch.empty_like(x)
+        buffer[..., :half] = x[..., :half]
+        buffer[..., half:] = y[..., half:] * scale
+        return self.fc(buffer)  # type: ignore[no-any-return]
+
+
+class PairOuter(torch.nn.Module):
+    """Wrapper with one input that calls its `PairBlock` `n_calls` times, each with a new scale.
+
+    With `same_inputs`, the block gets `x` twice. Otherwise it gets `x` and `sin(x)`.
+    """
+
+    def __init__(self, n_calls: int, same_inputs: bool, dim: int = 4) -> None:
+        super().__init__()
+        self.block = PairBlock(dim)
+        self.n_calls = n_calls
+        self.same_inputs = same_inputs
+
+    @override
+    def forward(self, x: torch.Tensor, scale: float = 1.0) -> torch.Tensor:
+        """Forward pass: x = block(x, x or sin(x), scale * (call + 1)) for each call."""
+        for call in range(self.n_calls):
+            y = x if self.same_inputs else x.sin()
+            x = self.block(x, y, scale=scale * (call + 1))
+        return x
+
+
+class ResidualTwoLinear(torch.nn.Module):
+    """Two linear layers with a residual add between them."""
+
+    def __init__(self, dim: int = 8) -> None:
+        super().__init__()
+        self.fc1 = torch.nn.Linear(dim, dim)
+        self.fc2 = torch.nn.Linear(dim, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc2(fc1(x) + x)."""
+        return self.fc2(self.fc1(x) + x)  # type: ignore[no-any-return]
+
+
+class QuantizedResidualTwoLinear(QuantizedModule, ResidualTwoLinear):
+    """`ResidualTwoLinear` that quantizes the residual add in its own forward pass.
+
+    The residual quantizer is owned and called by the container, not by a linear layer.
+    """
+
+    @override
+    def __init_quantization__(self) -> None:
+        super().__init_quantization__()
+        self.residual_quantizer = QuantizerStub(output_quantizer=True)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        residual = FF.add(self.fc1(x), x, output_quantizer=self.residual_quantizer)
+        return self.fc2(residual)  # type: ignore[no-any-return]
+
+
+class ModeAndShapeBranches(torch.nn.Module):
+    """Takes a different branch in train mode and for a batch of more than two rows."""
+
+    def __init__(self, dim: int = 4) -> None:
+        super().__init__()
+        self.fc = torch.nn.Linear(dim, dim)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass: fc(x), doubled in train mode, negated for more than two rows."""
+        y: torch.Tensor = self.fc(x)
+        if self.training:
+            y = y * 2
+        if x.shape[0] > 2:
+            y = -y
+        return y

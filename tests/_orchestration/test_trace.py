@@ -2,10 +2,16 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # pylint: disable=missing-function-docstring
+import gc
 import importlib.util
+import operator
+import weakref
+
+from collections.abc import Callable
 
 import pytest
 import torch
+import torch.fx._pytree as fx_pytree
 import torch.utils._pytree as pytree
 
 from fastforward._orchestration.graph_module import (
@@ -40,11 +46,13 @@ from ._models import (
     DeviceCastModel,
     HiddenStateModel,
     IndexedLayerModel,
+    InPlacePairBlock,
     InPlaceReadBetweenWrites,
     InPlaceRotary,
     KeylessStateModel,
     KwargForward,
     MixedOps,
+    ModeAndShapeBranches,
     ModuleReadsBetweenWrites,
     ModuleReadsSnapshot,
     MultiAxisIndex,
@@ -53,13 +61,18 @@ from ._models import (
     NoAutocastLeaf,
     NoGradInFold,
     NoGradLeaf,
+    PairBlock,
     PairLayerModel,
+    PairOuter,
     ReadsAfterCastingCall,
     ReadsAfterInPlaceCall,
     ReadsWeightAfterCastingCall,
     RotaryScaled,
     ScaledLeaf,
+    ScalesByTensorAttribute,
     ScalesChildWeightInPlace,
+    SharedChild,
+    SumOfCalls,
     TinyMLP,
     ToyDecoderLayer,
     ToyLlama,
@@ -256,7 +269,9 @@ def test_trace_kwarg_input_names_match_module_signature(kwarg_forward: KwargForw
     torch.testing.assert_close(got, expected, atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("model_type", [PairLayerModel, HiddenStateModel, IndexedLayerModel])
+@pytest.mark.parametrize(
+    "model_type", [PairLayerModel, HiddenStateModel, KeylessStateModel, IndexedLayerModel]
+)
 def test_reduced_graph_passes_typed_containers_through_preserved_calls(
     model_type: type[torch.nn.Module],
 ) -> None:
@@ -375,11 +390,8 @@ def test_trace_tensor_ops_emit_call_function_op_with_non_module_callable(
     x = torch.randn(2, 8)
     graph = trace(model, x)
 
-    # WHEN we filter for call_function nodes (excluding the synthetic _prepare_output
-    # node the tracer adds at the root output)
-    call_function_nodes = [
-        n for n in graph._nodes.values() if n.op is Op.call_function and n.name != "_prepare_output"
-    ]
+    # WHEN we filter for call_function nodes
+    call_function_nodes = [n for n in graph._nodes.values() if n.op is Op.call_function]
 
     # THEN there is at least one call_function node and none of them are nn.Modules
     assert len(call_function_nodes) >= 3  # 2x transpose + mul (transpose may decompose further)
@@ -547,6 +559,37 @@ def test_trace_qwen3_8b_forward_matches_eager() -> None:
     torch.testing.assert_close(got.logits, expected.logits, atol=0.05, rtol=0.01)
 
 
+@pytest.mark.slow
+@skip_without_transformers
+def test_trace_tiny_llama_forward_matches_eager() -> None:
+    """The rotary embedding of HuggingFace runs without autograd and without autocast."""
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    # GIVEN a tiny random Llama causal LM, made without a download
+    config = LlamaConfig(
+        vocab_size=64,
+        hidden_size=32,
+        intermediate_size=64,
+        num_hidden_layers=2,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        max_position_embeddings=64,
+    )
+    model = LlamaForCausalLM(config).eval()
+    inputs = {"input_ids": torch.randint(0, 64, (1, 8)), "use_cache": False}
+    with torch.no_grad():
+        expected = model(**inputs)
+
+    # WHEN the model is traced and the graph is invoked with the same inputs
+    graph = trace(model, **inputs)
+    with torch.no_grad():
+        got = graph(**inputs)
+
+    # THEN the graph returns the same output type and its logits match
+    assert type(got) is type(expected)
+    torch.testing.assert_close(got.logits, expected.logits)
+
+
 def test_trace_keeps_dtype_layout_cast_device_agnostic(device_cast_model: DeviceCastModel) -> None:
     """torch.export bakes x.device as a cpu literal; ff.trace strips it."""
     # GIVEN a module whose forward follows x's runtime device via .float().to(x.device)
@@ -577,23 +620,236 @@ def test_trace_keeps_dtype_layout_cast_device_agnostic(device_cast_model: Device
     torch.testing.assert_close(got, expected)
 
 
-@pytest.mark.parametrize("training", [False, True], ids=["eval", "train"])
-def test_trace_fallback_module_takes_the_training_mode_of_each_original_module(
-    training: bool,
-) -> None:
-    # GIVEN a model with a module that `trace` cannot call, in eval or training mode
-    model = RotaryScaled().train(training)
-    model.rotary.frozen.eval()
+def test_trace_runs_the_original_module_that_reads_an_input_for_its_dtype_only() -> None:
+    # GIVEN a model with a module that reads its first input for the dtype only
+    model = RotaryScaled().eval()
+    x, position_ids = torch.randn(1, 3, 4), torch.arange(3)[None]
 
     # WHEN we trace it
-    graph = trace(model, torch.randn(1, 3, 4), torch.arange(3)[None])
+    graph = trace(model, x, position_ids)
 
-    # THEN the module that runs in place of the original is in the same mode
+    # THEN the node runs the original module
     target = graph.node(next(ref for ref in graph.topo_order if ref.name == "rotary")).target
-    assert isinstance(target, nn.Module)
-    assert target is not model.rotary
-    assert target.training is training
-    assert target.get_submodule("frozen").training is False
+    assert target is model.rotary
+
+    # AND the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x, position_ids), model(x, position_ids))
+
+
+def _module_nodes(graph: GraphModule) -> dict[str, nn.Module]:
+    """The module of each module node, by node name, in topological order."""
+    return {
+        ref.name: target
+        for ref in graph.topo_order
+        if isinstance(target := graph.node(ref).target, nn.Module)
+    }
+
+
+def _block_called_twice(block: nn.Module) -> Calls:
+    """Calls `block(x, y=sin(x))` twice with different scales, so that the graphs differ."""
+    return Calls(block, {"y": torch.sin, "scale": 1.0}, {"y": torch.sin, "scale": 0.5})
+
+
+@pytest.mark.parametrize(
+    "model",
+    [Calls(nn.Linear(4, 4), {}, {}), Calls(ScaledLeaf(), {"scale": 1.0}, {"scale": 0.5})],
+    ids=["same_graph", "different_graphs"],
+)
+def test_trace_names_each_call_of_a_leaf_and_runs_the_original(model: Calls) -> None:
+    """With different graphs, the two calls of the leaf run different ops, but one module."""
+    # GIVEN a model that calls one leaf twice
+    model = model.eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN each call has its own node, and both nodes run the original leaf
+    nodes = _module_nodes(graph)
+    assert list(nodes) == ["child", "child@1"]
+    assert all(module is model.child for module in nodes.values())
+
+    # AND the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        Calls(ScaledLeaf(), {"scale": 0.5}),
+        Calls(ScaledLeaf(), {}, {"scale": 0.5}),
+        Calls(ScaledLeaf(), {}, {"negate": True}),
+    ],
+    ids=["once", "twice", "flag"],
+)
+def test_trace_leaf_called_with_a_constant_that_is_not_its_default_matches_eager(
+    model: Calls,
+) -> None:
+    """Export bakes the constant into the graph, so the call node does not pass it to the leaf."""
+    # GIVEN a model that calls a leaf with a non-tensor argument that is not its default
+    model = model.eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+@pytest.mark.parametrize("second", [1.0, 0.5], ids=["same", "different"])
+def test_trace_block_called_twice_opens_each_call(second: float) -> None:
+    """Each call of the block gets the subgraph of that call, also when the graphs differ."""
+    # GIVEN a model that calls one block with a child and two inputs twice
+    model = Calls(PairBlock(), {"y": torch.sin, "scale": 1.0}, {"y": torch.sin, "scale": second})
+    model = model.eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN each call is a subgraph with its own node for the child, which is the original child
+    nodes = _module_nodes(graph)
+    assert nodes["child.fc"] is model.child.fc
+    assert nodes["child@1.fc"] is model.child.fc
+
+    # AND repeated forward passes match eager, so no call runs the graph of another call
+    with torch.no_grad():
+        expected = model(x)
+        for _ in range(3):
+            torch.testing.assert_close(graph(x), expected)
+
+
+def test_trace_block_called_twice_has_no_pytree_glue() -> None:
+    # GIVEN a model that calls one block with two inputs twice
+    model = _block_called_twice(PairBlock()).eval()
+
+    # WHEN we trace it
+    graph = trace(model, torch.randn(2, 4))
+
+    # THEN no call of the block packs or unpacks its inputs with pytree ops
+    glue = (fx_pytree.tree_flatten_spec, pytree.tree_unflatten, operator.getitem)
+    calls = [node for node in graph._nodes.values() if node.name.startswith(("child.", "child@1."))]
+    assert {node.name.split(".")[0] for node in calls} == {"child", "child@1"}
+    assert [node.name for node in calls if node.target in glue] == []
+
+
+def test_trace_block_called_twice_runs_in_place_writes_before_their_reads() -> None:
+    # GIVEN a model that calls a block twice, and the block writes a buffer in place
+    model = _block_called_twice(InPlacePairBlock()).eval()
+    x = torch.randn(2, 4)
+    with torch.no_grad():
+        expected = model(x)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the writes of each call are one node, so no loose in-place op is left
+    assert _in_place_ops(graph) == []
+
+    # AND the forward pass equals eager, with no uninitialised memory read
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), expected, atol=0, rtol=0)
+
+
+def test_trace_block_called_with_different_signatures_matches_eager() -> None:
+    # GIVEN a model that calls one block with two inputs, then with two inputs and a mask
+    model = Calls(PairBlock(), {"y": torch.sin}, {"y": torch.cos, "mask": torch.sigmoid}).eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+@pytest.mark.parametrize("same_inputs", [True, False], ids=["same_inputs", "other_inputs"])
+def test_trace_child_of_module_called_twice_runs_the_graph_of_each_call(same_inputs: bool) -> None:
+    """Each call of the wrapper must open the call of its child, not the first call of it."""
+    # GIVEN a model that calls a wrapper twice with different scales for its child
+    model = Calls(PairOuter(1, same_inputs), {"scale": 1.0}, {"scale": 0.5}).eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN each call of the wrapper has its own call of the child, which is the original child
+    nodes = _module_nodes(graph)
+    assert list(nodes) == ["child.block.fc", "child@1.block.fc"]
+    assert all(module is model.get_submodule("child.block.fc") for module in nodes.values())
+
+    # AND the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_child_called_twice_in_module_called_twice() -> None:
+    # GIVEN a model that calls a wrapper twice, which calls its child twice
+    model = Calls(PairOuter(2, same_inputs=False), {"scale": 1.0}, {"scale": 0.5}).eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN each of the four calls of the child has its own node, in call order
+    nodes = _module_nodes(graph)
+    assert list(nodes) == [
+        "child.block.fc",
+        "child.block@1.fc",
+        "child@1.block.fc",
+        "child@1.block@1.fc",
+    ]
+    assert all(module is model.get_submodule("child.block.fc") for module in nodes.values())
+
+    # AND the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        _block_called_twice(PairBlock()),
+        Calls(PairOuter(2, same_inputs=False), {"scale": 1.0}, {"scale": 0.5}),
+    ],
+    ids=["block", "nested"],
+)
+def test_trace_state_dict_has_one_key_per_tensor_of_a_module_called_twice(model: Calls) -> None:
+    # GIVEN a model that calls modules more than once
+    model = model.eval()
+
+    # WHEN we trace it
+    graph = trace(model, torch.randn(2, 4))
+
+    # THEN the graph has the keys of the model, with no alias for a later call
+    assert set(graph.state_dict()) == set(model.state_dict())
+
+
+def test_trace_module_called_on_inputs_of_different_shapes() -> None:
+    # GIVEN a model that calls one MLP on two inputs of different shapes
+    model = SumOfCalls(TinyMLP()).eval()
+    a, b = torch.randn(2, 8), torch.randn(3, 5, 8)
+
+    # WHEN we trace it
+    graph = trace(model, a, b)
+
+    # THEN each call has its own nodes, and they run the original layers
+    nodes = _module_nodes(graph)
+    assert set(nodes) == {
+        f"{call}.{leaf}" for call in ("child", "child@1") for leaf in ("fc1", "act", "fc2")
+    }
+    assert all(
+        module is model.child.get_submodule(name.split(".")[1]) for name, module in nodes.items()
+    )
+
+    # AND the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(a, b), model(a, b))
 
 
 def test_trace_removes_export_guards_so_blocks_stay_non_leaf() -> None:
@@ -627,6 +883,142 @@ def test_trace_removes_export_guards_so_blocks_stay_non_leaf() -> None:
         got = graph(x, temb)
 
     torch.testing.assert_close(got, expected)
+
+
+@pytest.mark.parametrize("child", [NoGradLeaf(), NoAutocastLeaf()], ids=["no_grad", "autocast"])
+def test_trace_child_that_changes_the_grad_mode_matches_eager(child: nn.Module) -> None:
+    # GIVEN a model whose child runs its op without autograd or without autocast
+    model = Calls(child, {}).eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the child is a node, and the forward pass matches eager
+    assert _module_nodes(graph) == {"child": child}
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_runs_the_pre_hooks_of_the_user_once() -> None:
+    # GIVEN a model whose child has a forward pre-hook that doubles the input
+    model = Calls(ScaledLeaf(), {}).eval()
+    model.child.register_forward_pre_hook(lambda _, args: (args[0] * 2,))
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager, so the hook doubles the input once
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_passes_a_tensor_that_the_trace_did_not_make_as_a_constant() -> None:
+    # GIVEN a model that passes a tensor to its child that is not an input, parameter or buffer
+    model = Calls(ScaledLeaf(), {"scale": torch.tensor(0.5)}).eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_keeps_the_path_of_a_module_that_a_layer_calls_but_does_not_own() -> None:
+    # GIVEN a model that passes one of its modules to each of its layers
+    model = SharedChild().eval()
+    paths = [path for path, _ in model.named_modules()]
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN each call of the module is a node in its layer, and both run the module
+    nodes = _module_nodes(graph)
+    assert nodes["layers.0.shared"] is nodes["layers.1.shared"] is model.shared
+
+    # THEN the graph has the keys of the model, and the model keeps its modules
+    assert list(graph.state_dict()) == list(model.state_dict())
+    assert [path for path, _ in model.named_modules()] == paths
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_reads_a_tensor_after_the_call_that_writes_it_in_place() -> None:
+    # GIVEN a model that reads a tensor after its child writes the tensor in place
+    model = ReadsAfterInPlaceCall().eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+@pytest.mark.filterwarnings("ignore:Node 'mul_' writes in place to a buffer")
+def test_trace_calls_a_module_after_its_weight_is_written_in_place() -> None:
+    # GIVEN a model that scales the weight of its child in place before it calls the child
+    model = ScalesChildWeightInPlace().eval()
+    x = torch.randn(2, 4)
+    state = {key: value.clone() for key, value in model.state_dict().items()}
+
+    # WHEN we trace it
+    with torch.no_grad():
+        graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        model.load_state_dict(state)
+        actual = graph(x)
+        model.load_state_dict(state)
+        torch.testing.assert_close(actual, model(x))
+
+
+def test_trace_reads_a_tensor_attribute_when_the_graph_runs() -> None:
+    # GIVEN a traced model that reads a plain tensor attribute
+    model = ScalesByTensorAttribute().eval()
+    x = torch.randn(2, 4)
+    graph = trace(model, x)
+
+    # WHEN the attribute gets a new tensor after the trace
+    model.scale = torch.full((4,), 2.0)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_reads_a_tensor_after_the_call_that_casts_it_to_its_own_dtype() -> None:
+    # GIVEN a model that reads a tensor after its child casts the tensor to its own dtype
+    model = ReadsAfterCastingCall().eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
+
+
+def test_trace_reads_a_weight_after_the_call_that_casts_it_to_its_own_dtype() -> None:
+    # GIVEN a model that reads a weight, also in a fold, after its child casts it to its own dtype
+    model = ReadsWeightAfterCastingCall().eval()
+    x = torch.randn(2, 4)
+
+    # WHEN we trace it
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))
 
 
 def _in_place_ops(graph: GraphModule) -> list[str]:
@@ -979,3 +1371,45 @@ def test_split_flattens_an_output_without_key_paths_once() -> None:
     graph = split.graphs[root]
     (leaves,) = [node for node in graph.nodes if node.target is pytree.tree_leaves]
     assert sorted(user.args[1] for user in leaves.users) == [0, 1]
+
+
+@pytest.mark.parametrize(
+    ("make_model", "inputs"),
+    [
+        (TinyMLP, (torch.randn(2, 8),)),
+        (lambda: CastingBlock(8), (torch.randn(2, 8), torch.randn(8))),
+    ],
+    ids=["modules", "parameter_read_by_the_model"],
+)
+def test_trace_does_not_keep_the_model_alive(
+    make_model: Callable[[], nn.Module], inputs: tuple[torch.Tensor, ...]
+) -> None:
+    # GIVEN a traced model
+    model = make_model().eval()
+    trace(model, *inputs)
+
+    # WHEN the last reference to the model is dropped
+    model_ref = weakref.ref(model)
+    del model
+    gc.collect()
+
+    # THEN the model is freed
+    assert model_ref() is None
+
+
+@pytest.mark.parametrize(
+    ("train", "rows"), [(True, 2), (False, 3)], ids=["training_mode", "control_flow"]
+)
+def test_trace_again_follows_the_training_mode_and_the_inputs(train: bool, rows: int) -> None:
+    # GIVEN a model that was traced in eval mode on two rows
+    model = ModeAndShapeBranches().eval()
+    trace(model, torch.randn(2, 4))
+
+    # WHEN we trace it again in another mode or on an input that takes another branch
+    model.train(train)
+    x = torch.randn(rows, 4)
+    graph = trace(model, x)
+
+    # THEN the forward pass matches eager
+    with torch.no_grad():
+        torch.testing.assert_close(graph(x), model(x))

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 # pylint: disable=missing-function-docstring
+import contextlib
 import copy
 import dataclasses
 import functools
@@ -27,12 +28,20 @@ from fastforward._orchestration.instruction_engine import ActivationBundle
 from fastforward._orchestration.location import BudgetLocation, DiskLocation, LocationLike
 from fastforward._orchestration.registry import AlgorithmSpec, normalize
 from fastforward._orchestration.trace import _MIN_TORCH_VERSION, trace
+from fastforward.nn import QuantizerStub
 from fastforward.orchestration import Offload, _batched
+from fastforward.quantized_tensor import QuantizedTensor
 from packaging.version import Version
 from torch import nn
 from typing_extensions import override
 
-from ._models import KwargForward, ResidualStack, TwoLinear
+from ._models import (
+    KwargForward,
+    QuantizedResidualTwoLinear,
+    ResidualStack,
+    ResidualTwoLinear,
+    TwoLinear,
+)
 from .conftest import make_flows, sgd_step
 
 pytestmark = pytest.mark.skipif(
@@ -822,3 +831,106 @@ def test_layerwise_optimize_ignores_checkpointed_layers_that_enclose_no_target()
 def _sum_of_squares(outputs: ActivationBundle) -> Iterator[torch.Tensor]:
     for (output,), _ in outputs:
         yield output.square().sum()
+
+
+def _calibrated_residual_model(residual_quantizer: ff.nn.Quantizer) -> ResidualTwoLinear:
+    """A `ResidualTwoLinear` whose residual add is quantized by `residual_quantizer`."""
+    model = ResidualTwoLinear().eval()
+    ff.quantize_model(model, extra_conversion={ResidualTwoLinear: QuantizedResidualTwoLinear})
+    ff.find_quantizers(model, "**/[quantizer:activation/output]").initialize(
+        ff.nn.LinearQuantizer, num_bits=3
+    )
+    model.residual_quantizer = residual_quantizer
+    with torch.no_grad(), ff.strict_quantization(False):
+        with ff.estimate_ranges(model, ff.range_setting.smoothed_minmax):
+            model(torch.randn(4, 8))
+    return model
+
+
+def _fc2_inputs(
+    model: ResidualTwoLinear, calibration: list[torch.Tensor], flow: str
+) -> list[torch.Tensor]:
+    """The inputs that `layerwise_optimize` gives an algorithm on `model.fc2`."""
+    seen: list[torch.Tensor] = []
+
+    def record(_module: nn.Module, bundle: ActivationBundle) -> None:
+        seen.extend(args[0] for args, _ in bundle)
+
+    spec = AlgorithmSpec(record, normalize([model.fc2]), [InputActivations(flow)])
+    with torch.no_grad(), ff.strict_quantization(False):
+        ff.layerwise_optimize(model, calibration, spec, sample_args=(calibration[0],))
+    return seen
+
+
+def _real_fc2_inputs(
+    model: ResidualTwoLinear, calibration: list[torch.Tensor]
+) -> list[torch.Tensor]:
+    """The inputs that `model.fc2` receives when `model` itself runs."""
+    seen: list[torch.Tensor] = []
+    handle = model.fc2.register_forward_pre_hook(lambda _, args: seen.append(args[0]))
+    with torch.no_grad(), ff.strict_quantization(False):
+        for batch in calibration:
+            model(batch)
+    handle.remove()
+    return seen
+
+
+@pytest.mark.parametrize("flow", ["quantized", "original"])
+def test_layerwise_optimize_flows_apply_quantizers_of_a_container(flow: str) -> None:
+    # GIVEN a model that quantizes a residual add in its own forward, outside the linear layers
+    torch.manual_seed(0)
+    model = _calibrated_residual_model(ff.nn.LinearQuantizer(num_bits=3))
+    calibration = [torch.randn(4, 8) for _ in range(2)]
+    context = ff.disable_quantization(model) if flow == "original" else contextlib.nullcontext()
+    with context:
+        expected = _real_fc2_inputs(model, calibration)
+
+    # WHEN an algorithm on fc2 reads its input activations
+    got = _fc2_inputs(model, calibration, flow)
+
+    # THEN it gets the inputs of fc2 in the model, bit for bit
+    assert len(got) == len(expected)
+    for actual, reference in zip(got, expected):
+        assert type(actual) is type(reference)
+        assert torch.equal(_dequantize(actual), _dequantize(reference))
+
+
+def test_layerwise_optimize_traces_again_after_a_quantizer_is_replaced() -> None:
+    # GIVEN a model that was optimized while its residual quantizer was a stub
+    torch.manual_seed(0)
+    model = _calibrated_residual_model(QuantizerStub(output_quantizer=True))
+    calibration = [torch.randn(4, 8) for _ in range(2)]
+    _fc2_inputs(model, calibration, "quantized")
+
+    # WHEN the stub is replaced by a quantizer and the model is optimized again
+    model.residual_quantizer = ff.nn.LinearQuantizer(num_bits=3)
+    with torch.no_grad(), ff.strict_quantization(False):
+        with ff.estimate_ranges(model, ff.range_setting.smoothed_minmax):
+            model(torch.randn(4, 8))
+    got = _fc2_inputs(model, calibration, "quantized")
+
+    # THEN the algorithm gets the input quantized by the new quantizer
+    expected = _real_fc2_inputs(model, calibration)
+    for actual, reference in zip(got, expected, strict=True):
+        assert isinstance(actual, QuantizedTensor)
+        assert torch.equal(actual.dequantize(), reference.dequantize())
+
+
+def test_trace_keeps_quantizers_of_leaves_inside_the_leaves() -> None:
+    # GIVEN a model with quantizers in its linear layers and in its own forward
+    model = _calibrated_residual_model(ff.nn.LinearQuantizer(num_bits=3))
+
+    # WHEN the model is traced
+    graph = trace(model, torch.randn(4, 8))
+
+    # THEN the linear layers are leaves and the container's quantizer is a node of its own
+    modules = {name: module for name, module in graph.named_children()}
+    assert modules == {
+        "fc1": model.fc1,
+        "residual_quantizer": model.residual_quantizer,
+        "fc2": model.fc2,
+    }
+
+
+def _dequantize(tensor: torch.Tensor) -> torch.Tensor:
+    return tensor.dequantize() if isinstance(tensor, QuantizedTensor) else tensor

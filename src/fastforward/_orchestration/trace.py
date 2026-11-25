@@ -8,14 +8,11 @@ import contextlib
 import dataclasses
 import inspect
 import operator
-import re
 import warnings
-import weakref
 
-from typing import Any, Callable, Iterator, cast
+from typing import Any, Callable, Iterator
 
 import torch
-import torch.fx._pytree as fx_pytree
 import torch.nn as nn
 import torch.utils._pytree as pytree
 
@@ -23,11 +20,17 @@ from packaging.version import Version
 from torch import fx
 from torch.export.graph_signature import InputKind
 from torch.fx.experimental import proxy_tensor
-from torch.fx.proxy import GraphAppendingTracer
 
 import fastforward as ff
 
-from fastforward._orchestration.graph_module import Const, GraphModule, NodeRef, Op, _BaseRef
+from fastforward._orchestration.graph_module import (
+    AttributeRef,
+    Const,
+    GraphModule,
+    NodeRef,
+    Op,
+    _BaseRef,
+)
 
 _MIN_TORCH_VERSION = Version("2.6.0")
 
@@ -88,14 +91,14 @@ def _make_dict(**items: Any) -> dict[str, Any]:
     return items
 
 
-def _make_method_caller(method_name: str) -> Callable[..., Any]:
-    """Bridge an FX `call_method` (target = method-name string) into a callable the engine can invoke."""
-
-    def _call(self: Any, *args: Any, **kwargs: Any) -> Any:
-        return getattr(self, method_name)(*args, **kwargs)
-
-    _call.__name__ = method_name
-    return _call
+def _has_attribute(root: nn.Module, attr_path: str) -> bool:
+    """Whether `root` has the attribute at the dotted `attr_path`."""
+    obj: Any = root
+    for part in attr_path.split("."):
+        if not hasattr(obj, part):
+            return False
+        obj = getattr(obj, part)
+    return True
 
 
 def _make_get_attr(root: nn.Module, attr_path: str) -> Callable[[], Any]:
@@ -144,9 +147,9 @@ def _strip_export_artifacts(graph: fx.Graph) -> None:
 
     * Side-effect-only guards (`aten._assert_*`, `aten.sym_constrain_range_*`) that assert a
       later input still matches the traced one. FF orchestration uses the eager modules, so
-      they guard nothing, and they do harm: a guard inside a submodule belongs to the top-level
-      model, so `unflatten` rebuilds the submodule as two partial calls with no children left
-      inside, and the trace reads it as a leaf.
+      they guard nothing, and they do harm: a guard is an op, so a call that only casts its
+      input would count as a call that runs ops, and its parent would become a fold. In a fold
+      graph, the guard would also reject every input with a different dtype or device.
     * A `device` kwarg on a cast, which pins the cast to the trace device. Without the kwarg,
       the cast keeps the device that the tensor already has.
 
@@ -949,109 +952,6 @@ class _CallSplitter:
         return graph
 
 
-def _resolve_pytree_glue(gm: fx.GraphModule) -> None:
-    """Remove the pytree glue that `torch.export.unflatten` adds around preserved calls.
-
-    The glue is the `tree_unflatten`, `tree_flatten_spec` and `getitem` nodes with which the
-    caller packs all inputs of a preserved call into one tree and unpacks them again, and the
-    callee does the same for its inputs and outputs. Each input of the call then depends on all
-    of them: the gradient of a decoder layer output flows into the attention mask of the next
-    layer.
-
-    The glue only packs and unpacks values, so it is evaluated here instead of copied:
-    `getitem(tree_unflatten([a, b], spec), 0)` is `a`. A `getitem` on a node, an item of a
-    value whose structure is not known, is kept. Trees containing typed containers
-    stay packed at runtime because argument conversion only rebuilds plain containers.
-
-    Args:
-        gm: The graph module to rewrite in place.
-    """
-    graph = fx.Graph()
-    tracer = GraphAppendingTracer(graph)
-    values: dict[fx.Node, Any] = {}
-
-    def value(node: fx.Node) -> Any:
-        return values[node]
-
-    def to_proxy(arg: Any) -> Any:
-        return fx.Proxy(arg, tracer) if isinstance(arg, fx.Node) else arg
-
-    def to_node(arg: Any) -> Any:
-        return arg.node if isinstance(arg, fx.Proxy) else arg
-
-    for node in gm.graph.nodes:
-        args = fx.node.map_arg(node.args, value)
-        if node.op == "get_attr" and isinstance(getattr(gm, node.target, None), pytree.TreeSpec):
-            values[node] = getattr(gm, node.target)
-        elif node.target in (pytree.tree_unflatten, fx_pytree.tree_flatten_spec) and not (
-            _is_plain_pytree(args[1])
-        ):
-            # Keep typed containers out of FX argument mapping and `_GraphBuilder`,
-            # which can otherwise erase their types or fail to find their node leaves.
-            # `tree_flatten_spec` also cannot flatten a proxy of a type, such as
-            # `transformers.ModelOutput`, that has no `fx_pytree` flatten function.
-            spec = graph.get_attr(node.args[1].target)
-            values[node] = graph.call_function(node.target, (args[0], spec))
-        elif node.target in (pytree.tree_unflatten, fx_pytree.tree_flatten_spec):
-            # Proxies let `tree_flatten_spec` read an item of a node of unknown structure.
-            proxied = fx.node.map_aggregate(args, to_proxy)
-            result: Any = fx.node.map_aggregate(node.target(*proxied), to_node)
-            if isinstance(result, fx.Node) or all(user.op != "output" for user in node.users):
-                values[node] = result
-            else:
-                # An output that is a container stays packed by its `tree_unflatten`.
-                spec = graph.get_attr(node.args[1].target)
-                values[node] = graph.call_function(node.target, (args[0], spec))
-        elif node.target is operator.getitem and not isinstance(args[0], fx.Node):
-            item = args[0][args[1]]
-            if isinstance(item, fx.Node) and item.target is operator.getitem and not item.meta:
-                item.meta = node.meta
-            values[node] = item
-        else:
-            values[node] = graph.node_copy(node, value)
-    for node in reversed(graph.nodes):
-        if node.target is operator.getitem and not node.users:
-            graph.erase_node(node)
-    graph.owning_module = gm
-    gm.graph = graph
-
-
-def _export_and_unflatten(
-    module: nn.Module,
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
-    preserve: tuple[str, ...] = (),
-) -> nn.Module:
-    """Export `module`, remove the trace-time artefacts, and rebuild the module tree."""
-    exported_program = torch.export.export(
-        module, args=args, kwargs=kwargs, preserve_module_call_signature=preserve
-    )
-    _strip_export_artifacts(exported_program.graph_module.graph)
-    exported_program.graph_module.recompile()
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore",
-            message="Attempted to insert a get_attr Node with no underlying reference",
-            category=UserWarning,
-        )
-        unflattened = torch.export.unflatten(exported_program)
-    for submodule in unflattened.modules():
-        if _is_non_leaf_graph_module(submodule):
-            _resolve_pytree_glue(cast(fx.GraphModule, submodule))
-            _fuse_in_place_writes(cast(fx.Graph, submodule.graph))
-    return unflattened
-
-
-def _prepare_output(spec: pytree.TreeSpec) -> Callable[..., Any]:
-    """Reconstruct the model's original return structure from the flat leaves dynamo emits."""
-
-    def _unflatten(*leaves: Any) -> Any:
-        return pytree.tree_unflatten(list(leaves), spec)
-
-    _unflatten.__name__ = "unflatten"
-    return _unflatten
-
-
 def _contains_fx_node(x: Any) -> bool:
     """Distinguish an arg subtree that references traced nodes from one that's a pure constant."""
     match x:
@@ -1067,150 +967,28 @@ def _contains_fx_node(x: Any) -> bool:
             return False
 
 
-def _capture_out_spec(
-    module: nn.Module, exported: nn.Module, args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> pytree.TreeSpec:
-    """Recover whatever structure the module's return statement has after export."""
-    if (spec := getattr(exported, "_out_spec", None)) is not None:
-        assert isinstance(spec, pytree.TreeSpec)
-        if not spec.is_leaf():
-            return spec
-
-    codegen = getattr(exported.graph, "_codegen", None)
-    if (info := getattr(codegen, "pytree_info", None)) is not None:
-        if (spec := getattr(info, "out_spec", None)) is not None:
-            assert isinstance(spec, pytree.TreeSpec)
-            return spec
-
-    with torch.no_grad():
-        sample = module(*args, **kwargs)
-
-    return pytree.tree_structure(sample)
-
-
-def _unmangle_placeholder(name: str, positional_names: list[str]) -> str:
-    """Restore the caller's parameter name on a placeholder.
-
-    Dynamo internally renames inputs to `l_a_<i>_` / `l_kw_<name>_`; undoing the
-    mangling lets the traced graph accept the same args/kwargs as the source module.
-    """
-    if m := re.fullmatch(r"l_kw_(.+)_", name):
-        return m.group(1)
-    if m := re.fullmatch(r"l_a_(\d+)_", name):
-        idx = int(m.group(1))
-        return positional_names[idx] if idx < len(positional_names) else f"arg_{idx}"
-    return name
-
-
-def _is_non_leaf_graph_module(mod: nn.Module) -> bool:
-    """True if mod has an fx graph containing call_module nodes (a user-defined wrapper).
-
-    Unflatten wraps every submodule in InterpreterModule (NOT a subclass of fx.GraphModule),
-    so we check for `.graph` directly. The presence of call_module nodes inside the graph
-    distinguishes a user wrapper (e.g. a transformer block — should recurse) from a
-    decomposed library leaf (e.g. nn.Linear, whose graph is placeholder + get_attr +
-    aten.linear + output — should be treated as a leaf).
-    """
-    graph = getattr(mod, "graph", None)
-    if not isinstance(graph, fx.Graph):
-        return False
-    return any(node.op == "call_module" for node in graph.nodes)
-
-
-def _fold_needs_preservation(mod: nn.Module) -> bool:
-    """True if the fold's call site has multiple positional inputs that need signature recovery.
-
-    Without `preserve_module_call_signature`, torch.export.unflatten collapses all
-    module call kwargs into positional args. Folds with a single positional input
-    don't need this (order is unambiguous). Folds with multiple inputs (e.g. a
-    decoder layer receiving hidden_states + attention_mask + position_embeddings)
-    need preservation to recover the correct args/kwargs split.
-    """
-    graph = getattr(mod, "graph", None)
-    if not isinstance(graph, fx.Graph):
-        return False
-    n_placeholders = sum(1 for n in graph.nodes if n.op == "placeholder")
-    return n_placeholders > 1
-
-
-def _can_call_original(original: nn.Module, submod: nn.Module, fx_node: fx.Node) -> bool:
-    """Check if calling original.forward matches the captured FX call.
-
-    The unflattened InterpreterModule's forward graph reflects exactly what was captured;
-    the original nn.Module may differ when torch.export:
-
-    1. Stripped args that were only used for metadata (e.g. dtype/device extracted
-       from a tensor) — the call site has fewer args than the original requires.
-    2. Fused adjacent ops into the call (e.g. residual capture in a layernorm),
-       making the captured call return a tuple where the original returns a tensor.
-
-    When either holds, fall back to the InterpreterModule as the runtime callable.
-    """
-    try:
-        sig = inspect.signature(original.forward)
-    except (ValueError, TypeError):
-        return False
-    n_provided = len(fx_node.args) + len(fx_node.kwargs)
-    n_required = sum(
-        1
-        for p in sig.parameters.values()
-        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        and p.default is inspect.Parameter.empty
-    )
-    if n_provided < n_required:
-        return False
-
-    sub_graph = getattr(submod, "graph", None)
-    if isinstance(sub_graph, fx.Graph):
-        output_node = next((n for n in sub_graph.nodes if n.op == "output"), None)
-        if output_node is not None and output_node.args:
-            decomposed_outputs = output_node.args[0]
-            if isinstance(decomposed_outputs, (list, tuple)) and len(decomposed_outputs) > 1:
-                return False
-    return True
-
-
 class _GraphBuilder:
-    """Converts an unflattened fx.GraphModule tree into a FastForward GraphModule.
+    """Convert the fx graph of a fold call into a FastForward `GraphModule`.
 
-    Holds the mutable state (graph under construction, fx-to-ff node mapping) that
-    otherwise has to be threaded through every helper function.
+    A child call that is a fold becomes a subgraph that holds the module for coarse execution.
+    A child call that is a leaf becomes one `Op.torch_module` node that runs the module with the
+    arguments of the call. A part of an input or of a child call output becomes an
+    `AttributeRef`, so it is not a node.
     """
 
-    def __init__(
-        self,
-        original_root: nn.Module,
-        path_prefix: str = "",
-        *,
-        is_root: bool = False,
-        positional_names: list[str] | None = None,
-        out_spec: pytree.TreeSpec | None = None,
-    ) -> None:
+    def __init__(self, split: _SplitTrace, model: nn.Module) -> None:
+        self._split = split
+        self._model = model
         self._graph = GraphModule()
-        self._fx_to_ff: dict[fx.Node, _BaseRef] = {}
-        self._original_root = original_root
-        self._path_prefix = path_prefix
-        self._is_root = is_root
-        self._positional_names = positional_names or []
-        self._out_spec = out_spec
-
-    def _absolute_path(self, target: str) -> str:
-        return f"{self._path_prefix}.{target}" if self._path_prefix else target
-
-    def _has_attr_on_original(self, absolute_path: str) -> bool:
-        """Check if the attribute path exists on the original module."""
-        obj = self._original_root
-        for part in absolute_path.split("."):
-            if not hasattr(obj, part):
-                return False
-            obj = getattr(obj, part)
-        return True
+        self._values: dict[fx.Node, Any] = {}
+        self._parts: set[fx.Node] = set()
 
     def _convert_arg(self, x: Any, name: str) -> _BaseRef:
         """Convert an FX argument into a `_BaseRef`, creating container nodes where needed."""
         match x:
             case fx.Node():
-                return self._fx_to_ff[x]
+                ref: _BaseRef = self._values[x]
+                return ref
             case _ if not _contains_fx_node(x):
                 return Const(x)
             case tuple() | list() as seq:
@@ -1242,7 +1020,8 @@ class _GraphBuilder:
                     op=Op.call_function,
                 )
             case _:
-                raise TypeError("Unsupported FX argument type: {type(x)!r}")
+                msg = f"Unsupported FX argument type: {type(x)!r}"
+                raise TypeError(msg)
 
     def _convert_args(self, fx_node: fx.Node) -> tuple[tuple[_BaseRef, ...], dict[str, _BaseRef]]:
         """Convert all positional and keyword FX args of a node into `_BaseRef`."""
@@ -1252,143 +1031,83 @@ class _GraphBuilder:
             {k: self._convert_arg(v, f"{name}_{k}") for k, v in fx_node.kwargs.items()},
         )
 
-    def _add_op_node(
-        self,
-        fx_node: fx.Node,
-        name: str,
-        module: nn.Module | Callable[..., Any],
-        op: Op,
-    ) -> NodeRef:
-        """Convert args and add a single operation node to the graph."""
-        args, kwargs = self._convert_args(fx_node)
-        return self._graph.add_node(name, module, args=args, kwargs=kwargs, op=op)
+    def _is_part(self, node: fx.Node) -> bool:
+        """Whether `node` takes a part of an input, of a child call output, or of such a part."""
+        if node.target not in (operator.getitem, getattr):
+            return False
+        base = node.args[0]
+        return isinstance(base, fx.Node) and (
+            base.op in ("placeholder", "call_module") or base in self._parts
+        )
 
-    def _handle_call_module(self, fx_node: fx.Node, fx_gm: nn.Module) -> None:
-        assert isinstance(fx_node.target, str)
-        target = fx_node.target
-        submod = fx_gm.get_submodule(target)
-        absolute_path = self._absolute_path(target)
+    def _add_get_attr(self, node: fx.Node) -> _BaseRef:
+        assert isinstance(node.target, str)
+        # A tensor attribute of the model is read when the graph runs, as a parameter or buffer.
+        if node.target in self._split.lifted and not _has_attribute(self._model, node.target):
+            return Const(self._split.lifted[node.target])
+        return self._graph.add_node(
+            f"{node.name}_get_attr",
+            _make_get_attr(self._model, node.target),
+            args=(),
+            kwargs={},
+            op=Op.get_attr,
+        )
 
-        if _is_non_leaf_graph_module(submod):
-            sub_builder = _GraphBuilder(self._original_root, absolute_path)
-            sub_ff = sub_builder.build(submod)
-            args, kwargs = self._convert_args(fx_node)
-            original = self._original_root.get_submodule(absolute_path)
-            output_refs = self._graph.add_subgraph(
-                target, sub_ff, args, kwargs, original_module=original
+    def _add_call(self, node: fx.Node) -> Any:
+        call = self._split.calls[node]
+        args, kwargs = self._convert_args(node)
+        if call in self._split.graphs:
+            subgraph = _GraphBuilder(self._split, self._model).build(call)
+            (output,) = self._graph.add_subgraph(
+                call.name, subgraph, args, kwargs, original_module=call.module
             )
-            if len(output_refs) == 1:
-                self._fx_to_ff[fx_node] = output_refs[0]
-            else:
-                self._fx_to_ff[fx_node] = self._graph.add_node(
-                    f"{target}_pack_outputs",
-                    _make_tuple,
-                    args=output_refs,
-                    op=Op.call_function,
-                )
-        else:
-            original = self._original_root.get_submodule(absolute_path)
-            if not _can_call_original(original, submod, fx_node):
-                # `unflatten` makes its modules in training mode. The fallback runs in place
-                # of the original, so each of its modules takes the mode of the original.
-                original_modes = {name: m.training for name, m in original.named_modules()}
-                for name, module in submod.named_modules():
-                    module.training = original_modes.get(name, original.training)
-                original = submod
-            self._fx_to_ff[fx_node] = self._add_op_node(fx_node, target, original, Op.torch_module)
+            return output
+        return self._graph.add_node(call.name, call.module, args, kwargs, op=Op.torch_module)
 
-    def _handle_output(self, fx_node: fx.Node) -> None:
-        raw: tuple[Any, ...] | list[Any] = fx_node.args
-        if len(raw) == 1 and isinstance(raw[0], (list, tuple)):
-            raw = raw[0]
-        flat_refs = tuple(self._fx_to_ff[a] for a in raw if isinstance(a, fx.Node))
+    def _add_output(self, call: _Call, node: fx.Node) -> None:
+        output = self._convert_arg(node.args[0], "output")
+        if not isinstance(output, (NodeRef, AttributeRef)):
+            msg = f"The call {call.name or 'of the model'!r} returns no tensor of its own."
+            raise NotImplementedError(msg)
+        self._graph.add_output(output)
 
-        if self._is_root:
-            assert self._out_spec is not None
-            assert all(isinstance(r, NodeRef) for r in flat_refs)
-            unflatten_ref = self._graph.add_node(
-                "_prepare_output",
-                _prepare_output(self._out_spec),
-                args=flat_refs,
-                op=Op.call_function,
-            )
-            self._graph.add_output(unflatten_ref)
-        else:
-            for ref in flat_refs:
-                assert isinstance(ref, NodeRef)
-                self._graph.add_output(ref)
-
-    def build(self, fx_gm: nn.Module) -> GraphModule:
-        """Walk the fx graph and populate the FastForward GraphModule."""
-        skip_targets = {
-            torch._C._set_grad_enabled,
-            torch.amp.autocast_mode._enter_autocast,
-            torch.amp.autocast_mode._exit_autocast,
-        }
-        graph = cast(fx.Graph, fx_gm.graph)
-        for fx_node in graph.nodes:
-            if fx_node.target in skip_targets:
-                continue
-
-            match fx_node.op:
+    def build(self, call: _Call) -> GraphModule:
+        """Walk the fx graph of `call` and populate the FastForward GraphModule."""
+        if call.parent is None:
+            # The graph holds each module at its path in the model, so it has the `state_dict`
+            # keys of the model. A node name can be another path: a layer can call a module
+            # that the layer does not own.
+            for name, child in self._model.named_children():
+                self._graph.add_module(name, child)
+        for node in self._split.graphs[call].nodes:
+            match node.op:
                 case "placeholder":
-                    name = (
-                        _unmangle_placeholder(fx_node.name, self._positional_names)
-                        if self._is_root
-                        else fx_node.name
-                    )
-                    self._fx_to_ff[fx_node] = self._graph.add_input(name)
-
+                    assert isinstance(node.target, str)
+                    self._values[node] = self._graph.add_input(node.target)
                 case "get_attr":
-                    assert isinstance(fx_node.target, str)
-                    absolute_path = self._absolute_path(fx_node.target)
-                    if hasattr(fx_gm, fx_node.target) and not self._has_attr_on_original(
-                        absolute_path
-                    ):
-                        self._fx_to_ff[fx_node] = Const(getattr(fx_gm, fx_node.target))
-                    else:
-                        self._fx_to_ff[fx_node] = self._graph.add_node(
-                            fx_node.name + "_get_attr",
-                            _make_get_attr(self._original_root, absolute_path),
-                            args=(),
-                            kwargs={},
-                            op=Op.get_attr,
-                        )
-
+                    self._values[node] = self._add_get_attr(node)
                 case "call_module":
-                    self._handle_call_module(fx_node, fx_gm)
-
+                    self._values[node] = self._add_call(node)
+                case "call_function" if self._is_part(node):
+                    base, key = node.args
+                    self._values[node] = self._values[base][key]
+                    self._parts.add(node)
                 case "call_function":
-                    assert callable(fx_node.target)
-                    self._fx_to_ff[fx_node] = self._add_op_node(
-                        fx_node,
-                        fx_node.name + "_call_function",
-                        fx_node.target,
-                        Op.call_function,
+                    assert callable(node.target)
+                    args, kwargs = self._convert_args(node)
+                    self._values[node] = self._graph.add_node(
+                        f"{node.name}_call_function",
+                        node.target,
+                        args,
+                        kwargs,
+                        op=Op.call_function,
                     )
-
-                case "call_method":
-                    assert isinstance(fx_node.target, str)
-                    self._fx_to_ff[fx_node] = self._add_op_node(
-                        fx_node,
-                        fx_node.name + "_call_method",
-                        _make_method_caller(fx_node.target),
-                        Op.call_method,
-                    )
-
                 case "output":
-                    self._handle_output(fx_node)
-
+                    self._add_output(call, node)
                 case _:
-                    msg = f"Unsupported fx op: {fx_node.op!r}"
+                    msg = f"Unsupported fx op: {node.op!r}"
                     raise ValueError(msg)
-
         return self._graph
-
-
-# We keep track of a GraphModule cache to ensure we don't re-trace the same model twice
-# under different orchestration needs (e.g. PTQ vs inference).
-_graph_cache: weakref.WeakKeyDictionary[torch.nn.Module, GraphModule] = weakref.WeakKeyDictionary()
 
 
 @ff.flags.context(ff.strict_quantization, False)
@@ -1396,61 +1115,44 @@ _graph_cache: weakref.WeakKeyDictionary[torch.nn.Module, GraphModule] = weakref.
 def trace(module: nn.Module, *args: Any, **kwargs: Any) -> GraphModule:
     """Trace `module` with example inputs and return a `GraphModule`.
 
-    Uses `torch.export` to produce an exported program, then `torch.export.unflatten`
-    to reconstruct the module hierarchy. The unflattened fx.GraphModule is recursively
-    converted into a FastForward `GraphModule` where leaf modules are preserved as
-    `Op.torch_module` nodes (enabling mpath search, offloading, and SubgraphSpec).
+    The trace has three stages:
 
-    Leaf modules are recovered from `module` via dotted-path lookup
-    (``module.get_submodule(path)``), so the returned graph shares weights with
-    `module` by identity.
+    1. Record: a non-strict `torch.export` traces the model into one flat ATen graph. Hooks on
+       every module record each call as a `_Call`, with the exact graph nodes of its arguments,
+       its output and the ops that it made.
+    2. Split: the flat graph is split into one fx graph per fold call, a call with a child call
+       that runs an op. In-place writes are fused there, per call.
+    3. Convert: each fold graph becomes a FastForward `GraphModule`. A fold is a subgraph that
+       holds its module for coarse execution. Every other module call is one `Op.torch_module`
+       node that runs the module itself, with the arguments of the call.
+
+    Each call has its own node: a module called twice gives the nodes `<path>` and `<path>@1`.
+    The nodes run the modules of `module`, so the returned graph shares weights with `module` by
+    identity. The graph is only valid for the modules, the training mode and the control flow of
+    the trace, so each call traces again.
 
     Args:
         module: Model to trace. Must be in a mode consistent with the desired
             output (e.g. `module.eval()` for inference-mode tracing). Passing
             a `torch.compile`d model is not supported.
         *args: Positional example inputs forwarded to `module` during tracing.
-            Dynamo uses these to resolve control flow.
+            Export uses these to resolve control flow.
         **kwargs: Keyword example inputs forwarded to `module` during tracing.
 
     Returns:
-        A `GraphModule` whose topology mirrors the module hierarchy, with leaf
-        modules as `Op.torch_module` nodes and intermediate modules as inlined
-        subgraphs. Produces the same return structure as `module(*args, **kwargs)`.
+        A `GraphModule` whose topology mirrors the module calls, with leaf calls as
+        `Op.torch_module` nodes and fold calls as inlined subgraphs. Produces the same return
+        structure as `module(*args, **kwargs)`.
     """
     if Version(torch.__version__.split("+", 1)[0]) < _MIN_TORCH_VERSION:
         msg = f"fastforward._orchestration.trace requires PyTorch >= {_MIN_TORCH_VERSION}; got {torch.__version__}."
         raise RuntimeError(msg)
 
-    if module in _graph_cache:
-        return _graph_cache[module]
-
-    positional_names = [
-        p.name
-        for p in inspect.signature(module.forward).parameters.values()
-        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-    ]
-
     with ff.disable_quantization(module), _placeholder_uninitialized_params(module):
-        unflattened = _export_and_unflatten(module, args, kwargs)
+        with _CallRecorder(module) as recorder:
+            exported = torch.export.export(module, args, kwargs, strict=False)
+    assert recorder.root is not None
 
-        fold_fqns = tuple(
-            name
-            for name, mod in unflattened.named_modules()
-            if _is_non_leaf_graph_module(mod) and name and _fold_needs_preservation(mod)
-        )
-        if fold_fqns:
-            unflattened = _export_and_unflatten(module, args, kwargs, preserve=fold_fqns)
-
-        out_spec = _capture_out_spec(module, unflattened, args, kwargs)
-
-    builder = _GraphBuilder(
-        module,
-        "",
-        is_root=True,
-        positional_names=positional_names,
-        out_spec=out_spec,
-    )
-
-    _graph_cache[module] = builder.build(unflattened)
-    return _graph_cache[module]
+    _strip_export_artifacts(exported.graph)
+    split = _CallSplitter(exported).split(recorder.root)
+    return _GraphBuilder(split, module).build(recorder.root)
