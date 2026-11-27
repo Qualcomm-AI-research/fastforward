@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -586,6 +586,34 @@
     
   
     adaround
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../algorithms/adascale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adascale
   
 
     
@@ -3818,10 +3846,10 @@
 parameter-name assumption, every architecture-specific tensor rewrite, and
 every tokenizer-metadata knob lives on the adapter passed by the user. Built-in
 adapters (<code>LLAMA_ADAPTER</code>, <code>QWEN2_ADAPTER</code>, <code>QWEN3_ADAPTER</code>,
-<code>GEMMA4_ADAPTER</code>) are shipped alongside as reference implementations; for a
-model whose module tree differs (custom wrapper class, LoRA-merged copy, non-HF
-codebase), construct your own <code>ArchAdapter</code> and pass it via
-<code>GgufLlamaCppOptions.arch_adapter</code>.</p>
+<code>GEMMA4_ADAPTER</code>, <code>QWEN25VL_ADAPTER</code>, <code>QWEN3VL_ADAPTER</code>) are shipped
+alongside as reference implementations; for a model whose module tree differs
+(custom wrapper class, LoRA-merged copy, non-HF codebase), construct your own
+<code>ArchAdapter</code> and pass it via <code>GgufLlamaCppOptions.arch_adapter</code>.</p>
 <p>Similarly, the quantization format (block size, byte layout, GGML type) is
 encapsulated in :class:<code>GgufQuantFormat</code>. Built-in formats <code>GGUF_Q4_0</code> and
 <code>GGUF_Q8_0</code> are provided. Users targeting a custom GGUF type construct their
@@ -3921,7 +3949,7 @@ understands), the source config, and the adapter (for <code>tokenizer_model</cod
 
 
 <h4 id="fastforward.export.stages.gguf.adapter.ArchAdapter" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="n">gguf_arch</span><span class="p">,</span> <span class="n">tensor_rules</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">write_vocab</span><span class="o">=</span><span class="n">write_bpe_vocab</span><span class="p">,</span> <span class="n">pin_float_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">fastforward</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">gguf</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">ArchAdapter</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">gguf_arch</span><span class="p">,</span> <span class="n">tensor_rules</span><span class="p">,</span> <span class="n">write_metadata</span><span class="p">,</span> <span class="n">tokenizer_model</span><span class="p">,</span> <span class="n">tokenizer_pre</span><span class="p">,</span> <span class="n">write_vocab</span><span class="o">=</span><span class="n">write_bpe_vocab</span><span class="p">,</span> <span class="n">pin_float_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolve_config</span><span class="o">=</span><span class="n">_passthrough_config</span><span class="p">)</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
@@ -4013,12 +4041,15 @@ head counts) onto an open <code>GGUFWriter</code> from the source config.</p>
       &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
   &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.tokenizer_model">tokenizer_model</a></code></td>
             <td>
-                  <code><span title="str">str</span></code>
+                  <code><span title="str">str</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
                 <p>Value passed to <code>writer.add_tokenizer_model(...)</code>
-(llama.cpp's tokenizer-model discriminator, e.g. <code>"gpt2"</code>).</p>
+(llama.cpp's tokenizer-model discriminator, e.g. <code>"gpt2"</code>).
+<code>None</code> for files that carry no vocabulary, e.g. a vision
+projector (<code>mmproj</code>); exporting such an adapter with a tokenizer
+raises.</p>
               </div>
             </td>
           </tr>
@@ -4088,6 +4119,26 @@ still take precedence over it.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-attribute&quot;&gt;&lt;/code&gt;            &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;resolve_config&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_passthrough_config&lt;/span&gt;&lt;/code&gt;
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-class-attribute&quot;&gt;&lt;code&gt;class-attribute&lt;/code&gt;&lt;/small&gt;
+      &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt; (&lt;code&gt;fastforward.export.stages.gguf.adapter.ArchAdapter.resolve_config&lt;/code&gt;)" href="#fastforward.export.stages.gguf.adapter.ArchAdapter.resolve_config">resolve_config</a></code></td>
+            <td>
+                  <code><span title="fastforward.export.stages.gguf.adapter._ResolveConfigT">_ResolveConfigT</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maps the <code>model_config</code> passed to the export onto
+the source config every other hook receives, once per stage.
+Defaults to passing it through unchanged; use
+:func:<code>~fastforward.export.stages.gguf.text_config_view</code> for
+adapters that take the top-level config of a multimodal checkpoint.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -4098,7 +4149,7 @@ still take precedence over it.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L162" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L176" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4143,6 +4194,27 @@ still take precedence over it.</p>
   </span>
 
 <a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.pin_float_type" class="headerlink" title="Permanent link">#</a></h6>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="fastforward.export.stages.gguf.adapter.ArchAdapter.resolve_config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">resolve_config</span> <span class="o">=</span> <span class="n">_passthrough_config</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#fastforward.export.stages.gguf.adapter.ArchAdapter.resolve_config" class="headerlink" title="Permanent link">#</a></h6>
 
 
     <div class="doc doc-contents ">
@@ -4296,7 +4368,7 @@ registry.register(my_k_quant_format)
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L227" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L250" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4325,7 +4397,7 @@ registry.register(my_k_quant_format)
         <p>Return the first registered format (for fallback/default contexts).</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L239" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L262" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4344,7 +4416,7 @@ registry.register(my_k_quant_format)
         <p>Register a format, keyed by <code>(num_bits, symmetric, block_size)</code>.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L230" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L253" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4363,7 +4435,7 @@ registry.register(my_k_quant_format)
         <p>Look up the format matching the given quantizer properties.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L235" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L258" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4540,7 +4612,7 @@ to select a default compute type).</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L119" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L129" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -4765,7 +4837,7 @@ the packed block bytes.</p>
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L75" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/stages/gguf/adapter.py#L85" target="_blank" rel="noopener">[source]</a></p>
 
 
 

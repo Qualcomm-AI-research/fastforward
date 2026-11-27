@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -586,6 +586,34 @@
     
   
     adaround
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../algorithms/adascale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adascale
   
 
     
@@ -4038,6 +4066,9 @@ once after all groups have been processed.</p>
 schedules an instruction program, applies passes, and executes with optional offloading.</p>
 <p>When <code>graph</code> is None the model is traced, which needs one example input: give it through
 <code>sample_args</code>, <code>sample_kwargs</code>, or both.</p>
+<p>The orchestration assumes that a forward of the model has no side effects: the same inputs
+and weights always give the same outputs. Stateful objects, such as a KV cache, break this
+assumption and can silently give wrong results. Disable them before optimization.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -586,6 +586,34 @@
     
   
     adaround
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../algorithms/adascale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adascale
   
 
     
@@ -3582,8 +3610,9 @@
     <div class="doc doc-contents first">
 
         <p>Public API for FastForward's GGUF export stages.</p>
-<p>Users pick a shipped :data:<code>LLAMA_ADAPTER</code>, :data:<code>QWEN2_ADAPTER</code>, or
-:data:<code>QWEN3_ADAPTER</code>, or construct their own :class:<code>ArchAdapter</code> when
+<p>Users pick a shipped :data:<code>LLAMA_ADAPTER</code>, :data:<code>QWEN2_ADAPTER</code>,
+:data:<code>QWEN3_ADAPTER</code>, :data:<code>GEMMA4_ADAPTER</code>, :data:<code>QWEN25VL_ADAPTER</code>, or
+:data:<code>QWEN3VL_ADAPTER</code>, or construct their own :class:<code>ArchAdapter</code> when
 targeting a model with a non-standard module tree; its <code>tensor_rules</code> are
 built from :class:<code>Rename</code>, :class:<code>Transform</code>, :class:<code>Fuse</code>, :class:<code>Split</code>,
 :class:<code>Drop</code>, :class:<code>Synthesize</code>, or a custom :class:<code>TensorRule</code>. The quantization format

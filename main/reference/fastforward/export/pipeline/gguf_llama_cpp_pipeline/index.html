@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -586,6 +586,34 @@
     
   
     adaround
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../algorithms/adascale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adascale
   
 
     
@@ -3705,7 +3733,9 @@ scales (via <code>GGUFWriter</code>'s <code>raw_dtype</code> path). It does <str
 calibration or GPTQ — quantization is the user's separate upstream step.
 Parameters without an initialized FastForward quantizer (embeddings, norms,
 biases) and claimed persistent buffers pass through in their source dtype
-and are cast once at write time (<code>float_type</code>, F32 by default).</p>
+and are cast once at write time (<code>float_type</code>, F32 by default). A model
+with no quantized weights, e.g. a float vision projector, is written as a
+float-only file.</p>
 <p>GGUF export is weight-only, so the extraction stage is a pipeline root that
 reads the live quantized module directly rather than reusing the FX
 capture/convert/cleanup chain of the ONNX pipeline.</p>

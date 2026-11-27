@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../../assets/ff-logo-purple.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -586,6 +586,34 @@
     
   
     adaround
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../algorithms/adascale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    adascale
   
 
     
@@ -3857,7 +3885,7 @@
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L148" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L153" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -3965,7 +3993,7 @@
 
 
 
-              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L160" target="_blank" rel="noopener">[source]</a></p>
+              <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L165" target="_blank" rel="noopener">[source]</a></p>
 
 
 
@@ -3994,7 +4022,7 @@
         <p>Run export for the given request and return produced artifact metadata.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L166" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L171" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4241,7 +4269,8 @@ target-specific options should be carried in <code>options</code>.</p>
 
         <p>Options for the GGUF -&gt; llama.cpp export pipeline.</p>
 <p>This typed container is optional and can be converted to stage context with
-<code>to_context()</code>. The pipeline expects an already-quantized model.</p>
+<code>to_context()</code>. The pipeline expects an already-quantized model; a model
+with no initialized weight quantizers exports as a float-only file.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -4261,7 +4290,7 @@ target-specific options should be carried in <code>options</code>.</p>
       &lt;small class=&quot;doc doc-label doc-label-instance-attribute&quot;&gt;&lt;code&gt;instance-attribute&lt;/code&gt;&lt;/small&gt;
   &lt;/span&gt; (&lt;code&gt;fastforward.export.pipeline.orchestrator.GgufLlamaCppOptions.arch_adapter&lt;/code&gt;)" href="#fastforward.export.pipeline.orchestrator.GgufLlamaCppOptions.arch_adapter">arch_adapter</a></code></td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ArchAdapter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf_arch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor_rules&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tokenizer_model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tokenizer_pre&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write_vocab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;write_bpe_vocab&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pin_float_type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;              &lt;code class=&quot;highlight language-python&quot;&gt;&lt;span class=&quot;n&quot;&gt;fastforward&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;export&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gguf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;adapter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ArchAdapter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;gguf_arch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tensor_rules&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write_metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tokenizer_model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tokenizer_pre&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write_vocab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;write_bpe_vocab&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pin_float_type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;resolve_config&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_passthrough_config&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;
 
   &lt;span class=&quot;doc doc-labels&quot;&gt;
       &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
@@ -4325,7 +4354,10 @@ or <code>rope_theta</code>. Optional (accessed via <code>getattr</code> with
 defaults): <code>num_key_value_heads</code>, <code>head_dim</code>,
 <code>rope_scaling</code>, <code>tie_word_embeddings</code>. A HuggingFace
 <code>PretrainedConfig</code> or a <code>SimpleNamespace</code> carrying these fields
-both work.</p>
+both work. The adapter's <code>resolve_config</code> is applied first: the
+vision-language adapters (<code>QWEN25VL_ADAPTER</code>, <code>QWEN3VL_ADAPTER</code>)
+take the top-level config (<code>model.config</code>) and read the decoder
+fields from its <code>text_config</code>.</p>
               </div>
             </td>
           </tr>
@@ -4342,7 +4374,8 @@ both work.</p>
             <td>
               <div class="doc-md-description">
                 <p>Optional HuggingFace tokenizer; when provided, its vocabulary
-is written into the GGUF.</p>
+is written into the GGUF. Leave unset for adapters without a
+<code>tokenizer_model</code> (e.g. a vision projector).</p>
               </div>
             </td>
           </tr>
@@ -4590,7 +4623,7 @@ or biases, so map those to <code>"F32"</code> when <code>float_type</code> is
         <p>Convert options to pipeline context values.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L132" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L137" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
@@ -4878,7 +4911,7 @@ with <code>to_context()</code>.</p>
         <p>Export using the pipeline-based orchestrator API.</p>
 
 
-            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L210" target="_blank" rel="noopener">[source]</a></p>
+            <p class="doc-source-link"><a href="https://github.com/Qualcomm-AI-research/fastforward/export/pipeline/orchestrator.py#L215" target="_blank" rel="noopener">[source]</a></p>
     </div>
 
 </div>
