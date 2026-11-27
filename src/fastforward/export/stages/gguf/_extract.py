@@ -87,6 +87,21 @@ def _build_quantizer_map(
     return quantizer_map, uncalibrated
 
 
+def _require_2d_weight(hf_name: str, weight: torch.Tensor) -> None:
+    """Reject a quantized weight that is not a 2-D matrix.
+
+    GGUF blocks run along the rows of a 2-D weight, and llama.cpp only
+    quantizes matrices: convolution kernels (patch embeddings, audio
+    front-ends) stay float.
+    """
+    if weight.ndim != 2:
+        msg = (
+            f"Parameter '{hf_name}': GGUF export can only quantize 2-D weights, got shape "
+            + f"{tuple(weight.shape)}; remove its weight quantizer to export it as float"
+        )
+        raise ExportError(msg)
+
+
 def _validate_quantizer(
     quantizer: LinearQuantizer,
     quant_format: GgufQuantFormat,
@@ -318,6 +333,7 @@ def extract_module_tensors(
 
         quantizer = quantizer_map.get(hf_name)
         if quantizer is not None:
+            _require_2d_weight(hf_name, param)
             resolved_format = _resolve_quant_format(quantizer, format_registry, hf_name)
             _validate_quantizer(quantizer, resolved_format, hf_name)
             weight = param.data.float()

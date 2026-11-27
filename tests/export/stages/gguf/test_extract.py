@@ -18,6 +18,7 @@ from fastforward.export.stages.gguf._extract import extract_module_tensors
 from fastforward.export.stages.gguf._packing import GGUF_Q4_0, GGUF_Q4_1, GGUF_Q8_0
 from fastforward.export.stages.gguf.adapter import ArchAdapter
 from fastforward.export.stages.gguf.rules import DROP_TIED_LM_HEAD, Drop, Rename
+from fastforward.nn.conv import QuantizedConv2d
 from fastforward.nn.linear import QuantizedLinear
 
 _PER_BLOCK = ff.granularity.PerBlock(block_dims=1, block_sizes=32, per_channel_dims=0)
@@ -369,6 +370,31 @@ def _make_quantized_linear_custom(
     with ff.estimate_ranges(quantized.weight_quantizer, ff.range_setting.running_minmax):
         quantized.weight_quantizer(quantized.weight)
     return quantized
+
+
+def test_extract_rejects_quantized_conv_weight(_seed_prngs: int) -> None:
+    # GIVEN: a model whose Conv2d (e.g. a patch embedding) has an initialized
+    # weight quantizer with the GGUF block layout (blocks of 32 along dim 1),
+    # so its 4-D kernel passes quantizer validation.
+    conv = torch.nn.Conv2d(32, 4, kernel_size=2, bias=False)
+    conv.__class__ = QuantizedConv2d
+    quantized = cast(QuantizedConv2d, conv)
+    quantized.__init_quantization__()
+    ff.find_quantizers(quantized, "[quantizer:parameter/weight]").initialize(
+        ff.nn.LinearQuantizer, num_bits=4, granularity=_PER_BLOCK, symmetric=True
+    )
+    with ff.estimate_ranges(quantized.weight_quantizer, ff.range_setting.running_minmax):
+        quantized.weight_quantizer(quantized.weight)
+
+    class Model(ff.nn.QuantizedModule):
+        def __init__(self) -> None:
+            super().__init__()
+            self.patch_embed = quantized
+
+    # WHEN / THEN: extraction names the weight and its shape instead of
+    # failing to unpack it as a matrix.
+    with pytest.raises(ExportError, match=r"'patch_embed\.weight'.*2-D.*\(4, 32, 2, 2\)"):
+        extract_module_tensors(Model(), adapter=_make_adapter(), quant_format=GGUF_Q4_0)
 
 
 def test_extract_rejects_asymmetric_quantizer(_seed_prngs: int) -> None:
