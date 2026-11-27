@@ -106,7 +106,10 @@ class GgufLlamaCppOptions:
             both work. The adapter's ``resolve_config`` is applied first: the
             vision-language adapters (``QWEN25VL_ADAPTER``, ``QWEN3VL_ADAPTER``)
             take the top-level config (``model.config``) and read the decoder
-            fields from its ``text_config``.
+            fields from its ``text_config``. Multimodal projector (``mmproj``)
+            adapters instead take a
+            :class:`~fastforward.export.stages.gguf.MmprojSourceConfig`, built
+            with ``MmprojSourceConfig.from_hf(model.config, processor)``.
         tokenizer: Optional HuggingFace tokenizer; when provided, its vocabulary
             is written into the GGUF. Leave unset for adapters without a
             ``tokenizer_model`` (e.g. a vision projector).
