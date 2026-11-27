@@ -70,6 +70,9 @@ tensor, with its GGUF name, its number of dimensions, and the export's default
 ``float_type``. Returns the GGML float type the target runtime requires for
 that tensor (e.g. ``"F32"`` for a tensor llama.cpp only loads as F32), or
 ``None`` to write it as ``float_type``.
+
+The write stage also calls it for every quantized tensor, with ``ndim`` 2,
+and rejects the export if it pins one: a pinned tensor must stay float.
 """
 WriteVocabT: TypeAlias = Callable[[GGUFWriter, Any, GgufSourceConfig, "ArchAdapter"], None]
 """A vocabulary writer used as ``ArchAdapter.write_vocab``.

@@ -185,6 +185,10 @@ def stage_write_gguf(
 
     The vocabulary is written only when ``context["tokenizer"]`` is set; the
     adapter must then name a ``tokenizer_model``.
+
+    Raises:
+        ExportError: If a quantized tensor is one the adapter pins to a float
+            type, since the target runtime cannot load it quantized.
     """
     del sample_inputs
     (packed,) = modules
@@ -201,6 +205,7 @@ def stage_write_gguf(
     quantized_entries: dict[str, tuple[torch.Tensor, GgufQuantFormat]] = packed["quantized"]
     float_entries: dict[str, torch.Tensor] = packed["float"]
     file_type = _resolve_file_type(quantized_entries, float_entries, default_float_type)
+    _reject_quantized_pinned_tensors(quantized_entries, adapter.pin_float_type, default_float_type)
 
     tokenizer = context.get("tokenizer")
     if tokenizer is not None and adapter.tokenizer_model is None:
@@ -278,6 +283,34 @@ def _resolve_file_type(
         )
         raise ExportError(msg)
     return int(float_file_type)
+
+
+def _reject_quantized_pinned_tensors(
+    quantized_entries: dict[str, tuple[torch.Tensor, GgufQuantFormat]],
+    pin: PinFloatTypeT | None,
+    default_float_type: str,
+) -> None:
+    """Raise if the adapter pins a float type for a tensor that arrived quantized.
+
+    A pin names a tensor the target runtime only loads as float (e.g. a
+    position embedding llama.cpp interpolates in F32), so writing it quantized
+    would produce a file that fails at load or inference time.
+    """
+    if pin is None:
+        return
+    pinned = {
+        gguf_name: pinned_type
+        for gguf_name in quantized_entries
+        # Quantized tensors are always 2-D (see `extract_module_tensors`).
+        if (pinned_type := pin(gguf_name, 2, default_float_type)) is not None
+    }
+    if pinned:
+        listed = ", ".join(f"{name} ({float_type})" for name, float_type in pinned.items())
+        msg = (
+            f"{len(pinned)} quantized tensor(s) must be float for the target runtime: "
+            + f"{listed}. Remove the weight quantizers of their modules to export them as float"
+        )
+        raise ExportError(msg)
 
 
 def _resolve_float_type(

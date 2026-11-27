@@ -450,6 +450,38 @@ def test_default_format_registry_contains_builtins() -> None:
 # --- Mixed-precision pipeline tests ---
 
 
+def test_write_gguf_rejects_quantized_tensor_the_adapter_pins(tmp_path: Any) -> None:
+    # GIVEN: an adapter pinning a 2-D tensor to F32, e.g. a position embedding
+    # llama.cpp interpolates in F32, and packed data where it arrived quantized.
+    def pin_float_type(gguf_name: str, ndim: int, float_type: str) -> str | None:
+        del ndim, float_type
+        return "F32" if gguf_name == "blk.0.attn_q.weight" else None
+
+    context = {
+        "arch_adapter": replace(LLAMA_ADAPTER, pin_float_type=pin_float_type),
+        "model_config": _make_full_config(),
+        "output_dir": tmp_path,
+        "model_name": "pinned-quantized",
+    }
+    packed: dict[str, dict[str, Any]] = {
+        "quantized": {
+            "blk.0.attn_q.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0),
+            "blk.0.attn_k.weight": (torch.zeros(4, 18, dtype=torch.uint8), GGUF_Q4_0),
+        },
+        "float": {},
+    }
+
+    # WHEN: invoking the write stage.
+    with mock.patch("fastforward.export.stages.gguf.gguf_export_stages.GGUFWriter") as writer_cls:
+        with pytest.raises(ExportError, match="must be float") as excinfo:
+            stage_write_gguf((packed,), [], context)
+
+    # THEN: it names only the pinned tensor, and raises before opening a writer.
+    assert "blk.0.attn_q.weight (F32)" in str(excinfo.value)
+    assert "attn_k" not in str(excinfo.value)
+    writer_cls.assert_not_called()
+
+
 def _make_q8_tensor(gguf_name: str, rows: int, cols: int) -> ExtractedTensor:
     """Build a minimal Q8_0 quantized ExtractedTensor."""
     block_size = GGUF_Q8_0.block_size
